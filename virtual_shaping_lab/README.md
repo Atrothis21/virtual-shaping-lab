@@ -1,5 +1,7 @@
 # Virtual Shaping Lab
 
+[![CI](https://github.com/Atrothis21/virtual-shaping-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Atrothis21/virtual-shaping-lab/actions/workflows/ci.yml)
+
 Virtual Shaping Lab is a phase-oriented, agent-centric simulation environment for classical and operant learning. It supports preset behavioral protocols and a schema-driven builder UI for composing custom phase sequences.
 
 > **Behavioral scope note:** The modeled phenomena are experimental in v1 and should be treated as work-in-progress.
