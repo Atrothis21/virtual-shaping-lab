@@ -7,7 +7,11 @@ from experiment.runner import Runner
 from experiment.runtime_records import finalize_record
 from ui.validate_payload import validate_payload
 
-from tests.preset_payloads import PRESET_PAYLOADS
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent))
+from preset_payloads import PRESET_PAYLOADS
 
 
 def _run_full_payload(payload: dict, output_dir: Path) -> None:
