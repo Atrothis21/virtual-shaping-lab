@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/blocking.schema.json",
+  "title": "Blocking Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "blocking" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_acquisition_trials": { "type": "integer", "minimum": 1 },
+        "n_compound_trials": { "type": "integer", "minimum": 1 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["n_acquisition_trials", "n_compound_trials", "alpha"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

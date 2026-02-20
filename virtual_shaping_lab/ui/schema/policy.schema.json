@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/policy.schema.json",
+  "title": "Policy Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "enum": ["epsilon_greedy", "softmax", "fixed"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "required": ["name"],
+  "allOf": [
+    {
+      "if": { "properties": { "name": { "const": "epsilon_greedy" } } },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "actions": {
+                "type": "array",
+                "items": {}
+              },
+              "epsilon": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": ["actions", "epsilon"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "name": { "const": "softmax" } } },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "actions": {
+                "type": "array",
+                "items": {}
+              },
+              "temperature": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": ["actions", "temperature"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "name": { "const": "fixed" } } },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "action": {}
+            },
+            "required": ["action"]
+          }
+        }
+      }
+    }
+  ]
+}

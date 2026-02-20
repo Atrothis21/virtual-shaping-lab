@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Report",
+  "type": "object",
+  "required": ["preset"],
+  "properties": {
+    "preset": {
+      "type": "string",
+      "enum": [
+        "aab_renewal",
+        "aba_renewal",
+        "abc_renewal",
+        "acquisition",
+        "basic_learning_curve",
+        "blocking",
+        "compound_acquisition",
+        "conditioned_inhibition",
+        "custom_protocol",
+        "differential_acquisition",
+        "extinction",
+        "matching_law",
+        "occasion_setting",
+        "operant_conditioning",
+        "rapid_reacquisition"
+      ]
+    },
+    "options": { "type": "object" }
+  },
+  "additionalProperties": false
+}

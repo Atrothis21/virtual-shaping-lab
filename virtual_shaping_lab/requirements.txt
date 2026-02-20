@@ -1,0 +1,4 @@
+fastapi
+jsonschema>=4.0.0
+matplotlib
+numpy

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/phases/context_shift.schema.json",
+  "title": "Context Shift Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "context_shift" },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": { "type": "string", "enum": ["A", "B", "C"] }
+      },
+      "required": ["context"]
+    }
+  },
+  "required": ["name", "protocol", "params"]
+}

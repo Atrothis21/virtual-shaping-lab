@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/occasion_setting.schema.json",
+  "title": "Occasion Setting Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "occasion_setting" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "occasion_setter": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "target": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": ["occasion_setter", "target"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_training_trials": { "type": "integer", "minimum": 1 },
+        "n_probe_trials": { "type": "integer", "minimum": 1 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["n_training_trials", "n_probe_trials", "alpha"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/operant_conditioning.schema.json",
+  "title": "Operant Conditioning Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "operant_conditioning" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "cs_minus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_trials": { "type": "integer", "minimum": 1 },
+        "reward_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixed_ratio",
+                "variable_ratio",
+                "fixed_interval",
+                "variable_interval",
+                "progressive_ratio"
+              ]
+            },
+            "value": { "type": "number", "minimum": 1 }
+          },
+          "required": ["type", "value"]
+        }
+      },
+      "required": ["n_trials", "reward_schedule"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

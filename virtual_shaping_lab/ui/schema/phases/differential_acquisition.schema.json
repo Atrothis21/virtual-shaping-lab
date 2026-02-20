@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/phases/differential_acquisition.schema.json",
+  "title": "Differential Acquisition Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "differential_acquisition" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "cs_minus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus", "cs_minus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_trials": { "type": "integer", "minimum": 1, "default": 100 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.2 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.0 }
+      },
+      "required": ["n_trials", "alpha"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

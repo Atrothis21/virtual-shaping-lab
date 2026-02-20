@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/conditioned_inhibition.schema.json",
+  "title": "Conditioned Inhibition Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "conditioned_inhibition" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "cs_minus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus", "cs_minus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_acquisition_trials": { "type": "integer", "minimum": 1 },
+        "n_inhibition_trials": { "type": "integer", "minimum": 1 },
+        "n_retardation_trials": { "type": "integer", "minimum": 1 },
+        "n_probe_trials": { "type": "integer", "minimum": 1 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "required": ["n_acquisition_trials", "n_inhibition_trials", "n_retardation_trials", "alpha"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

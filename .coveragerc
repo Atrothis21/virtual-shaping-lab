@@ -1,0 +1,3 @@
+[run]
+omit =
+    virtual_shaping_lab/api/run.py

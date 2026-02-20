@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/phases/probe.schema.json",
+  "title": "Probe Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "probe" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_trials": { "type": "integer", "minimum": 1, "default": 20 },
+        "deliver_reward": { "type": "boolean", "default": false },
+        "reward_value": { "type": "number", "minimum": 0, "maximum": 2, "default": 0.0 },
+        "context": {
+          "type": "string",
+          "enum": ["A", "B", "C"],
+          "default": "A"
+        }
+      },
+      "required": ["n_trials"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

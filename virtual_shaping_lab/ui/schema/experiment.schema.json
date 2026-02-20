@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Experiment",
+  "type": "object",
+  "required": ["learner", "agent", "representation"],
+  "properties": {
+    "name": { "type": "string" },
+    "learner": {
+      "type": "string",
+      "enum": ["rescorla_wagner", "td_value", "q_learner"]
+    },
+    "agent": {
+      "type": "string",
+      "enum": ["classical_agent", "operant_agent"]
+    },
+    "representation": {
+      "type": "object",
+      "required": ["name", "params"],
+      "properties": {
+        "name": { "type": "string" },
+        "params": {
+          "type": "object",
+          "required": ["stimuli", "max_compound_size"],
+          "properties": {
+            "stimuli": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1
+            },
+            "max_compound_size": { "type": "integer", "minimum": 1 },
+            "include_context": { "type": "boolean" },
+            "include_global": { "type": "boolean" },
+            "similarity": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": { "type": "string", "enum": ["matrix"] },
+                "stimuli": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 },
+                  "minItems": 1
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "minItems": 1
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": ["type", "values"]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": { "type": "object" },
+    "salience": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["salience"],
+        "properties": {
+          "salience": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "attention": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["attention"],
+        "properties": {
+          "attention": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "context_inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "max_contexts": { "type": "integer", "minimum": 1, "maximum": 3, "default": 3 }
+      },
+      "required": ["enabled"]
+    },
+    "protocol": { "type": "string" },
+    "phases": { "type": "array" },
+    "stimuli": { "type": "object" },
+    "params": { "type": "object" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/rapid_reacquisition.schema.json",
+  "title": "Rapid Reacquisition Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "rapid_reacquisition" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "cs_minus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_acquisition_trials": { "type": "integer", "minimum": 1 },
+        "n_extinction_trials": { "type": "integer", "minimum": 1 },
+        "n_reacquisition_trials": { "type": "integer", "minimum": 1 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1 },
+        "context_a": { "type": "string", "enum": ["A", "B", "C"] },
+        "context_b": { "type": "string", "enum": ["A", "B", "C"] }
+      },
+      "required": [
+        "n_acquisition_trials",
+        "n_extinction_trials",
+        "n_reacquisition_trials",
+        "alpha",
+        "context_a",
+        "context_b"
+      ]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

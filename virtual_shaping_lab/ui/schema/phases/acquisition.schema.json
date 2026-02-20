@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/phases/acquisition.schema.json",
+  "title": "Acquisition Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "acquisition" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_trials": { "type": "integer", "minimum": 1, "default": 100 },
+        "alpha": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.2 },
+        "gamma": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.0 },
+        "outcome": { "type": "number", "minimum": 0, "maximum": 2, "default": 1 }
+      },
+      "required": ["n_trials", "alpha"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}
