@@ -23,6 +23,18 @@ Virtual Shaping Lab is a phase-oriented, agent-centric simulation environment fo
 - Builder: open `ui/builder.html`
 - Backend run endpoint: see `api/run.py`
 
+## CLI
+Install editable and run:
+```bash
+pip install -e .
+vsl serve
+```
+
+Run a payload directly:
+```bash
+vsl run path/to/payload.json
+```
+
 ## Testing & CI
 Local tests:
 ```bash

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "virtual-shaping-lab"
+version = "1.1.0.dev0"
+description = "Virtual Shaping Lab: phase-oriented, agent-centric simulation for learning and behavior."
+readme = "virtual_shaping_lab/README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "jsonschema>=4.0.0",
+  "matplotlib",
+  "numpy",
+  "uvicorn",
+]
+
+[project.scripts]
+vsl = "virtual_shaping_lab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["virtual_shaping_lab*"]
