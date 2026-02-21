@@ -24,6 +24,9 @@ Virtual Shaping Lab is a phase-oriented, agent-centric simulation environment fo
 - React UI: open `ui/react.html`
 - Backend run endpoint: see `api/run.py`
 
+## Schema Versioning
+Payloads may include `experiment.schema_version`. Current default is `1.2`.
+
 ## CLI
 Install editable and run:
 ```bash

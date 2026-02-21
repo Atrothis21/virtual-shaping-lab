@@ -24,6 +24,18 @@ jobs:
       - name: Run tests
         run: pytest
 
+      - name: React UI smoke
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          ui = Path("virtual_shaping_lab/ui/react.html")
+          assert ui.exists(), "react.html missing"
+          text = ui.read_text(encoding="utf-8")
+          assert "Virtual Shaping Lab" in text
+          assert "Run Payload" in text
+          print("React UI smoke OK")
+          PY
+
   preset-regression:
     runs-on: ubuntu-latest
     env:

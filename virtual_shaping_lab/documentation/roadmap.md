@@ -54,6 +54,9 @@ Guiding principles:
 - Builder can compose all v1 phases and generate valid payloads.
 - Versioned schemas can load older payloads without error.
 
+**Status**
+- In progress.
+
 ---
 
 ## v1.3 — Cognitive Extensions (core science upgrade)
