@@ -46,7 +46,7 @@
 
       main {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 1.5rem;
         padding: 0 8vw 3rem;
       }
@@ -116,6 +116,31 @@
         margin-bottom: 1rem;
       }
 
+      .phase-card {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.9rem;
+        margin-top: 0.75rem;
+        background: #fbfaf8;
+      }
+
+      .phase-card label {
+        display: block;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 0.25rem;
+      }
+
+      .phase-card input {
+        width: 100%;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+      }
+
       .results a {
         color: var(--accent);
       }
@@ -172,12 +197,78 @@
       }
 
       function App() {
+        const [payload, setPayload] = React.useState(DEFAULT_PAYLOAD);
         const [payloadText, setPayloadText] = React.useState(
           JSON.stringify(DEFAULT_PAYLOAD, null, 2)
         );
         const [status, setStatus] = React.useState("Ready.");
         const [artifacts, setArtifacts] = React.useState(null);
         const [error, setError] = React.useState(null);
+
+        const syncFromText = () => {
+          try {
+            const parsed = JSON.parse(payloadText);
+            setPayload(parsed);
+            setError(null);
+          } catch (err) {
+            setError("Payload JSON is invalid.");
+          }
+        };
+
+        const setPayloadAndText = (nextPayload) => {
+          setPayload(nextPayload);
+          setPayloadText(JSON.stringify(nextPayload, null, 2));
+        };
+
+        const phases = payload?.experiment?.phases || [];
+
+        const updatePhase = (index, updater) => {
+          const nextPhases = phases.map((p, i) =>
+            i === index ? updater({ ...p }) : p
+          );
+          setPayloadAndText({
+            ...payload,
+            experiment: { ...payload.experiment, phases: nextPhases },
+          });
+        };
+
+        const addPhase = () => {
+          const next = {
+            name: `Phase ${phases.length + 1}`,
+            protocol: "acquisition",
+            stimuli: { cs_plus: ["tone"] },
+            params: { n_trials: 100, alpha: 0.2, gamma: 0.0 },
+          };
+          setPayloadAndText({
+            ...payload,
+            experiment: {
+              ...payload.experiment,
+              phases: [...phases, next],
+            },
+          });
+        };
+
+        const removePhase = (index) => {
+          const nextPhases = phases.filter((_, i) => i !== index);
+          setPayloadAndText({
+            ...payload,
+            experiment: { ...payload.experiment, phases: nextPhases },
+          });
+        };
+
+        const movePhase = (index, dir) => {
+          const nextPhases = [...phases];
+          const target = index + dir;
+          if (target < 0 || target >= nextPhases.length) return;
+          [nextPhases[index], nextPhases[target]] = [
+            nextPhases[target],
+            nextPhases[index],
+          ];
+          setPayloadAndText({
+            ...payload,
+            experiment: { ...payload.experiment, phases: nextPhases },
+          });
+        };
 
         const runPayload = async () => {
           setError(null);
@@ -225,6 +316,68 @@
             </header>
             <main>
               <section className="panel">
+                <h2>Builder (Phases)</h2>
+                <p className="status">
+                  Add, remove, and reorder phases. This updates the JSON payload.
+                </p>
+                {phases.map((phase, idx) => (
+                  <div key={idx} className="phase-card">
+                    <label>Phase Name</label>
+                    <input
+                      value={phase.name || ""}
+                      onChange={(e) =>
+                        updatePhase(idx, (p) => ({ ...p, name: e.target.value }))
+                      }
+                    />
+                    <label>Protocol</label>
+                    <input
+                      value={phase.protocol || ""}
+                      onChange={(e) =>
+                        updatePhase(idx, (p) => ({
+                          ...p,
+                          protocol: e.target.value,
+                        }))
+                      }
+                    />
+                    <label>Trials</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={phase.params?.n_trials ?? 0}
+                      onChange={(e) =>
+                        updatePhase(idx, (p) => ({
+                          ...p,
+                          params: {
+                            ...(p.params || {}),
+                            n_trials: Number(e.target.value || 0),
+                          },
+                        }))
+                      }
+                    />
+                    <div className="row">
+                      <button className="secondary" onClick={() => movePhase(idx, -1)}>
+                        Move Up
+                      </button>
+                      <button className="secondary" onClick={() => movePhase(idx, 1)}>
+                        Move Down
+                      </button>
+                      <button className="primary" onClick={() => removePhase(idx)}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="row">
+                  <button className="primary" onClick={addPhase}>
+                    Add Phase
+                  </button>
+                  <button className="secondary" onClick={syncFromText}>
+                    Sync Builder from JSON
+                  </button>
+                </div>
+              </section>
+
+              <section className="panel">
                 <h2>Payload Preview</h2>
                 <textarea
                   value={payloadText}
@@ -236,15 +389,20 @@
                   </button>
                   <button
                     className="secondary"
-                    onClick={() =>
-                      setPayloadText(JSON.stringify(DEFAULT_PAYLOAD, null, 2))
-                    }
+                    onClick={() => {
+                      setPayloadAndText(DEFAULT_PAYLOAD);
+                      setError(null);
+                    }}
                   >
                     Reset Example
                   </button>
                 </div>
                 <div className="status">{status}</div>
-                {error && <div className="status" style={{ color: "#b94a48" }}>{error}</div>}
+                {error && (
+                  <div className="status" style={{ color: "#b94a48" }}>
+                    {error}
+                  </div>
+                )}
               </section>
 
               <section className="panel results">
@@ -252,7 +410,11 @@
                 {!artifacts && <p className="status">Run a payload to see results.</p>}
                 {artifacts?.pdf && (
                   <p>
-                    <a href={normalizePath(artifacts.pdf)} target="_blank" rel="noreferrer">
+                    <a
+                      href={normalizePath(artifacts.pdf)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       Open report PDF
                     </a>
                   </p>
