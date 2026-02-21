@@ -248,6 +248,11 @@
           "operant_conditioning",
           "rapid_reacquisition",
         ];
+        const representationOptions = [
+          "vector_elemental",
+          "vector_configural",
+          "vector_hybrid",
+        ];
 
         const updatePhase = (index, updater) => {
           const nextPhases = phases.map((p, i) =>
@@ -381,6 +386,32 @@
                   }
                 >
                   {reportPresets.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
+              <section className="panel">
+                <h2>Representation</h2>
+                <label>Representation Type</label>
+                <select
+                  value={payload?.experiment?.representation?.name || ""}
+                  onChange={(e) =>
+                    setPayloadAndText({
+                      ...payload,
+                      experiment: {
+                        ...payload.experiment,
+                        representation: {
+                          ...(payload.experiment?.representation || {}),
+                          name: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                >
+                  {representationOptions.map((opt) => (
                     <option key={opt} value={opt}>
                       {opt}
                     </option>
