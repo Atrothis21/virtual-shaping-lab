@@ -27,6 +27,7 @@ class ExperimentConfig:
     """
 
     # --- experiment-level definition ---
+    schema_version: str
     learner: str
     agent: str
     representation: Union[str, Dict[str, Any]]
@@ -299,6 +300,9 @@ class ExperimentConfig:
         """
         Construct an ExperimentConfig from a validated UI payload.
         """
+        from experiment.migrations import migrate_payload
+
+        payload = migrate_payload(payload)
 
         if "experiment" not in payload:
             raise ValueError("Payload missing 'experiment' section")
@@ -331,6 +335,7 @@ class ExperimentConfig:
 
 
         config = cls(
+            schema_version=exp.get("schema_version", "1.2"),
             learner=exp["learner"],
             agent=exp["agent"],
             representation=representation,

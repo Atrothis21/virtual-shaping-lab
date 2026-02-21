@@ -5,6 +5,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
 from experiment.phases.catalog import PHASE_CONSTRAINTS
+from experiment.migrations import SUPPORTED_SCHEMA_VERSIONS
 
 
 SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -70,6 +71,13 @@ def _validate_top_level(payload: dict) -> dict:
 
     if EXPERIMENT_SCHEMA_PATH.exists():
         _validate_schema(exp, EXPERIMENT_SCHEMA_PATH, "experiment")
+
+    schema_version = exp.get("schema_version")
+    if schema_version is not None and schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise ValidationError(
+            "experiment.schema_version must be one of: "
+            + ", ".join(sorted(SUPPORTED_SCHEMA_VERSIONS))
+        )
 
     for key in ("learner", "agent", "representation"):
         if key not in exp:

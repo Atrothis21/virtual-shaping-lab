@@ -5,6 +5,11 @@
   "required": ["learner", "agent", "representation"],
   "properties": {
     "name": { "type": "string" },
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0", "1.1", "1.2"],
+      "default": "1.2"
+    },
     "learner": {
       "type": "string",
       "enum": ["rescorla_wagner", "td_value", "q_learner"]
