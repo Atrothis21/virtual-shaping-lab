@@ -124,6 +124,22 @@
         background: #fbfaf8;
       }
 
+      .phase-chain {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      .phase-chip {
+        padding: 0.4rem 0.7rem;
+        border-radius: 999px;
+        background: #f2ede4;
+        color: var(--accent);
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+      }
+
       .phase-card label {
         display: block;
         font-size: 0.8rem;
@@ -424,6 +440,13 @@
                 <p className="status">
                   Add, remove, and reorder phases. This updates the JSON payload.
                 </p>
+                <div className="phase-chain">
+                  {phases.map((phase, idx) => (
+                    <div key={`${phase.name}-${idx}`} className="phase-chip">
+                      {idx + 1}. {phase.protocol || "phase"}
+                    </div>
+                  ))}
+                </div>
                 {phases.map((phase, idx) => (
                   <div key={idx} className="phase-card">
                     <label>Phase Name</label>
