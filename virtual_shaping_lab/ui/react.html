@@ -231,6 +231,23 @@
 
         const phases = payload?.experiment?.phases || [];
         const learnerOptions = ["rescorla_wagner", "td_value", "q_learner"];
+        const reportPresets = [
+          "aab_renewal",
+          "aba_renewal",
+          "abc_renewal",
+          "acquisition",
+          "basic_learning_curve",
+          "blocking",
+          "compound_acquisition",
+          "conditioned_inhibition",
+          "custom_protocol",
+          "differential_acquisition",
+          "extinction",
+          "matching_law",
+          "occasion_setting",
+          "operant_conditioning",
+          "rapid_reacquisition",
+        ];
 
         const updatePhase = (index, updater) => {
           const nextPhases = phases.map((p, i) =>
@@ -341,6 +358,29 @@
                   }
                 >
                   {learnerOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
+              <section className="panel">
+                <h2>Protocol Preset</h2>
+                <label>Report Preset</label>
+                <select
+                  value={payload?.report?.preset || ""}
+                  onChange={(e) =>
+                    setPayloadAndText({
+                      ...payload,
+                      report: {
+                        ...(payload.report || {}),
+                        preset: e.target.value,
+                      },
+                    })
+                  }
+                >
+                  {reportPresets.map((opt) => (
                     <option key={opt} value={opt}>
                       {opt}
                     </option>
