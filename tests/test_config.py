@@ -184,6 +184,20 @@ def test_from_payload_missing_sections():
         ExperimentConfig.from_payload({"experiment": {}})
 
 
+def test_schema_version_migration_default():
+    payload = _base_payload()
+    payload["experiment"].pop("schema_version", None)
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.schema_version == "1.2"
+
+
+def test_schema_version_migration_rejects_unknown():
+    payload = _base_payload()
+    payload["experiment"]["schema_version"] = "0.9"
+    with pytest.raises(ValueError):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_infer_contexts_from_protocol_params():
     rep_params = {}
     config = SimpleNamespace(

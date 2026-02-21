@@ -78,6 +78,18 @@ def test_validate_top_level_errors(monkeypatch):
         vp._validate_top_level({"experiment": {"agent": "y", "representation": "vector_elemental"}, "report": {}})
 
 
+def test_validate_top_level_schema_version_guard(monkeypatch):
+    monkeypatch.setattr(vp, "_validate_schema", lambda *_: None)
+    exp = {
+        "learner": "rescorla_wagner",
+        "agent": "classical_agent",
+        "representation": "vector_elemental",
+        "schema_version": "0.1",
+    }
+    with pytest.raises(vp.ValidationError):
+        vp._validate_top_level({"experiment": exp, "report": {"preset": "acquisition"}})
+
+
 def test_validate_policy_guard(monkeypatch):
     exp = {"learner": "x", "agent": "y", "representation": "vector_elemental"}
     vp._validate_policy_guard(exp)
