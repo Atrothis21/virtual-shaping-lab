@@ -78,6 +78,11 @@
         background: #fbfaf8;
       }
 
+      textarea.readonly {
+        background: #f3f0ea;
+        color: #333;
+      }
+
       .row {
         display: flex;
         flex-wrap: wrap;
@@ -236,6 +241,7 @@
             const parsed = JSON.parse(payloadText);
             setPayload(parsed);
             setError(null);
+            setStatus("Payload synced.");
           } catch (err) {
             setError("Payload JSON is invalid.");
           }
@@ -244,6 +250,20 @@
         const setPayloadAndText = (nextPayload) => {
           setPayload(nextPayload);
           setPayloadText(JSON.stringify(nextPayload, null, 2));
+        };
+
+        const exportPayload = () => {
+          const blob = new Blob([JSON.stringify(payload, null, 2)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "vsl_payload.json";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
         };
 
         const phases = payload?.experiment?.phases || [];
@@ -515,6 +535,9 @@
                   <button className="primary" onClick={runPayload}>
                     Run Payload
                   </button>
+                  <button className="secondary" onClick={syncFromText}>
+                    Validate + Sync
+                  </button>
                   <button
                     className="secondary"
                     onClick={() => {
@@ -524,6 +547,9 @@
                   >
                     Reset Example
                   </button>
+                  <button className="secondary" onClick={exportPayload}>
+                    Export JSON
+                  </button>
                 </div>
                 <div className="status">{status}</div>
                 {error && (
@@ -531,6 +557,18 @@
                     {error}
                   </div>
                 )}
+              </section>
+
+              <section className="panel">
+                <h2>Normalized Payload</h2>
+                <p className="status">
+                  This view reflects the builder state (after sync).
+                </p>
+                <textarea
+                  className="readonly"
+                  readOnly
+                  value={JSON.stringify(payload, null, 2)}
+                />
               </section>
 
               <section className="panel results">
