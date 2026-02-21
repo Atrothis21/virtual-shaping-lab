@@ -40,6 +40,18 @@ Start the UI (auto-opens browser):
 vsl ui
 ```
 
+## Docker
+Build and run locally:
+```bash
+docker build -t vsl .
+docker run -p 8000:8000 vsl
+```
+
+Using docker-compose:
+```bash
+docker compose up --build
+```
+
 ## Testing & CI
 Local tests:
 ```bash
