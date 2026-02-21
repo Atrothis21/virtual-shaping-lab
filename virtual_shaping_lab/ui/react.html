@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>VSL React UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f5f2;
+        --panel: #ffffff;
+        --ink: #1e1e1e;
+        --muted: #666;
+        --accent: #184c45;
+        --accent-2: #d6b26e;
+        --border: #e5e0d9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+        background: radial-gradient(circle at 10% 10%, #f0ece6, #f8f7f4 40%, #ece8e1 100%);
+        color: var(--ink);
+      }
+
+      header {
+        padding: 2.5rem 8vw 1.5rem;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(1.8rem, 2.5vw, 2.6rem);
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      p.lede {
+        margin: 0;
+        color: var(--muted);
+        max-width: 70ch;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
+        gap: 1.5rem;
+        padding: 0 8vw 3rem;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 24px rgba(30, 30, 30, 0.05);
+      }
+
+      .panel h2 {
+        margin-top: 0;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 320px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.8rem;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 0.85rem;
+        background: #fbfaf8;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      button.secondary {
+        background: #f2ede4;
+        color: var(--accent);
+      }
+
+      .status {
+        margin-top: 0.75rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .results img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        margin-bottom: 1rem;
+      }
+
+      .results a {
+        color: var(--accent);
+      }
+
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+      const DEFAULT_PAYLOAD = {
+        experiment: {
+          learner: "rescorla_wagner",
+          agent: "classical_agent",
+          representation: {
+            name: "vector_elemental",
+            params: { stimuli: ["tone", "noise", "light", "click"], max_compound_size: 2 },
+          },
+          context_inference: { enabled: false, max_contexts: 3 },
+          phases: [
+            {
+              name: "Phase 1",
+              protocol: "acquisition",
+              stimuli: { cs_plus: ["tone"] },
+              params: { n_trials: 100, alpha: 0.2, gamma: 0.0 },
+            },
+          ],
+          salience: { tone: { salience: 1.0 } },
+          attention: { tone: { attention: 1.0 } },
+        },
+        report: { preset: "acquisition" },
+      };
+
+      function normalizePath(path) {
+        if (!path) return "";
+        const forward = path.replace(/\\/g, "/");
+        if (forward.startsWith("reports/")) {
+          return "/" + forward;
+        }
+        if (forward.includes("/reports/")) {
+          const idx = forward.indexOf("/reports/");
+          return forward.slice(idx);
+        }
+        return forward.startsWith("/") ? forward : "/" + forward;
+      }
+
+      function App() {
+        const [payloadText, setPayloadText] = React.useState(
+          JSON.stringify(DEFAULT_PAYLOAD, null, 2)
+        );
+        const [status, setStatus] = React.useState("Ready.");
+        const [artifacts, setArtifacts] = React.useState(null);
+        const [error, setError] = React.useState(null);
+
+        const runPayload = async () => {
+          setError(null);
+          setArtifacts(null);
+          setStatus("Running...");
+
+          let payload;
+          try {
+            payload = JSON.parse(payloadText);
+          } catch (err) {
+            setError("Payload JSON is invalid.");
+            setStatus("Idle.");
+            return;
+          }
+
+          try {
+            const res = await fetch("/run", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+              const detail = await res.json();
+              throw new Error(detail.detail || "Run failed.");
+            }
+
+            const data = await res.json();
+            setArtifacts(data.artifacts || null);
+            setStatus("Run completed.");
+          } catch (err) {
+            setError(err.message);
+            setStatus("Idle.");
+          }
+        };
+
+        return (
+          <>
+            <header>
+              <h1>Virtual Shaping Lab — React UI</h1>
+              <p className="lede">
+                Local-first UI for running payloads. Preview or edit JSON, run it, and view
+                results in-browser.
+              </p>
+            </header>
+            <main>
+              <section className="panel">
+                <h2>Payload Preview</h2>
+                <textarea
+                  value={payloadText}
+                  onChange={(e) => setPayloadText(e.target.value)}
+                />
+                <div className="row">
+                  <button className="primary" onClick={runPayload}>
+                    Run Payload
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() =>
+                      setPayloadText(JSON.stringify(DEFAULT_PAYLOAD, null, 2))
+                    }
+                  >
+                    Reset Example
+                  </button>
+                </div>
+                <div className="status">{status}</div>
+                {error && <div className="status" style={{ color: "#b94a48" }}>{error}</div>}
+              </section>
+
+              <section className="panel results">
+                <h2>Results</h2>
+                {!artifacts && <p className="status">Run a payload to see results.</p>}
+                {artifacts?.pdf && (
+                  <p>
+                    <a href={normalizePath(artifacts.pdf)} target="_blank" rel="noreferrer">
+                      Open report PDF
+                    </a>
+                  </p>
+                )}
+                {Array.isArray(artifacts?.figures) &&
+                  artifacts.figures.map((fig, idx) => (
+                    <img key={idx} src={normalizePath(fig)} alt={`figure-${idx}`} />
+                  ))}
+              </section>
+            </main>
+          </>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>

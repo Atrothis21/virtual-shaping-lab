@@ -21,6 +21,7 @@ Virtual Shaping Lab is a phase-oriented, agent-centric simulation environment fo
 ## Running
 - Presets: open `ui/presets.html`
 - Builder: open `ui/builder.html`
+- React UI: open `ui/react.html`
 - Backend run endpoint: see `api/run.py`
 
 ## CLI
