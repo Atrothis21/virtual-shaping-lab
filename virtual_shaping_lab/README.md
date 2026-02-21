@@ -35,6 +35,11 @@ Run a payload directly:
 vsl run path/to/payload.json
 ```
 
+Start the UI (auto-opens browser):
+```bash
+vsl ui
+```
+
 ## Testing & CI
 Local tests:
 ```bash

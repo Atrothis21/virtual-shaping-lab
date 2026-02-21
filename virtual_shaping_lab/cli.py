@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 
@@ -68,6 +70,32 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ui(args: argparse.Namespace) -> int:
+    _ensure_repo_paths()
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise SystemExit(
+            "uvicorn is required for 'vsl ui'. "
+            "Install it with: pip install uvicorn"
+        ) from exc
+
+    url = f"http://{args.host}:{args.port}/ui/presets.html"
+
+    if args.open:
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+
+    print(f"Serving UI at {url}")
+
+    uvicorn.run(
+        "api.run:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vsl",
@@ -88,6 +116,13 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--reload", action="store_true")
     serve.set_defaults(func=_cmd_serve)
+
+    ui = sub.add_parser("ui", help="Start the local UI server.")
+    ui.add_argument("--host", default="127.0.0.1")
+    ui.add_argument("--port", type=int, default=8000)
+    ui.add_argument("--reload", action="store_true")
+    ui.add_argument("--no-open", dest="open", action="store_false")
+    ui.set_defaults(func=_cmd_ui, open=True)
 
     return parser
 
