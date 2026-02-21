@@ -141,6 +141,15 @@
         margin-bottom: 0.6rem;
       }
 
+      select {
+        width: 100%;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 0.6rem;
+        background: #fff;
+      }
+
       .results a {
         color: var(--accent);
       }
@@ -221,6 +230,7 @@
         };
 
         const phases = payload?.experiment?.phases || [];
+        const learnerOptions = ["rescorla_wagner", "td_value", "q_learner"];
 
         const updatePhase = (index, updater) => {
           const nextPhases = phases.map((p, i) =>
@@ -315,6 +325,29 @@
               </p>
             </header>
             <main>
+              <section className="panel">
+                <h2>Learner</h2>
+                <label>Learning Rule</label>
+                <select
+                  value={payload?.experiment?.learner || ""}
+                  onChange={(e) =>
+                    setPayloadAndText({
+                      ...payload,
+                      experiment: {
+                        ...payload.experiment,
+                        learner: e.target.value,
+                      },
+                    })
+                  }
+                >
+                  {learnerOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
               <section className="panel">
                 <h2>Builder (Phases)</h2>
                 <p className="status">
