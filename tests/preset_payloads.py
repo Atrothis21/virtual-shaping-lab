@@ -406,3 +406,14 @@ PRESET_PAYLOADS = [
     ("overshadowing", overshadowing_payload()),
     ("overexpectation", overexpectation_payload()),
 ]
+
+
+# Phase 0 migration-contract fixtures:
+# - classical_preset: single-phase classical flow
+# - operant_preset: operant protocol flow with policy
+# - multi_phase_builder: builder-style multi-phase flow
+CONTRACT_FIXTURES = {
+    "classical_preset": acquisition_payload(),
+    "operant_preset": matching_law_payload(),
+    "multi_phase_builder": overshadowing_payload(),
+}
