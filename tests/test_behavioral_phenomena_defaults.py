@@ -19,7 +19,9 @@ from preset_payloads import (
     compound_acquisition_payload,
     differential_acquisition_payload,
     extinction_payload,
+    matching_law_payload,
     occasion_setting_payload,
+    operant_conditioning_payload,
     overexpectation_payload,
     overshadowing_payload,
     rapid_reacquisition_payload,
@@ -262,3 +264,30 @@ def test_occasion_setting_probe_is_between_acquisition_and_nonreinforcement_defa
     probe_mean = _mean_prediction(probe_tail)
     assert probe_mean > _mean_prediction(nr_tail) + 0.1
     assert probe_mean < _mean_prediction(acq_tail) - 0.1
+
+
+def test_operant_conditioning_shows_reinforcement_and_value_increase_default_payload():
+    records = _run_records(operant_conditioning_payload())
+    assert records, "Expected operant conditioning records."
+
+    rewards = [float(r.get("reward", 0.0)) for r in records]
+    assert sum(rewards) > 0.0, "Expected at least some delivered reward."
+
+    early, late = _head_tail(records, ratio=0.2)
+    assert _mean_prediction(late) > _mean_prediction(early) + 0.02
+
+
+def test_matching_law_shows_choice_bias_under_unequal_schedules_default_payload():
+    records = _run_records(matching_law_payload())
+    assert records, "Expected matching-law records."
+
+    actions = [r.get("action") for r in records]
+    counts: dict[str, int] = {}
+    for action in actions:
+        counts[action] = counts.get(action, 0) + 1
+
+    assert len(counts) >= 2, "Expected at least two sampled actions under epsilon-greedy policy."
+
+    total = len(actions)
+    dominant_fraction = max(counts.values()) / total
+    assert dominant_fraction > 0.55
