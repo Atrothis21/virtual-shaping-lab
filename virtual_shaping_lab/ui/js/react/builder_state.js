@@ -200,18 +200,19 @@ function migratePhaseProtocol(phase, nextProtocol, availableStimuli) {
 }
 
 function createInitialPayload() {
+  const initialStimuli = ["tone"];
   return {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
       representation: {
         name: "vector_elemental",
-        params: { stimuli: STIMULI, max_compound_size: 2 },
+        params: { stimuli: initialStimuli, max_compound_size: 2 },
       },
       context_inference: { enabled: false, max_contexts: 3 },
       salience: {},
       attention: {},
-      phases: [buildDefaultPhase(0, STIMULI)],
+      phases: [buildDefaultPhase(0, initialStimuli)],
     },
     report: { preset: "acquisition" },
   };
@@ -272,6 +273,8 @@ function hasPriorLearning(phases, index) {
 function validateBeforeRun(inputPayload) {
   const payload = normalizePayload(inputPayload);
   const phases = payload?.experiment?.phases || [];
+  const repStimuli = payload?.experiment?.representation?.params?.stimuli || [];
+  const repSet = new Set(Array.isArray(repStimuli) ? repStimuli : []);
 
   if (!Array.isArray(phases) || phases.length === 0) {
     throw new Error("At least one phase is required.");
@@ -331,6 +334,16 @@ function validateBeforeRun(inputPayload) {
         throw new Error(`Phase ${phaseNum} (context_shift) requires context A, B, or C.`);
       }
     }
+
+    const referenced = [];
+    if (Array.isArray(stimuli.cs_plus)) referenced.push(...stimuli.cs_plus);
+    if (Array.isArray(stimuli.cs_minus)) referenced.push(...stimuli.cs_minus);
+    if (Array.isArray(stimuli.compound)) referenced.push(...stimuli.compound);
+    referenced.forEach((s) => {
+      if (!repSet.has(s)) {
+        throw new Error(`Phase ${phaseNum} references stimulus '${s}' not present in representation stimuli.`);
+      }
+    });
   });
 
   return payload;

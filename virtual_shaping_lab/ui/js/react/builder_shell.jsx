@@ -1,6 +1,7 @@
 window.VSLReact = window.VSLReact || {};
 
 const {
+  STIMULI: KNOWN_STIMULI,
   buildDefaultPhase,
   migratePhaseProtocol,
   createInitialPayload,
@@ -10,15 +11,44 @@ const {
 
 const BuilderPhaseList = window.VSLReact.BuilderPhaseList;
 
+function collectReferencedStimuli(phases) {
+  const refs = new Set();
+  (phases || []).forEach((phase) => {
+    if (Array.isArray(phase?.stimuli?.cs_plus)) phase.stimuli.cs_plus.forEach((s) => refs.add(s));
+    if (Array.isArray(phase?.stimuli?.cs_minus)) phase.stimuli.cs_minus.forEach((s) => refs.add(s));
+    if (Array.isArray(phase?.stimuli?.compound)) phase.stimuli.compound.forEach((s) => refs.add(s));
+  });
+  return refs;
+}
+
+function collectActivePhaseStimuli(phase) {
+  const out = [];
+  if (Array.isArray(phase?.stimuli?.cs_plus)) out.push(...phase.stimuli.cs_plus);
+  if (Array.isArray(phase?.stimuli?.cs_minus)) out.push(...phase.stimuli.cs_minus);
+  if (Array.isArray(phase?.stimuli?.compound)) out.push(...phase.stimuli.compound);
+  return Array.from(new Set(out));
+}
+
+function readParamMapValue(mapObj, key, field, fallback) {
+  const raw = mapObj?.[key];
+  if (typeof raw === "number") return raw;
+  if (raw && typeof raw[field] === "number") return raw[field];
+  return fallback;
+}
+
 function BuilderShellApp() {
   const [payload, setPayload] = React.useState(createInitialPayload);
   const [activePhaseIndex, setActivePhaseIndex] = React.useState(0);
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
+  const [newStimulus, setNewStimulus] = React.useState(KNOWN_STIMULI[0] || "tone");
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases = payload.experiment.phases;
   const active = phases[activePhaseIndex] || phases[0];
+  const referencedStimuli = React.useMemo(() => collectReferencedStimuli(phases), [phases]);
+  const activePhaseStimuli = React.useMemo(() => collectActivePhaseStimuli(active), [active]);
 
   const addPhase = () => {
     setPayload((prev) => {
@@ -35,6 +65,38 @@ function BuilderShellApp() {
       const next = JSON.parse(JSON.stringify(prev));
       const idx = Math.min(activePhaseIndex, next.experiment.phases.length - 1);
       updater(next.experiment.phases[idx], getAvailableStimuli(next));
+      return next;
+    });
+  };
+
+  const updateRepresentationStimuli = (nextStimuli) => {
+    const deduped = Array.from(new Set((nextStimuli || []).filter(Boolean)));
+    if (!deduped.length) return;
+
+    setPayload((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next.experiment.representation) next.experiment.representation = { name: "vector_elemental", params: {} };
+      if (!next.experiment.representation.params) next.experiment.representation.params = {};
+      next.experiment.representation.params.stimuli = deduped;
+
+      const trimMap = (obj, field) => {
+        const out = {};
+        deduped.forEach((s) => {
+          const val = obj?.[s];
+          if (val == null) return;
+          if (typeof val === "number") {
+            out[s] = { [field]: val };
+            return;
+          }
+          if (typeof val[field] === "number") {
+            out[s] = { [field]: val[field] };
+          }
+        });
+        return out;
+      };
+
+      next.experiment.salience = trimMap(next.experiment.salience || {}, "salience");
+      next.experiment.attention = trimMap(next.experiment.attention || {}, "attention");
       return next;
     });
   };
@@ -87,17 +149,150 @@ function BuilderShellApp() {
   const showGamma = !isContextShift && !isProbe;
   const contextValue = active?.params?.context || "A";
 
+  const repStimuli = availableStimuli;
+  const addableStimuli = KNOWN_STIMULI.filter((s) => !repStimuli.includes(s));
+  const selectedAddStimulus = addableStimuli.includes(newStimulus) ? newStimulus : (addableStimuli[0] || "");
+
   return (
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
-      <p>React builder (phase 4 slice). Advanced controls remain available in legacy fallback.</p>
+      <p>React builder (phase 4.7 slice). Core advanced controls are now native; legacy remains as fallback.</p>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>
           Back to Menu
         </button>
         <a className="btn secondary" href="/ui/builder_legacy.html">Open Legacy Builder</a>
+        <button className="btn secondary" onClick={() => setShowAdvanced((v) => !v)}>
+          {showAdvanced ? "Hide Advanced Controls" : "Show Advanced Controls"}
+        </button>
       </div>
+
+      {showAdvanced && (
+      <div className="panel">
+        <h3>Advanced Controls</h3>
+        <label>Representation Stimuli</label>
+        <div style={{ display: "grid", gap: "0.4rem", marginBottom: "0.8rem" }}>
+          {repStimuli.map((s) => {
+            const isReferenced = referencedStimuli.has(s);
+            const canRemove = repStimuli.length > 1 && !isReferenced;
+            return (
+              <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.6rem" }}>
+                <span>{s}{isReferenced ? " (in use)" : ""}</span>
+                <button
+                  className="btn"
+                  disabled={!canRemove}
+                  onClick={() => updateRepresentationStimuli(repStimuli.filter((x) => x !== s))}
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <label>Add Known Stimulus</label>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.8rem" }}>
+          <select
+            value={selectedAddStimulus}
+            onChange={(e) => setNewStimulus(e.target.value)}
+            disabled={!addableStimuli.length}
+          >
+            {addableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <button
+            className="btn"
+            disabled={!selectedAddStimulus}
+            onClick={() => updateRepresentationStimuli([...repStimuli, selectedAddStimulus])}
+          >
+            Add Stimulus
+          </button>
+        </div>
+
+        <label style={{ marginTop: "0.6rem", display: "block" }}>
+          <input
+            type="checkbox"
+            checked={Boolean(payload?.experiment?.context_inference?.enabled)}
+            onChange={(e) => setPayload((prev) => {
+              const next = JSON.parse(JSON.stringify(prev));
+              if (!next.experiment.context_inference) next.experiment.context_inference = { enabled: false, max_contexts: 3 };
+              next.experiment.context_inference.enabled = e.target.checked;
+              return next;
+            })}
+          />{" "}
+          Enable Context Inference
+        </label>
+
+        <label>Max Contexts</label>
+        <input
+          type="range"
+          min="1"
+          max="3"
+          step="1"
+          value={payload?.experiment?.context_inference?.max_contexts ?? 3}
+          disabled={!payload?.experiment?.context_inference?.enabled}
+          onChange={(e) => setPayload((prev) => {
+            const next = JSON.parse(JSON.stringify(prev));
+            if (!next.experiment.context_inference) next.experiment.context_inference = { enabled: false, max_contexts: 3 };
+            next.experiment.context_inference.max_contexts = +e.target.value;
+            return next;
+          })}
+        />
+        <div>{payload?.experiment?.context_inference?.max_contexts ?? 3}</div>
+
+        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Salience</h4>
+        {activePhaseStimuli.length === 0 && (
+          <div>No phase stimuli selected for this protocol.</div>
+        )}
+        {activePhaseStimuli.map((s) => {
+          const value = readParamMapValue(payload?.experiment?.salience || {}, s, "salience", 1.0);
+          return (
+            <div key={`salience-${s}`} style={{ marginBottom: "0.4rem" }}>
+              <label>{s}: {value.toFixed(2)}</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={value}
+                onChange={(e) => setPayload((prev) => {
+                  const next = JSON.parse(JSON.stringify(prev));
+                  if (!next.experiment.salience) next.experiment.salience = {};
+                  next.experiment.salience[s] = { salience: +e.target.value };
+                  return next;
+                })}
+              />
+            </div>
+          );
+        })}
+
+        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Attention</h4>
+        {activePhaseStimuli.length === 0 && (
+          <div>No phase stimuli selected for this protocol.</div>
+        )}
+        {activePhaseStimuli.map((s) => {
+          const value = readParamMapValue(payload?.experiment?.attention || {}, s, "attention", 1.0);
+          return (
+            <div key={`attention-${s}`} style={{ marginBottom: "0.4rem" }}>
+              <label>{s}: {value.toFixed(2)}</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={value}
+                onChange={(e) => setPayload((prev) => {
+                  const next = JSON.parse(JSON.stringify(prev));
+                  if (!next.experiment.attention) next.experiment.attention = {};
+                  next.experiment.attention[s] = { attention: +e.target.value };
+                  return next;
+                })}
+              />
+            </div>
+          );
+        })}
+      </div>
+      )}
 
       <BuilderPhaseList
         phases={phases}
@@ -403,7 +598,7 @@ function BuilderShellApp() {
       </details>
       <div className="panel">
         <small>
-          This slice keeps payload/run parity while advanced schema-driven editors remain in the legacy fallback.
+          Native advanced controls are now available here. Keep legacy fallback for remaining edge-case parity checks.
         </small>
       </div>
     </>
