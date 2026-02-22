@@ -147,7 +147,9 @@ function BuilderShellApp() {
   const showTrials = !isContextShift;
   const showAlpha = !isCompoundAcq && !isContextShift && !isProbe;
   const showGamma = !isContextShift && !isProbe;
+  const showOutcome = protocol === "acquisition";
   const contextValue = active?.params?.context || "A";
+  const trialsMax = protocol === "probe" ? 200 : 500;
 
   const repStimuli = availableStimuli;
   const addableStimuli = KNOWN_STIMULI.filter((s) => !repStimuli.includes(s));
@@ -245,14 +247,14 @@ function BuilderShellApp() {
           <div>No phase stimuli selected for this protocol.</div>
         )}
         {activePhaseStimuli.map((s) => {
-          const value = readParamMapValue(payload?.experiment?.salience || {}, s, "salience", 1.0);
+          const value = readParamMapValue(payload?.experiment?.salience || {}, s, "salience", 0.2);
           return (
             <div key={`salience-${s}`} style={{ marginBottom: "0.4rem" }}>
               <label>{s}: {value.toFixed(2)}</label>
               <input
                 type="range"
                 min="0"
-                max="2"
+                max="1"
                 step="0.05"
                 value={value}
                 onChange={(e) => setPayload((prev) => {
@@ -278,7 +280,7 @@ function BuilderShellApp() {
               <input
                 type="range"
                 min="0"
-                max="2"
+                max="1"
                 step="0.05"
                 value={value}
                 onChange={(e) => setPayload((prev) => {
@@ -417,7 +419,7 @@ function BuilderShellApp() {
             <input
               type="range"
               min="1"
-              max="500"
+              max={trialsMax}
               value={active?.params?.n_trials || 100}
               onChange={(e) => updateActive((p) => {
                 if (!p.params) p.params = {};
@@ -493,6 +495,24 @@ function BuilderShellApp() {
               })}
             />
             <div>{active?.params?.gamma ?? 0.0}</div>
+          </>
+        )}
+
+        {showOutcome && (
+          <>
+            <label>Outcome</label>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={active?.params?.outcome ?? 1.0}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.outcome = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.outcome ?? 1.0}</div>
           </>
         )}
 
