@@ -10,16 +10,6 @@ const {
 
 const BuilderPhaseList = window.VSLReact.BuilderPhaseList;
 
-function collectReferencedStimuli(phases) {
-  const refs = new Set();
-  (phases || []).forEach((phase) => {
-    if (Array.isArray(phase?.stimuli?.cs_plus)) phase.stimuli.cs_plus.forEach((s) => refs.add(s));
-    if (Array.isArray(phase?.stimuli?.cs_minus)) phase.stimuli.cs_minus.forEach((s) => refs.add(s));
-    if (Array.isArray(phase?.stimuli?.compound)) phase.stimuli.compound.forEach((s) => refs.add(s));
-  });
-  return refs;
-}
-
 function collectActivePhaseStimuli(phase) {
   const out = [];
   if (Array.isArray(phase?.stimuli?.cs_plus)) out.push(...phase.stimuli.cs_plus);
@@ -68,7 +58,6 @@ function BuilderShellApp() {
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases = payload.experiment.phases;
   const active = phases[activePhaseIndex] || phases[0];
-  const referencedStimuli = React.useMemo(() => collectReferencedStimuli(phases), [phases]);
   const activePhaseStimuli = React.useMemo(() => collectActivePhaseStimuli(active), [active]);
 
   const addPhase = () => {
@@ -199,17 +188,6 @@ function BuilderShellApp() {
       {showAdvanced && (
       <div className="panel">
         <h3>Advanced Controls</h3>
-        <label>Representation Stimuli</label>
-        <div style={{ display: "grid", gap: "0.4rem", marginBottom: "0.8rem" }}>
-          {repStimuli.map((s) => {
-            const isReferenced = referencedStimuli.has(s);
-            return (
-              <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.6rem" }}>
-                <span>{s}{isReferenced ? " (in use)" : ""}</span>
-              </div>
-            );
-          })}
-        </div>
 
         <label style={{ marginTop: "0.6rem", display: "block" }}>
           <input
