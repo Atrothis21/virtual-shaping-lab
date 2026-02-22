@@ -37,9 +37,7 @@ function readParamMapValue(mapObj, key, field, fallback) {
 }
 
 function buildDefaultSimilarity(stimuli, offdiag) {
-  const values = stimuli.map((_, i) =>
-    stimuli.map((__, j) => (i === j ? 1.0 : offdiag))
-  );
+  const values = stimuli.map((_, i) => stimuli.map((__, j) => (i === j ? 1.0 : offdiag)));
   return {
     type: "matrix",
     stimuli: [...stimuli],
@@ -70,6 +68,40 @@ function BuilderShellApp() {
   const phases = payload.experiment.phases;
   const active = phases[activePhaseIndex] || phases[0];
   const activePhaseStimuli = React.useMemo(() => collectActivePhaseStimuli(active), [active]);
+
+  const protocol = active?.protocol || "acquisition";
+  const isCompound = protocol === "compound_acquisition" || protocol === "compound_nonreinforcement";
+  const isCompoundAcq = protocol === "compound_acquisition";
+  const isDifferential = protocol === "differential_acquisition";
+  const isContextShift = protocol === "context_shift";
+  const isProbe = protocol === "probe";
+  const isCriterion = protocol === "criterion_shift";
+
+  const csPlusList = Array.isArray(active?.stimuli?.cs_plus) && active.stimuli.cs_plus.length
+    ? active.stimuli.cs_plus
+    : [availableStimuli[0]];
+  const csMinusList = Array.isArray(active?.stimuli?.cs_minus) && active.stimuli.cs_minus.length
+    ? active.stimuli.cs_minus
+    : [availableStimuli[1] || availableStimuli[0]];
+  const comp1 = active?.stimuli?.compound?.[0] || availableStimuli[0];
+  const comp2 = active?.stimuli?.compound?.[1] || availableStimuli[1] || availableStimuli[0];
+
+  const showSingleCs = !isCompound && !isDifferential && !isContextShift;
+  const showTrials = !isContextShift;
+  const showAlpha = !isCompoundAcq && !isContextShift && !isProbe;
+  const showGamma = !isContextShift && !isProbe;
+  const showOutcome = protocol === "acquisition";
+  const contextValue = active?.params?.context || "A";
+  const trialsMax = protocol === "probe" ? 200 : 500;
+
+  const repStimuli = availableStimuli;
+  const similarity = payload?.experiment?.representation?.params?.similarity || null;
+  const similarityEnabled = Boolean(similarity);
+
+  React.useEffect(() => {
+    if (!similarity) return;
+    setSimilarityOffdiag(inferOffdiagFromSimilarity(similarity, 0.2));
+  }, [similarity]);
 
   const addPhase = () => {
     setPayload((prev) => {
@@ -118,6 +150,15 @@ function BuilderShellApp() {
     });
   };
 
+  const resetBuilder = () => {
+    setPayload(createInitialPayload());
+    setActivePhaseIndex(0);
+    setRunOutput("Not run yet.");
+    setRunError(false);
+    setShowAdvanced(false);
+    setSimilarityOffdiag(0.2);
+  };
+
   const onRun = async () => {
     setRunError(false);
     setRunOutput("Running...");
@@ -147,49 +188,6 @@ function BuilderShellApp() {
     setRunError(true);
   };
 
-  const resetBuilder = () => {
-    setPayload(createInitialPayload());
-    setActivePhaseIndex(0);
-    setRunOutput("Not run yet.");
-    setRunError(false);
-    setShowAdvanced(false);
-    setSimilarityOffdiag(0.2);
-  };
-
-  const protocol = active?.protocol || "acquisition";
-  const isCompound = protocol === "compound_acquisition" || protocol === "compound_nonreinforcement";
-  const isCompoundAcq = protocol === "compound_acquisition";
-  const isDifferential = protocol === "differential_acquisition";
-  const isContextShift = protocol === "context_shift";
-  const isProbe = protocol === "probe";
-  const isCriterion = protocol === "criterion_shift";
-
-  const csPlusList = Array.isArray(active?.stimuli?.cs_plus) && active.stimuli.cs_plus.length
-    ? active.stimuli.cs_plus
-    : [availableStimuli[0]];
-  const csMinusList = Array.isArray(active?.stimuli?.cs_minus) && active.stimuli.cs_minus.length
-    ? active.stimuli.cs_minus
-    : [availableStimuli[1] || availableStimuli[0]];
-  const comp1 = active?.stimuli?.compound?.[0] || availableStimuli[0];
-  const comp2 = active?.stimuli?.compound?.[1] || availableStimuli[1] || availableStimuli[0];
-
-  const showSingleCs = !isCompound && !isDifferential && !isContextShift;
-  const showTrials = !isContextShift;
-  const showAlpha = !isCompoundAcq && !isContextShift && !isProbe;
-  const showGamma = !isContextShift && !isProbe;
-  const showOutcome = protocol === "acquisition";
-  const contextValue = active?.params?.context || "A";
-  const trialsMax = protocol === "probe" ? 200 : 500;
-
-  const repStimuli = availableStimuli;
-  const similarity = payload?.experiment?.representation?.params?.similarity || null;
-  const similarityEnabled = Boolean(similarity);
-
-  React.useEffect(() => {
-    if (!similarity) return;
-    setSimilarityOffdiag(inferOffdiagFromSimilarity(similarity, 0.2));
-  }, [similarity]);
-
   return (
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
@@ -200,9 +198,7 @@ function BuilderShellApp() {
           Back to Menu
         </button>
         <a className="btn secondary" href="/ui/builder_legacy.html">Open Legacy Builder</a>
-        <button className="btn secondary" onClick={resetBuilder}>
-          Reset Builder
-        </button>
+        <button className="btn secondary" onClick={resetBuilder}>Reset Builder</button>
         <button className="btn secondary" onClick={() => setShowAdvanced((v) => !v)}>
           {showAdvanced ? "Hide Advanced Controls" : "Show Advanced Controls"}
         </button>
@@ -217,6 +213,7 @@ function BuilderShellApp() {
 
       <div className="panel">
         <h3>Active Phase</h3>
+
         <label>Phase</label>
         <select
           value={protocol}
@@ -232,117 +229,9 @@ function BuilderShellApp() {
           ))}
         </select>
 
-        {showSingleCs && (
-          <>
-            <label>CS+</label>
-            <select
-              multiple
-              size="5"
-              value={csPlusList}
-              onChange={(e) => updateActive((p, stim) => {
-                const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
-                p.stimuli = { cs_plus: nextPlus.length ? nextPlus : [stim[0]] };
-              })}
-            >
-              {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </>
-        )}
-
-        {isDifferential && (
-          <>
-            <label>CS+</label>
-            <select
-              multiple
-              size="5"
-              value={csPlusList}
-              onChange={(e) => updateActive((p, stim) => {
-                const nextPlusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
-                const nextPlus = nextPlusRaw.length ? nextPlusRaw : [stim[0]];
-                const currentMinus = Array.isArray(p.stimuli?.cs_minus) ? p.stimuli.cs_minus : [stim[1] || stim[0]];
-                const nextMinus = currentMinus.filter((s) => !nextPlus.includes(s));
-                const fallbackMinus = stim.find((x) => !nextPlus.includes(x)) || nextPlus[0];
-                p.stimuli = {
-                  cs_plus: nextPlus,
-                  cs_minus: nextMinus.length ? nextMinus : [fallbackMinus],
-                };
-              })}
-            >
-              {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-
-            <label>CS-</label>
-            <select
-              multiple
-              size="5"
-              value={csMinusList}
-              onChange={(e) => updateActive((p, stim) => {
-                const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length
-                  ? p.stimuli.cs_plus
-                  : [stim[0]];
-                const nextMinusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
-                const filtered = nextMinusRaw.filter((s) => !plus.includes(s));
-                const fallbackMinus = stim.find((x) => !plus.includes(x)) || plus[0];
-                p.stimuli = {
-                  cs_plus: plus,
-                  cs_minus: filtered.length ? filtered : [fallbackMinus],
-                };
-              })}
-            >
-              {availableStimuli.map((s) => <option key={s} value={s} disabled={csPlusList.includes(s)}>{s}</option>)}
-            </select>
-          </>
-        )}
-
-        {isCompound && (
-          <>
-            <label>Compound Stimulus 1</label>
-            <select
-              value={comp1}
-              onChange={(e) => updateActive((p, stim) => {
-                const first = e.target.value;
-                const second = p.stimuli?.compound?.[1] === first
-                  ? (stim.find((x) => x !== first) || first)
-                  : (p.stimuli?.compound?.[1] || stim[1] || first);
-                p.stimuli = { compound: [first, second] };
-              })}
-            >
-              {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-
-            <label>Compound Stimulus 2</label>
-            <select
-              value={comp2}
-              onChange={(e) => updateActive((p, stim) => {
-                const second = e.target.value;
-                const first = p.stimuli?.compound?.[0] || stim[0];
-                p.stimuli = { compound: [first, second === first ? (stim.find((x) => x !== first) || first) : second] };
-              })}
-            >
-              {availableStimuli.map((s) => <option key={s} value={s} disabled={s === comp1}>{s}</option>)}
-            </select>
-          </>
-        )}
-
-        {(isContextShift || isProbe || isCriterion) && (
-          <>
-            <label>Context</label>
-            <select
-              value={contextValue}
-              onChange={(e) => updateActive((p) => {
-                if (!p.params) p.params = {};
-                p.params.context = e.target.value;
-              })}
-            >
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-            </select>
-          </>
-        )}
-
         {showTrials && (
-          <>
+          <div className="panel">
+            <h4>Trials</h4>
             <label>Trials</label>
             <input
               type="range"
@@ -355,93 +244,213 @@ function BuilderShellApp() {
               })}
             />
             <div>{active?.params?.n_trials || 100}</div>
-          </>
+          </div>
         )}
 
-        {showAlpha && (
-          <>
-            <label>Alpha</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={active?.params?.alpha ?? 0.2}
-              onChange={(e) => updateActive((p) => {
-                if (!p.params) p.params = {};
-                p.params.alpha = +e.target.value;
-              })}
-            />
-            <div>{active?.params?.alpha ?? 0.2}</div>
-          </>
+        <div className="panel">
+          <h4>Learning</h4>
+
+          {showAlpha && (
+            <>
+              <label>Learning Rate (alpha)</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={active?.params?.alpha ?? 0.2}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.alpha = +e.target.value;
+                })}
+              />
+              <div>{active?.params?.alpha ?? 0.2}</div>
+            </>
+          )}
+
+          {isCompoundAcq && (
+            <>
+              <label>Alpha CS1</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={active?.params?.alpha_cs1 ?? 0.2}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.alpha_cs1 = +e.target.value;
+                })}
+              />
+              <div>{active?.params?.alpha_cs1 ?? 0.2}</div>
+
+              <label>Alpha CS2</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={active?.params?.alpha_cs2 ?? 0.2}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.alpha_cs2 = +e.target.value;
+                })}
+              />
+              <div>{active?.params?.alpha_cs2 ?? 0.2}</div>
+            </>
+          )}
+
+          {showGamma && (
+            <>
+              <label>Discount (gamma)</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={active?.params?.gamma ?? 0.0}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.gamma = +e.target.value;
+                })}
+              />
+              <div>{active?.params?.gamma ?? 0.0}</div>
+            </>
+          )}
+
+          {showOutcome && (
+            <>
+              <label>Outcome</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={active?.params?.outcome ?? 1.0}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.outcome = +e.target.value;
+                })}
+              />
+              <div>{active?.params?.outcome ?? 1.0}</div>
+            </>
+          )}
+        </div>
+
+        {!isContextShift && (
+          <div className="panel">
+            <h4>Stimuli</h4>
+
+            {showSingleCs && (
+              <>
+                <label>CS+</label>
+                <select
+                  multiple
+                  size="5"
+                  value={csPlusList}
+                  onChange={(e) => updateActive((p, stim) => {
+                    const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    p.stimuli = { cs_plus: nextPlus.length ? nextPlus : [stim[0]] };
+                  })}
+                >
+                  {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </>
+            )}
+
+            {isDifferential && (
+              <>
+                <label>CS+</label>
+                <select
+                  multiple
+                  size="5"
+                  value={csPlusList}
+                  onChange={(e) => updateActive((p, stim) => {
+                    const nextPlusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    const nextPlus = nextPlusRaw.length ? nextPlusRaw : [stim[0]];
+                    const currentMinus = Array.isArray(p.stimuli?.cs_minus) ? p.stimuli.cs_minus : [stim[1] || stim[0]];
+                    const nextMinus = currentMinus.filter((s) => !nextPlus.includes(s));
+                    const fallbackMinus = stim.find((x) => !nextPlus.includes(x)) || nextPlus[0];
+                    p.stimuli = {
+                      cs_plus: nextPlus,
+                      cs_minus: nextMinus.length ? nextMinus : [fallbackMinus],
+                    };
+                  })}
+                >
+                  {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <label>CS-</label>
+                <select
+                  multiple
+                  size="5"
+                  value={csMinusList}
+                  onChange={(e) => updateActive((p, stim) => {
+                    const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length
+                      ? p.stimuli.cs_plus
+                      : [stim[0]];
+                    const nextMinusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    const filtered = nextMinusRaw.filter((s) => !plus.includes(s));
+                    const fallbackMinus = stim.find((x) => !plus.includes(x)) || plus[0];
+                    p.stimuli = {
+                      cs_plus: plus,
+                      cs_minus: filtered.length ? filtered : [fallbackMinus],
+                    };
+                  })}
+                >
+                  {availableStimuli.map((s) => <option key={s} value={s} disabled={csPlusList.includes(s)}>{s}</option>)}
+                </select>
+              </>
+            )}
+
+            {isCompound && (
+              <>
+                <label>Compound Stimulus 1</label>
+                <select
+                  value={comp1}
+                  onChange={(e) => updateActive((p, stim) => {
+                    const first = e.target.value;
+                    const second = p.stimuli?.compound?.[1] === first
+                      ? (stim.find((x) => x !== first) || first)
+                      : (p.stimuli?.compound?.[1] || stim[1] || first);
+                    p.stimuli = { compound: [first, second] };
+                  })}
+                >
+                  {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+
+                <label>Compound Stimulus 2</label>
+                <select
+                  value={comp2}
+                  onChange={(e) => updateActive((p, stim) => {
+                    const second = e.target.value;
+                    const first = p.stimuli?.compound?.[0] || stim[0];
+                    p.stimuli = { compound: [first, second === first ? (stim.find((x) => x !== first) || first) : second] };
+                  })}
+                >
+                  {availableStimuli.map((s) => <option key={s} value={s} disabled={s === comp1}>{s}</option>)}
+                </select>
+              </>
+            )}
+          </div>
         )}
 
-        {isCompoundAcq && (
-          <>
-            <label>Alpha CS1</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={active?.params?.alpha_cs1 ?? 0.2}
+        {(isContextShift || isProbe || isCriterion) && (
+          <div className="panel">
+            <h4>Context</h4>
+            <label>Context</label>
+            <select
+              value={contextValue}
               onChange={(e) => updateActive((p) => {
                 if (!p.params) p.params = {};
-                p.params.alpha_cs1 = +e.target.value;
+                p.params.context = e.target.value;
               })}
-            />
-            <div>{active?.params?.alpha_cs1 ?? 0.2}</div>
-
-            <label>Alpha CS2</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={active?.params?.alpha_cs2 ?? 0.2}
-              onChange={(e) => updateActive((p) => {
-                if (!p.params) p.params = {};
-                p.params.alpha_cs2 = +e.target.value;
-              })}
-            />
-            <div>{active?.params?.alpha_cs2 ?? 0.2}</div>
-          </>
-        )}
-
-        {showGamma && (
-          <>
-            <label>Gamma</label>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={active?.params?.gamma ?? 0.0}
-              onChange={(e) => updateActive((p) => {
-                if (!p.params) p.params = {};
-                p.params.gamma = +e.target.value;
-              })}
-            />
-            <div>{active?.params?.gamma ?? 0.0}</div>
-          </>
-        )}
-
-        {showOutcome && (
-          <>
-            <label>Outcome</label>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              value={active?.params?.outcome ?? 1.0}
-              onChange={(e) => updateActive((p) => {
-                if (!p.params) p.params = {};
-                p.params.outcome = +e.target.value;
-              })}
-            />
-            <div>{active?.params?.outcome ?? 1.0}</div>
-          </>
+            >
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </div>
         )}
 
         {isProbe && (
@@ -525,180 +534,180 @@ function BuilderShellApp() {
       </div>
 
       {showAdvanced && (
-      <div className="panel">
-        <h3>Advanced Controls</h3>
+        <div className="panel">
+          <h3>Advanced Controls</h3>
 
-        <label style={{ marginTop: "0.6rem", display: "block" }}>
+          <label style={{ marginTop: "0.6rem", display: "block" }}>
+            <input
+              type="checkbox"
+              checked={Boolean(payload?.experiment?.context_inference?.enabled)}
+              onChange={(e) => setPayload((prev) => {
+                const next = JSON.parse(JSON.stringify(prev));
+                if (!next.experiment.context_inference) next.experiment.context_inference = { enabled: false, max_contexts: 3 };
+                next.experiment.context_inference.enabled = e.target.checked;
+                return next;
+              })}
+            />{" "}
+            Enable Context Inference
+          </label>
+
+          <label>Max Contexts</label>
           <input
-            type="checkbox"
-            checked={Boolean(payload?.experiment?.context_inference?.enabled)}
+            type="range"
+            min="1"
+            max="3"
+            step="1"
+            value={payload?.experiment?.context_inference?.max_contexts ?? 3}
+            disabled={!payload?.experiment?.context_inference?.enabled}
             onChange={(e) => setPayload((prev) => {
               const next = JSON.parse(JSON.stringify(prev));
               if (!next.experiment.context_inference) next.experiment.context_inference = { enabled: false, max_contexts: 3 };
-              next.experiment.context_inference.enabled = e.target.checked;
+              next.experiment.context_inference.max_contexts = +e.target.value;
               return next;
             })}
-          />{" "}
-          Enable Context Inference
-        </label>
+          />
+          <div>{payload?.experiment?.context_inference?.max_contexts ?? 3}</div>
 
-        <label>Max Contexts</label>
-        <input
-          type="range"
-          min="1"
-          max="3"
-          step="1"
-          value={payload?.experiment?.context_inference?.max_contexts ?? 3}
-          disabled={!payload?.experiment?.context_inference?.enabled}
-          onChange={(e) => setPayload((prev) => {
-            const next = JSON.parse(JSON.stringify(prev));
-            if (!next.experiment.context_inference) next.experiment.context_inference = { enabled: false, max_contexts: 3 };
-            next.experiment.context_inference.max_contexts = +e.target.value;
-            return next;
-          })}
-        />
-        <div>{payload?.experiment?.context_inference?.max_contexts ?? 3}</div>
+          <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Similarity (Optional)</h4>
+          <label style={{ display: "block" }}>
+            <input
+              type="checkbox"
+              checked={similarityEnabled}
+              onChange={(e) => setSimilarityEnabled(e.target.checked)}
+            />{" "}
+            Enable similarity matrix
+          </label>
 
-        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Similarity (Optional)</h4>
-        <label style={{ display: "block" }}>
+          <label>Off-diagonal Similarity: {similarityOffdiag.toFixed(2)}</label>
           <input
-            type="checkbox"
-            checked={similarityEnabled}
-            onChange={(e) => setSimilarityEnabled(e.target.checked)}
-          />{" "}
-          Enable similarity matrix
-        </label>
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={similarityOffdiag}
+            onChange={(e) => {
+              const nextVal = +e.target.value;
+              setSimilarityOffdiag(nextVal);
+              if (similarityEnabled) applySimilarity(nextVal);
+            }}
+          />
 
-        <label>Off-diagonal Similarity: {similarityOffdiag.toFixed(2)}</label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={similarityOffdiag}
-          onChange={(e) => {
-            const nextVal = +e.target.value;
-            setSimilarityOffdiag(nextVal);
-            if (similarityEnabled) applySimilarity(nextVal);
-          }}
-        />
-
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
-          <button className="btn" onClick={() => setSimilarityEnabled(true)}>
-            Apply Default Matrix
-          </button>
-          <button className="btn secondary" onClick={() => {
-            setSimilarityOffdiag(0.0);
-            applySimilarity(0.0);
-          }}>
-            Reset to Identity
-          </button>
-        </div>
-
-        {similarityEnabled && similarity?.stimuli?.length > 0 && (
-          <div style={{ marginTop: "0.8rem", overflowX: "auto" }}>
-            <table style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th />
-                  {similarity.stimuli.map((label) => (
-                    <th key={`sim-head-${label}`} style={{ padding: "4px 6px" }}>{label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {similarity.stimuli.map((rowLabel, i) => (
-                  <tr key={`sim-row-${rowLabel}`}>
-                    <th style={{ padding: "4px 6px" }}>{rowLabel}</th>
-                    {similarity.stimuli.map((colLabel, j) => {
-                      const cellValue = similarity?.values?.[i]?.[j] ?? (i === j ? 1.0 : 0.0);
-                      return (
-                        <td key={`sim-cell-${rowLabel}-${colLabel}`} style={{ padding: "2px 4px" }}>
-                          <input
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={cellValue}
-                            disabled={i === j}
-                            style={{ width: "64px" }}
-                            onChange={(e) => {
-                              const v = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
-                              setPayload((prev) => {
-                                const next = JSON.parse(JSON.stringify(prev));
-                                const sim = next?.experiment?.representation?.params?.similarity;
-                                if (!sim || !Array.isArray(sim.values)) return next;
-                                sim.values[i][j] = v;
-                                sim.values[j][i] = v;
-                                return next;
-                              });
-                            }}
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <pre style={{ marginTop: "0.6rem" }}>
-              {JSON.stringify(similarity, null, 2)}
-            </pre>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+            <button className="btn" onClick={() => setSimilarityEnabled(true)}>
+              Apply Default Matrix
+            </button>
+            <button className="btn secondary" onClick={() => {
+              setSimilarityOffdiag(0.0);
+              applySimilarity(0.0);
+            }}>
+              Reset to Identity
+            </button>
           </div>
-        )}
 
-        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Salience</h4>
-        {activePhaseStimuli.length === 0 && (
-          <div>No phase stimuli selected for this protocol.</div>
-        )}
-        {activePhaseStimuli.map((s) => {
-          const value = readParamMapValue(payload?.experiment?.salience || {}, s, "salience", 0.2);
-          return (
-            <div key={`salience-${s}`} style={{ marginBottom: "0.4rem" }}>
-              <label>{s}: {value.toFixed(2)}</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={value}
-                onChange={(e) => setPayload((prev) => {
-                  const next = JSON.parse(JSON.stringify(prev));
-                  if (!next.experiment.salience) next.experiment.salience = {};
-                  next.experiment.salience[s] = { salience: +e.target.value };
-                  return next;
-                })}
-              />
+          {similarityEnabled && similarity?.stimuli?.length > 0 && (
+            <div style={{ marginTop: "0.8rem", overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th />
+                    {similarity.stimuli.map((label) => (
+                      <th key={`sim-head-${label}`} style={{ padding: "4px 6px" }}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {similarity.stimuli.map((rowLabel, i) => (
+                    <tr key={`sim-row-${rowLabel}`}>
+                      <th style={{ padding: "4px 6px" }}>{rowLabel}</th>
+                      {similarity.stimuli.map((colLabel, j) => {
+                        const cellValue = similarity?.values?.[i]?.[j] ?? (i === j ? 1.0 : 0.0);
+                        return (
+                          <td key={`sim-cell-${rowLabel}-${colLabel}`} style={{ padding: "2px 4px" }}>
+                            <input
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={cellValue}
+                              disabled={i === j}
+                              style={{ width: "64px" }}
+                              onChange={(e) => {
+                                const v = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+                                setPayload((prev) => {
+                                  const next = JSON.parse(JSON.stringify(prev));
+                                  const sim = next?.experiment?.representation?.params?.similarity;
+                                  if (!sim || !Array.isArray(sim.values)) return next;
+                                  sim.values[i][j] = v;
+                                  sim.values[j][i] = v;
+                                  return next;
+                                });
+                              }}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <pre style={{ marginTop: "0.6rem" }}>
+                {JSON.stringify(similarity, null, 2)}
+              </pre>
             </div>
-          );
-        })}
+          )}
 
-        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Attention</h4>
-        {activePhaseStimuli.length === 0 && (
-          <div>No phase stimuli selected for this protocol.</div>
-        )}
-        {activePhaseStimuli.map((s) => {
-          const value = readParamMapValue(payload?.experiment?.attention || {}, s, "attention", 1.0);
-          return (
-            <div key={`attention-${s}`} style={{ marginBottom: "0.4rem" }}>
-              <label>{s}: {value.toFixed(2)}</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={value}
-                onChange={(e) => setPayload((prev) => {
-                  const next = JSON.parse(JSON.stringify(prev));
-                  if (!next.experiment.attention) next.experiment.attention = {};
-                  next.experiment.attention[s] = { attention: +e.target.value };
-                  return next;
-                })}
-              />
-            </div>
-          );
-        })}
-      </div>
+          <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Salience</h4>
+          {activePhaseStimuli.length === 0 && (
+            <div>No phase stimuli selected for this protocol.</div>
+          )}
+          {activePhaseStimuli.map((s) => {
+            const value = readParamMapValue(payload?.experiment?.salience || {}, s, "salience", 0.2);
+            return (
+              <div key={`salience-${s}`} style={{ marginBottom: "0.4rem" }}>
+                <label>{s}: {value.toFixed(2)}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={value}
+                  onChange={(e) => setPayload((prev) => {
+                    const next = JSON.parse(JSON.stringify(prev));
+                    if (!next.experiment.salience) next.experiment.salience = {};
+                    next.experiment.salience[s] = { salience: +e.target.value };
+                    return next;
+                  })}
+                />
+              </div>
+            );
+          })}
+
+          <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Attention</h4>
+          {activePhaseStimuli.length === 0 && (
+            <div>No phase stimuli selected for this protocol.</div>
+          )}
+          {activePhaseStimuli.map((s) => {
+            const value = readParamMapValue(payload?.experiment?.attention || {}, s, "attention", 1.0);
+            return (
+              <div key={`attention-${s}`} style={{ marginBottom: "0.4rem" }}>
+                <label>{s}: {value.toFixed(2)}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={value}
+                  onChange={(e) => setPayload((prev) => {
+                    const next = JSON.parse(JSON.stringify(prev));
+                    if (!next.experiment.attention) next.experiment.attention = {};
+                    next.experiment.attention[s] = { attention: +e.target.value };
+                    return next;
+                  })}
+                />
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <div className="panel">
