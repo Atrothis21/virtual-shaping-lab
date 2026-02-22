@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Experiment Results</title>
   <style>
     body {
@@ -57,179 +58,11 @@
   </style>
 </head>
 <body>
+<div id="root"></div>
 
-<h1>Experiment Results</h1>
-<div class="summary" id="summary">
-  Loading summary...
-</div>
-
-<button class="btn" id="Go Back">Go back</button>
-
-<div class="links" id="links"></div>
-
-<h2>Figures</h2>
-<div class="figures" id="figures"></div>
-
-<h2>Trial Records</h2>
-<button class="btn" id="toggle-records">Show all</button>
-<button class="btn" id="download-records">Download records.json</button>
-<div id="records"></div>
-
-<script>
-function getRunId() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("run_id");
-}
-
-async function fetchJson(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${url}`);
-  return await res.json();
-}
-
-function renderSummary(payload, runId) {
-  const exp = payload.experiment || {};
-  const report = payload.report || {};
-  const summary = document.getElementById("summary");
-
-  summary.innerHTML = `
-    <div><strong>Run ID:</strong> ${runId}</div>
-    <div><strong>Preset:</strong> ${report.preset || "unknown"}</div>
-    <div><strong>Learner:</strong> ${exp.learner || "unknown"}</div>
-    <div><strong>Agent:</strong> ${exp.agent || "unknown"}</div>
-    <div><strong>Representation:</strong> ${
-      typeof exp.representation === "string" ? exp.representation : exp.representation?.name
-    }</div>
-    <div><strong>Phases:</strong> ${
-      (exp.phases || []).map(p => p.protocol).join(", ")
-    }</div>
-  `;
-}
-
-function renderLinks(runId) {
-  const links = document.getElementById("links");
-  links.innerHTML = `
-    <a href="/reports/${runId}/report.pdf" target="_blank">Open PDF Report</a>
-    <a href="/reports/${runId}/report.pdf" download>Download PDF</a>
-  `;
-}
-
-function renderFigures(runId, figureFiles) {
-  const container = document.getElementById("figures");
-  container.innerHTML = "";
-
-  figureFiles.forEach(file => {
-    const img = document.createElement("img");
-    img.src = `/reports/${runId}/${file}`;
-    img.alt = file;
-    container.appendChild(img);
-  });
-}
-
-function renderRecords(records, limit = 50) {
-  const container = document.getElementById("records");
-  container.innerHTML = "";
-
-  if (!records.length) {
-    container.innerHTML = "<p>No records available.</p>";
-    return;
-  }
-
-  const cols = Object.keys(records[0]);
-  const view = records.slice(0, limit);
-
-  const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  const trHead = document.createElement("tr");
-  cols.forEach(c => {
-    const th = document.createElement("th");
-    th.textContent = c;
-    trHead.appendChild(th);
-  });
-  thead.appendChild(trHead);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  view.forEach(r => {
-    const tr = document.createElement("tr");
-    cols.forEach(c => {
-      const td = document.createElement("td");
-      const v = r[c];
-      td.textContent = typeof v === "object" ? JSON.stringify(v) : String(v);
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  container.appendChild(table);
-}
-
-(async function init() {
-  const runId = getRunId();
-  if (!runId) {
-    document.getElementById("summary").textContent =
-      "Missing run_id in URL.";
-    return;
-  }
-
-  const payloadUrl = `/reports/${runId}/payload.json`;
-  const recordsUrl = `/reports/${runId}/records.json`;
-
-  const payload = await fetchJson(payloadUrl);
-  const records = await fetchJson(recordsUrl);
-
-  renderSummary(payload, runId);
-  renderLinks(runId);
-
-  const preset = payload.report?.preset;
-  const presetUrl = preset ? `/ui/presets/${preset}.html` : "/ui/presets.html";
-
-  document.getElementById("Go Back").onclick = () => {
-    window.history.back();
-  };
-
-  const known = [
-    "line_plot.png",
-    "dual_time_series_plot.png",
-    "summation_plot.png",
-    "retardation_curve_plot.png",
-    "stimulus_bar_plot.png",
-    "discrimination_curve_plot.png",
-    "cumulative_response_plot.png",
-    "cumulative_reward_plot.png",
-    "extinction_curve_plot.png",
-    "probe_bar_plot.png",
-    "auto_time_series_plot.png",
-  ];
-
-  const figureList = [];
-  for (const f of known) {
-    try {
-      const res = await fetch(`/reports/${runId}/${f}`, { method: "HEAD" });
-      if (res.ok) figureList.push(f);
-    } catch {}
-  }
-
-  renderFigures(runId, figureList);
-
-  let showAll = false;
-  renderRecords(records, 50);
-
-  document.getElementById("toggle-records").onclick = () => {
-    showAll = !showAll;
-    document.getElementById("toggle-records").textContent =
-      showAll ? "Show last 50" : "Show all";
-    renderRecords(records, showAll ? records.length : 50);
-  };
-
-  document.getElementById("download-records").onclick = () => {
-    const link = document.createElement("a");
-    link.href = `/reports/${runId}/records.json`;
-    link.download = "records.json";
-    link.click();
-  };
-})();
-</script>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" src="/ui/js/react/results_app.jsx"></script>
 </body>
 </html>

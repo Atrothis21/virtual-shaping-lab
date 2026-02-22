@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Virtual Shaping Lab</title>
 
   <style>
@@ -26,30 +27,11 @@
   </style>
 </head>
 <body>
+<div id="root"></div>
 
-<h1>Virtual Shaping Lab</h1>
-<p>How would you like to design your experiment?</p>
-
-<div class="card">
-  <h2>🧪 Predefined Experiments</h2>
-  <p>
-    Choose from canonical behavioral experiments
-    (Pavlovian conditioning, extinction, operant schedules).
-  </p>
-  <button onclick="location.href='/ui/presets.html'">
-    Browse Presets
-  </button>
-</div>
-
-<div class="card">
-  <h2>🛠 Build Your Own</h2>
-  <p>
-    Construct custom multi-phase experiments with full control.
-  </p>
-  <button onclick="location.href='/ui/builder.html'">
-    Open Experiment Builder
-  </button>
-</div>
-
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" src="/ui/js/react/index_app.jsx"></script>
 </body>
 </html>
