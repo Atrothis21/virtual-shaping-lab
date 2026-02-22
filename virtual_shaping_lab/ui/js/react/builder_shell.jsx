@@ -2,10 +2,10 @@ window.VSLReact = window.VSLReact || {};
 
 const {
   buildDefaultPhase,
+  migratePhaseProtocol,
   createInitialPayload,
   normalizePayload,
   getAvailableStimuli,
-  coercePhaseShape,
 } = window.VSLReact.builderState;
 
 const BuilderPhaseList = window.VSLReact.BuilderPhaseList;
@@ -36,7 +36,6 @@ function BuilderShellApp() {
       const next = JSON.parse(JSON.stringify(prev));
       const idx = Math.min(activePhaseIndex, next.experiment.phases.length - 1);
       updater(next.experiment.phases[idx], getAvailableStimuli(next));
-      next.experiment.phases[idx] = coercePhaseShape(next.experiment.phases[idx], getAvailableStimuli(next));
       return next;
     });
   };
@@ -94,9 +93,10 @@ function BuilderShellApp() {
         <select
           value={protocol}
           onChange={(e) => updateActive((p, stim) => {
-            p.protocol = e.target.value;
-            p.stimuli = coercePhaseShape({ protocol: e.target.value, stimuli: p.stimuli, params: p.params, name: p.name }, stim).stimuli;
-            p.params = coercePhaseShape({ protocol: e.target.value, stimuli: p.stimuli, params: p.params, name: p.name }, stim).params;
+            const migrated = migratePhaseProtocol(p, e.target.value, stim);
+            p.protocol = migrated.protocol;
+            p.stimuli = migrated.stimuli;
+            p.params = migrated.params;
           })}
         >
           <option value="acquisition">acquisition</option>
@@ -180,7 +180,10 @@ function BuilderShellApp() {
           min="1"
           max="500"
           value={active?.params?.n_trials || 100}
-          onChange={(e) => updateActive((p) => { p.params.n_trials = +e.target.value; })}
+          onChange={(e) => updateActive((p) => {
+            if (!p.params) p.params = {};
+            p.params.n_trials = +e.target.value;
+          })}
         />
         <div>{active?.params?.n_trials || 100}</div>
 
@@ -193,7 +196,10 @@ function BuilderShellApp() {
               max="1"
               step="0.05"
               value={active?.params?.alpha ?? 0.2}
-              onChange={(e) => updateActive((p) => { p.params.alpha = +e.target.value; })}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.alpha = +e.target.value;
+              })}
             />
             <div>{active?.params?.alpha ?? 0.2}</div>
           </>
@@ -208,7 +214,10 @@ function BuilderShellApp() {
               max="1"
               step="0.05"
               value={active?.params?.alpha_cs1 ?? 0.2}
-              onChange={(e) => updateActive((p) => { p.params.alpha_cs1 = +e.target.value; })}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.alpha_cs1 = +e.target.value;
+              })}
             />
             <div>{active?.params?.alpha_cs1 ?? 0.2}</div>
 
@@ -219,7 +228,10 @@ function BuilderShellApp() {
               max="1"
               step="0.05"
               value={active?.params?.alpha_cs2 ?? 0.2}
-              onChange={(e) => updateActive((p) => { p.params.alpha_cs2 = +e.target.value; })}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.alpha_cs2 = +e.target.value;
+              })}
             />
             <div>{active?.params?.alpha_cs2 ?? 0.2}</div>
           </>
@@ -232,7 +244,10 @@ function BuilderShellApp() {
           max="1"
           step="0.05"
           value={active?.params?.gamma ?? 0.0}
-          onChange={(e) => updateActive((p) => { p.params.gamma = +e.target.value; })}
+          onChange={(e) => updateActive((p) => {
+            if (!p.params) p.params = {};
+            p.params.gamma = +e.target.value;
+          })}
         />
         <div>{active?.params?.gamma ?? 0.0}</div>
       </div>
@@ -240,7 +255,7 @@ function BuilderShellApp() {
       <div className="panel">
         <h3>Payload</h3>
         <pre style={{ background: "#f5f5f5", padding: "1rem", borderRadius: "6px", overflowX: "auto" }}>
-          {JSON.stringify(normalizedPayload, null, 2)}
+          {JSON.stringify(payload, null, 2)}
         </pre>
       </div>
 

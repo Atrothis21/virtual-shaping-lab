@@ -36,82 +36,116 @@ function getAvailableStimuli(payload) {
   return [...STIMULI];
 }
 
-function pickStimulus(list, index, fallback) {
-  if (Array.isArray(list) && list[index]) return list[index];
-  return fallback;
+function dedupe(values) {
+  const seen = new Set();
+  const out = [];
+  values.forEach((v) => {
+    if (!seen.has(v)) {
+      seen.add(v);
+      out.push(v);
+    }
+  });
+  return out;
+}
+
+function collectPriorStimuli(prevStimuli, availableStimuli) {
+  const available = new Set(Array.isArray(availableStimuli) ? availableStimuli : STIMULI);
+  const raw = [];
+
+  if (Array.isArray(prevStimuli?.cs_plus)) raw.push(...prevStimuli.cs_plus);
+  if (Array.isArray(prevStimuli?.cs_minus)) raw.push(...prevStimuli.cs_minus);
+  if (Array.isArray(prevStimuli?.compound)) raw.push(...prevStimuli.compound);
+
+  return dedupe(raw.filter((s) => available.has(s)));
+}
+
+function pickStimulus(pool, fallbackPool, index, notValue) {
+  const merged = [...pool, ...fallbackPool];
+  for (let i = 0; i < merged.length; i += 1) {
+    const value = merged[(i + index) % merged.length];
+    if (value != null && value !== notValue) return value;
+  }
+  return fallbackPool[0] || "tone";
 }
 
 function buildStimuliForProtocol(protocol, availableStimuli, prevStimuli) {
-  const stimuli = Array.isArray(availableStimuli) && availableStimuli.length
+  const available = Array.isArray(availableStimuli) && availableStimuli.length
     ? availableStimuli
     : [...STIMULI];
-  const s1 = pickStimulus(stimuli, 0, "tone");
-  const s2 = pickStimulus(stimuli, 1, s1 === "tone" ? "noise" : "tone");
+
+  const prior = collectPriorStimuli(prevStimuli, available);
+  const first = pickStimulus(prior, available, 0);
+  const second = pickStimulus(prior, available, 1, first);
 
   if (protocol === "compound_acquisition") {
-    const prevCompound = Array.isArray(prevStimuli?.compound) ? prevStimuli.compound : [];
-    const c1 = prevCompound[0] || s1;
-    let c2 = prevCompound[1] || s2;
-    if (c1 === c2) c2 = c1 === s1 ? s2 : s1;
-    return { compound: [c1, c2] };
+    return { compound: [first, second] };
   }
 
   if (protocol === "differential_acquisition") {
-    const plus = Array.isArray(prevStimuli?.cs_plus) ? [...prevStimuli.cs_plus] : [s1];
-    let minus = Array.isArray(prevStimuli?.cs_minus) ? [...prevStimuli.cs_minus] : [s2];
-    if (!plus.length) plus.push(s1);
-    if (!minus.length) minus.push(s2);
-    if (plus[0] === minus[0]) {
-      minus[0] = plus[0] === s1 ? s2 : s1;
-    }
-    return { cs_plus: plus, cs_minus: minus };
+    const plus = Array.isArray(prevStimuli?.cs_plus) && prevStimuli.cs_plus.length
+      ? prevStimuli.cs_plus[0]
+      : first;
+    const minusCandidate = Array.isArray(prevStimuli?.cs_minus) && prevStimuli.cs_minus.length
+      ? prevStimuli.cs_minus[0]
+      : second;
+    const minus = minusCandidate === plus ? pickStimulus(prior, available, 1, plus) : minusCandidate;
+    return { cs_plus: [plus], cs_minus: [minus] };
   }
 
-  const prevPlus = Array.isArray(prevStimuli?.cs_plus) ? [...prevStimuli.cs_plus] : [s1];
-  return { cs_plus: prevPlus.length ? prevPlus : [s1] };
+  const csPlus = Array.isArray(prevStimuli?.cs_plus) && prevStimuli.cs_plus.length
+    ? prevStimuli.cs_plus[0]
+    : first;
+  return { cs_plus: [csPlus] };
+}
+
+function finiteNumber(value, fallback) {
+  return Number.isFinite(+value) ? +value : fallback;
 }
 
 function buildParamsForProtocol(protocol, prevParams) {
   const def = PHASE_DEFS[protocol] || PHASE_DEFS.acquisition;
   const prior = prevParams || {};
-  const n_trials = Number.isFinite(+prior.n_trials) ? +prior.n_trials : def.n_trials;
+  const n_trials = finiteNumber(prior.n_trials, def.n_trials);
+  const gamma = finiteNumber(prior.gamma, 0.0);
 
   if (protocol === "compound_acquisition") {
+    const carryAlpha = finiteNumber(prior.alpha, 0.2);
     return {
       n_trials,
-      alpha_cs1: Number.isFinite(+prior.alpha_cs1) ? +prior.alpha_cs1 : 0.2,
-      alpha_cs2: Number.isFinite(+prior.alpha_cs2) ? +prior.alpha_cs2 : 0.2,
-      gamma: Number.isFinite(+prior.gamma) ? +prior.gamma : 0.0,
+      alpha_cs1: finiteNumber(prior.alpha_cs1, carryAlpha),
+      alpha_cs2: finiteNumber(prior.alpha_cs2, carryAlpha),
+      gamma,
     };
   }
 
+  const carryAlpha = Number.isFinite(+prior.alpha)
+    ? +prior.alpha
+    : finiteNumber(prior.alpha_cs1, finiteNumber(prior.alpha_cs2, 0.2));
+
   return {
     n_trials,
-    alpha: Number.isFinite(+prior.alpha) ? +prior.alpha : 0.2,
-    gamma: Number.isFinite(+prior.gamma) ? +prior.gamma : 0.0,
-  };
-}
-
-function coercePhaseShape(phase, availableStimuli) {
-  const protocol = PHASE_DEFS[phase?.protocol] ? phase.protocol : "acquisition";
-  return {
-    name: phase?.name || "Phase 1",
-    protocol,
-    stimuli: buildStimuliForProtocol(protocol, availableStimuli, phase?.stimuli),
-    params: buildParamsForProtocol(protocol, phase?.params),
+    alpha: carryAlpha,
+    gamma,
   };
 }
 
 function buildDefaultPhase(index, availableStimuli) {
-  return coercePhaseShape(
-    {
-      name: `Phase ${index + 1}`,
-      protocol: "acquisition",
-      stimuli: { cs_plus: ["tone"] },
-      params: { n_trials: 100, alpha: 0.2, gamma: 0.0 },
-    },
-    availableStimuli || STIMULI
-  );
+  return {
+    name: `Phase ${index + 1}`,
+    protocol: "acquisition",
+    stimuli: buildStimuliForProtocol("acquisition", availableStimuli || STIMULI, null),
+    params: buildParamsForProtocol("acquisition", null),
+  };
+}
+
+function migratePhaseProtocol(phase, nextProtocol, availableStimuli) {
+  const protocol = PHASE_DEFS[nextProtocol] ? nextProtocol : "acquisition";
+  return {
+    name: phase?.name || "Phase 1",
+    protocol,
+    stimuli: buildStimuliForProtocol(protocol, availableStimuli || STIMULI, phase?.stimuli),
+    params: buildParamsForProtocol(protocol, phase?.params),
+  };
 }
 
 function createInitialPayload() {
@@ -150,11 +184,7 @@ function normalizePayload(inputPayload) {
     });
   }
 
-  const availableStimuli = getAvailableStimuli(payload);
-  const rawPhases = payload?.experiment?.phases || [];
-  payload.experiment.phases = rawPhases.map((phase) => coercePhaseShape(phase, availableStimuli));
-
-  const phases = payload.experiment.phases;
+  const phases = payload?.experiment?.phases || [];
   if (phases.length === 1) {
     const proto = phases[0].protocol;
     payload.report.preset = KNOWN_PRESETS.has(proto) ? proto : "custom_protocol";
@@ -174,8 +204,8 @@ function normalizePayload(inputPayload) {
 window.VSLReact.builderState = {
   STIMULI,
   buildDefaultPhase,
+  migratePhaseProtocol,
   createInitialPayload,
   normalizePayload,
   getAvailableStimuli,
-  coercePhaseShape,
 };
