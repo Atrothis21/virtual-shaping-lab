@@ -36,6 +36,28 @@ function readParamMapValue(mapObj, key, field, fallback) {
   return fallback;
 }
 
+function buildDefaultSimilarity(stimuli, offdiag) {
+  const values = stimuli.map((_, i) =>
+    stimuli.map((__, j) => (i === j ? 1.0 : offdiag))
+  );
+  return {
+    type: "matrix",
+    stimuli: [...stimuli],
+    values,
+  };
+}
+
+function inferOffdiagFromSimilarity(similarity, fallback) {
+  const values = similarity?.values;
+  if (!Array.isArray(values) || !values.length) return fallback;
+  for (let i = 0; i < values.length; i += 1) {
+    for (let j = 0; j < values[i].length; j += 1) {
+      if (i !== j && Number.isFinite(+values[i][j])) return +values[i][j];
+    }
+  }
+  return fallback;
+}
+
 function BuilderShellApp() {
   const [payload, setPayload] = React.useState(createInitialPayload);
   const [activePhaseIndex, setActivePhaseIndex] = React.useState(0);
@@ -43,6 +65,7 @@ function BuilderShellApp() {
   const [runError, setRunError] = React.useState(false);
   const [newStimulus, setNewStimulus] = React.useState(KNOWN_STIMULI[0] || "tone");
   const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const [similarityOffdiag, setSimilarityOffdiag] = React.useState(0.2);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases = payload.experiment.phases;
@@ -65,6 +88,34 @@ function BuilderShellApp() {
       const next = JSON.parse(JSON.stringify(prev));
       const idx = Math.min(activePhaseIndex, next.experiment.phases.length - 1);
       updater(next.experiment.phases[idx], getAvailableStimuli(next));
+      return next;
+    });
+  };
+
+  const applySimilarity = (offdiag) => {
+    const nextOffdiag = Math.max(0, Math.min(1, +offdiag || 0));
+    const stimuli = repStimuli;
+    if (!stimuli.length) return;
+
+    setPayload((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next.experiment.representation) next.experiment.representation = { name: "vector_elemental", params: {} };
+      if (!next.experiment.representation.params) next.experiment.representation.params = {};
+      next.experiment.representation.params.similarity = buildDefaultSimilarity(stimuli, nextOffdiag);
+      return next;
+    });
+  };
+
+  const setSimilarityEnabled = (enabled) => {
+    if (enabled) {
+      applySimilarity(similarityOffdiag);
+      return;
+    }
+    setPayload((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (next?.experiment?.representation?.params) {
+        delete next.experiment.representation.params.similarity;
+      }
       return next;
     });
   };
@@ -97,6 +148,12 @@ function BuilderShellApp() {
 
       next.experiment.salience = trimMap(next.experiment.salience || {}, "salience");
       next.experiment.attention = trimMap(next.experiment.attention || {}, "attention");
+      if (next.experiment.representation.params.similarity) {
+        next.experiment.representation.params.similarity = buildDefaultSimilarity(
+          deduped,
+          inferOffdiagFromSimilarity(next.experiment.representation.params.similarity, similarityOffdiag)
+        );
+      }
       return next;
     });
   };
@@ -154,6 +211,13 @@ function BuilderShellApp() {
   const repStimuli = availableStimuli;
   const addableStimuli = KNOWN_STIMULI.filter((s) => !repStimuli.includes(s));
   const selectedAddStimulus = addableStimuli.includes(newStimulus) ? newStimulus : (addableStimuli[0] || "");
+  const similarity = payload?.experiment?.representation?.params?.similarity || null;
+  const similarityEnabled = Boolean(similarity);
+
+  React.useEffect(() => {
+    if (!similarity) return;
+    setSimilarityOffdiag(inferOffdiagFromSimilarity(similarity, 0.2));
+  }, [similarity]);
 
   return (
     <>
@@ -241,6 +305,94 @@ function BuilderShellApp() {
           })}
         />
         <div>{payload?.experiment?.context_inference?.max_contexts ?? 3}</div>
+
+        <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Similarity (Optional)</h4>
+        <label style={{ display: "block" }}>
+          <input
+            type="checkbox"
+            checked={similarityEnabled}
+            onChange={(e) => setSimilarityEnabled(e.target.checked)}
+          />{" "}
+          Enable similarity matrix
+        </label>
+
+        <label>Off-diagonal Similarity: {similarityOffdiag.toFixed(2)}</label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={similarityOffdiag}
+          onChange={(e) => {
+            const nextVal = +e.target.value;
+            setSimilarityOffdiag(nextVal);
+            if (similarityEnabled) applySimilarity(nextVal);
+          }}
+        />
+
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+          <button className="btn" onClick={() => setSimilarityEnabled(true)}>
+            Apply Default Matrix
+          </button>
+          <button className="btn secondary" onClick={() => {
+            setSimilarityOffdiag(0.0);
+            applySimilarity(0.0);
+          }}>
+            Reset to Identity
+          </button>
+        </div>
+
+        {similarityEnabled && similarity?.stimuli?.length > 0 && (
+          <div style={{ marginTop: "0.8rem", overflowX: "auto" }}>
+            <table style={{ borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th />
+                  {similarity.stimuli.map((label) => (
+                    <th key={`sim-head-${label}`} style={{ padding: "4px 6px" }}>{label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {similarity.stimuli.map((rowLabel, i) => (
+                  <tr key={`sim-row-${rowLabel}`}>
+                    <th style={{ padding: "4px 6px" }}>{rowLabel}</th>
+                    {similarity.stimuli.map((colLabel, j) => {
+                      const cellValue = similarity?.values?.[i]?.[j] ?? (i === j ? 1.0 : 0.0);
+                      return (
+                        <td key={`sim-cell-${rowLabel}-${colLabel}`} style={{ padding: "2px 4px" }}>
+                          <input
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={cellValue}
+                            disabled={i === j}
+                            style={{ width: "64px" }}
+                            onChange={(e) => {
+                              const v = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+                              setPayload((prev) => {
+                                const next = JSON.parse(JSON.stringify(prev));
+                                const sim = next?.experiment?.representation?.params?.similarity;
+                                if (!sim || !Array.isArray(sim.values)) return next;
+                                sim.values[i][j] = v;
+                                sim.values[j][i] = v;
+                                return next;
+                              });
+                            }}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <pre style={{ marginTop: "0.6rem" }}>
+              {JSON.stringify(similarity, null, 2)}
+            </pre>
+          </div>
+        )}
 
         <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Salience</h4>
         {activePhaseStimuli.length === 0 && (
