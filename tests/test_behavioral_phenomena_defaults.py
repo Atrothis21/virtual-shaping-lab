@@ -12,9 +12,12 @@ from ui.validate_payload import validate_payload
 
 from preset_payloads import (
     acquisition_payload,
+    blocking_payload,
     compound_acquisition_payload,
     differential_acquisition_payload,
     extinction_payload,
+    overexpectation_payload,
+    overshadowing_payload,
 )
 
 
@@ -100,3 +103,73 @@ def test_compound_acquisition_shows_learning_gain_default_payload():
 
     early, late = _first_last_n(compound_records, n=10)
     assert _mean_prediction(late) > _mean_prediction(early) + 0.1
+
+
+def test_overshadowing_shows_secondary_cue_suppression_default_payload():
+    records = _run_records(overshadowing_payload())
+    compound_records = [r for r in records if r.get("phase_name") == "compound_acquisition"]
+
+    per_cue = {"tone": [], "noise": []}
+    for record in compound_records:
+        by_stim = record.get("prediction_by_stimulus")
+        if not isinstance(by_stim, dict):
+            continue
+        for cue in per_cue:
+            if cue in by_stim:
+                per_cue[cue].append(float(by_stim[cue]))
+
+    assert per_cue["tone"], "Expected compound cue predictions for tone."
+    assert per_cue["noise"], "Expected compound cue predictions for noise."
+
+    tone_tail = _first_last_n([{"prediction": v} for v in per_cue["tone"]], n=10)[1]
+    noise_tail = _first_last_n([{"prediction": v} for v in per_cue["noise"]], n=10)[1]
+
+    assert _mean_prediction(tone_tail) > _mean_prediction(noise_tail) + 0.2
+
+
+def test_overexpectation_shows_compound_exceeds_single_cue_default_payload():
+    records = _run_records(overexpectation_payload())
+    compound_records = [r for r in records if r.get("phase_name") == "compound_acquisition"]
+
+    per_compound = []
+    per_tone = []
+    per_noise = []
+
+    for record in compound_records:
+        by_stim = record.get("prediction_by_stimulus")
+        if not isinstance(by_stim, dict):
+            continue
+        if "compound" in by_stim:
+            per_compound.append({"prediction": float(by_stim["compound"])})
+        if "tone" in by_stim:
+            per_tone.append({"prediction": float(by_stim["tone"])})
+        if "noise" in by_stim:
+            per_noise.append({"prediction": float(by_stim["noise"])})
+
+    assert per_compound, "Expected compound predictions in overexpectation compound phase."
+    assert per_tone and per_noise, "Expected single-cue predictions in overexpectation compound phase."
+
+    comp_tail = _first_last_n(per_compound, n=10)[1]
+    tone_tail = _first_last_n(per_tone, n=10)[1]
+    noise_tail = _first_last_n(per_noise, n=10)[1]
+
+    single_avg = (_mean_prediction(tone_tail) + _mean_prediction(noise_tail)) / 2.0
+    assert _mean_prediction(comp_tail) > single_avg + 0.1
+
+
+def test_blocking_default_payload_retains_primary_cue_dominance_signal():
+    records = _run_records(blocking_payload())
+    acquisition_records = [r for r in records if r.get("subphase_name") == "acquisition"]
+    compound_records = [r for r in records if r.get("subphase_name") == "compound_acquisition"]
+
+    assert acquisition_records, "Expected acquisition subphase records."
+    assert compound_records, "Expected compound subphase records."
+
+    acq_tail = _first_last_n(acquisition_records, n=10)[1]
+    comp_tail = _first_last_n(compound_records, n=10)[1]
+
+    # Current blocking default payload does not emit separate blocked-cue probe
+    # records. This assertion guards the presently observable direction:
+    # pretrained cue remains strongly predictive after compound introduction.
+    assert _mean_prediction(acq_tail) > 0.8
+    assert _mean_prediction(comp_tail) > 0.9
