@@ -252,11 +252,96 @@ function normalizePayload(inputPayload) {
   return payload;
 }
 
+function hasPriorLearning(phases, index) {
+  for (let i = 0; i < index; i += 1) {
+    const proto = phases[i]?.protocol;
+    if (
+      proto === "acquisition"
+      || proto === "nonreinforcement"
+      || proto === "differential_acquisition"
+      || proto === "compound_acquisition"
+      || proto === "compound_nonreinforcement"
+      || proto === "criterion_shift"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function validateBeforeRun(inputPayload) {
+  const payload = normalizePayload(inputPayload);
+  const phases = payload?.experiment?.phases || [];
+
+  if (!Array.isArray(phases) || phases.length === 0) {
+    throw new Error("At least one phase is required.");
+  }
+
+  phases.forEach((phase, idx) => {
+    const phaseNum = idx + 1;
+    const proto = phase?.protocol;
+    const stimuli = phase?.stimuli || {};
+    const params = phase?.params || {};
+
+    if (!proto) {
+      throw new Error(`Phase ${phaseNum} is missing a protocol.`);
+    }
+
+    if (
+      (proto === "nonreinforcement"
+        || proto === "compound_nonreinforcement"
+        || proto === "probe"
+        || proto === "criterion_shift")
+      && !hasPriorLearning(phases, idx)
+    ) {
+      throw new Error(`Phase ${phaseNum} (${proto}) requires a prior learning phase.`);
+    }
+
+    if (proto === "acquisition" || proto === "nonreinforcement" || proto === "probe" || proto === "criterion_shift") {
+      if (!Array.isArray(stimuli.cs_plus) || stimuli.cs_plus.length === 0) {
+        throw new Error(`Phase ${phaseNum} (${proto}) requires at least one CS+ stimulus.`);
+      }
+    }
+
+    if (proto === "differential_acquisition") {
+      const plus = Array.isArray(stimuli.cs_plus) ? stimuli.cs_plus : [];
+      const minus = Array.isArray(stimuli.cs_minus) ? stimuli.cs_minus : [];
+      if (!plus.length || !minus.length) {
+        throw new Error(`Phase ${phaseNum} (differential_acquisition) requires CS+ and CS- stimuli.`);
+      }
+      const overlap = plus.filter((s) => minus.includes(s));
+      if (overlap.length) {
+        throw new Error(`Phase ${phaseNum} (differential_acquisition) CS+ and CS- must not overlap.`);
+      }
+    }
+
+    if (proto === "compound_acquisition" || proto === "compound_nonreinforcement") {
+      const compound = Array.isArray(stimuli.compound) ? stimuli.compound : [];
+      if (compound.length < 2) {
+        throw new Error(`Phase ${phaseNum} (${proto}) requires a 2-stimulus compound.`);
+      }
+      if (compound[0] === compound[1]) {
+        throw new Error(`Phase ${phaseNum} (${proto}) requires two distinct compound stimuli.`);
+      }
+    }
+
+    if (proto === "context_shift") {
+      const context = params.context;
+      if (!["A", "B", "C"].includes(context)) {
+        throw new Error(`Phase ${phaseNum} (context_shift) requires context A, B, or C.`);
+      }
+    }
+  });
+
+  return payload;
+}
+
 window.VSLReact.builderState = {
   STIMULI,
   buildDefaultPhase,
   migratePhaseProtocol,
   createInitialPayload,
   normalizePayload,
+  validateBeforeRun,
   getAvailableStimuli,
 };

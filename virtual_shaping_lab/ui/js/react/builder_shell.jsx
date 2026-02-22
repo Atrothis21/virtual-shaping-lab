@@ -4,7 +4,7 @@ const {
   buildDefaultPhase,
   migratePhaseProtocol,
   createInitialPayload,
-  normalizePayload,
+  validateBeforeRun,
   getAvailableStimuli,
 } = window.VSLReact.builderState;
 
@@ -17,7 +17,6 @@ function BuilderShellApp() {
   const [runError, setRunError] = React.useState(false);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
-  const normalizedPayload = React.useMemo(() => normalizePayload(payload), [payload]);
   const phases = payload.experiment.phases;
   const active = phases[activePhaseIndex] || phases[0];
 
@@ -44,10 +43,19 @@ function BuilderShellApp() {
     setRunError(false);
     setRunOutput("Running...");
 
+    let runPayload;
+    try {
+      runPayload = validateBeforeRun(payload);
+    } catch (err) {
+      setRunError(true);
+      setRunOutput(`Validation error: ${err.message}`);
+      return;
+    }
+
     const res = await fetch("/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(normalizedPayload),
+      body: JSON.stringify(runPayload),
     });
     const result = await res.json();
 
