@@ -80,7 +80,7 @@ def _cmd_ui(args: argparse.Namespace) -> int:
             "Install it with: pip install uvicorn"
         ) from exc
 
-    url = f"http://{args.host}:{args.port}/ui/presets.html"
+    url = f"http://{args.host}:{args.port}/ui/index.html"
 
     if args.open:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
