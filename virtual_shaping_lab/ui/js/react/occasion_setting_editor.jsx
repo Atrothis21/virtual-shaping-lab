@@ -119,7 +119,6 @@ function OccasionSettingApp() {
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
           Back to Presets
         </button>
-        <a className="btn secondary" href="/ui/presets/occasion_setting_legacy.html">Legacy Editor</a>
       </div>
 
       <div className="panel">

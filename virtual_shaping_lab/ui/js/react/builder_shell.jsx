@@ -191,13 +191,12 @@ function BuilderShellApp() {
   return (
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
-      <p>React builder (phase 4.7 slice). Core advanced controls are now native; legacy remains as fallback.</p>
+      <p>React builder with full native controls.</p>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>
           Back to Menu
         </button>
-        <a className="btn secondary" href="/ui/builder_legacy.html">Open Legacy Builder</a>
         <button className="btn secondary" onClick={resetBuilder}>Reset Builder</button>
         <button className="btn secondary" onClick={() => setShowAdvanced((v) => !v)}>
           {showAdvanced ? "Hide Advanced Controls" : "Show Advanced Controls"}
@@ -726,20 +725,6 @@ function BuilderShellApp() {
       <div className="panel">
         <button className="btn" onClick={onRun}>Run Experiment</button>
         <pre className={runError ? "error" : ""}>{runOutput}</pre>
-      </div>
-
-      <details className="panel">
-        <summary>Legacy Builder (Advanced Controls)</summary>
-        <iframe
-          title="legacy-builder"
-          src="/ui/builder_legacy.html"
-          style={{ width: "100%", minHeight: "78vh", border: "1px solid #ddd", borderRadius: "6px", marginTop: "0.8rem" }}
-        />
-      </details>
-      <div className="panel">
-        <small>
-          Native advanced controls are now available here. Keep legacy fallback for remaining edge-case parity checks.
-        </small>
       </div>
     </>
   );

@@ -36,7 +36,6 @@ function App() {
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>
           Back to Menu
         </button>
-        <a className="btn secondary" href="/ui/presets_legacy.html">Legacy Catalog</a>
       </div>
 
       {sections.map((section) => (

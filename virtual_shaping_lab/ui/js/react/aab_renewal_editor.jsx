@@ -105,7 +105,6 @@ function AABRenewalApp() {
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>Back to Presets</button>
-        <a className="btn secondary" href="/ui/presets/aab_renewal_legacy.html">Legacy Editor</a>
       </div>
 
       <div className="panel">

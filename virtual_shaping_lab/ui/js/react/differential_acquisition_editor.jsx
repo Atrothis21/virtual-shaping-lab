@@ -113,7 +113,6 @@ function DifferentialAcquisitionApp() {
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
           Back to Presets
         </button>
-        <a className="btn secondary" href="/ui/presets/differential_acquisition_legacy.html">Legacy Editor</a>
       </div>
 
       <div className="panel">
