@@ -16,16 +16,20 @@ from analysis.report.report import run_report
 
 app = FastAPI(title="Virtual Shaping Lab API")
 
-app.mount("/ui", StaticFiles(directory="ui"), name="ui")
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PACKAGE_ROOT.parent
+UI_DIR = PACKAGE_ROOT / "ui"
 
-reports_dir = Path("reports")
+app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
+
+reports_dir = REPO_ROOT / "reports"
 reports_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
 
 
 @app.get("/")
 def root():
-    return FileResponse("ui/index.html")
+    return FileResponse(str(UI_DIR / "index.html"))
 
 # Orchestration helper: keeps API thin.
 # Responsibility: run config → assemble objects → run protocols → generate report.
