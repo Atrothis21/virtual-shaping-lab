@@ -200,7 +200,7 @@ function migratePhaseProtocol(phase, nextProtocol, availableStimuli) {
 }
 
 function createInitialPayload() {
-  const initialStimuli = ["tone"];
+  const initialStimuli = [...STIMULI];
   return {
     experiment: {
       learner: "rescorla_wagner",

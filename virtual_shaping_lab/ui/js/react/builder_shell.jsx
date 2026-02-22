@@ -1,7 +1,6 @@
 window.VSLReact = window.VSLReact || {};
 
 const {
-  STIMULI: KNOWN_STIMULI,
   buildDefaultPhase,
   migratePhaseProtocol,
   createInitialPayload,
@@ -63,7 +62,6 @@ function BuilderShellApp() {
   const [activePhaseIndex, setActivePhaseIndex] = React.useState(0);
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
-  const [newStimulus, setNewStimulus] = React.useState(KNOWN_STIMULI[0] || "tone");
   const [showAdvanced, setShowAdvanced] = React.useState(false);
   const [similarityOffdiag, setSimilarityOffdiag] = React.useState(0.2);
 
@@ -213,8 +211,6 @@ function BuilderShellApp() {
   const trialsMax = protocol === "probe" ? 200 : 500;
 
   const repStimuli = availableStimuli;
-  const addableStimuli = KNOWN_STIMULI.filter((s) => !repStimuli.includes(s));
-  const selectedAddStimulus = addableStimuli.includes(newStimulus) ? newStimulus : (addableStimuli[0] || "");
   const similarity = payload?.experiment?.representation?.params?.similarity || null;
   const similarityEnabled = Boolean(similarity);
 
@@ -259,24 +255,6 @@ function BuilderShellApp() {
               </div>
             );
           })}
-        </div>
-
-        <label>Add Known Stimulus</label>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginBottom: "0.8rem" }}>
-          <select
-            value={selectedAddStimulus}
-            onChange={(e) => setNewStimulus(e.target.value)}
-            disabled={!addableStimuli.length}
-          >
-            {addableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button
-            className="btn"
-            disabled={!selectedAddStimulus}
-            onClick={() => updateRepresentationStimuli([...repStimuli, selectedAddStimulus])}
-          >
-            Add Stimulus
-          </button>
         </div>
 
         <label style={{ marginTop: "0.6rem", display: "block" }}>
