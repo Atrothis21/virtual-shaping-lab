@@ -61,12 +61,23 @@ function BuilderShellApp() {
   };
 
   const protocol = active?.protocol || "acquisition";
-  const isCompound = protocol === "compound_acquisition";
+  const isCompound = protocol === "compound_acquisition" || protocol === "compound_nonreinforcement";
+  const isCompoundAcq = protocol === "compound_acquisition";
   const isDifferential = protocol === "differential_acquisition";
+  const isContextShift = protocol === "context_shift";
+  const isProbe = protocol === "probe";
+  const isCriterion = protocol === "criterion_shift";
+
   const csPlus = active?.stimuli?.cs_plus?.[0] || availableStimuli[0];
   const csMinus = active?.stimuli?.cs_minus?.[0] || availableStimuli[1] || availableStimuli[0];
   const comp1 = active?.stimuli?.compound?.[0] || availableStimuli[0];
   const comp2 = active?.stimuli?.compound?.[1] || availableStimuli[1] || availableStimuli[0];
+
+  const showSingleCs = !isCompound && !isDifferential && !isContextShift;
+  const showTrials = !isContextShift;
+  const showAlpha = !isCompoundAcq && !isContextShift && !isProbe;
+  const showGamma = !isContextShift && !isProbe;
+  const contextValue = active?.params?.context || "A";
 
   return (
     <>
@@ -101,11 +112,15 @@ function BuilderShellApp() {
         >
           <option value="acquisition">acquisition</option>
           <option value="nonreinforcement">nonreinforcement</option>
-          <option value="compound_acquisition">compound_acquisition</option>
           <option value="differential_acquisition">differential_acquisition</option>
+          <option value="compound_acquisition">compound_acquisition</option>
+          <option value="compound_nonreinforcement">compound_nonreinforcement</option>
+          <option value="probe">probe</option>
+          <option value="context_shift">context_shift</option>
+          <option value="criterion_shift">criterion_shift</option>
         </select>
 
-        {!isCompound && !isDifferential && (
+        {showSingleCs && (
           <>
             <label>CS+</label>
             <select
@@ -153,7 +168,9 @@ function BuilderShellApp() {
               value={comp1}
               onChange={(e) => updateActive((p, stim) => {
                 const first = e.target.value;
-                const second = p.stimuli?.compound?.[1] === first ? (stim.find((x) => x !== first) || first) : (p.stimuli?.compound?.[1] || stim[1] || first);
+                const second = p.stimuli?.compound?.[1] === first
+                  ? (stim.find((x) => x !== first) || first)
+                  : (p.stimuli?.compound?.[1] || stim[1] || first);
                 p.stimuli = { compound: [first, second] };
               })}
             >
@@ -174,20 +191,41 @@ function BuilderShellApp() {
           </>
         )}
 
-        <label>Trials</label>
-        <input
-          type="range"
-          min="1"
-          max="500"
-          value={active?.params?.n_trials || 100}
-          onChange={(e) => updateActive((p) => {
-            if (!p.params) p.params = {};
-            p.params.n_trials = +e.target.value;
-          })}
-        />
-        <div>{active?.params?.n_trials || 100}</div>
+        {(isContextShift || isProbe || isCriterion) && (
+          <>
+            <label>Context</label>
+            <select
+              value={contextValue}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.context = e.target.value;
+              })}
+            >
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </>
+        )}
 
-        {!isCompound && (
+        {showTrials && (
+          <>
+            <label>Trials</label>
+            <input
+              type="range"
+              min="1"
+              max="500"
+              value={active?.params?.n_trials || 100}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.n_trials = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.n_trials || 100}</div>
+          </>
+        )}
+
+        {showAlpha && (
           <>
             <label>Alpha</label>
             <input
@@ -205,7 +243,7 @@ function BuilderShellApp() {
           </>
         )}
 
-        {isCompound && (
+        {isCompoundAcq && (
           <>
             <label>Alpha CS1</label>
             <input
@@ -237,19 +275,102 @@ function BuilderShellApp() {
           </>
         )}
 
-        <label>Gamma</label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={active?.params?.gamma ?? 0.0}
-          onChange={(e) => updateActive((p) => {
-            if (!p.params) p.params = {};
-            p.params.gamma = +e.target.value;
-          })}
-        />
-        <div>{active?.params?.gamma ?? 0.0}</div>
+        {showGamma && (
+          <>
+            <label>Gamma</label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={active?.params?.gamma ?? 0.0}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.gamma = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.gamma ?? 0.0}</div>
+          </>
+        )}
+
+        {isProbe && (
+          <>
+            <label style={{ marginTop: "0.7rem", display: "block" }}>
+              <input
+                type="checkbox"
+                checked={Boolean(active?.params?.deliver_reward)}
+                onChange={(e) => updateActive((p) => {
+                  if (!p.params) p.params = {};
+                  p.params.deliver_reward = e.target.checked;
+                })}
+              />{" "}
+              Deliver reward during probe
+            </label>
+
+            <label>Reward Value</label>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              value={active?.params?.reward_value ?? 0.0}
+              disabled={!active?.params?.deliver_reward}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                p.params.reward_value = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.reward_value ?? 0.0}</div>
+          </>
+        )}
+
+        {isCriterion && (
+          <>
+            <label>Criterion Threshold</label>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={active?.params?.criterion?.threshold ?? 0.8}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                if (!p.params.criterion) p.params.criterion = { type: "prediction_threshold", threshold: 0.8, window: 10 };
+                p.params.criterion.type = "prediction_threshold";
+                p.params.criterion.threshold = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.criterion?.threshold ?? 0.8}</div>
+
+            <label>Criterion Window</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              step="1"
+              value={active?.params?.criterion?.window ?? 10}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                if (!p.params.criterion) p.params.criterion = { type: "prediction_threshold", threshold: 0.8, window: 10 };
+                p.params.criterion.type = "prediction_threshold";
+                p.params.criterion.window = +e.target.value;
+              })}
+            />
+            <div>{active?.params?.criterion?.window ?? 10}</div>
+
+            <label>Safety Cap (blank disables)</label>
+            <input
+              type="number"
+              min="1"
+              value={active?.params?.safety_cap ?? ""}
+              onChange={(e) => updateActive((p) => {
+                if (!p.params) p.params = {};
+                const raw = e.target.value;
+                p.params.safety_cap = raw === "" ? null : Math.max(1, Math.round(+raw));
+              })}
+            />
+          </>
+        )}
       </div>
 
       <div className="panel">

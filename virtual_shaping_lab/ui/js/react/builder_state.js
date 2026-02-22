@@ -24,6 +24,10 @@ const PHASE_DEFS = {
   nonreinforcement: { n_trials: 60, stimulus_type: "cs" },
   differential_acquisition: { n_trials: 120, stimulus_type: "cs_dual" },
   compound_acquisition: { n_trials: 100, stimulus_type: "compound" },
+  compound_nonreinforcement: { n_trials: 60, stimulus_type: "compound" },
+  probe: { n_trials: 20, stimulus_type: "cs" },
+  context_shift: { n_trials: 0, stimulus_type: "none" },
+  criterion_shift: { n_trials: 100, stimulus_type: "cs" },
 };
 
 function safeClone(value) {
@@ -81,6 +85,10 @@ function buildStimuliForProtocol(protocol, availableStimuli, prevStimuli) {
     return { compound: [first, second] };
   }
 
+  if (protocol === "compound_nonreinforcement") {
+    return { compound: [first, second] };
+  }
+
   if (protocol === "differential_acquisition") {
     const plus = Array.isArray(prevStimuli?.cs_plus) && prevStimuli.cs_plus.length
       ? prevStimuli.cs_plus[0]
@@ -90,6 +98,10 @@ function buildStimuliForProtocol(protocol, availableStimuli, prevStimuli) {
       : second;
     const minus = minusCandidate === plus ? pickStimulus(prior, available, 1, plus) : minusCandidate;
     return { cs_plus: [plus], cs_minus: [minus] };
+  }
+
+  if (protocol === "context_shift") {
+    return {};
   }
 
   const csPlus = Array.isArray(prevStimuli?.cs_plus) && prevStimuli.cs_plus.length
@@ -115,6 +127,45 @@ function buildParamsForProtocol(protocol, prevParams) {
       alpha_cs1: finiteNumber(prior.alpha_cs1, carryAlpha),
       alpha_cs2: finiteNumber(prior.alpha_cs2, carryAlpha),
       gamma,
+    };
+  }
+
+  if (protocol === "compound_nonreinforcement") {
+    return {
+      n_trials,
+      alpha: finiteNumber(prior.alpha, 0.2),
+      gamma,
+    };
+  }
+
+  if (protocol === "probe") {
+    return {
+      n_trials,
+      deliver_reward: Boolean(prior.deliver_reward),
+      reward_value: finiteNumber(prior.reward_value, 0.0),
+      context: ["A", "B", "C"].includes(prior.context) ? prior.context : "A",
+    };
+  }
+
+  if (protocol === "context_shift") {
+    return {
+      context: ["A", "B", "C"].includes(prior.context) ? prior.context : "A",
+    };
+  }
+
+  if (protocol === "criterion_shift") {
+    const criterion = prior.criterion || {};
+    return {
+      n_trials,
+      alpha: finiteNumber(prior.alpha, 0.2),
+      gamma,
+      context: ["A", "B", "C"].includes(prior.context) ? prior.context : "A",
+      criterion: {
+        type: "prediction_threshold",
+        threshold: finiteNumber(criterion.threshold, 0.8),
+        window: Math.max(1, Math.round(finiteNumber(criterion.window, 10))),
+      },
+      safety_cap: prior.safety_cap == null ? null : Math.max(1, Math.round(finiteNumber(prior.safety_cap, 200))),
     };
   }
 

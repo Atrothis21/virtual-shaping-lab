@@ -17,6 +17,7 @@ from experiment.phases.compound_nonreinforcement import CompoundNonReinforcement
 from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
 from experiment.phases.probe import ProbePhase
 from experiment.phases.context_shift import ContextShiftPhase
+from experiment.phases.criterion_shift import CriterionShiftPhase
 
 
 PHASE_REGISTRY: Dict[str, Type[PhaseBase]] = {
@@ -27,6 +28,7 @@ PHASE_REGISTRY: Dict[str, Type[PhaseBase]] = {
     "differential_acquisition": DifferentialAcquisitionPhase,
     "probe": ProbePhase,
     "context_shift": ContextShiftPhase,
+    "criterion_shift": CriterionShiftPhase,
 }
 
 
