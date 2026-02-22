@@ -347,6 +347,7 @@ function BuilderShellApp() {
                 <select
                   multiple
                   size="5"
+                  style={{ width: "100%", height: "7rem" }}
                   value={csPlusList}
                   onChange={(e) => updateActive((p, stim) => {
                     const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
@@ -364,6 +365,7 @@ function BuilderShellApp() {
                 <select
                   multiple
                   size="5"
+                  style={{ width: "100%", height: "7rem" }}
                   value={csPlusList}
                   onChange={(e) => updateActive((p, stim) => {
                     const nextPlusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
@@ -380,10 +382,12 @@ function BuilderShellApp() {
                   {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
 
+                <br /><br />
                 <label>CS-</label>
                 <select
                   multiple
                   size="5"
+                  style={{ width: "100%", height: "7rem" }}
                   value={csMinusList}
                   onChange={(e) => updateActive((p, stim) => {
                     const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length
@@ -405,8 +409,9 @@ function BuilderShellApp() {
 
             {isCompound && (
               <>
-                <label>Compound Stimulus 1</label>
+                <label>Compound Stimulus (two cues)</label>
                 <select
+                  style={{ width: "100%" }}
                   value={comp1}
                   onChange={(e) => updateActive((p, stim) => {
                     const first = e.target.value;
@@ -419,8 +424,9 @@ function BuilderShellApp() {
                   {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
 
-                <label>Compound Stimulus 2</label>
+                <br />
                 <select
+                  style={{ width: "100%" }}
                   value={comp2}
                   onChange={(e) => updateActive((p, stim) => {
                     const second = e.target.value;
