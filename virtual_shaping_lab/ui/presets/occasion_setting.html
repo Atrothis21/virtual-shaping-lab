@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Occasion Setting Preset</title>
-
   <style>
     body {
       font-family: system-ui, sans-serif;
@@ -11,7 +11,12 @@
       max-width: 900px;
     }
 
-    label { font-weight: 600; }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 0.6rem;
+    }
+
     input[type="range"], select, input[type="text"] {
       width: 100%;
       margin-top: 0.4rem;
@@ -23,11 +28,27 @@
       margin-top: 1.5rem;
     }
 
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
     button, .btn {
       margin-top: 0.6rem;
       padding: 0.5rem 1rem;
       font-size: 1rem;
       cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      text-decoration: none;
+      color: #111;
+    }
+
+    .btn.secondary {
+      background: #f5f5f5;
     }
 
     pre {
@@ -46,244 +67,12 @@
   </style>
 </head>
 <body>
+  <div id="root"></div>
 
-<h1>Occasion Setting Preset</h1>
-<p>Train S+X → US and X alone → no US. Probe compares X vs S+X.</p>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<button class="btn" id="back-btn">Back to Presets</button>
-
-<div class="panel">
-  <h3>Trials</h3>
-  <label>Training Trials: <span id="n_train_val">100</span></label>
-  <input id="n_train" type="range" min="1" max="500" value="100" />
-
-  <label>Probe Trials: <span id="n_probe_val">20</span></label>
-  <input id="n_probe" type="range" min="1" max="200" value="20" />
-</div>
-
-<div class="panel">
-  <h3>Learning</h3>
-  <label>Learning Rate (alpha): <span id="a_val">0.2</span></label>
-  <input id="alpha" type="range" min="0" max="1" step="0.05" value="0.2" />
-</div>
-
-<div class="panel">
-  <h3>Stimuli</h3>
-  <label>Occasion Setter (S)</label>
-  <select id="occasion_setter"></select>
-
-  <label>Target (X)</label>
-  <select id="target"></select>
-
-  <label>Salience (S): <span id="s_val">1.0</span></label>
-  <input id="salience_s" type="range" min="0" max="1" step="0.05" value="1.0" />
-
-  <label>Salience (X): <span id="x_val">1.0</span></label>
-  <input id="salience_x" type="range" min="0" max="1" step="0.05" value="1.0" />
-</div>
-
-<h2>Generated Payload</h2>
-<pre id="payload-view"></pre>
-
-<button id="run-btn">Run Experiment</button>
-<pre id="run-output">Not run yet.</pre>
-
-<script>
-const STIMULI = ["tone", "noise", "light", "click"];
-
-let params = {
-  n_training_trials: 100,
-  n_probe_trials: 20,
-  alpha: 0.2,
-  occasion_setter: "tone",
-  target: "noise",
-  salience_s: 1.0,
-  salience_x: 1.0
-};
-
-function collectStimuli() {
-  return [...STIMULI];
-}
-
-function populateStimuli() {
-  const sSelect = document.getElementById("occasion_setter");
-  const xSelect = document.getElementById("target");
-
-  sSelect.innerHTML = "";
-  xSelect.innerHTML = "";
-
-  STIMULI.forEach(s => {
-    const o1 = document.createElement("option");
-    o1.value = s;
-    o1.textContent = s;
-    if (params.occasion_setter === s) o1.selected = true;
-    sSelect.appendChild(o1);
-
-    const o2 = document.createElement("option");
-    o2.value = s;
-    o2.textContent = s;
-    if (params.target === s) o2.selected = true;
-    xSelect.appendChild(o2);
-  });
-
-  enforceDistinct();
-}
-
-function enforceDistinct() {
-  const sSelect = document.getElementById("occasion_setter");
-  const xSelect = document.getElementById("target");
-
-  Array.from(xSelect.options).forEach(o => {
-    o.disabled = (o.value === params.occasion_setter);
-  });
-  Array.from(sSelect.options).forEach(o => {
-    o.disabled = (o.value === params.target);
-  });
-
-  if (params.occasion_setter === params.target) {
-    const fallback = STIMULI.find(s => s !== params.occasion_setter);
-    params.target = fallback;
-    xSelect.value = fallback;
-  }
-}
-
-function buildPayload() {
-  const occasionSetter = document.getElementById("occasion_setter").value;
-  const target = document.getElementById("target").value;
-
-  const salienceMap = {};
-  salienceMap[occasionSetter] = { salience: params.salience_s };
-  salienceMap[target] = { salience: params.salience_x };
-  const attentionMap = {};
-  Object.keys(salienceMap).forEach(s => {
-    attentionMap[s] = { attention: 1.0 };
-  });
-
-  return {
-    experiment: {
-      learner: "rescorla_wagner",
-      agent: "classical_agent",
-      representation: {
-        name: "vector_hybrid",
-        params: {
-          stimuli: collectStimuli(),
-          max_compound_size: 2,
-          include_global: true,
-          include_context: true
-        }
-      },
-      context_inference: { enabled: false, max_contexts: 3 },
-      protocol: "occasion_setting",
-      stimuli: {
-        occasion_setter: [occasionSetter],
-        target: [target]
-      },
-      params: {
-        n_training_trials: parseInt(document.getElementById("n_train").value, 10),
-        n_probe_trials: parseInt(document.getElementById("n_probe").value, 10),
-        alpha: parseFloat(document.getElementById("alpha").value)
-      },
-      salience: salienceMap,
-      attention: attentionMap
-    },
-    report: { preset: "occasion_setting" }
-  };
-}
-
-function renderPayload() {
-  document.getElementById("payload-view").textContent =
-    JSON.stringify(buildPayload(), null, 2);
-}
-
-function validate() {
-  if (params.n_training_trials < 1) throw new Error("n_training_trials must be at least 1");
-  if (params.n_probe_trials < 1) throw new Error("n_probe_trials must be at least 1");
-  if (params.alpha < 0 || params.alpha > 1) throw new Error("alpha must be 0-1");
-  if (!params.occasion_setter || !params.target) throw new Error("Select S and X");
-  if (params.occasion_setter === params.target) throw new Error("S and X must be different");
-}
-
-document.getElementById("back-btn").onclick = () => {
-  window.location.href = "/ui/presets.html";
-};
-
-document.getElementById("n_train").oninput = e => {
-  params.n_training_trials = +e.target.value;
-  document.getElementById("n_train_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("n_probe").oninput = e => {
-  params.n_probe_trials = +e.target.value;
-  document.getElementById("n_probe_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("alpha").oninput = e => {
-  params.alpha = +e.target.value;
-  document.getElementById("a_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("salience_s").oninput = e => {
-  params.salience_s = +e.target.value;
-  document.getElementById("s_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("salience_x").oninput = e => {
-  params.salience_x = +e.target.value;
-  document.getElementById("x_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("occasion_setter").onchange = e => {
-  params.occasion_setter = e.target.value;
-  enforceDistinct();
-  renderPayload();
-};
-
-document.getElementById("target").onchange = e => {
-  params.target = e.target.value;
-  enforceDistinct();
-  renderPayload();
-};
-
-document.getElementById("run-btn").onclick = async () => {
-  const output = document.getElementById("run-output");
-  output.classList.remove("error");
-
-  let payload;
-  try {
-    validate();
-    payload = buildPayload();
-  } catch (err) {
-    output.textContent = err.message;
-    output.classList.add("error");
-    return;
-  }
-
-  output.textContent = "Running...";
-
-  const res = await fetch("/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  if (res.ok && data.run_id) {
-    window.location.href = `/ui/results.html?run_id=${data.run_id}`;
-    return;
-  }
-
-  output.textContent = JSON.stringify(data, null, 2);
-};
-
-populateStimuli();
-renderPayload();
-</script>
-
+  <script type="text/babel" src="/ui/js/react/occasion_setting_editor.jsx"></script>
 </body>
 </html>
-
