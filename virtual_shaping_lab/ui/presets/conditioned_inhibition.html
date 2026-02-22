@@ -2,258 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conditioned Inhibition Preset</title>
-
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 900px; }
-    label { font-weight: 600; }
-    input[type="range"], select[multiple], select { width: 100%; margin-top: 0.4rem; }
-    select[multiple] { height: 6rem; }
-    .panel { border-left: 3px solid #eee; padding-left: 1rem; margin-top: 1.5rem; }
-    button, .btn { margin-top: 0.6rem; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-    .error { background: #ffe6e6; color: #900; padding: 0.6rem; border-radius: 6px; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      max-width: 900px;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 0.6rem;
+    }
+
+    input[type="range"], select[multiple], select {
+      width: 100%;
+      margin-top: 0.4rem;
+    }
+
+    select[multiple] {
+      height: 6rem;
+    }
+
+    .panel {
+      border-left: 3px solid #eee;
+      padding-left: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, .btn {
+      margin-top: 0.6rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      text-decoration: none;
+      color: #111;
+    }
+
+    .btn.secondary {
+      background: #f5f5f5;
+    }
+
+    pre {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    .error {
+      background: #ffe6e6;
+      color: #900;
+      padding: 0.6rem;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
+  <div id="root"></div>
 
-<h1>Conditioned Inhibition Preset</h1>
-<p>Acquisition (A+), compound nonreinforcement (AX-), summation, and retardation tests.</p>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<button class="btn" id="back-btn">Back to Presets</button>
-
-<div class="panel">
-  <h3>Trials</h3>
-  <label>Acquisition Trials: <span id="n_acq_val">50</span></label>
-  <input id="n_acq" type="range" min="1" max="200" value="50" />
-
-  <label>Inhibition Trials: <span id="n_inh_val">50</span></label>
-  <input id="n_inh" type="range" min="1" max="200" value="50" />
-
-  <label>Retardation Trials: <span id="n_ret_val">20</span></label>
-  <input id="n_ret" type="range" min="1" max="200" value="20" />
-</div>
-
-<div class="panel">
-  <h3>Learning</h3>
-  <label>Learning Rate (alpha): <span id="a_val">0.2</span></label>
-  <input id="alpha" type="range" min="0" max="1" step="0.05" value="0.2" />
-</div>
-
-<div class="panel">
-  <h3>Stimuli</h3>
-  <label>CS+ (Excitor A)</label>
-  <select id="cs_plus" multiple></select>
-
-  <br /><br />
-
-  <label>CS- (Inhibitor X)</label>
-  <select id="cs_minus" multiple></select>
-</div>
-
-<div class="panel">
-  <h3>Representation</h3>
-  <label>Type</label>
-  <select id="representation">
-    <option value="vector_elemental">vector_elemental</option>
-    <option value="vector_configural">vector_configural</option>
-    <option value="vector_hybrid">vector_hybrid</option>
-  </select>
-</div>
-
-<h2>Generated Payload</h2>
-<pre id="payload-view"></pre>
-
-<button id="run-btn">Run Experiment</button>
-<pre id="run-output">Not run yet.</pre>
-
-<script>
-const STIMULI = ["tone", "noise", "light", "click"];
-
-let params = {
-  n_acq: 50,
-  n_inh: 50,
-  n_ret: 20,
-  alpha: 0.2,
-  cs_plus: ["tone"],
-  cs_minus: ["noise"],
-  representation: "vector_elemental"
-};
-
-function populate(select, selected) {
-  select.innerHTML = "";
-  STIMULI.forEach(s => {
-    const o = document.createElement("option");
-    o.value = s;
-    o.textContent = s;
-    if (selected.includes(s)) o.selected = true;
-    select.appendChild(o);
-  });
-}
-
-function selectedValues(select) {
-  return Array.from(select.selectedOptions).map(o => o.value);
-}
-
-function setSelected(select, values) {
-  Array.from(select.options).forEach(o => {
-    o.selected = values.includes(o.value);
-  });
-}
-
-function disableFromOther(select, otherSelected) {
-  Array.from(select.options).forEach(o => {
-    o.disabled = otherSelected.includes(o.value);
-  });
-}
-
-function syncStimuliSelections(changed) {
-  const plusSelect = document.getElementById("cs_plus");
-  const minusSelect = document.getElementById("cs_minus");
-
-  let csPlus = selectedValues(plusSelect);
-  let csMinus = selectedValues(minusSelect);
-
-  if (changed === "plus") {
-    csMinus = csMinus.filter(s => !csPlus.includes(s));
-    setSelected(minusSelect, csMinus);
-  } else if (changed === "minus") {
-    csPlus = csPlus.filter(s => !csMinus.includes(s));
-    setSelected(plusSelect, csPlus);
-  }
-
-  disableFromOther(plusSelect, csMinus);
-  disableFromOther(minusSelect, csPlus);
-
-  params.cs_plus = csPlus;
-  params.cs_minus = csMinus;
-
-  renderPayload();
-}
-
-function buildPayload() {
-  const attentionMap = {};
-  [...params.cs_plus, ...params.cs_minus].forEach(s => {
-    attentionMap[s] = { attention: 1.0 };
-  });
-
-  return {
-    experiment: {
-      learner: "rescorla_wagner",
-      agent: "classical_agent",
-      representation: {
-        name: params.representation,
-        params: { stimuli: STIMULI, max_compound_size: 2 }
-      },
-      context_inference: { enabled: false, max_contexts: 3 },
-      protocol: "conditioned_inhibition",
-      stimuli: {
-        cs_plus: params.cs_plus,
-        cs_minus: params.cs_minus
-      },
-      params: {
-        n_acquisition_trials: params.n_acq,
-        n_inhibition_trials: params.n_inh,
-        n_retardation_trials: params.n_ret,
-        alpha: params.alpha
-      },
-      attention: attentionMap
-    },
-    report: { preset: "conditioned_inhibition" }
-  };
-}
-
-function renderPayload() {
-  document.getElementById("payload-view").textContent =
-    JSON.stringify(buildPayload(), null, 2);
-}
-
-function validate() {
-  if (params.n_acq < 1) throw new Error("n_acquisition_trials must be at least 1");
-  if (params.n_inh < 1) throw new Error("n_inhibition_trials must be at least 1");
-  if (params.n_ret < 1) throw new Error("n_retardation_trials must be at least 1");
-  if (params.alpha < 0 || params.alpha > 1) throw new Error("alpha must be 0-1");
-  if (!params.cs_plus.length) throw new Error("Select at least one CS+ stimulus");
-  if (!params.cs_minus.length) throw new Error("Select at least one CS- stimulus");
-}
-
-document.getElementById("back-btn").onclick = () => {
-  window.location.href = "/ui/presets.html";
-};
-
-document.getElementById("n_acq").oninput = e => {
-  params.n_acq = +e.target.value;
-  document.getElementById("n_acq_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("n_inh").oninput = e => {
-  params.n_inh = +e.target.value;
-  document.getElementById("n_inh_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("n_ret").oninput = e => {
-  params.n_ret = +e.target.value;
-  document.getElementById("n_ret_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("alpha").oninput = e => {
-  params.alpha = +e.target.value;
-  document.getElementById("a_val").textContent = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("cs_plus").onchange = () => {
-  syncStimuliSelections("plus");
-};
-
-document.getElementById("cs_minus").onchange = () => {
-  syncStimuliSelections("minus");
-};
-
-document.getElementById("representation").onchange = e => {
-  params.representation = e.target.value;
-  renderPayload();
-};
-
-document.getElementById("run-btn").onclick = async () => {
-  const output = document.getElementById("run-output");
-  output.classList.remove("error");
-
-  let payload;
-  try {
-    validate();
-    payload = buildPayload();
-  } catch (err) {
-    output.textContent = err.message;
-    output.classList.add("error");
-    return;
-  }
-
-  output.textContent = "Running...";
-
-  const res = await fetch("/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await res.json();
-  if (res.ok && data.run_id) {
-    window.location.href = `/ui/results.html?run_id=${data.run_id}`;
-    return;
-  }
-
-  output.textContent = JSON.stringify(data, null, 2);
-};
-
-populate(document.getElementById("cs_plus"), params.cs_plus);
-populate(document.getElementById("cs_minus"), params.cs_minus);
-syncStimuliSelections("plus");
-</script>
-
+  <script type="text/babel" src="/ui/js/react/conditioned_inhibition_editor.jsx"></script>
 </body>
 </html>
-
