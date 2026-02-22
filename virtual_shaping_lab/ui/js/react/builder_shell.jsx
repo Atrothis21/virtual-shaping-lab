@@ -118,44 +118,6 @@ function BuilderShellApp() {
     });
   };
 
-  const updateRepresentationStimuli = (nextStimuli) => {
-    const deduped = Array.from(new Set((nextStimuli || []).filter(Boolean)));
-    if (!deduped.length) return;
-
-    setPayload((prev) => {
-      const next = JSON.parse(JSON.stringify(prev));
-      if (!next.experiment.representation) next.experiment.representation = { name: "vector_elemental", params: {} };
-      if (!next.experiment.representation.params) next.experiment.representation.params = {};
-      next.experiment.representation.params.stimuli = deduped;
-
-      const trimMap = (obj, field) => {
-        const out = {};
-        deduped.forEach((s) => {
-          const val = obj?.[s];
-          if (val == null) return;
-          if (typeof val === "number") {
-            out[s] = { [field]: val };
-            return;
-          }
-          if (typeof val[field] === "number") {
-            out[s] = { [field]: val[field] };
-          }
-        });
-        return out;
-      };
-
-      next.experiment.salience = trimMap(next.experiment.salience || {}, "salience");
-      next.experiment.attention = trimMap(next.experiment.attention || {}, "attention");
-      if (next.experiment.representation.params.similarity) {
-        next.experiment.representation.params.similarity = buildDefaultSimilarity(
-          deduped,
-          inferOffdiagFromSimilarity(next.experiment.representation.params.similarity, similarityOffdiag)
-        );
-      }
-      return next;
-    });
-  };
-
   const onRun = async () => {
     setRunError(false);
     setRunOutput("Running...");
@@ -241,17 +203,9 @@ function BuilderShellApp() {
         <div style={{ display: "grid", gap: "0.4rem", marginBottom: "0.8rem" }}>
           {repStimuli.map((s) => {
             const isReferenced = referencedStimuli.has(s);
-            const canRemove = repStimuli.length > 1 && !isReferenced;
             return (
               <div key={s} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.6rem" }}>
                 <span>{s}{isReferenced ? " (in use)" : ""}</span>
-                <button
-                  className="btn"
-                  disabled={!canRemove}
-                  onClick={() => updateRepresentationStimuli(repStimuli.filter((x) => x !== s))}
-                >
-                  Remove
-                </button>
               </div>
             );
           })}
