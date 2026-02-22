@@ -2,201 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Virtual Shaping Lab Builder</title>
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 2rem; max-width: 900px; }
-    section { margin-bottom: 2rem; }
-    label { font-weight: 600; }
-    select, input[type="range"], input[type="text"], button { margin-top: 0.4rem; padding: 0.5rem; font-size: 1rem; }
-    select[multiple] { width: 100%; height: 7rem; }
-    .panel { border-left: 3px solid #ddd; padding-left: 1rem; margin-top: 1.5rem; }
-    .phase-list { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .phase-btn { padding: 0.4rem 0.7rem; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; border-radius: 4px; }
-    .phase-btn.active { background: #dbeafe; border-color: #2563eb; font-weight: 600; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-    .error { background: #ffe6e6; color: #900; }
-    .hidden { display: none; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 2rem;
+      max-width: 1100px;
+    }
+
+    .panel {
+      border-left: 3px solid #ddd;
+      padding-left: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, .btn {
+      margin-top: 0.6rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      text-decoration: none;
+      color: #111;
+    }
+
+    .btn.secondary {
+      background: #f5f5f5;
+    }
   </style>
 </head>
 <body>
+  <div id="root"></div>
 
-<h1>Virtual Shaping Lab — Builder</h1>
-<p>Build a user-defined protocol by composing phases.</p>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<button class="btn" onclick="window.location.href='/ui/index.html'">Back to Menu</button>
-
-<section>
-  <h2>Phases</h2>
-  <div class="phase-list" id="phase-list"></div>
-  <button id="add-phase-btn">➕ Add Phase</button>
-</section>
-
-<section>
-  <h2 id="phase-title">Phase</h2>
-
-  <label>Phase</label><br />
-  <select id="protocol">
-    <option value="acquisition">Acquisition</option>
-    <option value="nonreinforcement">Nonreinforcement</option>
-    <option value="compound_acquisition">Compound Acquisition</option>
-    <option value="compound_nonreinforcement">Compound Nonreinforcement</option>
-    <option value="differential_acquisition">Differential Acquisition</option>
-    <option value="probe">Probe</option>
-    <option value="context_shift">Context Shift</option>
-    <option value="criterion_shift">Criterion Shift</option>
-  </select>
-
-  <div class="panel" id="trials-block">
-    <h3>Trials</h3>
-    <label id="trials-label">Trials</label><br />
-    <input type="range" id="trials" min="1" max="200" step="1" />
-    <span id="trials-value"></span>
-  </div>
-
-  <div class="panel">
-    <h3>Learning</h3>
-    <label style="float:right;">
-      <input type="checkbox" id="advanced-toggle" />
-      Advanced
-    </label>
-    <div style="clear:both;"></div>
-
-    <div id="alpha-cs1-block" class="hidden">
-      <label>Alpha CS1: <span id="alpha_cs1_value"></span></label><br />
-      <input type="range" id="alpha_cs1" min="0" max="1" step="0.05" />
-    </div>
-
-    <div id="alpha-cs2-block" class="hidden">
-      <label>Alpha CS2: <span id="alpha_cs2_value"></span></label><br />
-      <input type="range" id="alpha_cs2" min="0" max="1" step="0.05" />
-    </div>
-
-    <div id="alpha-block">
-      <label>Learning Rate (alpha): <span id="alpha_value"></span></label><br />
-      <input type="range" id="alpha" min="0" max="1" step="0.05" />
-    </div>
-
-    <div id="gamma-block">
-      <label>Discount (gamma): <span id="gamma_value"></span></label><br />
-      <input type="range" id="gamma" min="0" max="1" step="0.05" />
-    </div>
-  </div>
-
-  <div class="panel" id="stimuli-panel">
-    <h3>Stimuli</h3>
-
-    <div id="cs-block">
-      <label id="cs_plus_label">CS+</label><br />
-      <select id="cs_plus" multiple></select>
-
-      <br /><br />
-
-      <label id="cs_minus_label">CS−</label><br />
-      <select id="cs_minus" multiple></select>
-    </div>
-
-    <div id="compound-block" class="hidden">
-      <label>Compound Stimulus (two cues)</label><br />
-      <select id="compound_1"></select>
-      <br />
-      <select id="compound_2"></select>
-    </div>
-  </div>
-
-  <div class="panel hidden" id="salience-panel">
-    <h3>Salience</h3>
-    <div id="salience-controls"></div>
-  </div>
-
-  <div class="panel hidden" id="attention-panel">
-    <h3>Attention (Learning Rate)</h3>
-    <div id="attention-controls"></div>
-  </div>
-
-  <div class="panel" id="context-panel">
-    <h3>Context</h3>
-    <label>Context</label><br />
-    <select id="context">
-      <option value="A">A</option>
-      <option value="B">B</option>
-      <option value="C">C</option>
-    </select>
-  </div>
-
-  <div id="advanced-panel" class="panel hidden">
-    <h3>Advanced Parameters</h3>
-    <div id="advanced-params"></div>
-  </div>
-</section>
-
-<section>
-  <h2>Experiment Settings</h2>
-  <div class="panel">
-    <h3>Context Inference</h3>
-    <label>
-      <input type="checkbox" id="context_inference_toggle" />
-      Enable heuristic context inference
-    </label>
-    <br /><br />
-    <label>Max Contexts</label><br />
-    <select id="context_inference_max">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-    </select>
-  </div>
-
-  <div class="panel">
-    <h3>Similarity (Optional)</h3>
-    <p>Enable a default similarity matrix (diagonal = 1.0, off-diagonal = slider value).</p>
-    <label>
-      <input type="checkbox" id="similarity_toggle" />
-      Enable similarity matrix
-    </label>
-    <br /><br />
-    <label>Off-diagonal similarity: <span id="similarity_offdiag_value">0.2</span></label><br />
-    <input type="range" id="similarity_offdiag" min="0" max="1" step="0.05" value="0.2" />
-    <br /><br />
-    <button type="button" id="similarity_apply">Apply Default Matrix</button>
-    <button type="button" id="similarity_reset" style="margin-left:0.6rem;">Reset to Identity</button>
-    <div id="similarity_grid" style="margin-top:1rem;"></div>
-    <pre id="similarity_preview" style="margin-top:0.8rem;"></pre>
-  </div>
-</section>
-
-<section>
-  <h2>Experiment Payload</h2>
-  <pre id="payload-preview"></pre>
-</section>
-
-<section>
-  <button id="run-btn">Run Experiment</button>
-  <pre id="run-output">Not run yet.</pre>
-</section>
-
-<section>
-  <h2>Debug</h2>
-  <pre id="debug-log">Debug log will appear here.</pre>
-</section>
-
-<script src="/ui/js/builder/constants.js"></script>
-<script src="/ui/js/builder/state.js"></script>
-<script src="/ui/js/builder/validation.js"></script>
-<script src="/ui/js/builder/phase_mutations.js"></script>
-<script src="/ui/js/builder/phase_defaults.js"></script>
-<script src="/ui/js/builder/dom.js"></script>
-<script src="/ui/js/builder/dom_utils.js"></script>
-<script src="/ui/js/builder/schema_cache.js"></script>
-
-<script src="/ui/js/builder/render/render_list.js"></script>
-<script src="/ui/js/builder/render/render_payload.js"></script>
-<script src="/ui/js/builder/render/render_phase_editor.js"></script>
-
-<script src="/ui/js/builder/handlers/phase_controls.js"></script>
-<script src="/ui/js/builder/handlers/param_controls.js"></script>
-<script src="/ui/js/builder/handlers/stimuli_controls.js"></script>
-<script src="/ui/js/builder/handlers/run_controls.js"></script>
-<script src="/ui/js/builder/handlers.js"></script>
-
+  <script type="text/babel" src="/ui/js/react/builder_shell.jsx"></script>
 </body>
 </html>
