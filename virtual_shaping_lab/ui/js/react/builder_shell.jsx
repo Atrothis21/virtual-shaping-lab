@@ -195,8 +195,12 @@ function BuilderShellApp() {
   const isProbe = protocol === "probe";
   const isCriterion = protocol === "criterion_shift";
 
-  const csPlus = active?.stimuli?.cs_plus?.[0] || availableStimuli[0];
-  const csMinus = active?.stimuli?.cs_minus?.[0] || availableStimuli[1] || availableStimuli[0];
+  const csPlusList = Array.isArray(active?.stimuli?.cs_plus) && active.stimuli.cs_plus.length
+    ? active.stimuli.cs_plus
+    : [availableStimuli[0]];
+  const csMinusList = Array.isArray(active?.stimuli?.cs_minus) && active.stimuli.cs_minus.length
+    ? active.stimuli.cs_minus
+    : [availableStimuli[1] || availableStimuli[0]];
   const comp1 = active?.stimuli?.compound?.[0] || availableStimuli[0];
   const comp2 = active?.stimuli?.compound?.[1] || availableStimuli[1] || availableStimuli[0];
 
@@ -481,8 +485,13 @@ function BuilderShellApp() {
           <>
             <label>CS+</label>
             <select
-              value={csPlus}
-              onChange={(e) => updateActive((p) => { p.stimuli = { cs_plus: [e.target.value] }; })}
+              multiple
+              size="5"
+              value={csPlusList}
+              onChange={(e) => updateActive((p, stim) => {
+                const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
+                p.stimuli = { cs_plus: nextPlus.length ? nextPlus : [stim[0]] };
+              })}
             >
               {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -493,12 +502,19 @@ function BuilderShellApp() {
           <>
             <label>CS+</label>
             <select
-              value={csPlus}
+              multiple
+              size="5"
+              value={csPlusList}
               onChange={(e) => updateActive((p, stim) => {
-                const plus = e.target.value;
-                const fallback = (stim.find((x) => x !== plus) || plus);
-                const minus = p.stimuli?.cs_minus?.[0] === plus ? fallback : (p.stimuli?.cs_minus?.[0] || fallback);
-                p.stimuli = { cs_plus: [plus], cs_minus: [minus] };
+                const nextPlusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
+                const nextPlus = nextPlusRaw.length ? nextPlusRaw : [stim[0]];
+                const currentMinus = Array.isArray(p.stimuli?.cs_minus) ? p.stimuli.cs_minus : [stim[1] || stim[0]];
+                const nextMinus = currentMinus.filter((s) => !nextPlus.includes(s));
+                const fallbackMinus = stim.find((x) => !nextPlus.includes(x)) || nextPlus[0];
+                p.stimuli = {
+                  cs_plus: nextPlus,
+                  cs_minus: nextMinus.length ? nextMinus : [fallbackMinus],
+                };
               })}
             >
               {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -506,14 +522,23 @@ function BuilderShellApp() {
 
             <label>CS-</label>
             <select
-              value={csMinus}
+              multiple
+              size="5"
+              value={csMinusList}
               onChange={(e) => updateActive((p, stim) => {
-                const minus = e.target.value;
-                const plus = p.stimuli?.cs_plus?.[0] || stim[0];
-                p.stimuli = { cs_plus: [plus], cs_minus: [minus === plus ? (stim.find((x) => x !== plus) || plus) : minus] };
+                const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length
+                  ? p.stimuli.cs_plus
+                  : [stim[0]];
+                const nextMinusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
+                const filtered = nextMinusRaw.filter((s) => !plus.includes(s));
+                const fallbackMinus = stim.find((x) => !plus.includes(x)) || plus[0];
+                p.stimuli = {
+                  cs_plus: plus,
+                  cs_minus: filtered.length ? filtered : [fallbackMinus],
+                };
               })}
             >
-              {availableStimuli.map((s) => <option key={s} value={s} disabled={s === csPlus}>{s}</option>)}
+              {availableStimuli.map((s) => <option key={s} value={s} disabled={csPlusList.includes(s)}>{s}</option>)}
             </select>
           </>
         )}
