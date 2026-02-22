@@ -11,13 +11,18 @@ from experiment.runtime_records import finalize_record
 from ui.validate_payload import validate_payload
 
 from preset_payloads import (
+    aab_renewal_payload,
+    aba_renewal_payload,
+    abc_renewal_payload,
     acquisition_payload,
     blocking_payload,
     compound_acquisition_payload,
     differential_acquisition_payload,
     extinction_payload,
+    occasion_setting_payload,
     overexpectation_payload,
     overshadowing_payload,
+    rapid_reacquisition_payload,
 )
 
 
@@ -173,3 +178,87 @@ def test_blocking_default_payload_retains_primary_cue_dominance_signal():
     # pretrained cue remains strongly predictive after compound introduction.
     assert _mean_prediction(acq_tail) > 0.8
     assert _mean_prediction(comp_tail) > 0.9
+
+
+def test_aba_renewal_probe_recovers_from_extinction_context_default_payload():
+    records = _run_records(aba_renewal_payload())
+    ext_records = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
+    probe_records = [r for r in records if r.get("subphase_name") == "probe"]
+
+    assert ext_records, "Expected nonreinforcement records."
+    assert probe_records, "Expected probe records."
+
+    ext_tail = _first_last_n(ext_records, n=10)[1]
+    probe_tail = _first_last_n(probe_records, n=10)[1]
+
+    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + 0.2
+
+
+def test_abc_renewal_probe_recovers_above_extinction_default_payload():
+    records = _run_records(abc_renewal_payload())
+    ext_records = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
+    probe_records = [r for r in records if r.get("subphase_name") == "probe"]
+
+    assert ext_records, "Expected nonreinforcement records."
+    assert probe_records, "Expected probe records."
+
+    ext_tail = _first_last_n(ext_records, n=10)[1]
+    probe_tail = _first_last_n(probe_records, n=10)[1]
+
+    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + 0.1
+
+
+def test_aab_renewal_probe_stays_near_extinction_level_default_payload():
+    records = _run_records(aab_renewal_payload())
+    ext_records = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
+    probe_records = [r for r in records if r.get("subphase_name") == "probe"]
+
+    assert ext_records, "Expected nonreinforcement records."
+    assert probe_records, "Expected probe records."
+
+    ext_tail = _first_last_n(ext_records, n=10)[1]
+    probe_tail = _first_last_n(probe_records, n=10)[1]
+
+    assert abs(_mean_prediction(probe_tail) - _mean_prediction(ext_tail)) < 0.1
+
+
+def test_rapid_reacquisition_returns_to_high_response_after_extinction_default_payload():
+    records = _run_records(rapid_reacquisition_payload())
+    rewards = [float(r.get("reward", 0.0)) for r in records]
+
+    first_zero = next((i for i, rv in enumerate(rewards) if rv == 0.0), None)
+    last_zero = next((i for i in range(len(rewards) - 1, -1, -1) if rewards[i] == 0.0), None)
+    assert first_zero is not None and last_zero is not None and first_zero <= last_zero
+
+    first_acq = records[:first_zero]
+    extinction = records[first_zero : last_zero + 1]
+    reacq = records[last_zero + 1 :]
+
+    assert first_acq, "Expected initial acquisition block."
+    assert extinction, "Expected extinction block."
+    assert reacq, "Expected reacquisition block."
+
+    reacq_tail = _first_last_n(reacq, n=min(10, len(reacq)))[1]
+    ext_tail = _first_last_n(extinction, n=10)[1]
+
+    assert _mean_prediction(reacq_tail) > _mean_prediction(ext_tail) + 0.2
+    assert _mean_prediction(reacq_tail) > 0.8
+
+
+def test_occasion_setting_probe_is_between_acquisition_and_nonreinforcement_default_payload():
+    records = _run_records(occasion_setting_payload())
+    acquisition = [r for r in records if r.get("subphase_name") == "acquisition"]
+    nonreinforcement = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
+    probe = [r for r in records if r.get("subphase_name") == "probe"]
+
+    assert acquisition, "Expected acquisition records."
+    assert nonreinforcement, "Expected nonreinforcement records."
+    assert probe, "Expected probe records."
+
+    acq_tail = _first_last_n(acquisition, n=10)[1]
+    nr_tail = _first_last_n(nonreinforcement, n=10)[1]
+    probe_tail = _first_last_n(probe, n=10)[1]
+
+    probe_mean = _mean_prediction(probe_tail)
+    assert probe_mean > _mean_prediction(nr_tail) + 0.1
+    assert probe_mean < _mean_prediction(acq_tail) - 0.1
