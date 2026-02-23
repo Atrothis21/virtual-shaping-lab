@@ -365,3 +365,63 @@ def test_build_similarity_weights_max_aggregation():
     weights = build_similarity_weights(["tone"], sim_map)
     assert weights["tone"] == 1.0
     assert weights["noise"] == 0.3
+
+
+def test_similarity_identity_matrix_matches_no_similarity_elemental():
+    base_params = {
+        "stimuli": ["tone", "noise"],
+        "contexts": ["A"],
+        "include_global": True,
+        "include_context": True,
+        "max_compound_size": 2,
+    }
+    identity_params = {
+        **base_params,
+        "similarity": {
+            "type": "matrix",
+            "stimuli": ["tone", "noise"],
+            "values": [
+                [1.0, 0.0],
+                [0.0, 1.0],
+            ],
+        },
+    }
+
+    rep_no_sim = VectorElementalRepresentation(params=base_params)
+    rep_identity = VectorElementalRepresentation(params=identity_params)
+
+    obs_single = make_observation(["tone"], "A", compound=False)
+    obs_compound = make_observation(["tone", "noise"], "A", compound=True)
+
+    np.testing.assert_allclose(rep_no_sim.encode(obs_single), rep_identity.encode(obs_single))
+    np.testing.assert_allclose(rep_no_sim.encode(obs_compound), rep_identity.encode(obs_compound))
+
+
+def test_similarity_non_identity_spreads_activation_elemental():
+    params = {
+        "stimuli": ["tone", "noise"],
+        "contexts": ["A"],
+        "include_global": True,
+        "include_context": True,
+        "max_compound_size": 2,
+        "similarity": {
+            "type": "matrix",
+            "stimuli": ["tone", "noise"],
+            "values": [
+                [1.0, 0.4],
+                [0.4, 1.0],
+            ],
+        },
+    }
+    rep = VectorElementalRepresentation(params=params)
+    vec = rep.encode(make_observation(["tone"], "A", compound=False))
+
+    idx_global_noise = rep._encoder._index["global:noise"]
+    idx_ctx_noise = rep._encoder._index["ctx:A|noise"]
+    idx_global_tone = rep._encoder._index["global:tone"]
+    idx_ctx_tone = rep._encoder._index["ctx:A|tone"]
+
+    assert vec[idx_global_tone] == pytest.approx(1.0)
+    assert vec[idx_ctx_tone] == pytest.approx(1.0)
+    assert vec[idx_global_noise] == pytest.approx(0.4)
+    assert vec[idx_ctx_noise] == pytest.approx(0.4)
