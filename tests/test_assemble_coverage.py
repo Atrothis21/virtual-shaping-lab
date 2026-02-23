@@ -60,7 +60,6 @@ def test_extract_learner_params():
     params = _extract_learner_params(cfg, rep, policy_actions=["a0"])
     assert params["alpha"] == 0.2
     assert params["gamma"] == 0.1
-    assert params["salience"] == [1.0, 1.0]
     assert params["actions"] == ["a0"]
 
 

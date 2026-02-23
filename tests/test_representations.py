@@ -313,6 +313,27 @@ def test_vector_representations():
     _ = elemental_sim.encode(make_observation(["tone", "noise"], "A", compound=True))
 
 
+def test_salience_applies_in_representation_encoding():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone", "noise"],
+            "contexts": ["A"],
+            "salience": {"tone": 0.5, "noise": 1.0},
+            "include_global": True,
+            "include_context": True,
+        }
+    )
+
+    vec = rep.encode(make_observation(["tone"], "A"))
+    idx_global_tone = rep._encoder._index["global:tone"]
+    idx_ctx_tone = rep._encoder._index["ctx:A|tone"]
+    idx_global_noise = rep._encoder._index["global:noise"]
+
+    assert vec[idx_global_tone] == pytest.approx(0.5)
+    assert vec[idx_ctx_tone] == pytest.approx(0.5)
+    assert vec[idx_global_noise] == pytest.approx(0.0)
+
+
 def test_parse_similarity_matrix_happy_path():
     sim = {
         "type": "matrix",

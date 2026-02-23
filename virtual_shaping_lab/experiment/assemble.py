@@ -69,7 +69,8 @@ def _infer_phase_contexts(config) -> list[str | None]:
     return inferred
 
 
-# Learner params: derive alpha/gamma + salience from representation + policy actions.
+# Learner params: derive alpha/gamma (+ policy actions) from config.
+# Salience is representation-owned and applied during encoding.
 def _extract_learner_params(config, representation, policy_actions):
     learner_params = {}
 
@@ -79,9 +80,6 @@ def _extract_learner_params(config, representation, policy_actions):
             learner_params["alpha"] = first_params["alpha"]
         if "gamma" in first_params:
             learner_params["gamma"] = first_params["gamma"]
-
-    if hasattr(representation, "salience"):
-        learner_params["salience"] = representation.salience
 
     if policy_actions:
         learner_params.setdefault("actions", policy_actions)
