@@ -33,6 +33,11 @@ function PresetCard({ item }) {
           <strong>Try Next In Builder:</strong> {item.builderNext}
         </p>
       )}
+      {item.nextPhenomenon && (
+        <p className="next-phenomenon">
+          <strong>Recommended Next Phenomenon:</strong> {item.nextPhenomenon}
+        </p>
+      )}
       <div className="card-actions">
         <a className="button" href={item.href}>Open Preset</a>
         <a className="button secondary" href={item.builderHref || "/ui/builder.html"}>Open Builder</a>

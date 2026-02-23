@@ -6,6 +6,7 @@ function preset(def) {
     phaseSummary: "",
     teaches: "",
     builderNext: "",
+    nextPhenomenon: "",
     builderHref: "/ui/builder.html",
     ...def,
   };
@@ -22,6 +23,7 @@ window.VSLReact.presetSections = [
         phaseSummary: "Acquisition",
         teaches: "How associative strength grows under repeated reinforced CS trials.",
         builderNext: "Change alpha, outcome, or CS identity and compare learning curves.",
+        nextPhenomenon: "Extinction",
         href: "/ui/presets/acquisition.html",
       }),
       preset({
@@ -30,6 +32,7 @@ window.VSLReact.presetSections = [
         phaseSummary: "Acquisition -> Nonreinforcement",
         teaches: "How learned responding decays when reinforcement is withheld.",
         builderNext: "Add a probe phase to inspect residual responding after extinction.",
+        nextPhenomenon: "Differential Acquisition",
         href: "/ui/presets/extinction.html",
       }),
       preset({
@@ -39,6 +42,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Salience"],
         teaches: "How two cues learn together and how cue strength balance affects compound learning.",
         builderNext: "Adjust salience per cue and compare asymmetry between CS1 and CS2.",
+        nextPhenomenon: "Blocking",
         href: "/ui/presets/compound_acquisition.html",
       }),
       preset({
@@ -48,6 +52,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Similarity"],
         teaches: "How the system separates reinforced and nonreinforced cues.",
         builderNext: "Enable similarity and test how CS- responds as similarity to CS+ increases.",
+        nextPhenomenon: "Overshadowing",
         href: "/ui/presets/differential_acquisition.html",
       }),
     ]
@@ -63,6 +68,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Salience"],
         teaches: "How combining already predictive cues can induce expectation mismatch.",
         builderNext: "Adjust acquisition/compound trial counts to see overexpectation sensitivity.",
+        nextPhenomenon: "Conditioned Inhibition",
         href: "/ui/presets/overexpectation.html",
       }),
       preset({
@@ -126,6 +132,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Salience"],
         teaches: "How prior learning on one cue can limit learning to a new added cue.",
         builderNext: "Change initial acquisition length to see blocking strength differences.",
+        nextPhenomenon: "Overexpectation",
         href: "/ui/presets/blocking.html",
       }),
       preset({
@@ -135,6 +142,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Salience"],
         teaches: "How inhibitory cue structure suppresses responding in compound presentations.",
         builderNext: "Modify inhibition/probe proportions and compare suppression strength.",
+        nextPhenomenon: "ABA Renewal",
         href: "/ui/presets/conditioned_inhibition.html",
       }),
     ]
@@ -150,6 +158,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Attention", "Salience"],
         teaches: "How one cue can dominate learning in a compound due to stronger weighting.",
         builderNext: "Vary attention asymmetry and compare cue-specific prediction traces.",
+        nextPhenomenon: "Blocking",
         href: "/ui/presets/overshadowing.html",
       }),
     ]
@@ -165,6 +174,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Similarity"],
         teaches: "How cue separation and generalization depend on similarity structure.",
         builderNext: "Enable similarity matrix in builder and sweep off-diagonal values.",
+        nextPhenomenon: "Occasion Setting",
         href: "/ui/presets/differential_acquisition.html",
       }),
     ]
@@ -180,6 +190,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Context"],
         teaches: "How returning to the original context can recover responding after extinction.",
         builderNext: "Toggle context inference and compare inferred vs explicit context behavior.",
+        nextPhenomenon: "ABC Renewal",
         href: "/ui/presets/aba_renewal.html",
       }),
       preset({
@@ -189,6 +200,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Context"],
         teaches: "How a novel probe context can partially recover responding after extinction elsewhere.",
         builderNext: "Swap probe context and compare ABC against ABA/AAB response recovery.",
+        nextPhenomenon: "Rapid Reacquisition",
         href: "/ui/presets/abc_renewal.html",
       }),
       preset({
@@ -198,6 +210,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Context"],
         teaches: "How shifting probe context without extinction-context mismatch changes recovery pattern.",
         builderNext: "Test AAB vs ABA with identical trial counts to isolate context effects.",
+        nextPhenomenon: "ABA Renewal",
         href: "/ui/presets/aab_renewal.html",
       }),
       preset({
@@ -207,6 +220,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Context"],
         teaches: "How relearning can occur rapidly when returning to a prior learning context.",
         builderNext: "Modify extinction depth and test how it changes reacquisition speed.",
+        nextPhenomenon: "Occasion Setting",
         href: "/ui/presets/rapid_reacquisition.html",
       }),
       preset({
@@ -216,6 +230,7 @@ window.VSLReact.presetSections = [
         mechanisms: ["Context"],
         teaches: "How one cue can modulate meaning of another cue across phase structure.",
         builderNext: "Adjust salience on setting vs target cue and inspect probe separation.",
+        nextPhenomenon: "ABA Renewal",
         href: "/ui/presets/occasion_setting.html",
       }),
     ],
@@ -230,6 +245,7 @@ window.VSLReact.presetSections = [
         phaseSummary: "Operant Acquisition",
         teaches: "How action values rise under reinforcement schedules.",
         builderNext: "Modify schedule parameters and compare action value trajectories.",
+        nextPhenomenon: "Matching Law",
         href: "/ui/presets/operant_conditioning.html",
       }),
       preset({
@@ -238,6 +254,7 @@ window.VSLReact.presetSections = [
         phaseSummary: "Matching Law",
         teaches: "How action selection matches relative reinforcement rates across options.",
         builderNext: "Change left/right schedule ratios and inspect choice allocation shifts.",
+        nextPhenomenon: "Build Your Own",
         href: "/ui/presets/matching_law.html",
       }),
     ],
