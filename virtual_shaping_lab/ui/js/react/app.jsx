@@ -14,13 +14,29 @@ function PresetCard({ item }) {
         </p>
       )}
       {mechanisms.length > 0 && (
-        <div className="badge-row">
-          {mechanisms.map((name) => (
-            <span key={`${item.href}-${name}`} className="badge">{name}</span>
-          ))}
+        <div className="badge-block">
+          <div className="badge-label">Mechanisms</div>
+          <div className="badge-row">
+            {mechanisms.map((name) => (
+              <span key={`${item.href}-${name}`} className="badge">{name}</span>
+            ))}
+          </div>
         </div>
       )}
-      <a className="button" href={item.href}>Open</a>
+      {item.teaches && (
+        <p className="teaches">
+          <strong>What This Demonstrates:</strong> {item.teaches}
+        </p>
+      )}
+      {item.builderNext && (
+        <p className="builder-next">
+          <strong>Try Next In Builder:</strong> {item.builderNext}
+        </p>
+      )}
+      <div className="card-actions">
+        <a className="button" href={item.href}>Open Preset</a>
+        <a className="button secondary" href={item.builderHref || "/ui/builder.html"}>Open Builder</a>
+      </div>
     </div>
   );
 }
