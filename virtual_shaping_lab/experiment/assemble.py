@@ -36,6 +36,11 @@ def _infer_contexts(rep_params, config):
     return rep_params
 
 
+def _has_explicit_phase_context(phase) -> bool:
+    params = getattr(phase, "params", {}) or {}
+    return bool(params.get("context"))
+
+
 def _infer_phase_contexts(config) -> list[str | None]:
     """
     Heuristic latent context assignment per phase.
@@ -131,6 +136,11 @@ def assemble_experiment(config):
         rep_params.setdefault("salience", config.salience)
 
     rep_params = _infer_contexts(rep_params, config)
+    inferred_contexts = _infer_phase_contexts(config)
+    if any(label is not None for label in inferred_contexts):
+        contexts = set(rep_params.get("contexts", []))
+        contexts.update(label for label in inferred_contexts if label is not None)
+        rep_params["contexts"] = sorted(contexts)
 
     representation = build_representation(rep_name, **rep_params)
 
@@ -182,8 +192,6 @@ def assemble_experiment(config):
     # ----------------------------
     runtime_units = []
 
-    inferred_contexts = _infer_phase_contexts(config)
-
     for i, phase in enumerate(config.phases):
         params = phase.params.copy()
 
@@ -208,7 +216,7 @@ def assemble_experiment(config):
         runtime_units.append(unit)
 
         inferred_context = inferred_contexts[i] if i < len(inferred_contexts) else None
-        if inferred_context:
+        if inferred_context and not _has_explicit_phase_context(phase):
             if hasattr(unit, "context"):
                 unit.context = inferred_context
             unit.context_source = "inferred"

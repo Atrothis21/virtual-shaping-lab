@@ -255,7 +255,7 @@ def test_assemble_experiment_string_rep_and_inferred_context(monkeypatch):
 
     units, agent, representation = assemble_mod.assemble_experiment(config)
     assert len(units) == 2
-    assert getattr(units[0], "context_source") == "inferred"
+    assert not hasattr(units[0], "context_source")
     assert getattr(units[1], "context_source") == "inferred"
 
 
