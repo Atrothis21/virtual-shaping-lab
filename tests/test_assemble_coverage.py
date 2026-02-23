@@ -52,6 +52,36 @@ def test_infer_phase_contexts_enabled_and_disabled():
     assert _infer_phase_contexts(cfg) == [None, None, None]
 
 
+def test_assemble_inferred_contexts_extend_representation_vocab(monkeypatch):
+    captured = {}
+
+    class DummyRep:
+        dimension = 2
+
+    def fake_build_rep(name, **params):
+        captured["contexts"] = params.get("contexts", [])
+        return DummyRep()
+
+    monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
+
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {"name": "vector_elemental", "params": {"stimuli": ["tone"]}},
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "phases": [
+                {"name": "Acq", "protocol": "acquisition", "stimuli": {"cs_plus": ["tone"]}, "params": {"n_trials": 1}},
+                {"name": "Ext", "protocol": "nonreinforcement", "stimuli": {"cs_plus": ["tone"]}, "params": {"n_trials": 1}},
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    assemble_experiment(cfg)
+    assert captured["contexts"] == ["A", "B"]
+
+
 def test_extract_learner_params():
     cfg = DummyConfig(
         phases=[PhaseConfig("P", "acquisition", {}, {"alpha": 0.2, "gamma": 0.1})]
@@ -60,7 +90,6 @@ def test_extract_learner_params():
     params = _extract_learner_params(cfg, rep, policy_actions=["a0"])
     assert params["alpha"] == 0.2
     assert params["gamma"] == 0.1
-    assert params["salience"] == [1.0, 1.0]
     assert params["actions"] == ["a0"]
 
 
@@ -95,6 +124,7 @@ def test_assemble_experiment_phase_mode_with_reward_schedule():
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, rep = assemble_experiment(config)
     assert runtime_units
+    assert getattr(agent.learner, "attention_map", {}) == {}
 
 
 def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
@@ -126,3 +156,65 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, rep = assemble_experiment(config)
     assert runtime_units
+
+
+def test_assemble_assigns_attention_to_learner():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "attention": {"tone": {"attention": 0.6}},
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, agent, _rep = assemble_experiment(config)
+    assert runtime_units
+    assert agent.learner.attention_map == {"tone": 0.6}
+
+
+def test_assemble_does_not_override_explicit_phase_context():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "context": "C"},
+                },
+                {
+                    "name": "Extinction",
+                    "protocol": "nonreinforcement",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1},
+                },
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, _agent, _rep = assemble_experiment(config)
+    assert runtime_units[0].context == "C"
+    assert not hasattr(runtime_units[0], "context_source")
+    assert runtime_units[1].context == "B"
+    assert runtime_units[1].context_source == "inferred"

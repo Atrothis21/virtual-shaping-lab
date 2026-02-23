@@ -12,7 +12,7 @@ class RescorlaWagnerLearner(BaseLearner):
 
     Update rule:
         delta = reward - prediction
-        w += alpha * delta * (salience * state)
+        w += alpha * delta * state
     """
 
     name = "rescorla_wagner"
@@ -43,20 +43,14 @@ class RescorlaWagnerLearner(BaseLearner):
         prediction = self.value(state)
         delta = reward - prediction
 
-        if self.salience is None:
-            self.weights += self.alpha * delta * state
-        else:
-            self.weights += self.alpha * delta * (self.salience * state)
+        self.weights += self.alpha * delta * state
     
     def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
         prediction = self.value(state)
         delta = delta_override if delta_override is not None else (reward - prediction)
         alpha = self.alpha if alpha_override is None else alpha_override
 
-        if self.salience is not None:
-            self.weights += alpha * delta * (self.salience * state)
-        else:
-            self.weights += alpha * delta * state
+        self.weights += alpha * delta * state
 
 
 

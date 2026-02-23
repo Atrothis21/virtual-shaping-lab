@@ -40,6 +40,30 @@ class BaseLearner(ABC):
         """
         self.alpha = alpha
         self.gamma = gamma
+        # Cue-identity attention map used for alpha modulation.
+        self.attention_map: Dict[str, float] = {}
+
+    def set_attention_map(self, attention: Optional[Dict[str, float]]) -> None:
+        self.attention_map = dict(attention or {})
+
+    def attention_multiplier(self, cue_labels) -> float:
+        """
+        Resolve attention multiplier from original cue labels.
+        """
+        if not self.attention_map:
+            return 1.0
+
+        if cue_labels is None:
+            return 1.0
+
+        if isinstance(cue_labels, (str, int, float)):
+            return float(self.attention_map.get(str(cue_labels), 1.0))
+
+        labels = [str(c) for c in cue_labels]
+        if not labels:
+            return 1.0
+        vals = [float(self.attention_map.get(lbl, 1.0)) for lbl in labels]
+        return sum(vals) / len(vals)
 
     # -------------------------------------------------
     # Required hooks

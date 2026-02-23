@@ -115,7 +115,8 @@ class CriterionShiftPhase(PhaseBase):
             self.agent,
             outcome["state"],
             outcome["reward"],
-            outcome.get("action")
+            outcome.get("action"),
+            cue_labels=outcome.get("stimulus"),
         )
 
     # ------------------------------------------------------------------

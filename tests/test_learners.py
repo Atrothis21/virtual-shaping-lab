@@ -102,6 +102,22 @@ def test_qlearner_paths():
     assert "weights" in learner.get_parameters()
 
 
+def test_learner_salience_vector_does_not_reweight_updates():
+    state = np.asarray([1.0, 0.0], dtype=float)
+
+    base = RescorlaWagnerLearner(state_dim=2, alpha=0.5, salience=None)
+    with_salience = RescorlaWagnerLearner(
+        state_dim=2,
+        alpha=0.5,
+        salience=np.asarray([0.1, 1.0], dtype=float),
+    )
+
+    base.update(state, reward=1.0)
+    with_salience.update(state, reward=1.0)
+
+    np.testing.assert_allclose(base.weights, with_salience.weights)
+
+
 class BaseDummyLearner(BaseLearner):
     def update(self, state, reward, action=None, next_state=None, done=None):
         self.last = (state, reward, action)

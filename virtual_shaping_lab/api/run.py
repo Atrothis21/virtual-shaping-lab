@@ -57,6 +57,7 @@ def _run_experiment(raw_payload: dict):
         records=records,
         preset=config.report_preset,
         payload=raw_payload,
+        output_dir=str(reports_dir),
     )
 
     report_dir = Path(report_dir)

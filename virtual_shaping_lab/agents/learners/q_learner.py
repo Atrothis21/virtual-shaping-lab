@@ -69,11 +69,7 @@ class QLearner(OperantLearner):
 
         td_error = reward + self.gamma * q_next - q_sa
 
-        # Gradient update (salience optional)
-        if self.salience is None:
-            self.weights[a_idx] += self.alpha * td_error * state
-        else:
-            self.weights[a_idx] += self.alpha * td_error * (self.salience * state)
+        self.weights[a_idx] += self.alpha * td_error * state
 
     def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
         if action is None:
@@ -84,10 +80,7 @@ class QLearner(OperantLearner):
         delta = delta_override if delta_override is not None else (reward - q)
         alpha = self.alpha if alpha_override is None else alpha_override
 
-        if self.salience is not None:
-            self.weights[a_idx] += alpha * delta * (self.salience * state)
-        else:
-            self.weights[a_idx] += alpha * delta * state
+        self.weights[a_idx] += alpha * delta * state
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {"weights": self.weights.copy()}

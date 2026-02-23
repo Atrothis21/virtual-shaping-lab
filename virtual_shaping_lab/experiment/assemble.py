@@ -36,6 +36,11 @@ def _infer_contexts(rep_params, config):
     return rep_params
 
 
+def _has_explicit_phase_context(phase) -> bool:
+    params = getattr(phase, "params", {}) or {}
+    return bool(params.get("context"))
+
+
 def _infer_phase_contexts(config) -> list[str | None]:
     """
     Heuristic latent context assignment per phase.
@@ -69,7 +74,8 @@ def _infer_phase_contexts(config) -> list[str | None]:
     return inferred
 
 
-# Learner params: derive alpha/gamma + salience from representation + policy actions.
+# Learner params: derive alpha/gamma (+ policy actions) from config.
+# Salience is representation-owned and applied during encoding.
 def _extract_learner_params(config, representation, policy_actions):
     learner_params = {}
 
@@ -79,9 +85,6 @@ def _extract_learner_params(config, representation, policy_actions):
             learner_params["alpha"] = first_params["alpha"]
         if "gamma" in first_params:
             learner_params["gamma"] = first_params["gamma"]
-
-    if hasattr(representation, "salience"):
-        learner_params["salience"] = representation.salience
 
     if policy_actions:
         learner_params.setdefault("actions", policy_actions)
@@ -132,10 +135,12 @@ def assemble_experiment(config):
     if getattr(config, "salience", None):
         rep_params.setdefault("salience", config.salience)
 
-    if getattr(config, "attention", None):
-        rep_params.setdefault("attention", config.attention)
-
     rep_params = _infer_contexts(rep_params, config)
+    inferred_contexts = _infer_phase_contexts(config)
+    if any(label is not None for label in inferred_contexts):
+        contexts = set(rep_params.get("contexts", []))
+        contexts.update(label for label in inferred_contexts if label is not None)
+        rep_params["contexts"] = sorted(contexts)
 
     representation = build_representation(rep_name, **rep_params)
 
@@ -164,6 +169,11 @@ def assemble_experiment(config):
         state_dim=representation.dimension,
         **learner_params,
     )
+    if getattr(config, "attention", None):
+        if hasattr(learner, "set_attention_map"):
+            learner.set_attention_map(config.attention)
+        else:
+            learner.attention_map = dict(config.attention)
 
     # ----------------------------
     # Agent (shared)
@@ -181,8 +191,6 @@ def assemble_experiment(config):
     # - Multi-phase protocols via protocol_factory
     # ----------------------------
     runtime_units = []
-
-    inferred_contexts = _infer_phase_contexts(config)
 
     for i, phase in enumerate(config.phases):
         params = phase.params.copy()
@@ -208,7 +216,7 @@ def assemble_experiment(config):
         runtime_units.append(unit)
 
         inferred_context = inferred_contexts[i] if i < len(inferred_contexts) else None
-        if inferred_context:
+        if inferred_context and not _has_explicit_phase_context(phase):
             if hasattr(unit, "context"):
                 unit.context = inferred_context
             unit.context_source = "inferred"

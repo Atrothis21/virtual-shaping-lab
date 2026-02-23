@@ -133,7 +133,7 @@ class CompoundAcquisitionPhase(PhaseBase):
         alpha_cs1 = self.params.get("alpha_cs1", self.agent.learner.alpha)
         alpha_cs2 = self.params.get("alpha_cs2", self.agent.learner.alpha)
 
-        attention_map = getattr(self.agent.representation, "attention_map", {}) or {}
+        attention_map = getattr(self.agent.learner, "attention_map", {}) or {}
         stim_a = outcome.get("a_stimulus")
         stim_b = outcome.get("b_stimulus")
         alpha_cs1 = alpha_cs1 * float(attention_map.get(stim_a, 1.0))

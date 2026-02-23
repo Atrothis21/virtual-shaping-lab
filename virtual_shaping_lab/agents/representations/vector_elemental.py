@@ -28,6 +28,16 @@ class VectorElementalRepresentation(RepresentationBase):
 
     name = "vector_elemental"
 
+    def _apply_salience(self, vec: np.ndarray) -> np.ndarray:
+        if self.salience.shape[0] == vec.shape[0]:
+            return vec * self.salience
+        # Defensive path: if encoder vocab is extended dynamically, treat
+        # new features as neutral salience (1.0).
+        scale = np.ones(vec.shape[0], dtype=float)
+        limit = min(self.salience.shape[0], scale.shape[0])
+        scale[:limit] = self.salience[:limit]
+        return vec * scale
+
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         super().__init__(params=params)
 
@@ -90,7 +100,7 @@ class VectorElementalRepresentation(RepresentationBase):
 
     def encode(self, observation: Observation) -> np.ndarray:
         if not self.similarity_map:
-            return self._encoder.encode(observation)
+            return self._apply_salience(self._encoder.encode(observation))
 
         features = observation.get("stimuli", [])
         compound = observation.get("compound", False)
@@ -105,7 +115,7 @@ class VectorElementalRepresentation(RepresentationBase):
         if self._encoder.mode in {"configural", "hybrid"} and (compound or self._encoder.mode == "configural"):
             self._encoder.add_compound_feature(vec, features, context)
 
-        return vec
+        return self._apply_salience(vec)
 
     @property
     def dimension(self) -> int:
