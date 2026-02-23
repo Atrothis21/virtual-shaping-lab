@@ -1,5 +1,15 @@
 window.VSLReact = window.VSLReact || {};
 
+const MECHANISM_HELP = {
+  Baseline: "Baseline behavior arises with neutral mechanism settings and prediction-error learning.",
+  Salience: "Salience scales representation strength, changing how strongly cues are encoded.",
+  Similarity: "Similarity spreads activation across cues, driving generalization and overlap effects.",
+  Attention: "Attention scales effective learning rate by cue identity during updates.",
+  Context: "Context partitions learning/retrieval across environments or inferred latent states.",
+  "Prediction Error": "Prediction error is the mismatch between expected and observed outcome.",
+  "Operant Value Learning": "Operant learners update action values from reinforcement history.",
+};
+
 window.VSLReact.teachingPanels = {
   acquisition: {
     phaseFlow: ["Acquisition"],
@@ -112,15 +122,41 @@ window.VSLReact.teachingPanels = {
   panel.style.borderRadius = "6px";
 
   const phaseFlow = Array.isArray(spec.phaseFlow) ? spec.phaseFlow.join(" -> ") : "";
-  const mechanisms = Array.isArray(spec.mechanisms) ? spec.mechanisms.join(", ") : "";
+  const mechanisms = Array.isArray(spec.mechanisms) ? spec.mechanisms : [];
+  const mechanismPills = mechanisms
+    .map((name) => `<button type="button" class="tp-pill" data-mech="${name}" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">${name}</button>`)
+    .join("");
 
   panel.innerHTML = `
-    <h3 style="margin:0 0 0.35rem 0;">Teaching Panel</h3>
-    <div style="font-size:0.92rem;color:#374151;"><strong>Phase Flow:</strong> ${phaseFlow}</div>
-    <div style="font-size:0.92rem;color:#374151;margin-top:0.2rem;"><strong>Mechanisms:</strong> ${mechanisms}</div>
-    <div style="font-size:0.92rem;color:#374151;margin-top:0.4rem;"><strong>What This Demonstrates:</strong> ${spec.summary}</div>
-    <div style="font-size:0.92rem;color:#374151;margin-top:0.4rem;"><strong>Expected Signature:</strong> ${spec.expected}</div>
+    <h3 style="margin:0 0 0.45rem 0;">Teaching Panel</h3>
+    <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-bottom:0.55rem;">
+      ${mechanismPills}
+    </div>
+    <div id="tp-mech-help" style="display:none;font-size:0.88rem;color:#374151;background:#ffffff;border:1px solid #dbeafe;border-radius:6px;padding:0.45rem 0.55rem;margin-bottom:0.55rem;"></div>
+    <details open style="margin-bottom:0.4rem;">
+      <summary style="cursor:pointer;font-weight:600;color:#111827;">Phase Flow</summary>
+      <div style="font-size:0.92rem;color:#374151;margin-top:0.35rem;">${phaseFlow}</div>
+    </details>
+    <details style="margin-bottom:0.4rem;">
+      <summary style="cursor:pointer;font-weight:600;color:#111827;">What This Demonstrates</summary>
+      <div style="font-size:0.92rem;color:#374151;margin-top:0.35rem;">${spec.summary}</div>
+    </details>
+    <details style="margin-bottom:0.2rem;">
+      <summary style="cursor:pointer;font-weight:600;color:#111827;">Expected Signature</summary>
+      <div style="font-size:0.92rem;color:#374151;margin-top:0.35rem;">${spec.expected}</div>
+    </details>
   `;
+
+  const help = panel.querySelector("#tp-mech-help");
+  const pills = panel.querySelectorAll(".tp-pill");
+  pills.forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const name = pill.getAttribute("data-mech");
+      const text = MECHANISM_HELP[name] || "Mechanism explanation coming soon.";
+      help.style.display = "block";
+      help.innerHTML = `<strong>${name}:</strong> ${text}`;
+    });
+  });
 
   const root = document.getElementById("root");
   if (root && root.parentNode) {
