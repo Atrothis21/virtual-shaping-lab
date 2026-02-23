@@ -56,6 +56,34 @@ function inferOffdiagFromSimilarity(similarity, fallback) {
   return fallback;
 }
 
+function isIdentitySimilarity(similarity) {
+  if (!similarity) return true;
+  const values = similarity?.values;
+  if (!Array.isArray(values) || !values.length) return true;
+  for (let i = 0; i < values.length; i += 1) {
+    const row = values[i];
+    if (!Array.isArray(row) || row.length !== values.length) return false;
+    for (let j = 0; j < row.length; j += 1) {
+      const v = Number(row[j]);
+      if (!Number.isFinite(v)) return false;
+      if (i === j && Math.abs(v - 1.0) > 1e-9) return false;
+      if (i !== j && Math.abs(v) > 1e-9) return false;
+    }
+  }
+  return true;
+}
+
+function isNeutralParamMap(mapObj, field, neutralValue) {
+  if (!mapObj || typeof mapObj !== "object") return true;
+  const entries = Object.values(mapObj);
+  if (!entries.length) return true;
+  return entries.every((raw) => {
+    if (typeof raw === "number") return Math.abs(raw - neutralValue) < 1e-9;
+    if (raw && typeof raw[field] === "number") return Math.abs(raw[field] - neutralValue) < 1e-9;
+    return true;
+  });
+}
+
 function BuilderShellApp() {
   const [payload, setPayload] = React.useState(createInitialPayload);
   const [activePhaseIndex, setActivePhaseIndex] = React.useState(0);
@@ -97,6 +125,13 @@ function BuilderShellApp() {
   const repStimuli = availableStimuli;
   const similarity = payload?.experiment?.representation?.params?.similarity || null;
   const similarityEnabled = Boolean(similarity);
+  const baselineCompatible = React.useMemo(() => {
+    const salienceNeutral = isNeutralParamMap(payload?.experiment?.salience, "salience", 1.0);
+    const attentionNeutral = isNeutralParamMap(payload?.experiment?.attention, "attention", 1.0);
+    const similarityNeutral = isIdentitySimilarity(payload?.experiment?.representation?.params?.similarity || null);
+    const contextInferenceEnabled = Boolean(payload?.experiment?.context_inference?.enabled);
+    return salienceNeutral && attentionNeutral && similarityNeutral && !contextInferenceEnabled;
+  }, [payload]);
 
   React.useEffect(() => {
     if (!similarity) return;
@@ -188,6 +223,18 @@ function BuilderShellApp() {
     setRunError(true);
   };
 
+  const onCopyPayload = async () => {
+    try {
+      const normalized = validateBeforeRun(payload);
+      await navigator.clipboard.writeText(JSON.stringify(normalized, null, 2));
+      setRunError(false);
+      setRunOutput("Payload copied to clipboard.");
+    } catch (err) {
+      setRunError(true);
+      setRunOutput(`Copy failed: ${err.message}`);
+    }
+  };
+
   return (
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
@@ -201,6 +248,17 @@ function BuilderShellApp() {
         <button className="btn secondary" onClick={() => setShowAdvanced((v) => !v)}>
           {showAdvanced ? "Hide Advanced Controls" : "Show Advanced Controls"}
         </button>
+      </div>
+
+      <div className="panel">
+        <h3>Baseline Compatibility</h3>
+        <div>
+          <strong>Status:</strong>{" "}
+          {baselineCompatible ? "Baseline-Compatible" : "Customized"}
+        </div>
+        <div style={{ color: "#555", marginTop: "0.2rem" }}>
+          Baseline = salience 1.0, attention 1.0, identity similarity, context inference off.
+        </div>
       </div>
 
       <BuilderPhaseList
@@ -717,6 +775,9 @@ function BuilderShellApp() {
 
       <div className="panel">
         <h3>Payload</h3>
+        <div className="actions">
+          <button className="btn secondary" onClick={onCopyPayload}>Copy Normalized Payload</button>
+        </div>
         <pre style={{ background: "#f5f5f5", padding: "1rem", borderRadius: "6px", overflowX: "auto" }}>
           {JSON.stringify(payload, null, 2)}
         </pre>

@@ -3,10 +3,23 @@ window.VSLReact = window.VSLReact || {};
 const sections = window.VSLReact.presetSections || [];
 
 function PresetCard({ item }) {
+  const mechanisms = Array.isArray(item.mechanisms) ? item.mechanisms : [];
   return (
     <div className="card">
       <h3>{item.name}</h3>
       <p>{item.description}</p>
+      {item.phaseSummary && (
+        <p className="phase-summary">
+          <strong>Phase Flow:</strong> {item.phaseSummary}
+        </p>
+      )}
+      {mechanisms.length > 0 && (
+        <div className="badge-row">
+          {mechanisms.map((name) => (
+            <span key={`${item.href}-${name}`} className="badge">{name}</span>
+          ))}
+        </div>
+      )}
       <a className="button" href={item.href}>Open</a>
     </div>
   );
