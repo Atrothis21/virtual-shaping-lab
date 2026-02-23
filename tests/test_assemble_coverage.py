@@ -94,6 +94,7 @@ def test_assemble_experiment_phase_mode_with_reward_schedule():
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, rep = assemble_experiment(config)
     assert runtime_units
+    assert getattr(agent.learner, "attention_map", {}) == {}
 
 
 def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
@@ -125,3 +126,30 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, rep = assemble_experiment(config)
     assert runtime_units
+
+
+def test_assemble_assigns_attention_to_learner():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "attention": {"tone": {"attention": 0.6}},
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, agent, _rep = assemble_experiment(config)
+    assert runtime_units
+    assert agent.learner.attention_map == {"tone": 0.6}

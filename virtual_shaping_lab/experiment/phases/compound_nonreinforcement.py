@@ -125,7 +125,8 @@ class CompoundNonReinforcementPhase(PhaseBase):
             self.agent,
             outcome["state"],
             outcome["reward"],
-            outcome.get("action")
+            outcome.get("action"),
+            cue_labels=list(outcome.get("compound", [])),
         )
 
     def record_trial(

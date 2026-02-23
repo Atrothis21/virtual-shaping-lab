@@ -130,9 +130,6 @@ def assemble_experiment(config):
     if getattr(config, "salience", None):
         rep_params.setdefault("salience", config.salience)
 
-    if getattr(config, "attention", None):
-        rep_params.setdefault("attention", config.attention)
-
     rep_params = _infer_contexts(rep_params, config)
 
     representation = build_representation(rep_name, **rep_params)
@@ -162,6 +159,11 @@ def assemble_experiment(config):
         state_dim=representation.dimension,
         **learner_params,
     )
+    if getattr(config, "attention", None):
+        if hasattr(learner, "set_attention_map"):
+            learner.set_attention_map(config.attention)
+        else:
+            learner.attention_map = dict(config.attention)
 
     # ----------------------------
     # Agent (shared)
