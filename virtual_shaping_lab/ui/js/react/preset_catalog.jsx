@@ -13,8 +13,8 @@ function preset(def) {
 
 window.VSLReact.presetSections = [
   {
-    title: "Classical Agent - Single-Phase Procedures",
-    note: "Pavlovian phases for isolated behavior.",
+    title: "Baseline Foundations",
+    note: "Start here to learn core phase behavior before mechanism tuning.",
     items: [
       preset({
         name: "Acquisition",
@@ -23,6 +23,14 @@ window.VSLReact.presetSections = [
         teaches: "How associative strength grows under repeated reinforced CS trials.",
         builderNext: "Change alpha, outcome, or CS identity and compare learning curves.",
         href: "/ui/presets/acquisition.html",
+      }),
+      preset({
+        name: "Extinction",
+        description: "Phases: Acquisition -> Nonreinforcement.",
+        phaseSummary: "Acquisition -> Nonreinforcement",
+        teaches: "How learned responding decays when reinforcement is withheld.",
+        builderNext: "Add a probe phase to inspect residual responding after extinction.",
+        href: "/ui/presets/extinction.html",
       }),
       preset({
         name: "Compound Acquisition",
@@ -45,26 +53,9 @@ window.VSLReact.presetSections = [
     ]
   },
   {
-    title: "Classical Agent - Multi-Phase Phenomena",
-    note: "Canonical multi-phase behavioral effects.",
+    title: "Salience and Cue Competition",
+    note: "Use these presets to explore cue weighting and competition dynamics.",
     items: [
-      preset({
-        name: "Extinction",
-        description: "Phases: Acquisition -> Nonreinforcement.",
-        phaseSummary: "Acquisition -> Nonreinforcement",
-        teaches: "How learned responding decays when reinforcement is withheld.",
-        builderNext: "Add a probe phase to inspect residual responding after extinction.",
-        href: "/ui/presets/extinction.html",
-      }),
-      preset({
-        name: "Overshadowing",
-        description: "Phases: Acquisition (CS1) -> Compound Acquisition (CS1+CS2).",
-        phaseSummary: "Acquisition -> Compound Acquisition",
-        mechanisms: ["Attention", "Salience"],
-        teaches: "How one cue can dominate learning in a compound due to stronger weighting.",
-        builderNext: "Vary attention or salience asymmetry and compare cue-specific predictions.",
-        href: "/ui/presets/overshadowing.html",
-      }),
       preset({
         name: "Overexpectation",
         description: "Phases: Acquisition (A+, B+) -> Compound Acquisition (AB+).",
@@ -137,11 +128,101 @@ window.VSLReact.presetSections = [
         builderNext: "Change initial acquisition length to see blocking strength differences.",
         href: "/ui/presets/blocking.html",
       }),
+      preset({
+        name: "Conditioned Inhibition",
+        description: "Phases: Acquisition -> Compound Nonreinforcement -> Probe.",
+        phaseSummary: "Acquisition -> Compound Nonreinforcement -> Probe",
+        mechanisms: ["Salience"],
+        teaches: "How inhibitory cue structure suppresses responding in compound presentations.",
+        builderNext: "Modify inhibition/probe proportions and compare suppression strength.",
+        href: "/ui/presets/conditioned_inhibition.html",
+      }),
     ]
   },
   {
-    title: "Operant Agent - Procedures",
-    note: "Action-based learning and choice.",
+    title: "Attention and Selectivity",
+    note: "Learn how cue-specific learning-rate scaling shapes what is learned fastest.",
+    items: [
+      preset({
+        name: "Overshadowing",
+        description: "Phases: Acquisition (CS1) -> Compound Acquisition (CS1+CS2).",
+        phaseSummary: "Acquisition -> Compound Acquisition",
+        mechanisms: ["Attention", "Salience"],
+        teaches: "How one cue can dominate learning in a compound due to stronger weighting.",
+        builderNext: "Vary attention asymmetry and compare cue-specific prediction traces.",
+        href: "/ui/presets/overshadowing.html",
+      }),
+    ]
+  },
+  {
+    title: "Similarity and Generalization",
+    note: "Probe how representational overlap transfers learning between cues.",
+    items: [
+      preset({
+        name: "Differential Acquisition",
+        description: "Phase: Differential Acquisition (CS+ vs CS-).",
+        phaseSummary: "Differential Acquisition",
+        mechanisms: ["Similarity"],
+        teaches: "How cue separation and generalization depend on similarity structure.",
+        builderNext: "Enable similarity matrix in builder and sweep off-diagonal values.",
+        href: "/ui/presets/differential_acquisition.html",
+      }),
+    ]
+  },
+  {
+    title: "Context and Retrieval",
+    note: "Study context-dependent expression, recovery, and reinstatement-like effects.",
+    items: [
+      preset({
+        name: "ABA Renewal",
+        description: "Phases: Acquisition (A) -> Context Shift (B) -> Nonreinforcement -> Context Shift (A) -> Probe.",
+        phaseSummary: "Acquisition -> Context Shift -> Nonreinforcement -> Context Shift -> Probe",
+        mechanisms: ["Context"],
+        teaches: "How returning to the original context can recover responding after extinction.",
+        builderNext: "Toggle context inference and compare inferred vs explicit context behavior.",
+        href: "/ui/presets/aba_renewal.html",
+      }),
+      preset({
+        name: "ABC Renewal",
+        description: "Phases: Acquisition (A) -> Context Shift (B) -> Nonreinforcement -> Context Shift (C) -> Probe.",
+        phaseSummary: "Acquisition -> Context Shift -> Nonreinforcement -> Context Shift -> Probe",
+        mechanisms: ["Context"],
+        teaches: "How a novel probe context can partially recover responding after extinction elsewhere.",
+        builderNext: "Swap probe context and compare ABC against ABA/AAB response recovery.",
+        href: "/ui/presets/abc_renewal.html",
+      }),
+      preset({
+        name: "AAB Renewal",
+        description: "Phases: Acquisition (A) -> Nonreinforcement (A) -> Context Shift (B) -> Probe.",
+        phaseSummary: "Acquisition -> Nonreinforcement -> Context Shift -> Probe",
+        mechanisms: ["Context"],
+        teaches: "How shifting probe context without extinction-context mismatch changes recovery pattern.",
+        builderNext: "Test AAB vs ABA with identical trial counts to isolate context effects.",
+        href: "/ui/presets/aab_renewal.html",
+      }),
+      preset({
+        name: "Rapid Reacquisition",
+        description: "Phases: Acquisition (A) -> Context Shift (B) -> Nonreinforcement -> Context Shift (A) -> Acquisition.",
+        phaseSummary: "Acquisition -> Context Shift -> Nonreinforcement -> Context Shift -> Acquisition",
+        mechanisms: ["Context"],
+        teaches: "How relearning can occur rapidly when returning to a prior learning context.",
+        builderNext: "Modify extinction depth and test how it changes reacquisition speed.",
+        href: "/ui/presets/rapid_reacquisition.html",
+      }),
+      preset({
+        name: "Occasion Setting",
+        description: "Phases: Acquisition (S+X) -> Nonreinforcement (X) -> Probe.",
+        phaseSummary: "Acquisition -> Nonreinforcement -> Probe",
+        mechanisms: ["Context"],
+        teaches: "How one cue can modulate meaning of another cue across phase structure.",
+        builderNext: "Adjust salience on setting vs target cue and inspect probe separation.",
+        href: "/ui/presets/occasion_setting.html",
+      }),
+    ],
+  },
+  {
+    title: "Operant Decision Learning",
+    note: "Action-value learning under reinforcement schedules and concurrent choice.",
     items: [
       preset({
         name: "Operant Conditioning",
@@ -159,6 +240,6 @@ window.VSLReact.presetSections = [
         builderNext: "Change left/right schedule ratios and inspect choice allocation shifts.",
         href: "/ui/presets/matching_law.html",
       }),
-    ]
+    ],
   }
 ];
