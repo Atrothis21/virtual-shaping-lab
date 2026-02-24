@@ -176,7 +176,7 @@ def test_probe_errors():
 
 
 def test_concurrent_schedule_branches():
-    agent = DummyAgent(action=0)
+    agent = DummyAgent(action="left")
     phase = ConcurrentSchedulePhase(
         agent=agent,
         n_trials=1,
@@ -240,7 +240,7 @@ def test_operant_and_concurrent_punishment_branch():
     assert operant_record["outcome_type"] == "punishment"
 
     concurrent = ConcurrentSchedulePhase(
-        agent=DummyAgent(action=0),
+        agent=DummyAgent(action="left"),
         n_trials=1,
         schedule_left={"type": "fixed_ratio", "value": 1, "reward": -1.0},
         schedule_right={"type": "fixed_ratio", "value": 1, "reward": 1.0},

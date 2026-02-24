@@ -243,6 +243,10 @@ def test_validate_operant_semantics_matching_law_action_shape():
     with pytest.raises(vp.ValidationError, match="exactly two actions"):
         vp._validate_operant_payload_semantics(exp)
 
+    exp["policy"]["params"]["actions"] = ["right", "left"]
+    with pytest.raises(vp.ValidationError, match="must match policy params.actions order"):
+        vp._validate_operant_payload_semantics(exp)
+
 
 def test_validate_operant_semantics_matching_law_action_shape_in_phase_mode():
     exp = {

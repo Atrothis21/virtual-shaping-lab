@@ -282,6 +282,9 @@ def test_matching_law_shows_choice_bias_under_unequal_schedules_default_payload(
     records = _run_records(matching_law_payload())
     assert records, "Expected matching-law records."
 
+    rewards = [float(r.get("reward", 0.0)) for r in records]
+    assert sum(rewards) > 0.0, "Expected at least some delivered reward under matching-law schedules."
+
     actions = [r.get("action") for r in records]
     counts: dict[str, int] = {}
     for action in actions:

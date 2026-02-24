@@ -163,6 +163,10 @@ def _validate_operant_payload_semantics(exp: dict) -> None:
             raise ValidationError(
                 "matching_law operant policy must provide exactly two actions"
             )
+        if action_labels is not None and isinstance(actions, list) and action_labels != actions:
+            raise ValidationError(
+                "matching_law params.action_labels must match policy params.actions order"
+            )
 
 
 # Schema validation: enforce protocol-mode XOR phase-mode and validate schemas.

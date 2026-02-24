@@ -47,7 +47,13 @@ class MatchingLawProtocol(BaseProtocol):
         n_trials = self.params.get("n_trials", 200)
         schedule_left = self.params.get("schedule_left")
         schedule_right = self.params.get("schedule_right")
-        action_labels = self.params.get("action_labels", ["left", "right"])
+        action_labels = self.params.get("action_labels")
+        if action_labels is None:
+            policy_actions = getattr(getattr(self.agent, "policy", None), "actions", None)
+            if isinstance(policy_actions, list) and len(policy_actions) == 2:
+                action_labels = list(policy_actions)
+            else:
+                action_labels = ["left", "right"]
 
         phase = ConcurrentSchedulePhase(
             agent=self.agent,
