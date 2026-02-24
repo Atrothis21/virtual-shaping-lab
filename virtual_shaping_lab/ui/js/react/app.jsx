@@ -65,6 +65,9 @@ function App() {
     <>
       <h1>Experiment Presets</h1>
       <p>Select a preset to configure and run an experiment.</p>
+      <div style={{ color: "#555", marginBottom: "0.45rem" }}>
+        <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Presets
+      </div>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>

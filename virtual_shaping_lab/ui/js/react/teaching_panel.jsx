@@ -10,6 +10,24 @@ const MECHANISM_HELP = {
   "Operant Value Learning": "Operant learners update action values from reinforcement history.",
 };
 
+const PRESET_ORDER = [
+  "acquisition",
+  "extinction",
+  "differential_acquisition",
+  "compound_acquisition",
+  "blocking",
+  "overshadowing",
+  "overexpectation",
+  "conditioned_inhibition",
+  "aba_renewal",
+  "abc_renewal",
+  "aab_renewal",
+  "rapid_reacquisition",
+  "occasion_setting",
+  "operant_conditioning",
+  "matching_law",
+];
+
 window.VSLReact.teachingPanels = {
   acquisition: {
     phaseFlow: ["Acquisition"],
@@ -128,6 +146,12 @@ window.VSLReact.teachingPanels = {
     .join("");
 
   panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;">
+      <div style="font-size:0.86rem;color:#374151;">
+        <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / <a href="/ui/presets.html">Presets</a> / ${slug.replaceAll("_", " ")}
+      </div>
+      <div id="tp-nav-links" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
+    </div>
     <h3 style="margin:0 0 0.45rem 0;">Teaching Panel</h3>
     <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-bottom:0.55rem;">
       ${mechanismPills}
@@ -147,6 +171,27 @@ window.VSLReact.teachingPanels = {
     </details>
   `;
 
+  const navHost = panel.querySelector("#tp-nav-links");
+  const idx = PRESET_ORDER.indexOf(slug);
+  const prev = idx > 0 ? PRESET_ORDER[idx - 1] : null;
+  const next = idx >= 0 && idx < PRESET_ORDER.length - 1 ? PRESET_ORDER[idx + 1] : null;
+  if (prev) {
+    const a = document.createElement("a");
+    a.href = `/ui/presets/${prev}.html`;
+    a.textContent = "Previous";
+    a.className = "btn secondary";
+    a.style.marginTop = "0";
+    navHost.appendChild(a);
+  }
+  if (next) {
+    const a = document.createElement("a");
+    a.href = `/ui/presets/${next}.html`;
+    a.textContent = "Next";
+    a.className = "btn secondary";
+    a.style.marginTop = "0";
+    navHost.appendChild(a);
+  }
+
   const help = panel.querySelector("#tp-mech-help");
   const pills = panel.querySelectorAll(".tp-pill");
   pills.forEach((pill) => {
@@ -163,5 +208,57 @@ window.VSLReact.teachingPanels = {
     root.parentNode.insertBefore(panel, root);
   } else {
     document.body.prepend(panel);
+  }
+
+  // Collapse generated payload by default to reduce visual complexity.
+  const h2s = Array.from(document.querySelectorAll("h2"));
+  const payloadHeader = h2s.find((h) => (h.textContent || "").trim().toLowerCase() === "generated payload");
+  if (payloadHeader && payloadHeader.nextElementSibling && payloadHeader.nextElementSibling.tagName === "PRE") {
+    const payloadPre = payloadHeader.nextElementSibling;
+    const details = document.createElement("details");
+    details.style.marginTop = "0.6rem";
+    const summary = document.createElement("summary");
+    summary.textContent = "Show Generated Payload JSON";
+    summary.style.cursor = "pointer";
+    summary.style.fontWeight = "600";
+    details.appendChild(summary);
+    details.appendChild(payloadPre);
+    payloadHeader.replaceWith(details);
+  }
+
+  // Lightweight run feedback: status line near run controls.
+  const runButton = Array.from(document.querySelectorAll("button"))
+    .find((b) => ((b.textContent || "").trim().toLowerCase() === "run experiment"));
+  if (runButton) {
+    const status = document.createElement("div");
+    status.id = "preset-run-status";
+    status.style.marginTop = "0.8rem";
+    status.style.marginBottom = "0.35rem";
+    status.style.fontSize = "0.9rem";
+    status.innerHTML = "<strong>Run Status:</strong> Idle";
+
+    const outputPre = runButton.nextElementSibling;
+    runButton.parentNode.insertBefore(status, runButton);
+    runButton.addEventListener("click", () => {
+      status.innerHTML = "<strong>Run Status:</strong> Validating / Running";
+    });
+
+    if (outputPre && outputPre.tagName === "PRE") {
+      const syncStatus = () => {
+        const txt = (outputPre.textContent || "").trim().toLowerCase();
+        if (!txt || txt === "not run yet.") {
+          status.innerHTML = "<strong>Run Status:</strong> Idle";
+        } else if (txt.includes("running")) {
+          status.innerHTML = "<strong>Run Status:</strong> Running";
+        } else if (outputPre.classList.contains("error") || txt.includes("error") || txt.includes("failed")) {
+          status.innerHTML = "<strong>Run Status:</strong> Error";
+        } else {
+          status.innerHTML = "<strong>Run Status:</strong> Completed / Redirecting";
+        }
+      };
+      const obs = new MutationObserver(syncStatus);
+      obs.observe(outputPre, { childList: true, subtree: true, characterData: true });
+      syncStatus();
+    }
   }
 })();

@@ -125,6 +125,9 @@ function buildBanner(focusList, unlockAll, onToggle) {
   banner.style.padding = "0.75rem 1rem";
   banner.style.marginTop = "1rem";
   banner.style.borderRadius = "6px";
+  banner.style.position = "sticky";
+  banner.style.top = "0.4rem";
+  banner.style.zIndex = "8";
 
   const focusText = (focusList || []).length
     ? focusList.map((m) => MECH_HELP[m] || m).join(", ")
