@@ -122,6 +122,14 @@ function BuilderShellApp() {
   const [showPayload, setShowPayload] = React.useState(false);
   const [similarityOffdiag, setSimilarityOffdiag] = React.useState(0.2);
   const [runStatus, setRunStatus] = React.useState("Idle");
+  const [seedNotice, setSeedNotice] = React.useState("");
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.get("from") === "preset") {
+      setSeedNotice("Loaded payload from preset. You can now customize it in Builder.");
+    }
+  }, []);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases = payload.experiment.phases;
@@ -286,6 +294,21 @@ function BuilderShellApp() {
       <div style={{ color: "#555", marginBottom: "0.45rem" }}>
         <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Builder
       </div>
+      {seedNotice && (
+        <div
+          style={{
+            marginBottom: "0.6rem",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1e3a8a",
+            borderRadius: "6px",
+            padding: "0.45rem 0.6rem",
+            fontSize: "0.9rem",
+          }}
+        >
+          {seedNotice}
+        </div>
+      )}
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>

@@ -1,6 +1,7 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["tone", "noise", "light", "click", "lever"];
+const BUILDER_SEED_KEY = "vsl_builder_seed_payload";
 const KNOWN_PRESETS = new Set([
   "aab_renewal",
   "aba_renewal",
@@ -200,6 +201,9 @@ function migratePhaseProtocol(phase, nextProtocol, availableStimuli) {
 }
 
 function createInitialPayload() {
+  const seeded = loadSeedPayload();
+  if (seeded) return seeded;
+
   const initialStimuli = [...STIMULI];
   return {
     experiment: {
@@ -216,6 +220,20 @@ function createInitialPayload() {
     },
     report: { preset: "acquisition" },
   };
+}
+
+function loadSeedPayload() {
+  try {
+    const raw = window.localStorage.getItem(BUILDER_SEED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const normalized = normalizePayload(parsed);
+    if (!normalized?.experiment) return null;
+    window.localStorage.removeItem(BUILDER_SEED_KEY);
+    return normalized;
+  } catch (_err) {
+    return null;
+  }
 }
 
 function normalizePayload(inputPayload) {
@@ -351,9 +369,11 @@ function validateBeforeRun(inputPayload) {
 
 window.VSLReact.builderState = {
   STIMULI,
+  BUILDER_SEED_KEY,
   buildDefaultPhase,
   migratePhaseProtocol,
   createInitialPayload,
+  loadSeedPayload,
   normalizePayload,
   validateBeforeRun,
   getAvailableStimuli,
