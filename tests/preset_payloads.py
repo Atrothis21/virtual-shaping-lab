@@ -275,7 +275,7 @@ def operant_conditioning_payload():
             "agent": "operant_agent",
             "policy": {
                 "name": "epsilon_greedy",
-                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+                "params": {"actions": ["left", "right"], "epsilon": 0.1},
             },
             "representation": {
                 "name": "vector_elemental",
@@ -300,7 +300,7 @@ def matching_law_payload():
             "agent": "operant_agent",
             "policy": {
                 "name": "epsilon_greedy",
-                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+                "params": {"actions": ["left", "right"], "epsilon": 0.1},
             },
             "representation": {
                 "name": "vector_elemental",
@@ -313,14 +313,15 @@ def matching_law_payload():
                 "n_trials": 300,
                 "schedule_left": {"type": "variable_interval", "value": 30},
                 "schedule_right": {"type": "variable_interval", "value": 60},
+                "action_labels": ["left", "right"],
             },
         },
         "report": {"preset": "matching_law"},
     }
 
 
-def _fixed_operant_policy(action="action_0"):
-    return {"name": "fixed", "params": {"action": action}}
+def _softmax_operant_policy():
+    return {"name": "softmax", "params": {"actions": ["left", "right"], "temperature": 0.8}}
 
 
 def shaping_payload():
@@ -328,7 +329,7 @@ def shaping_payload():
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
-            "policy": _fixed_operant_policy("action_0"),
+            "policy": _softmax_operant_policy(),
             "representation": {
                 "name": "vector_elemental",
                 "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
@@ -352,7 +353,7 @@ def resurgence_payload():
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
-            "policy": _fixed_operant_policy("action_0"),
+            "policy": _softmax_operant_policy(),
             "representation": {
                 "name": "vector_elemental",
                 "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
@@ -378,7 +379,7 @@ def superextinction_payload():
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
-            "policy": _fixed_operant_policy("action_0"),
+            "policy": _softmax_operant_policy(),
             "representation": {
                 "name": "vector_elemental",
                 "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
@@ -402,7 +403,7 @@ def spontaneous_recovery_payload():
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
-            "policy": _fixed_operant_policy("action_0"),
+            "policy": _softmax_operant_policy(),
             "representation": {
                 "name": "vector_hybrid",
                 "params": {

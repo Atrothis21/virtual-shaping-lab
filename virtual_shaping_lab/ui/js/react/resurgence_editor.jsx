@@ -7,7 +7,13 @@ function buildPayload(params) {
     experiment: {
       learner: "q_learner",
       agent: "operant_agent",
-      policy: { name: "fixed", params: { action: "action_0" } },
+      policy: {
+        name: "softmax",
+        params: {
+          actions: [params.action_left, params.action_right],
+          temperature: params.temperature,
+        },
+      },
       representation: {
         name: "vector_elemental",
         params: { stimuli: STIMULI, max_compound_size: 2 },
@@ -36,6 +42,9 @@ function ResurgenceApp() {
     n_resurgence_trials: 30,
     acq_fr: 1,
     resurgence_fr: 1,
+    action_left: "left",
+    action_right: "right",
+    temperature: 0.8,
   });
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
@@ -76,6 +85,16 @@ function ResurgenceApp() {
         <select value={params.cs_plus} onChange={(e) => setParams((p) => ({ ...p, cs_plus: e.target.value }))}>
           {STIMULI.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+      </div>
+
+      <div className="panel">
+        <h3>Actions</h3>
+        <label>Action Label 1</label>
+        <input type="text" value={params.action_left} onChange={(e) => setParams((p) => ({ ...p, action_left: e.target.value || "left" }))} />
+        <label>Action Label 2</label>
+        <input type="text" value={params.action_right} onChange={(e) => setParams((p) => ({ ...p, action_right: e.target.value || "right" }))} />
+        <label>Softmax Temperature: <span>{params.temperature}</span></label>
+        <input type="range" min="0.1" max="3" step="0.1" value={params.temperature} onChange={(e) => setParams((p) => ({ ...p, temperature: +e.target.value }))} />
       </div>
 
       <div className="panel">

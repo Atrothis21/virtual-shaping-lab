@@ -52,6 +52,12 @@ function Summary({ payload, runId }) {
   const representation = typeof exp.representation === "string"
     ? exp.representation
     : exp.representation?.name;
+  const policy = exp.policy || {};
+  const policyName = policy?.name || "unknown";
+  const policyParams = policy?.params || {};
+  const actions = Array.isArray(policyParams.actions)
+    ? policyParams.actions.join(", ")
+    : (policyParams.action ? String(policyParams.action) : "n/a");
   const phases = Array.isArray(exp.phases)
     ? exp.phases.map((p) => p.protocol).join(", ")
     : "";
@@ -63,6 +69,8 @@ function Summary({ payload, runId }) {
       <div><strong>Learner:</strong> {exp.learner || "unknown"}</div>
       <div><strong>Agent:</strong> {exp.agent || "unknown"}</div>
       <div><strong>Representation:</strong> {representation || "unknown"}</div>
+      <div><strong>Policy:</strong> {policyName}</div>
+      <div><strong>Actions:</strong> {actions}</div>
       <div><strong>Phases:</strong> {phases || "none"}</div>
     </div>
   );

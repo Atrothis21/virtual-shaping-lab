@@ -1,19 +1,18 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
-const ACTIONS = ["action_0", "action_1"];
-
 function buildPolicy(params) {
+  const actions = [params.action_left, params.action_right];
   if (params.policy_type === "epsilon_greedy") {
     return {
       name: "epsilon_greedy",
-      params: { actions: ACTIONS, epsilon: params.epsilon },
+      params: { actions, epsilon: params.epsilon },
     };
   }
   if (params.policy_type === "softmax") {
     return {
       name: "softmax",
-      params: { actions: ACTIONS, temperature: params.temperature },
+      params: { actions, temperature: params.temperature },
     };
   }
   return {
@@ -61,7 +60,9 @@ function OperantConditioningApp() {
     policy_type: "epsilon_greedy",
     epsilon: 0.1,
     temperature: 1.0,
-    fixed_action: "action_0",
+    action_left: "left",
+    action_right: "right",
+    fixed_action: "left",
     cs_plus: "lever",
     learner: "q_learner",
     representation: "vector_elemental",
@@ -186,6 +187,34 @@ function OperantConditioningApp() {
           </div>
         )}
 
+        <label>Action Label 1</label>
+        <input
+          type="text"
+          value={params.action_left}
+          onChange={(e) => {
+            const next = e.target.value || "left";
+            setParams((prev) => ({
+              ...prev,
+              action_left: next,
+              fixed_action: prev.fixed_action === prev.action_left ? next : prev.fixed_action,
+            }));
+          }}
+        />
+
+        <label>Action Label 2</label>
+        <input
+          type="text"
+          value={params.action_right}
+          onChange={(e) => {
+            const next = e.target.value || "right";
+            setParams((prev) => ({
+              ...prev,
+              action_right: next,
+              fixed_action: prev.fixed_action === prev.action_right ? next : prev.fixed_action,
+            }));
+          }}
+        />
+
         {params.policy_type === "fixed" && (
           <div>
             <label>Fixed Action</label>
@@ -193,8 +222,8 @@ function OperantConditioningApp() {
               value={params.fixed_action}
               onChange={(e) => setParams((prev) => ({ ...prev, fixed_action: e.target.value }))}
             >
-              <option value="action_0">action_0</option>
-              <option value="action_1">action_1</option>
+              <option value={params.action_left}>{params.action_left}</option>
+              <option value={params.action_right}>{params.action_right}</option>
             </select>
           </div>
         )}
