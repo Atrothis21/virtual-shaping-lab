@@ -54,6 +54,7 @@ CI runs the full payload regression suite on every push/PR to `main` via
 v1.3 behavioral mechanism scope and limits are documented in:
 
 - `virtual_shaping_lab/documentation/model_card_v1_3.md`
+- `virtual_shaping_lab/documentation/learning_path_v1_3_1.md`
 
 ## Release Checklist (v1)
 1. Run `pytest` locally and ensure green.

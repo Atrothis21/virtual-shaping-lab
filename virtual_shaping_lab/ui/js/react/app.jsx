@@ -14,13 +14,34 @@ function PresetCard({ item }) {
         </p>
       )}
       {mechanisms.length > 0 && (
-        <div className="badge-row">
-          {mechanisms.map((name) => (
-            <span key={`${item.href}-${name}`} className="badge">{name}</span>
-          ))}
+        <div className="badge-block">
+          <div className="badge-label">Mechanisms</div>
+          <div className="badge-row">
+            {mechanisms.map((name) => (
+              <span key={`${item.href}-${name}`} className="badge">{name}</span>
+            ))}
+          </div>
         </div>
       )}
-      <a className="button" href={item.href}>Open</a>
+      {item.teaches && (
+        <p className="teaches">
+          <strong>What This Demonstrates:</strong> {item.teaches}
+        </p>
+      )}
+      {item.builderNext && (
+        <p className="builder-next">
+          <strong>Try Next In Builder:</strong> {item.builderNext}
+        </p>
+      )}
+      {item.nextPhenomenon && (
+        <p className="next-phenomenon">
+          <strong>Recommended Next Phenomenon:</strong> {item.nextPhenomenon}
+        </p>
+      )}
+      <div className="card-actions">
+        <a className="button" href={item.href}>Open Preset</a>
+        <a className="button secondary" href={item.builderHref || "/ui/builder.html"}>Open Builder</a>
+      </div>
     </div>
   );
 }
@@ -44,6 +65,9 @@ function App() {
     <>
       <h1>Experiment Presets</h1>
       <p>Select a preset to configure and run an experiment.</p>
+      <div style={{ color: "#555", marginBottom: "0.45rem" }}>
+        <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Presets
+      </div>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>

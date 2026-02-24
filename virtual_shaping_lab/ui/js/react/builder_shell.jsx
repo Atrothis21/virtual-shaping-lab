@@ -21,6 +21,35 @@ const PROTOCOL_OPTIONS = [
   { value: "criterion_shift", label: "Criterion Shift" },
 ];
 
+function StimulusChipPicker({ options, selected, onToggle, disabledSet = new Set() }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginTop: "0.4rem" }}>
+      {options.map((s) => {
+        const active = selected.includes(s);
+        const disabled = disabledSet.has(s);
+        return (
+          <button
+            key={`chip-${s}`}
+            type="button"
+            className={`btn ${active ? "" : "secondary"}`}
+            disabled={disabled}
+            onClick={() => onToggle(s)}
+            style={{
+              marginTop: 0,
+              opacity: disabled ? 0.45 : 1,
+              borderColor: active ? "#2563eb" : undefined,
+              background: active ? "#2563eb" : undefined,
+              color: active ? "#fff" : undefined,
+            }}
+          >
+            {s}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function collectActivePhaseStimuli(phase) {
   const out = [];
   if (Array.isArray(phase?.stimuli?.cs_plus)) out.push(...phase.stimuli.cs_plus);
@@ -90,7 +119,17 @@ function BuilderShellApp() {
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const [showPayload, setShowPayload] = React.useState(false);
   const [similarityOffdiag, setSimilarityOffdiag] = React.useState(0.2);
+  const [runStatus, setRunStatus] = React.useState("Idle");
+  const [seedNotice, setSeedNotice] = React.useState("");
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.get("from") === "preset") {
+      setSeedNotice("Loaded payload from preset. You can now customize it in Builder.");
+    }
+  }, []);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases = payload.experiment.phases;
@@ -196,31 +235,44 @@ function BuilderShellApp() {
 
   const onRun = async () => {
     setRunError(false);
-    setRunOutput("Running...");
+    setRunStatus("Validating");
+    setRunOutput("Validating payload...");
 
     let runPayload;
     try {
       runPayload = validateBeforeRun(payload);
     } catch (err) {
       setRunError(true);
+      setRunStatus("Validation Error");
       setRunOutput(`Validation error: ${err.message}`);
       return;
     }
 
-    const res = await fetch("/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(runPayload),
-    });
-    const result = await res.json();
+    try {
+      setRunStatus("Running");
+      setRunOutput("Submitting run request...");
 
-    if (result.status === "success" && result.run_id) {
-      window.location.href = `/ui/results.html?run_id=${result.run_id}`;
-      return;
+      const res = await fetch("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(runPayload),
+      });
+      const result = await res.json();
+
+      if (result.status === "success" && result.run_id) {
+        setRunStatus("Completed");
+        window.location.href = `/ui/results.html?run_id=${result.run_id}`;
+        return;
+      }
+
+      setRunStatus("Run Error");
+      setRunOutput(JSON.stringify(result, null, 2));
+      setRunError(true);
+    } catch (err) {
+      setRunStatus("Run Error");
+      setRunOutput(`Run failed: ${err.message}`);
+      setRunError(true);
     }
-
-    setRunOutput(JSON.stringify(result, null, 2));
-    setRunError(true);
   };
 
   const onCopyPayload = async () => {
@@ -239,6 +291,24 @@ function BuilderShellApp() {
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
       <p>React builder with full native controls.</p>
+      <div style={{ color: "#555", marginBottom: "0.45rem" }}>
+        <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Builder
+      </div>
+      {seedNotice && (
+        <div
+          style={{
+            marginBottom: "0.6rem",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            color: "#1e3a8a",
+            borderRadius: "6px",
+            padding: "0.45rem 0.6rem",
+            fontSize: "0.9rem",
+          }}
+        >
+          {seedNotice}
+        </div>
+      )}
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>
@@ -252,7 +322,18 @@ function BuilderShellApp() {
 
       <div className="panel">
         <h3>Baseline Compatibility</h3>
-        <div>
+        <div
+          style={{
+            position: "sticky",
+            top: "0.4rem",
+            zIndex: 5,
+            display: "inline-block",
+            padding: "0.2rem 0.5rem",
+            borderRadius: "999px",
+            background: baselineCompatible ? "#ecfdf5" : "#fff7ed",
+            border: `1px solid ${baselineCompatible ? "#86efac" : "#fdba74"}`,
+          }}
+        >
           <strong>Status:</strong>{" "}
           {baselineCompatible ? "Baseline-Compatible" : "Customized"}
         </div>
@@ -290,6 +371,7 @@ function BuilderShellApp() {
           <div className="panel">
             <h4>Trials</h4>
             <label>Trials</label>
+            <div style={{ color: "#666", fontSize: "0.86rem" }}>More trials increase learning/expression stability.</div>
             <input
               type="range"
               min="1"
@@ -310,6 +392,7 @@ function BuilderShellApp() {
           {showAlpha && (
             <>
               <label>Learning Rate (alpha)</label>
+              <div style={{ color: "#666", fontSize: "0.86rem" }}>Higher alpha updates associations faster per trial.</div>
               <input
                 type="range"
                 min="0"
@@ -360,6 +443,7 @@ function BuilderShellApp() {
           {showGamma && (
             <>
               <label>Discount (gamma)</label>
+              <div style={{ color: "#666", fontSize: "0.86rem" }}>Gamma controls future-value carryover (usually low in classical tasks).</div>
               <input
                 type="range"
                 min="0"
@@ -378,6 +462,7 @@ function BuilderShellApp() {
           {showOutcome && (
             <>
               <label>Outcome</label>
+              <div style={{ color: "#666", fontSize: "0.86rem" }}>Outcome is the target reinforcement magnitude.</div>
               <input
                 type="range"
                 min="0"
@@ -401,31 +486,31 @@ function BuilderShellApp() {
             {showSingleCs && (
               <>
                 <label>CS+</label>
-                <select
-                  multiple
-                  size="5"
-                  style={{ width: "100%", height: "7rem" }}
-                  value={csPlusList}
-                  onChange={(e) => updateActive((p, stim) => {
-                    const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
+                <div style={{ color: "#666", fontSize: "0.86rem" }}>Click chips to add/remove stimuli for this phase.</div>
+                <StimulusChipPicker
+                  options={availableStimuli}
+                  selected={csPlusList}
+                  onToggle={(value) => updateActive((p, stim) => {
+                    const current = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length ? p.stimuli.cs_plus : [stim[0]];
+                    const has = current.includes(value);
+                    const nextPlus = has ? current.filter((s) => s !== value) : [...current, value];
                     p.stimuli = { cs_plus: nextPlus.length ? nextPlus : [stim[0]] };
                   })}
-                >
-                  {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                />
               </>
             )}
 
             {isDifferential && (
               <>
                 <label>CS+</label>
-                <select
-                  multiple
-                  size="5"
-                  style={{ width: "100%", height: "7rem" }}
-                  value={csPlusList}
-                  onChange={(e) => updateActive((p, stim) => {
-                    const nextPlusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
+                <div style={{ color: "#666", fontSize: "0.86rem" }}>Select one or more reinforced cues.</div>
+                <StimulusChipPicker
+                  options={availableStimuli}
+                  selected={csPlusList}
+                  onToggle={(value) => updateActive((p, stim) => {
+                    const current = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length ? p.stimuli.cs_plus : [stim[0]];
+                    const has = current.includes(value);
+                    const nextPlusRaw = has ? current.filter((s) => s !== value) : [...current, value];
                     const nextPlus = nextPlusRaw.length ? nextPlusRaw : [stim[0]];
                     const currentMinus = Array.isArray(p.stimuli?.cs_minus) ? p.stimuli.cs_minus : [stim[1] || stim[0]];
                     const nextMinus = currentMinus.filter((s) => !nextPlus.includes(s));
@@ -435,32 +520,30 @@ function BuilderShellApp() {
                       cs_minus: nextMinus.length ? nextMinus : [fallbackMinus],
                     };
                   })}
-                >
-                  {availableStimuli.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                />
 
                 <br /><br />
                 <label>CS-</label>
-                <select
-                  multiple
-                  size="5"
-                  style={{ width: "100%", height: "7rem" }}
-                  value={csMinusList}
-                  onChange={(e) => updateActive((p, stim) => {
-                    const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length
-                      ? p.stimuli.cs_plus
-                      : [stim[0]];
-                    const nextMinusRaw = Array.from(e.target.selectedOptions).map((o) => o.value);
-                    const filtered = nextMinusRaw.filter((s) => !plus.includes(s));
+                <div style={{ color: "#666", fontSize: "0.86rem" }}>Select nonreinforced cues (cannot overlap with CS+).</div>
+                <StimulusChipPicker
+                  options={availableStimuli}
+                  selected={csMinusList}
+                  disabledSet={new Set(csPlusList)}
+                  onToggle={(value) => updateActive((p, stim) => {
+                    const plus = Array.isArray(p.stimuli?.cs_plus) && p.stimuli.cs_plus.length ? p.stimuli.cs_plus : [stim[0]];
+                    if (plus.includes(value)) return;
+                    const current = Array.isArray(p.stimuli?.cs_minus) && p.stimuli.cs_minus.length
+                      ? p.stimuli.cs_minus.filter((s) => !plus.includes(s))
+                      : [stim[1] || stim[0]].filter((s) => !plus.includes(s));
+                    const has = current.includes(value);
+                    const nextRaw = has ? current.filter((s) => s !== value) : [...current, value];
                     const fallbackMinus = stim.find((x) => !plus.includes(x)) || plus[0];
                     p.stimuli = {
                       cs_plus: plus,
-                      cs_minus: filtered.length ? filtered : [fallbackMinus],
+                      cs_minus: nextRaw.length ? nextRaw : [fallbackMinus],
                     };
                   })}
-                >
-                  {availableStimuli.map((s) => <option key={s} value={s} disabled={csPlusList.includes(s)}>{s}</option>)}
-                </select>
+                />
               </>
             )}
 
@@ -632,6 +715,7 @@ function BuilderShellApp() {
           <div>{payload?.experiment?.context_inference?.max_contexts ?? 3}</div>
 
           <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Similarity (Optional)</h4>
+          <div style={{ color: "#666", fontSize: "0.86rem" }}>Similarity controls how strongly cues generalize to each other.</div>
           <label style={{ display: "block" }}>
             <input
               type="checkbox"
@@ -720,6 +804,7 @@ function BuilderShellApp() {
           )}
 
           <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Salience</h4>
+          <div style={{ color: "#666", fontSize: "0.86rem" }}>Salience controls representation strength for active phase cues.</div>
           {activePhaseStimuli.length === 0 && (
             <div>No phase stimuli selected for this protocol.</div>
           )}
@@ -746,6 +831,7 @@ function BuilderShellApp() {
           })}
 
           <h4 style={{ marginTop: "1rem", marginBottom: "0.4rem" }}>Phase Stimulus Attention</h4>
+          <div style={{ color: "#666", fontSize: "0.86rem" }}>Attention scales cue-specific learning-rate contribution.</div>
           {activePhaseStimuli.length === 0 && (
             <div>No phase stimuli selected for this protocol.</div>
           )}
@@ -777,13 +863,21 @@ function BuilderShellApp() {
         <h3>Payload</h3>
         <div className="actions">
           <button className="btn secondary" onClick={onCopyPayload}>Copy Normalized Payload</button>
+          <button className="btn secondary" onClick={() => setShowPayload((v) => !v)}>
+            {showPayload ? "Hide Payload JSON" : "Show Payload JSON"}
+          </button>
         </div>
-        <pre style={{ background: "#f5f5f5", padding: "1rem", borderRadius: "6px", overflowX: "auto" }}>
-          {JSON.stringify(payload, null, 2)}
-        </pre>
+        {showPayload && (
+          <pre style={{ background: "#f5f5f5", padding: "1rem", borderRadius: "6px", overflowX: "auto" }}>
+            {JSON.stringify(payload, null, 2)}
+          </pre>
+        )}
       </div>
 
       <div className="panel">
+        <div style={{ marginBottom: "0.5rem" }}>
+          <strong>Run Status:</strong> {runStatus}
+        </div>
         <button className="btn" onClick={onRun}>Run Experiment</button>
         <pre className={runError ? "error" : ""}>{runOutput}</pre>
       </div>
