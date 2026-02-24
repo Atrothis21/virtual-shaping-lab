@@ -21,7 +21,11 @@
         "matching_law",
         "occasion_setting",
         "operant_conditioning",
-        "rapid_reacquisition"
+        "rapid_reacquisition",
+        "shaping",
+        "resurgence",
+        "superextinction",
+        "spontaneous_recovery"
       ]
     },
     "options": { "type": "object" }

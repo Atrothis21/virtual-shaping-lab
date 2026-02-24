@@ -210,6 +210,18 @@ def test_validate_operant_semantics_requires_policy():
     with pytest.raises(vp.ValidationError, match="operant experiments require a policy object"):
         vp._validate_operant_payload_semantics(exp)
 
+    shaping_exp = {
+        "protocol": "shaping",
+        "params": {
+            "n_stage_1_trials": 5,
+            "n_stage_2_trials": 5,
+            "schedule_stage_1": {"type": "fixed_ratio", "value": 1},
+            "schedule_stage_2": {"type": "fixed_ratio", "value": 2},
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="operant experiments require a policy object"):
+        vp._validate_operant_payload_semantics(shaping_exp)
+
 
 def test_validate_operant_semantics_rejects_bad_actions():
     exp = {

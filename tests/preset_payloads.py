@@ -319,6 +319,117 @@ def matching_law_payload():
     }
 
 
+def _fixed_operant_policy(action="action_0"):
+    return {"name": "fixed", "params": {"action": action}}
+
+
+def shaping_payload():
+    return {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": _fixed_operant_policy("action_0"),
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
+            },
+            "context_inference": {"enabled": False, "max_contexts": 3},
+            "protocol": "shaping",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_stage_1_trials": 60,
+                "n_stage_2_trials": 60,
+                "schedule_stage_1": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                "schedule_stage_2": {"type": "fixed_ratio", "value": 5, "reward": 1.0},
+            },
+        },
+        "report": {"preset": "shaping"},
+    }
+
+
+def resurgence_payload():
+    return {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": _fixed_operant_policy("action_0"),
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
+            },
+            "context_inference": {"enabled": False, "max_contexts": 3},
+            "protocol": "resurgence",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_acquisition_trials": 40,
+                "n_suppression_trials": 40,
+                "n_resurgence_trials": 30,
+                "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                "suppression_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+                "resurgence_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            },
+        },
+        "report": {"preset": "resurgence"},
+    }
+
+
+def superextinction_payload():
+    return {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": _fixed_operant_policy("action_0"),
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": STIMULI_WITH_LEVER, "max_compound_size": 2},
+            },
+            "context_inference": {"enabled": False, "max_contexts": 3},
+            "protocol": "superextinction",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_acquisition_trials": 50,
+                "n_superextinction_trials": 50,
+                "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                "superextinction_schedule": {"type": "fixed_ratio", "value": 1, "reward": -1.0},
+            },
+        },
+        "report": {"preset": "superextinction"},
+    }
+
+
+def spontaneous_recovery_payload():
+    return {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": _fixed_operant_policy("action_0"),
+            "representation": {
+                "name": "vector_hybrid",
+                "params": {
+                    "stimuli": STIMULI_WITH_LEVER,
+                    "max_compound_size": 2,
+                    "include_global": True,
+                    "include_context": True,
+                },
+            },
+            "context_inference": {"enabled": False, "max_contexts": 3},
+            "protocol": "spontaneous_recovery",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_acquisition_trials": 40,
+                "n_extinction_trials": 40,
+                "n_probe_trials": 30,
+                "context_a": "A",
+                "context_b": "B",
+                "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                "extinction_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+                "probe_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+            },
+        },
+        "report": {"preset": "spontaneous_recovery"},
+    }
+
+
 def overshadowing_payload():
     return {
         "experiment": {
@@ -403,6 +514,10 @@ PRESET_PAYLOADS = [
     ("abc_renewal", abc_renewal_payload()),
     ("operant_conditioning", operant_conditioning_payload()),
     ("matching_law", matching_law_payload()),
+    ("shaping", shaping_payload()),
+    ("resurgence", resurgence_payload()),
+    ("superextinction", superextinction_payload()),
+    ("spontaneous_recovery", spontaneous_recovery_payload()),
     ("overshadowing", overshadowing_payload()),
     ("overexpectation", overexpectation_payload()),
 ]

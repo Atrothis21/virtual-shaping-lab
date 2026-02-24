@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/resurgence.schema.json",
+  "title": "Resurgence Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "resurgence" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_acquisition_trials": { "type": "integer", "minimum": 1 },
+        "n_suppression_trials": { "type": "integer", "minimum": 1 },
+        "n_resurgence_trials": { "type": "integer", "minimum": 1 },
+        "acquisition_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "suppression_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "resurgence_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        }
+      },
+      "required": [
+        "n_acquisition_trials",
+        "n_suppression_trials",
+        "n_resurgence_trials",
+        "acquisition_schedule",
+        "suppression_schedule",
+        "resurgence_schedule"
+      ]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

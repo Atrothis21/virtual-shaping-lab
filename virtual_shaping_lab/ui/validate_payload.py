@@ -35,6 +35,14 @@ def _build_schema_map(schema_dir: Path) -> dict:
 
 PHASE_SCHEMA_MAP = _build_schema_map(PHASE_SCHEMA_DIR)
 PROTOCOL_SCHEMA_MAP = _build_schema_map(PROTOCOL_SCHEMA_DIR)
+OPERANT_PROTOCOLS = {
+    "operant_conditioning",
+    "matching_law",
+    "shaping",
+    "resurgence",
+    "superextinction",
+    "spontaneous_recovery",
+}
 
 
 def _validate_schema(obj: dict, schema_path: Path, label: str) -> None:
@@ -85,10 +93,10 @@ def _validate_policy_guard(exp: dict) -> None:
         return
 
     if "protocol" in exp and exp.get("protocol"):
-        is_operant = exp.get("protocol") in {"operant_conditioning", "matching_law"}
+        is_operant = exp.get("protocol") in OPERANT_PROTOCOLS
     else:
         is_operant = any(
-            p.get("protocol") in {"operant_conditioning", "matching_law"}
+            p.get("protocol") in OPERANT_PROTOCOLS
             for p in exp.get("phases", [])
         )
 
@@ -100,23 +108,23 @@ def _validate_policy_guard(exp: dict) -> None:
 
 def _uses_operant_path(exp: dict) -> bool:
     if "protocol" in exp and exp.get("protocol"):
-        return exp.get("protocol") in {"operant_conditioning", "matching_law"}
+        return exp.get("protocol") in OPERANT_PROTOCOLS
     return any(
-        p.get("protocol") in {"operant_conditioning", "matching_law"}
+        p.get("protocol") in OPERANT_PROTOCOLS
         for p in exp.get("phases", [])
         if isinstance(p, dict)
     )
 
 
 def _iter_operant_entries(exp: dict):
-    if "protocol" in exp and exp.get("protocol") in {"operant_conditioning", "matching_law"}:
+    if "protocol" in exp and exp.get("protocol") in OPERANT_PROTOCOLS:
         yield exp.get("protocol"), exp.get("params") if isinstance(exp.get("params"), dict) else {}
 
     for phase in exp.get("phases", []):
         if not isinstance(phase, dict):
             continue
         proto = phase.get("protocol")
-        if proto in {"operant_conditioning", "matching_law"}:
+        if proto in OPERANT_PROTOCOLS:
             params = phase.get("params") if isinstance(phase.get("params"), dict) else {}
             yield proto, params
 

@@ -7,6 +7,10 @@ from protocols.conditioned_inhibition import ConditionedInhibitionProtocol
 from protocols.extinction import ExtinctionProtocol
 from protocols.occasion_setting import OccasionSettingProtocol
 from protocols.matching_law import MatchingLawProtocol
+from protocols.shaping import ShapingProtocol
+from protocols.resurgence import ResurgenceProtocol
+from protocols.superextinction import SuperextinctionProtocol
+from protocols.spontaneous_recovery import SpontaneousRecoveryProtocol
 from protocols.aab_renewal import AABRenewalProtocol
 from protocols.aba_renewal import ABARenewalProtocol
 from protocols.abc_renewal import ABCRenewalProtocol
@@ -142,6 +146,62 @@ def test_renewal_and_reacquisition_errors():
         proto = cls(agent=DummyAgent(), stimuli={})
         with pytest.raises(ValueError):
             proto.build_phases()
+
+
+def test_new_operant_protocols_build_phases():
+    proto = ShapingProtocol(
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["lever"]},
+        params={
+            "n_stage_1_trials": 2,
+            "n_stage_2_trials": 2,
+            "schedule_stage_1": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            "schedule_stage_2": {"type": "fixed_ratio", "value": 2, "reward": 1.0},
+        },
+    )
+    assert len(proto.build_phases()) == 2
+
+    proto = ResurgenceProtocol(
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["lever"]},
+        params={
+            "n_acquisition_trials": 2,
+            "n_suppression_trials": 2,
+            "n_resurgence_trials": 2,
+            "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            "suppression_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+            "resurgence_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+        },
+    )
+    assert len(proto.build_phases()) == 3
+
+    proto = SuperextinctionProtocol(
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["lever"]},
+        params={
+            "n_acquisition_trials": 2,
+            "n_superextinction_trials": 2,
+            "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            "superextinction_schedule": {"type": "fixed_ratio", "value": 1, "reward": -1.0},
+        },
+    )
+    assert len(proto.build_phases()) == 2
+
+    proto = SpontaneousRecoveryProtocol(
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["lever"]},
+        params={
+            "n_acquisition_trials": 2,
+            "n_extinction_trials": 2,
+            "n_probe_trials": 2,
+            "context_a": "A",
+            "context_b": "B",
+            "acquisition_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            "extinction_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+            "probe_schedule": {"type": "fixed_ratio", "value": 1, "reward": 0.0},
+        },
+    )
+    assert len(proto.build_phases()) == 5
 
 
 def test_matching_law_requires_operant():

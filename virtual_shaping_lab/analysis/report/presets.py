@@ -195,6 +195,54 @@ _REPORT_PRESETS = {
         params={},
     ),
 
+    "shaping": ReportConfig(
+        metrics=[
+            "cumulative_responses",
+            "cumulative_rewards",
+        ],
+        visualizations=[
+            "cumulative_response_plot",
+            "cumulative_reward_plot",
+        ],
+        params={},
+    ),
+
+    "resurgence": ReportConfig(
+        metrics=[
+            "cumulative_responses",
+            "cumulative_rewards",
+        ],
+        visualizations=[
+            "cumulative_response_plot",
+            "cumulative_reward_plot",
+        ],
+        params={},
+    ),
+
+    "superextinction": ReportConfig(
+        metrics=[
+            "cumulative_responses",
+            "cumulative_rewards",
+        ],
+        visualizations=[
+            "cumulative_response_plot",
+            "cumulative_reward_plot",
+        ],
+        params={},
+    ),
+
+    "spontaneous_recovery": ReportConfig(
+        metrics=[
+            "cumulative_responses",
+            "cumulative_rewards",
+        ],
+        visualizations=[
+            "cumulative_response_plot",
+            "cumulative_reward_plot",
+        ],
+        params={},
+    ),
+
     "custom_protocol": ReportConfig(
         metrics=[
             "prediction_time_series",

@@ -110,7 +110,10 @@ def _build_policy_from_config(config):
         policy_name = config.policy.get("name")
         policy_params = config.policy.get("params", {})
         policy = build_policy(policy_name, **policy_params)
-        return policy, policy_params.get("actions")
+        policy_actions = policy_params.get("actions")
+        if policy_actions is None and "action" in policy_params:
+            policy_actions = [policy_params.get("action")]
+        return policy, policy_actions
 
     if isinstance(config.policy, str):
         return build_policy(config.policy), None
