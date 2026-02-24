@@ -159,15 +159,14 @@ def test_operant_fixture_assembles_operant_agent_and_action_learner():
     assert agent.learner.expects_action() is True
 
 
-@pytest.mark.xfail(reason="v1.4 contract target: operant agent should require policy/action path")
 def test_operant_agent_should_not_allow_none_action_path():
     agent = OperantAgent(
         learner=_SpyLearner(),
         representation=_DummyRepresentation(),
         policy=None,
     )
-    action = agent.act(np.asarray([1.0, 0.0], dtype=float))
-    assert action is not None
+    with pytest.raises(ValueError, match="requires a policy"):
+        agent.act(np.asarray([1.0, 0.0], dtype=float))
 
 
 def test_operant_agent_update_signature_should_accept_next_state_and_done():

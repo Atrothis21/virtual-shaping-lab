@@ -97,7 +97,8 @@ def test_operant_agent_policy_fallbacks():
         representation=CoverageDummyRepresentation(),
         policy=None,
     )
-    assert agent.act(np.asarray([1.0, 2.0])) is None
+    with pytest.raises(ValueError, match="requires a policy"):
+        agent.act(np.asarray([1.0, 2.0]))
 
     agent2 = OperantAgent(
         learner=CoverageDummyLearner(),
@@ -105,6 +106,14 @@ def test_operant_agent_policy_fallbacks():
         policy=CoverageDummyPolicyNoValue(),
     )
     assert agent2.act(np.asarray([1.0, 2.0])) == 0
+
+    agent3 = OperantAgent(
+        learner=CoverageDummyLearner(),
+        representation=CoverageDummyRepresentation(),
+        policy=object(),
+    )
+    with pytest.raises(TypeError, match="must implement select_action"):
+        agent3.act(np.asarray([1.0, 2.0]))
 
 
 def test_operant_agent_missing_update():

@@ -79,10 +79,15 @@ class OperantAgent(Agent):
 
     def act(self, state: np.ndarray) -> Optional[int]:
         if self.policy is None:
-            return None
-        if hasattr(self.policy, "select_action"):
-            try:
-                return self.policy.select_action(state, value_fn=self.value)
-            except TypeError:
-                return self.policy.select_action(state)
-        return None
+            raise ValueError("OperantAgent requires a policy to select actions.")
+        if not hasattr(self.policy, "select_action"):
+            raise TypeError("OperantAgent policy must implement select_action(state, ...).")
+
+        try:
+            action = self.policy.select_action(state, value_fn=self.value)
+        except TypeError:
+            action = self.policy.select_action(state)
+
+        if action is None:
+            raise ValueError("OperantAgent policy returned None action.")
+        return action
