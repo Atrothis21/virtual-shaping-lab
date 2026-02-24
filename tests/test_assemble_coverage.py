@@ -158,6 +158,55 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
     assert runtime_units
 
 
+def test_assemble_classical_path_rejects_policy():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "policy": {"name": "fixed", "params": {"action": "left"}},
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
+        assemble_experiment(config)
+
+
+def test_assemble_operant_path_requires_policy():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "protocol": "operant_conditioning",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_trials": 2,
+                "reward_schedule": {"type": "fixed_ratio", "value": 1},
+            },
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
+        assemble_experiment(config)
+
+
 def test_assemble_assigns_attention_to_learner():
     payload = {
         "experiment": {

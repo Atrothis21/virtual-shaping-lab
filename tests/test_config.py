@@ -245,7 +245,7 @@ def test_assemble_experiment_string_rep_and_inferred_context(monkeypatch):
         representation="vector_elemental",
         learner="rescorla_wagner",
         agent="classical_agent",
-        policy="fixed",
+        policy=None,
         stimuli=["tone"],
         salience={},
         attention={},
