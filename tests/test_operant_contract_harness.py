@@ -28,8 +28,9 @@ class _SpyLearner:
     def value(self, state, action=None):
         return float(np.sum(state))
 
-    def update(self, state, reward, action=None):
-        self.calls.append((state.copy(), float(reward), action))
+    def update(self, state, reward, action=None, next_state=None, done=None):
+        next_state_copy = None if next_state is None else next_state.copy()
+        self.calls.append((state.copy(), float(reward), action, next_state_copy, done))
 
 
 class _ConstantPolicy:
@@ -54,8 +55,8 @@ def test_operant_agent_forwards_action_and_signed_reward_to_learner():
     agent.update(state, reward=0.0, action="left")
     agent.update(state, reward=-1.0, action="left")
 
-    rewards = [r for (_s, r, _a) in learner.calls]
-    actions = [a for (_s, _r, a) in learner.calls]
+    rewards = [r for (_s, r, _a, _ns, _d) in learner.calls]
+    actions = [a for (_s, _r, a, _ns, _d) in learner.calls]
     assert rewards == [1.0, 0.0, -1.0]
     assert actions == ["left", "left", "left"]
 
@@ -169,8 +170,27 @@ def test_operant_agent_should_not_allow_none_action_path():
     assert action is not None
 
 
-@pytest.mark.xfail(reason="v1.4 contract target: agent update signature should support next_state/done")
 def test_operant_agent_update_signature_should_accept_next_state_and_done():
     sig = inspect.signature(OperantAgent.update)
     assert "next_state" in sig.parameters
     assert "done" in sig.parameters
+
+
+def test_operant_agent_forwards_next_state_and_done_to_learner():
+    learner = _SpyLearner()
+    agent = OperantAgent(
+        learner=learner,
+        representation=_DummyRepresentation(),
+        policy=_ConstantPolicy(action="left"),
+    )
+    state = np.asarray([1.0, 0.0], dtype=float)
+    next_state = np.asarray([0.5, 0.0], dtype=float)
+    agent.update(state, reward=0.25, action="left", next_state=next_state, done=False)
+
+    assert len(learner.calls) == 1
+    _s, r, a, ns, d = learner.calls[0]
+    assert r == pytest.approx(0.25, abs=1e-12)
+    assert a == "left"
+    assert ns is not None
+    np.testing.assert_allclose(ns, next_state)
+    assert d is False

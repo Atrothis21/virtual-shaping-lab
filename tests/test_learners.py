@@ -96,7 +96,6 @@ def test_qlearner_paths():
     learner.salience = np.asarray([1.0, 1.0])
     learner.update(state, reward=1.0, action=0, next_state=next_state, done=False)
 
-    learner._action_index = lambda a: learner.action_index[a]
     learner.update_with_alpha(state, reward=1.0, action=None)
     learner.update_with_alpha(state, reward=1.0, action=1, alpha_override=0.1, delta_override=0.2)
     assert "weights" in learner.get_parameters()
@@ -159,3 +158,30 @@ def test_baselearner_get_parameters_default():
 def test_operantlearner_expects_action_true():
     learner = BaseDummyOperant(alpha=0.1, gamma=0.9)
     assert learner.expects_action() is True
+
+
+def test_qlearner_deterministic_update_fixture():
+    learner = QLearner(state_dim=2, actions=["left", "right"], alpha=0.5, gamma=0.0)
+    state = np.asarray([1.0, 0.0], dtype=float)
+
+    learner.update(state, reward=1.0, action="left", next_state=None, done=True)
+    # q <- 0 + 0.5*(1-0)*1 = 0.5
+    assert learner.value(state, action="left") == pytest.approx(0.5, abs=1e-12)
+
+    learner.update(state, reward=-1.0, action="left", next_state=None, done=True)
+    # q <- 0.5 + 0.5*(-1-0.5)*1 = -0.25
+    assert learner.value(state, action="left") == pytest.approx(-0.25, abs=1e-12)
+
+
+def test_td_value_deterministic_update_fixture():
+    learner = TDValueLearner(state_dim=2, alpha=0.5, gamma=0.5)
+    state = np.asarray([1.0, 0.0], dtype=float)
+    next_state = np.asarray([1.0, 0.0], dtype=float)
+
+    learner.update(state, reward=1.0, next_state=next_state, done=False)
+    # v0=0, v_next=0 => delta=1 => w0=0.5
+    assert learner.value(state) == pytest.approx(0.5, abs=1e-12)
+
+    learner.update(state, reward=0.0, next_state=next_state, done=False)
+    # v=0.5, v_next=0.5 => delta=0.25-0.5=-0.25 => w0=0.375
+    assert learner.value(state) == pytest.approx(0.375, abs=1e-12)
