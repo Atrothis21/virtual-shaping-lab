@@ -154,7 +154,7 @@ def test_validate_payload_accepts_operant_negative_reward_schedule():
             "agent": "operant_agent",
             "policy": {
                 "name": "epsilon_greedy",
-                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
             },
             "representation": {
                 "name": "vector_elemental",
@@ -179,7 +179,7 @@ def test_validate_payload_accepts_operant_phase_mode():
             "agent": "operant_agent",
             "policy": {
                 "name": "epsilon_greedy",
-                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
             },
             "representation": {
                 "name": "vector_elemental",
@@ -226,14 +226,32 @@ def test_validate_operant_semantics_requires_policy():
 def test_validate_operant_semantics_rejects_bad_actions():
     exp = {
         "protocol": "operant_conditioning",
-        "policy": {"name": "epsilon_greedy", "params": {"actions": ["a0"], "epsilon": 0.1}},
+        "policy": {"name": "epsilon_greedy", "params": {"actions": [], "epsilon": 0.1}},
         "params": {"n_trials": 10, "reward_schedule": {"type": "fixed_ratio", "value": 1}},
     }
-    with pytest.raises(vp.ValidationError, match="at least two actions"):
+    with pytest.raises(vp.ValidationError, match="at least one action"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["policy"]["params"]["actions"] = ["a0", "a1"]
+    with pytest.raises(vp.ValidationError, match="operant_conditioning requires exactly 1"):
         vp._validate_operant_payload_semantics(exp)
 
     exp["policy"]["params"]["actions"] = ["a0", "a0"]
     with pytest.raises(vp.ValidationError, match="must be unique"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_requires_two_actions_for_resurgence():
+    exp = {
+        "protocol": "resurgence",
+        "policy": {"name": "softmax", "params": {"actions": ["a0"], "temperature": 1.0}},
+        "params": {
+            "n_acquisition_trials": 5,
+            "n_suppression_trials": 5,
+            "n_resurgence_trials": 5,
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="resurgence requires exactly 2"):
         vp._validate_operant_payload_semantics(exp)
 
 
@@ -252,7 +270,7 @@ def test_validate_operant_semantics_matching_law_action_shape():
         vp._validate_operant_payload_semantics(exp)
 
     exp["params"]["action_labels"] = ["left", "right"]
-    with pytest.raises(vp.ValidationError, match="exactly two actions"):
+    with pytest.raises(vp.ValidationError, match="requires exactly 2"):
         vp._validate_operant_payload_semantics(exp)
 
     exp["policy"]["params"]["actions"] = ["right", "left"]
@@ -279,5 +297,5 @@ def test_validate_operant_semantics_matching_law_action_shape_in_phase_mode():
         vp._validate_operant_payload_semantics(exp)
 
     exp["phases"][0]["params"]["action_labels"] = ["left", "right"]
-    with pytest.raises(vp.ValidationError, match="exactly two actions"):
+    with pytest.raises(vp.ValidationError, match="requires exactly 2"):
         vp._validate_operant_payload_semantics(exp)

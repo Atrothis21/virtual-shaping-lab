@@ -43,6 +43,14 @@ OPERANT_PROTOCOLS = {
     "superextinction",
     "spontaneous_recovery",
 }
+OPERANT_PROTOCOL_ACTION_COUNTS = {
+    "operant_conditioning": 1,
+    "shaping": 1,
+    "superextinction": 1,
+    "spontaneous_recovery": 1,
+    "matching_law": 2,
+    "resurgence": 2,
+}
 
 
 def _validate_schema(obj: dict, schema_path: Path, label: str) -> None:
@@ -141,10 +149,12 @@ def _validate_operant_payload_semantics(exp: dict) -> None:
     params = policy.get("params") if isinstance(policy.get("params"), dict) else {}
     actions = params.get("actions")
 
+    operant_entries = list(_iter_operant_entries(exp))
+
     if policy_name in {"epsilon_greedy", "softmax"}:
-        if not isinstance(actions, list) or len(actions) < 2:
+        if not isinstance(actions, list) or len(actions) < 1:
             raise ValidationError(
-                "operant policy requires params.actions with at least two actions"
+                "operant policy requires params.actions with at least one action"
             )
         if len(set(actions)) != len(actions):
             raise ValidationError("operant policy params.actions must be unique")
@@ -154,27 +164,44 @@ def _validate_operant_payload_semantics(exp: dict) -> None:
         if fixed_action is None:
             raise ValidationError("fixed policy requires params.action")
 
-    for protocol_name, proto_params in _iter_operant_entries(exp):
-        if protocol_name != "matching_law":
+    for protocol_name, proto_params in operant_entries:
+        if protocol_name == "matching_law":
+            action_labels = proto_params.get("action_labels")
+            if action_labels is not None:
+                if not isinstance(action_labels, list) or len(action_labels) != 2:
+                    raise ValidationError(
+                        "matching_law params.action_labels must contain exactly two labels"
+                    )
+                if len(set(action_labels)) != 2:
+                    raise ValidationError(
+                        "matching_law params.action_labels must be two distinct labels"
+                    )
+
+        required_actions = OPERANT_PROTOCOL_ACTION_COUNTS.get(protocol_name)
+        if required_actions is None:
             continue
-        action_labels = proto_params.get("action_labels")
-        if action_labels is not None:
-            if not isinstance(action_labels, list) or len(action_labels) != 2:
+
+        if policy_name in {"epsilon_greedy", "softmax"}:
+            if isinstance(actions, list) and len(actions) != required_actions:
                 raise ValidationError(
-                    "matching_law params.action_labels must contain exactly two labels"
+                    f"{protocol_name} requires exactly {required_actions} policy action(s)"
                 )
-            if len(set(action_labels)) != 2:
+        elif policy_name == "fixed":
+            if required_actions != 1:
                 raise ValidationError(
-                    "matching_law params.action_labels must be two distinct labels"
+                    f"{protocol_name} requires exactly {required_actions} policy action(s); fixed policy provides one"
                 )
-        if isinstance(actions, list) and len(actions) != 2:
-            raise ValidationError(
-                "matching_law operant policy must provide exactly two actions"
-            )
-        if action_labels is not None and isinstance(actions, list) and action_labels != actions:
-            raise ValidationError(
-                "matching_law params.action_labels must match policy params.actions order"
-            )
+
+        if protocol_name == "matching_law":
+            action_labels = proto_params.get("action_labels")
+            if isinstance(actions, list) and len(actions) != 2:
+                raise ValidationError(
+                    "matching_law operant policy must provide exactly two actions"
+                )
+            if action_labels is not None and isinstance(actions, list) and action_labels != actions:
+                raise ValidationError(
+                    "matching_law params.action_labels must match policy params.actions order"
+                )
 
 
 # Schema validation: enforce protocol-mode XOR phase-mode and validate schemas.

@@ -2,24 +2,22 @@ window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
 const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
-const resolveOperantPair = window.VSLReact.resolveOperantPair || ((a, b) => [a, b]);
 function buildPolicy(params) {
-  const actions = resolveOperantPair(params.action_left, params.action_right);
   if (params.policy_type === "epsilon_greedy") {
     return {
       name: "epsilon_greedy",
-      params: { actions, epsilon: params.epsilon },
+      params: { actions: [params.action], epsilon: params.epsilon },
     };
   }
   if (params.policy_type === "softmax") {
     return {
       name: "softmax",
-      params: { actions, temperature: params.temperature },
+      params: { actions: [params.action], temperature: params.temperature },
     };
   }
   return {
     name: "fixed",
-    params: { action: params.fixed_action },
+    params: { action: params.action },
   };
 }
 
@@ -55,7 +53,6 @@ function validate(params) {
 }
 
 function OperantConditioningApp() {
-  const defaultPair = resolveOperantPair("nosepoke_L", "nosepoke_R");
   const [params, setParams] = React.useState({
     n_trials: 150,
     schedule_type: "fixed_ratio",
@@ -63,9 +60,7 @@ function OperantConditioningApp() {
     policy_type: "epsilon_greedy",
     epsilon: 0.1,
     temperature: 1.0,
-    action_left: defaultPair[0],
-    action_right: defaultPair[1],
-    fixed_action: defaultPair[0],
+    action: "leverpress",
     cs_plus: "lever",
     learner: "q_learner",
     representation: "vector_elemental",
@@ -190,50 +185,14 @@ function OperantConditioningApp() {
           </div>
         )}
 
-        <label>Action 1</label>
+        <label>Action</label>
         <select
-          value={params.action_left}
-          onChange={(e) => {
-            const next = e.target.value;
-            setParams((prev) => ({
-              ...prev,
-              action_left: resolveOperantPair(next, prev.action_right)[0],
-              action_right: resolveOperantPair(next, prev.action_right)[1],
-              fixed_action: prev.fixed_action === prev.action_left ? resolveOperantPair(next, prev.action_right)[0] : prev.fixed_action,
-            }));
-          }}
+          value={params.action}
+          onChange={(e) => setParams((prev) => ({ ...prev, action: e.target.value }))}
         >
-          {OPERANT_ACTIONS.map((a) => <option key={`op-a1-${a}`} value={a}>{a}</option>)}
+          {OPERANT_ACTIONS.map((a) => <option key={`op-a-${a}`} value={a}>{a}</option>)}
         </select>
 
-        <label>Action 2</label>
-        <select
-          value={params.action_right}
-          onChange={(e) => {
-            const next = e.target.value;
-            setParams((prev) => ({
-              ...prev,
-              action_left: resolveOperantPair(prev.action_left, next)[0],
-              action_right: resolveOperantPair(prev.action_left, next)[1],
-              fixed_action: prev.fixed_action === prev.action_right ? resolveOperantPair(prev.action_left, next)[1] : prev.fixed_action,
-            }));
-          }}
-        >
-          {OPERANT_ACTIONS.map((a) => <option key={`op-a2-${a}`} value={a}>{a}</option>)}
-        </select>
-
-        {params.policy_type === "fixed" && (
-          <div>
-            <label>Fixed Action</label>
-            <select
-              value={params.fixed_action}
-              onChange={(e) => setParams((prev) => ({ ...prev, fixed_action: e.target.value }))}
-            >
-              <option value={params.action_left}>{params.action_left}</option>
-              <option value={params.action_right}>{params.action_right}</option>
-            </select>
-          </div>
-        )}
       </div>
 
       <div className="panel">

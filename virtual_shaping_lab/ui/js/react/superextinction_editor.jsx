@@ -2,15 +2,8 @@ window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
 const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
-const resolveOperantPair = window.VSLReact.resolveOperantPair || ((first, second) => {
-  const primary = OPERANT_ACTIONS.includes(first) ? first : OPERANT_ACTIONS[0];
-  const fallbackSecondary = OPERANT_ACTIONS.find((action) => action !== primary) || primary;
-  const secondary = OPERANT_ACTIONS.includes(second) && second !== primary ? second : fallbackSecondary;
-  return [primary, secondary];
-});
 
 function buildPayload(params) {
-  const [actionLeft, actionRight] = resolveOperantPair(params.action_left, params.action_right);
   return {
     experiment: {
       learner: "q_learner",
@@ -18,7 +11,7 @@ function buildPayload(params) {
       policy: {
         name: "softmax",
         params: {
-          actions: [actionLeft, actionRight],
+          actions: [params.action],
           temperature: params.temperature,
         },
       },
@@ -48,8 +41,7 @@ function SuperextinctionApp() {
     acq_fr: 1,
     punish_fr: 1,
     punishment_reward: -1.0,
-    action_left: "nosepoke_L",
-    action_right: "nosepoke_R",
+    action: "leverpress",
     temperature: 0.8,
   });
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
@@ -95,12 +87,8 @@ function SuperextinctionApp() {
 
       <div className="panel">
         <h3>Actions</h3>
-        <label>Action 1</label>
-        <select value={params.action_left} onChange={(e) => setParams((p) => ({ ...p, action_left: e.target.value }))}>
-          {OPERANT_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
-        </select>
-        <label>Action 2</label>
-        <select value={params.action_right} onChange={(e) => setParams((p) => ({ ...p, action_right: e.target.value }))}>
+        <label>Action</label>
+        <select value={params.action} onChange={(e) => setParams((p) => ({ ...p, action: e.target.value }))}>
           {OPERANT_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
         </select>
         <label>Softmax Temperature: <span>{params.temperature}</span></label>
