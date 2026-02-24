@@ -98,6 +98,59 @@ def _validate_policy_guard(exp: dict) -> None:
     _validate_schema(policy, POLICY_SCHEMA_PATH, "policy")
 
 
+def _uses_operant_path(exp: dict) -> bool:
+    if "protocol" in exp and exp.get("protocol"):
+        return exp.get("protocol") in {"operant_conditioning", "matching_law"}
+    return any(
+        p.get("protocol") in {"operant_conditioning", "matching_law"}
+        for p in exp.get("phases", [])
+        if isinstance(p, dict)
+    )
+
+
+def _validate_operant_payload_semantics(exp: dict) -> None:
+    if not _uses_operant_path(exp):
+        return
+
+    policy = exp.get("policy")
+    if not isinstance(policy, dict):
+        raise ValidationError("operant experiments require a policy object")
+
+    policy_name = policy.get("name")
+    params = policy.get("params") if isinstance(policy.get("params"), dict) else {}
+    actions = params.get("actions")
+
+    if policy_name in {"epsilon_greedy", "softmax"}:
+        if not isinstance(actions, list) or len(actions) < 2:
+            raise ValidationError(
+                "operant policy requires params.actions with at least two actions"
+            )
+        if len(set(actions)) != len(actions):
+            raise ValidationError("operant policy params.actions must be unique")
+
+    if policy_name == "fixed":
+        fixed_action = params.get("action")
+        if fixed_action is None:
+            raise ValidationError("fixed policy requires params.action")
+
+    if exp.get("protocol") == "matching_law":
+        proto_params = exp.get("params") if isinstance(exp.get("params"), dict) else {}
+        action_labels = proto_params.get("action_labels")
+        if action_labels is not None:
+            if not isinstance(action_labels, list) or len(action_labels) != 2:
+                raise ValidationError(
+                    "matching_law params.action_labels must contain exactly two labels"
+                )
+            if len(set(action_labels)) != 2:
+                raise ValidationError(
+                    "matching_law params.action_labels must be two distinct labels"
+                )
+        if isinstance(actions, list) and len(actions) != 2:
+            raise ValidationError(
+                "matching_law operant policy must provide exactly two actions"
+            )
+
+
 # Schema validation: enforce protocol-mode XOR phase-mode and validate schemas.
 def _validate_protocol_or_phases(exp: dict) -> None:
     has_protocol = "protocol" in exp and exp.get("protocol")
@@ -182,4 +235,5 @@ def validate_payload(payload: dict) -> None:
     """
     exp = _validate_top_level(payload)
     _validate_policy_guard(exp)
+    _validate_operant_payload_semantics(exp)
     _validate_protocol_or_phases(exp)

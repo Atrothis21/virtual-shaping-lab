@@ -141,6 +141,13 @@ def test_operant_payload_policy_guard_accepts_operant_and_rejects_classical():
         validate_payload(classical_payload)
 
 
+def test_operant_payload_requires_policy_at_validation():
+    payload = operant_conditioning_payload()
+    payload["experiment"].pop("policy", None)
+    with pytest.raises(ValidationError, match="operant experiments require a policy object"):
+        validate_payload(payload)
+
+
 def test_operant_fixture_assembles_operant_agent_and_action_learner():
     payload = operant_conditioning_payload()
     cfg = ExperimentConfig.from_payload(payload)

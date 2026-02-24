@@ -145,3 +145,45 @@ def test_validate_payload_top_level_path(monkeypatch):
     monkeypatch.setattr(vp, "_validate_protocol_or_phases", lambda exp: None)
 
     vp.validate_payload({"experiment": {}, "report": {}})
+
+
+def test_validate_operant_semantics_requires_policy():
+    exp = {
+        "protocol": "operant_conditioning",
+        "params": {"n_trials": 10, "reward_schedule": {"type": "fixed_ratio", "value": 1}},
+    }
+    with pytest.raises(vp.ValidationError, match="operant experiments require a policy object"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_rejects_bad_actions():
+    exp = {
+        "protocol": "operant_conditioning",
+        "policy": {"name": "epsilon_greedy", "params": {"actions": ["a0"], "epsilon": 0.1}},
+        "params": {"n_trials": 10, "reward_schedule": {"type": "fixed_ratio", "value": 1}},
+    }
+    with pytest.raises(vp.ValidationError, match="at least two actions"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["policy"]["params"]["actions"] = ["a0", "a0"]
+    with pytest.raises(vp.ValidationError, match="must be unique"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_matching_law_action_shape():
+    exp = {
+        "protocol": "matching_law",
+        "policy": {"name": "softmax", "params": {"actions": ["left", "right", "extra"], "temperature": 1.0}},
+        "params": {
+            "n_trials": 20,
+            "schedule_left": {"type": "variable_interval", "value": 30},
+            "schedule_right": {"type": "variable_interval", "value": 60},
+            "action_labels": ["left", "left"],
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="two distinct labels"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["params"]["action_labels"] = ["left", "right"]
+    with pytest.raises(vp.ValidationError, match="exactly two actions"):
+        vp._validate_operant_payload_semantics(exp)
