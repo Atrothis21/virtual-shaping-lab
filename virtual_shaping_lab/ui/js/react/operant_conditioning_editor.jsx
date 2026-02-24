@@ -1,8 +1,10 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
+const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
+const resolveOperantPair = window.VSLReact.resolveOperantPair || ((a, b) => [a, b]);
 function buildPolicy(params) {
-  const actions = [params.action_left, params.action_right];
+  const actions = resolveOperantPair(params.action_left, params.action_right);
   if (params.policy_type === "epsilon_greedy") {
     return {
       name: "epsilon_greedy",
@@ -53,6 +55,7 @@ function validate(params) {
 }
 
 function OperantConditioningApp() {
+  const defaultPair = resolveOperantPair("nosepoke_L", "nosepoke_R");
   const [params, setParams] = React.useState({
     n_trials: 150,
     schedule_type: "fixed_ratio",
@@ -60,9 +63,9 @@ function OperantConditioningApp() {
     policy_type: "epsilon_greedy",
     epsilon: 0.1,
     temperature: 1.0,
-    action_left: "left",
-    action_right: "right",
-    fixed_action: "left",
+    action_left: defaultPair[0],
+    action_right: defaultPair[1],
+    fixed_action: defaultPair[0],
     cs_plus: "lever",
     learner: "q_learner",
     representation: "vector_elemental",
@@ -187,33 +190,37 @@ function OperantConditioningApp() {
           </div>
         )}
 
-        <label>Action Label 1</label>
-        <input
-          type="text"
+        <label>Action 1</label>
+        <select
           value={params.action_left}
           onChange={(e) => {
-            const next = e.target.value || "left";
+            const next = e.target.value;
             setParams((prev) => ({
               ...prev,
-              action_left: next,
-              fixed_action: prev.fixed_action === prev.action_left ? next : prev.fixed_action,
+              action_left: resolveOperantPair(next, prev.action_right)[0],
+              action_right: resolveOperantPair(next, prev.action_right)[1],
+              fixed_action: prev.fixed_action === prev.action_left ? resolveOperantPair(next, prev.action_right)[0] : prev.fixed_action,
             }));
           }}
-        />
+        >
+          {OPERANT_ACTIONS.map((a) => <option key={`op-a1-${a}`} value={a}>{a}</option>)}
+        </select>
 
-        <label>Action Label 2</label>
-        <input
-          type="text"
+        <label>Action 2</label>
+        <select
           value={params.action_right}
           onChange={(e) => {
-            const next = e.target.value || "right";
+            const next = e.target.value;
             setParams((prev) => ({
               ...prev,
-              action_right: next,
-              fixed_action: prev.fixed_action === prev.action_right ? next : prev.fixed_action,
+              action_left: resolveOperantPair(prev.action_left, next)[0],
+              action_right: resolveOperantPair(prev.action_left, next)[1],
+              fixed_action: prev.fixed_action === prev.action_right ? resolveOperantPair(prev.action_left, next)[1] : prev.fixed_action,
             }));
           }}
-        />
+        >
+          {OPERANT_ACTIONS.map((a) => <option key={`op-a2-${a}`} value={a}>{a}</option>)}
+        </select>
 
         {params.policy_type === "fixed" && (
           <div>

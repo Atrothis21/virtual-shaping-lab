@@ -1,8 +1,16 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
+const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
+const resolveOperantPair = window.VSLReact.resolveOperantPair || ((first, second) => {
+  const primary = OPERANT_ACTIONS.includes(first) ? first : OPERANT_ACTIONS[0];
+  const fallbackSecondary = OPERANT_ACTIONS.find((action) => action !== primary) || primary;
+  const secondary = OPERANT_ACTIONS.includes(second) && second !== primary ? second : fallbackSecondary;
+  return [primary, secondary];
+});
 
 function buildPayload(params) {
+  const [actionLeft, actionRight] = resolveOperantPair(params.action_left, params.action_right);
   return {
     experiment: {
       learner: "q_learner",
@@ -10,7 +18,7 @@ function buildPayload(params) {
       policy: {
         name: "softmax",
         params: {
-          actions: [params.action_left, params.action_right],
+          actions: [actionLeft, actionRight],
           temperature: params.temperature,
         },
       },
@@ -52,8 +60,8 @@ function SpontaneousRecoveryApp() {
     probe_fr: 1,
     context_a: "A",
     context_b: "B",
-    action_left: "left",
-    action_right: "right",
+    action_left: "nosepoke_L",
+    action_right: "nosepoke_R",
     temperature: 0.8,
   });
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
@@ -99,10 +107,14 @@ function SpontaneousRecoveryApp() {
 
       <div className="panel">
         <h3>Actions</h3>
-        <label>Action Label 1</label>
-        <input type="text" value={params.action_left} onChange={(e) => setParams((p) => ({ ...p, action_left: e.target.value || "left" }))} />
-        <label>Action Label 2</label>
-        <input type="text" value={params.action_right} onChange={(e) => setParams((p) => ({ ...p, action_right: e.target.value || "right" }))} />
+        <label>Action 1</label>
+        <select value={params.action_left} onChange={(e) => setParams((p) => ({ ...p, action_left: e.target.value }))}>
+          {OPERANT_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
+        </select>
+        <label>Action 2</label>
+        <select value={params.action_right} onChange={(e) => setParams((p) => ({ ...p, action_right: e.target.value }))}>
+          {OPERANT_ACTIONS.map((action) => <option key={action} value={action}>{action}</option>)}
+        </select>
         <label>Softmax Temperature: <span>{params.temperature}</span></label>
         <input type="range" min="0.1" max="3" step="0.1" value={params.temperature} onChange={(e) => setParams((p) => ({ ...p, temperature: +e.target.value }))} />
       </div>
