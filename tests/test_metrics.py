@@ -17,6 +17,11 @@ from analysis.metrics.time_series import (
     ActionTimeSeries,
 )
 from analysis.metrics import registry as metric_registry
+from analysis.metrics.operant import (
+    OutcomeTypeCounts,
+    ActionCounts,
+    PhaseRewardSummary,
+)
 
 
 class DummyMetric(Metric):
@@ -114,3 +119,25 @@ def test_metrics_registry_helpers(monkeypatch):
     assert metric.kwargs["foo"] == "bar"
     result = metric_registry.compute_metric(DummyMetric.name, records=[{"a": 1}, {"a": 2}])
     assert result == {"count": 2}
+
+
+def test_operant_diagnostic_metrics():
+    records = [
+        {"reward": 1.0, "outcome_type": "reinforcement", "action": 0, "subphase_name": "acq"},
+        {"reward": 0.0, "outcome_type": "extinction", "action": 0, "subphase_name": "acq"},
+        {"reward": -1.0, "outcome_type": "punishment", "action": 1, "subphase_name": "punish"},
+    ]
+
+    assert OutcomeTypeCounts().compute(records) == {
+        "reinforcement": 1,
+        "extinction": 1,
+        "punishment": 1,
+    }
+
+    action_counts = ActionCounts().compute(records)
+    assert action_counts["0"] == 2
+    assert action_counts["1"] == 1
+
+    summary = PhaseRewardSummary().compute(records)
+    assert "acq" in summary
+    assert summary["acq"]["mean_reward"] == pytest.approx(0.5, abs=1e-12)

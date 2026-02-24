@@ -148,6 +148,8 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     assert (report_dir / "records.json").exists()
     assert (report_dir / "payload.json").exists()
     assert (report_dir / "attention_summary.json").exists()
+    assert (report_dir / "report.pdf").exists()
+    assert (report_dir / "metrics" / "dummy_metric.json").exists()
 
     attention = json.loads((report_dir / "attention_summary.json").read_text())
     assert attention == {"tone": 0.7}

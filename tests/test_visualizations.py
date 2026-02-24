@@ -11,6 +11,12 @@ from analysis.visualizations.dual_time_series import DualTimeSeriesPlot
 from analysis.visualizations.auto_time_series import AutoTimeSeriesPlot
 from analysis.visualizations.matching_law import MatchingLawPlot
 from analysis.visualizations.operant import CumulativeResponsePlot, CumulativeRewardPlot
+from analysis.visualizations.operant_diagnostics import (
+    RewardTimeSeriesPlot,
+    ActionDistributionPlot,
+    OutcomeTypeBarPlot,
+    PhaseRewardBarPlot,
+)
 from analysis.visualizations.probe_bar import ProbeBarPlot
 from analysis.visualizations.summation import SummationPlot
 from analysis.visualizations.stimulus import StimulusBarPlot
@@ -171,6 +177,30 @@ def test_operant_plots(tmp_path):
     reward_plot2 = CumulativeRewardPlot()
     with pytest.raises(KeyError):
         reward_plot2.render([], {})
+
+
+def test_operant_diagnostic_plots(tmp_path):
+    records = [
+        {"reward": 1.0, "outcome_type": "reinforcement", "action": 0, "phase_name": "acq"},
+        {"reward": 0.0, "outcome_type": "extinction", "action": 0, "phase_name": "acq"},
+        {"reward": -1.0, "outcome_type": "punishment", "action": 1, "phase_name": "punish"},
+    ]
+
+    reward_ts = RewardTimeSeriesPlot()
+    reward_ts.render(records, {})
+    reward_ts.save(tmp_path / "reward_ts.png")
+
+    action_dist = ActionDistributionPlot()
+    action_dist.render(records, {})
+    action_dist.save(tmp_path / "action_dist.png")
+
+    outcome_bar = OutcomeTypeBarPlot()
+    outcome_bar.render(records, {})
+    outcome_bar.save(tmp_path / "outcome_bar.png")
+
+    phase_bar = PhaseRewardBarPlot()
+    phase_bar.render(records, {})
+    phase_bar.save(tmp_path / "phase_bar.png")
 
 
 def test_probe_and_summation_plots(tmp_path):
