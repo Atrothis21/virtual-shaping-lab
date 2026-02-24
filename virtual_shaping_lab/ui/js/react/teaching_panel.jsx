@@ -26,6 +26,10 @@ const PRESET_ORDER = [
   "occasion_setting",
   "operant_conditioning",
   "matching_law",
+  "shaping",
+  "resurgence",
+  "superextinction",
+  "spontaneous_recovery",
 ];
 
 window.VSLReact.teachingPanels = {
@@ -118,6 +122,30 @@ window.VSLReact.teachingPanels = {
     mechanisms: ["Operant Value Learning"],
     summary: "Action allocation reflects relative reinforcement across concurrent options.",
     expected: "Choice distribution shifts toward richer schedule.",
+  },
+  shaping: {
+    phaseFlow: ["Shaping Stage 1", "Shaping Stage 2"],
+    mechanisms: ["Operant Value Learning"],
+    summary: "Behavior is established under dense reinforcement then tested under leaner contingency.",
+    expected: "Reward density is lower in the harder second stage while behavior remains organized.",
+  },
+  resurgence: {
+    phaseFlow: ["Reinforcement", "Suppression", "Recovery"],
+    mechanisms: ["Operant Value Learning"],
+    summary: "A suppressed response can re-emerge when reinforcement conditions shift again.",
+    expected: "Recovery block reward/prediction exceeds suppression block.",
+  },
+  superextinction: {
+    phaseFlow: ["Reinforcement", "Punishment"],
+    mechanisms: ["Operant Value Learning"],
+    summary: "Negative outcomes suppress responding more aggressively than omission alone.",
+    expected: "Punishment-phase outcomes trend below acquisition outcomes.",
+  },
+  spontaneous_recovery: {
+    phaseFlow: ["Acquisition (A)", "Extinction (B)", "Probe (A)"],
+    mechanisms: ["Operant Value Learning", "Context"],
+    summary: "Returning to the acquisition context can recover responding after extinction.",
+    expected: "Probe in context A rises above extinction tail from context B.",
   },
 };
 

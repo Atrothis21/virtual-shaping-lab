@@ -16,6 +16,10 @@ const PRESET_FOCUS = {
   aab_renewal: ["context"],
   operant_conditioning: [],
   matching_law: [],
+  shaping: [],
+  resurgence: [],
+  superextinction: [],
+  spontaneous_recovery: ["context"],
 };
 
 const MECH_HELP = {
