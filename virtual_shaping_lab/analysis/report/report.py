@@ -7,6 +7,10 @@ from analysis.metrics.registry import METRIC_REGISTRY
 from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = PACKAGE_ROOT.parent
+DEFAULT_REPORTS_DIR = REPO_ROOT / "reports"
+
 
 def _to_jsonable(value):
     if isinstance(value, dict):
@@ -22,7 +26,7 @@ def run_report(
     records,
     preset: str,
     payload=None,
-    output_dir: str = "reports",
+    output_dir: str | None = None,
 ):
     """
     Generate analysis outputs and figures from experiment records
@@ -37,7 +41,8 @@ def run_report(
     # Create report directory
     # -------------------------------------------------
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    report_dir = Path(output_dir) / timestamp
+    base_dir = Path(output_dir) if output_dir is not None else DEFAULT_REPORTS_DIR
+    report_dir = base_dir / timestamp
     report_dir.mkdir(parents=True, exist_ok=False)
     metrics_dir = report_dir / "metrics"
     metrics_dir.mkdir(parents=True, exist_ok=True)
