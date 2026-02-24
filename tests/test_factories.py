@@ -146,15 +146,22 @@ def test_reward_schedule_factory_branches(monkeypatch):
 
     fixed = reward_schedule_factory.build_reward_schedule({"type": "fixed_ratio", "value": 2})
     assert fixed.kwargs["n"] == 2
+    assert fixed.kwargs["reward"] == 1.0
 
     vr = reward_schedule_factory.build_reward_schedule({"type": "variable_ratio", "value": 5})
     assert vr.kwargs["mean_n"] == 5
+    assert vr.kwargs["reward"] == 1.0
 
     fi = reward_schedule_factory.build_reward_schedule({"type": "fixed_interval", "value": 7})
     assert fi.kwargs["interval"] == 7
+    assert fi.kwargs["reward"] == 1.0
 
     vi = reward_schedule_factory.build_reward_schedule({"type": "variable_interval", "value": 9})
     assert vi.kwargs["mean_interval"] == 9
+    assert vi.kwargs["reward"] == 1.0
+
+    fixed_neg = reward_schedule_factory.build_reward_schedule({"type": "fixed_ratio", "value": 2, "reward": -0.5})
+    assert fixed_neg.kwargs["reward"] == -0.5
 
     with pytest.raises(RuntimeError):
         reward_schedule_factory.build_reward_schedule({"type": "other", "value": 1})

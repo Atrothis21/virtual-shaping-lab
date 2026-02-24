@@ -187,6 +187,7 @@ def test_concurrent_schedule_branches():
     )
     record = phase.step()
     assert record["action_label"] in {"left", "right", None}
+    assert record["outcome_type"] in {"reinforcement", "extinction", "punishment"}
 
 
 def test_context_shift_phase_branches():
@@ -214,6 +215,42 @@ def test_operant_acquisition_phase_branches():
     )
     record = phase.step()
     assert record["reward"] == 1.0
+    assert record["outcome_type"] == "reinforcement"
+
+
+def test_operant_and_concurrent_punishment_branch():
+    class DummyPunishSchedule:
+        name = "punish"
+
+        def reset(self):
+            self.reset_called = True
+
+        def step(self, action, t):
+            return -1.0 if action is not None else 0.0
+
+    agent = DummyAgent(action=1)
+    operant = OperantAcquisitionPhase(
+        agent=agent,
+        stimuli={"cs_plus": ["lever"]},
+        n_trials=1,
+        reward_schedule=DummyPunishSchedule(),
+    )
+    operant_record = operant.step()
+    assert operant_record["reward"] == -1.0
+    assert operant_record["outcome_type"] == "punishment"
+
+    concurrent = ConcurrentSchedulePhase(
+        agent=DummyAgent(action=0),
+        n_trials=1,
+        schedule_left={"type": "fixed_ratio", "value": 1, "reward": -1.0},
+        schedule_right={"type": "fixed_ratio", "value": 1, "reward": 1.0},
+        params={"action_labels": ["left", "right"]},
+        stimuli={"cs_plus": ["tone"]},
+    )
+    concurrent_record = concurrent.step()
+    assert concurrent_record["reward"] == -1.0
+    assert concurrent_record["outcome_type"] == "punishment"
+    assert concurrent_record["reward_action"] == 0
 
 
 def test_nonreinforcement_reference_series():

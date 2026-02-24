@@ -8,6 +8,14 @@ from experiment.factories.reward_schedule_factory import build_reward_schedule
 from agents.representations.observation import make_observation
 
 
+def _classify_operant_outcome(reward: float) -> str:
+    if reward > 0:
+        return "reinforcement"
+    if reward < 0:
+        return "punishment"
+    return "extinction"
+
+
 class ConcurrentSchedulePhase(PhaseBase):
     """
     Concurrent operant schedules for matching law.
@@ -80,15 +88,16 @@ class ConcurrentSchedulePhase(PhaseBase):
         reward = 0.0
         reward_action = None
         if action == 0:
-            reward = self.schedule_left.step(action=action, t=self.trial_index)
-            reward_action = 0 if reward > 0 else None
+            reward = float(self.schedule_left.step(action=action, t=self.trial_index))
+            reward_action = 0 if reward != 0 else None
         elif action == 1:
-            reward = self.schedule_right.step(action=action, t=self.trial_index)
-            reward_action = 1 if reward > 0 else None
+            reward = float(self.schedule_right.step(action=action, t=self.trial_index))
+            reward_action = 1 if reward != 0 else None
 
         return {
             "action": action,
             "reward": reward,
+            "outcome_type": _classify_operant_outcome(reward),
             "reward_action": reward_action,
             "state": state,
             "prediction": prediction,
@@ -121,6 +130,7 @@ class ConcurrentSchedulePhase(PhaseBase):
             "reward_action": outcome.get("reward_action"),
             "response": action if action is not None else outcome["prediction"],
             "reward": outcome["reward"],
+            "outcome_type": outcome.get("outcome_type", _classify_operant_outcome(float(outcome["reward"]))),
             "prediction": outcome["prediction"],
             "schedule_left": getattr(self.schedule_left, "name", None),
             "schedule_right": getattr(self.schedule_right, "name", None),

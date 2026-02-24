@@ -42,7 +42,8 @@
                 "progressive_ratio"
               ]
             },
-            "value": { "type": "number", "minimum": 1 }
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
           },
           "required": ["type", "value"]
         }

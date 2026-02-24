@@ -178,3 +178,7 @@ def test_reward_schedules():
     vi.reset()
     assert vi.step(None, 0) == 0.0
     _ = vi.step(1, 1)
+
+    fr_punish = FixedRatioSchedule(n=1, reward=-0.5)
+    fr_punish.reset()
+    assert fr_punish.step(1, 0) == -0.5

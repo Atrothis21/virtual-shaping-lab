@@ -147,6 +147,31 @@ def test_validate_payload_top_level_path(monkeypatch):
     vp.validate_payload({"experiment": {}, "report": {}})
 
 
+def test_validate_payload_accepts_operant_negative_reward_schedule():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "protocol": "operant_conditioning",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_trials": 5,
+                "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": -0.5},
+            },
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
 def test_validate_operant_semantics_requires_policy():
     exp = {
         "protocol": "operant_conditioning",
