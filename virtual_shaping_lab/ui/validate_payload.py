@@ -108,6 +108,19 @@ def _uses_operant_path(exp: dict) -> bool:
     )
 
 
+def _iter_operant_entries(exp: dict):
+    if "protocol" in exp and exp.get("protocol") in {"operant_conditioning", "matching_law"}:
+        yield exp.get("protocol"), exp.get("params") if isinstance(exp.get("params"), dict) else {}
+
+    for phase in exp.get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        proto = phase.get("protocol")
+        if proto in {"operant_conditioning", "matching_law"}:
+            params = phase.get("params") if isinstance(phase.get("params"), dict) else {}
+            yield proto, params
+
+
 def _validate_operant_payload_semantics(exp: dict) -> None:
     if not _uses_operant_path(exp):
         return
@@ -133,8 +146,9 @@ def _validate_operant_payload_semantics(exp: dict) -> None:
         if fixed_action is None:
             raise ValidationError("fixed policy requires params.action")
 
-    if exp.get("protocol") == "matching_law":
-        proto_params = exp.get("params") if isinstance(exp.get("params"), dict) else {}
+    for protocol_name, proto_params in _iter_operant_entries(exp):
+        if protocol_name != "matching_law":
+            continue
         action_labels = proto_params.get("action_labels")
         if action_labels is not None:
             if not isinstance(action_labels, list) or len(action_labels) != 2:

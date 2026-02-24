@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/phases/matching_law.schema.json",
+  "title": "Matching Law Phase",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "matching_law" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_trials": { "type": "integer", "minimum": 1, "default": 200 },
+        "schedule_left": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixed_ratio",
+                "variable_ratio",
+                "fixed_interval",
+                "variable_interval"
+              ]
+            },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "schedule_right": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixed_ratio",
+                "variable_ratio",
+                "fixed_interval",
+                "variable_interval"
+              ]
+            },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "action_labels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": ["n_trials", "schedule_left", "schedule_right"]
+    }
+  },
+  "required": ["name", "protocol", "stimuli", "params"]
+}

@@ -172,6 +172,36 @@ def test_validate_payload_accepts_operant_negative_reward_schedule():
     validate_payload(payload)
 
 
+def test_validate_payload_accepts_operant_phase_mode():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Operant Conditioning",
+                    "protocol": "operant_conditioning",
+                    "stimuli": {"cs_plus": ["lever"]},
+                    "params": {
+                        "n_trials": 5,
+                        "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                    },
+                }
+            ],
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
 def test_validate_operant_semantics_requires_policy():
     exp = {
         "protocol": "operant_conditioning",
@@ -210,5 +240,28 @@ def test_validate_operant_semantics_matching_law_action_shape():
         vp._validate_operant_payload_semantics(exp)
 
     exp["params"]["action_labels"] = ["left", "right"]
+    with pytest.raises(vp.ValidationError, match="exactly two actions"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_matching_law_action_shape_in_phase_mode():
+    exp = {
+        "phases": [
+            {
+                "protocol": "matching_law",
+                "params": {
+                    "n_trials": 20,
+                    "schedule_left": {"type": "variable_interval", "value": 30},
+                    "schedule_right": {"type": "variable_interval", "value": 60},
+                    "action_labels": ["left", "left"],
+                },
+            }
+        ],
+        "policy": {"name": "softmax", "params": {"actions": ["left", "right", "extra"], "temperature": 1.0}},
+    }
+    with pytest.raises(vp.ValidationError, match="two distinct labels"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["phases"][0]["params"]["action_labels"] = ["left", "right"]
     with pytest.raises(vp.ValidationError, match="exactly two actions"):
         vp._validate_operant_payload_semantics(exp)
