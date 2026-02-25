@@ -121,6 +121,7 @@ class OperantAcquisitionPhase(PhaseBase):
             "response": outcome["action"] if outcome["action"] is not None else outcome["prediction"],
             "reward": outcome["reward"],
             "outcome_type": outcome.get("outcome_type", _classify_operant_outcome(float(outcome["reward"]))),
+            "consequence_mode": self.params.get("consequence_mode"),
             "prediction": outcome["prediction"],
             "schedule": getattr(self.reward_schedule, "name", None),
         }

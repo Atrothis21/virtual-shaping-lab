@@ -286,6 +286,7 @@ def operant_conditioning_payload():
             "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_trials": 150,
+                "consequence_mode": "positive_reinforcement",
                 "reward_schedule": {"type": "fixed_ratio", "value": 5},
             },
         },

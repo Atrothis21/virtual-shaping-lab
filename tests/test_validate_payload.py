@@ -164,6 +164,7 @@ def test_validate_payload_accepts_operant_negative_reward_schedule():
             "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_trials": 5,
+                "consequence_mode": "positive_punishment",
                 "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": -0.5},
             },
         },
@@ -192,6 +193,7 @@ def test_validate_payload_accepts_operant_phase_mode():
                     "stimuli": {"cs_plus": ["lever"]},
                     "params": {
                         "n_trials": 5,
+                        "consequence_mode": "positive_reinforcement",
                         "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
                     },
                 }

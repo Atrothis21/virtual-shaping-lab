@@ -28,6 +28,15 @@
       "additionalProperties": false,
       "properties": {
         "n_trials": { "type": "integer", "minimum": 1 },
+        "consequence_mode": {
+          "type": "string",
+          "enum": [
+            "positive_reinforcement",
+            "negative_reinforcement",
+            "positive_punishment",
+            "negative_punishment"
+          ]
+        },
         "reward_schedule": {
           "type": "object",
           "additionalProperties": false,
@@ -38,8 +47,7 @@
                 "fixed_ratio",
                 "variable_ratio",
                 "fixed_interval",
-                "variable_interval",
-                "progressive_ratio"
+                "variable_interval"
               ]
             },
             "value": { "type": "number", "minimum": 1 },
@@ -48,7 +56,7 @@
           "required": ["type", "value"]
         }
       },
-      "required": ["n_trials", "reward_schedule"]
+      "required": ["n_trials", "reward_schedule", "consequence_mode"]
     }
   },
   "required": ["name", "protocol", "stimuli", "params"]
