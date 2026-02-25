@@ -137,7 +137,7 @@ class OutcomeTypeBarPlot(Visualization):
         ax.bar(labels, values, color=colors)
         ax.set_xlabel("Outcome Type")
         ax.set_ylabel("Count")
-        ax.set_title("Outcome-Type Distribution")
+        ax.set_title("Outcome-Type Distribution (Sign-Tracked Consequence)")
         ax.grid(axis="y", alpha=0.3)
         ax.set_axisbelow(True)
 

@@ -46,6 +46,12 @@ function valueToString(v) {
   return String(v);
 }
 
+function operantConsequenceClass(mode) {
+  if (mode === "positive_reinforcement" || mode === "negative_reinforcement") return "appetitive (+)";
+  if (mode === "positive_punishment" || mode === "negative_punishment") return "aversive (-)";
+  return "n/a";
+}
+
 function Summary({ payload, runId }) {
   const exp = payload?.experiment || {};
   const report = payload?.report || {};
@@ -61,6 +67,9 @@ function Summary({ payload, runId }) {
   const phases = Array.isArray(exp.phases)
     ? exp.phases.map((p) => p.protocol).join(", ")
     : "";
+  const consequenceMode = exp?.params?.consequence_mode || "n/a";
+  const consequenceClass = operantConsequenceClass(consequenceMode);
+  const isOperantConditioning = exp?.protocol === "operant_conditioning";
 
   return (
     <div className="summary">
@@ -72,6 +81,13 @@ function Summary({ payload, runId }) {
       <div><strong>Policy:</strong> {policyName}</div>
       <div><strong>Actions:</strong> {actions}</div>
       <div><strong>Phases:</strong> {phases || "none"}</div>
+      {isOperantConditioning && (
+        <>
+          <div><strong>Consequence Mode:</strong> {consequenceMode}</div>
+          <div><strong>Consequence Class:</strong> {consequenceClass}</div>
+          <div><strong>Interpretation Note:</strong> v1.4 tracks consequence sign/class only.</div>
+        </>
+      )}
     </div>
   );
 }

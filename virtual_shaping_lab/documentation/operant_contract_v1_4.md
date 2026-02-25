@@ -72,6 +72,22 @@ Outcome interpretation for operant updates:
 
 All three branches are required behavioral paths and must be test-covered.
 
+### Consequence-Mode Scope (v1.4)
+
+`operant_conditioning` may expose consequence mode labels
+(`positive_reinforcement`, `negative_reinforcement`,
+`positive_punishment`, `negative_punishment`).
+
+In `v1.4`, these labels are **sign-tracked classes** only:
+- reinforcement modes map to appetitive (`reward > 0`) updates
+- punishment modes map to aversive (`reward < 0`) updates
+
+`v1.4` does **not** claim full process-level differentiation of:
+- positive vs negative reinforcement
+- positive vs negative punishment
+
+Full event/state-process distinction is deferred to a later version.
+
 ## Schedule Contract
 
 Operant schedules must expose deterministic step/reset semantics:

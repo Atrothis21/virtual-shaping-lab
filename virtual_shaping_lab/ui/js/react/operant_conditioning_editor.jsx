@@ -124,6 +124,7 @@ function OperantConditioningApp() {
     <>
       <h1>Operant Conditioning Preset</h1>
       <p>Single-action operant learning with explicit consequence-mode semantics.</p>
+      <p><em>Current v1.4 behavior:</em> consequence modes are sign-tracked (`+` appetitive vs `-` aversive) and do not yet model distinct process-level PR/NR or PP/NP mechanisms.</p>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
