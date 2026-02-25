@@ -35,9 +35,6 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "matching_law",
-      stimuli: {
-        cs_plus: [params.cs_plus],
-      },
       params: {
         n_trials: params.n_trials,
         schedule_left: {
@@ -73,7 +70,6 @@ function MatchingLawApp() {
     action_left: defaultPair[0],
     action_right: defaultPair[1],
     fixed_action: defaultPair[0],
-    cs_plus: "lever",
     learner: "q_learner",
     representation: "vector_elemental",
   });
@@ -263,19 +259,6 @@ function MatchingLawApp() {
             </select>
           </div>
         )}
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS+</label>
-        <select
-          value={params.cs_plus}
-          onChange={(e) => setParams((prev) => ({ ...prev, cs_plus: e.target.value }))}
-        >
-          {STIMULI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
       </div>
 
       <div className="panel">

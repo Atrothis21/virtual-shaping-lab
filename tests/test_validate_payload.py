@@ -173,6 +173,31 @@ def test_validate_payload_accepts_operant_negative_reward_schedule():
     validate_payload(payload)
 
 
+def test_validate_payload_accepts_operant_without_stimuli_field():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "protocol": "operant_conditioning",
+            "params": {
+                "n_trials": 5,
+                "consequence_mode": "positive_reinforcement",
+                "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            },
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
 def test_validate_payload_accepts_operant_phase_mode():
     payload = {
         "experiment": {

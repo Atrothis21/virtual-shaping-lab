@@ -70,5 +70,5 @@
       "required": ["n_trials", "schedule_left", "schedule_right"]
     }
   },
-  "required": ["name", "protocol", "stimuli", "params"]
+  "required": ["name", "protocol", "params"]
 }

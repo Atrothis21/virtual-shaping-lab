@@ -283,7 +283,6 @@ def operant_conditioning_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "operant_conditioning",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_trials": 150,
                 "consequence_mode": "positive_reinforcement",
@@ -309,7 +308,6 @@ def matching_law_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "matching_law",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_trials": 300,
                 "schedule_left": {"type": "variable_interval", "value": 30},
@@ -337,7 +335,6 @@ def shaping_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "shaping",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_stage_1_trials": 60,
                 "n_stage_2_trials": 60,
@@ -361,7 +358,6 @@ def resurgence_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "resurgence",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_acquisition_trials": 40,
                 "n_suppression_trials": 40,
@@ -387,7 +383,6 @@ def superextinction_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "superextinction",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_acquisition_trials": 50,
                 "n_superextinction_trials": 50,
@@ -416,7 +411,6 @@ def spontaneous_recovery_payload():
             },
             "context_inference": {"enabled": False, "max_contexts": 3},
             "protocol": "spontaneous_recovery",
-            "stimuli": {"cs_plus": ["lever"]},
             "params": {
                 "n_acquisition_trials": 40,
                 "n_extinction_trials": 40,

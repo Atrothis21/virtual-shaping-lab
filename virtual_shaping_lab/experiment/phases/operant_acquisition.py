@@ -61,6 +61,16 @@ class OperantAcquisitionPhase(PhaseBase):
     # Trial definition
     # ------------------------------------------------------------------
 
+    def _default_observation_label(self) -> str:
+        if isinstance(self.stimuli, list) and self.stimuli:
+            return str(self.stimuli[0])
+        rep = getattr(self.agent, "representation", None)
+        rep_params = getattr(rep, "params", {}) if rep is not None else {}
+        rep_stimuli = rep_params.get("stimuli") if isinstance(rep_params, dict) else None
+        if isinstance(rep_stimuli, list) and rep_stimuli:
+            return str(rep_stimuli[0])
+        return "lever"
+
     def sample_trial(self) -> Dict[str, Any]:
         """
         Operant trials do not require stimulus sampling.
@@ -71,7 +81,7 @@ class OperantAcquisitionPhase(PhaseBase):
         """
         Select action and compute reward from schedule.
         """
-        observation = self.stimuli[0] if self.stimuli else "operant"
+        observation = self._default_observation_label()
         obs = make_observation(
             stimuli=[observation],
             context=self.context,

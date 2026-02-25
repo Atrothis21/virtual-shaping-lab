@@ -40,7 +40,7 @@ class ConcurrentSchedulePhase(PhaseBase):
 
         super().__init__(
             agent=agent,
-            stimuli=stimuli or ["operant"],
+            stimuli=stimuli or [],
             n_trials=n_trials,
             params=params,
         )
@@ -77,7 +77,13 @@ class ConcurrentSchedulePhase(PhaseBase):
             if isinstance(cs_plus, list) and cs_plus:
                 observation = cs_plus[0]
         if observation is None:
-            observation = "operant"
+            rep = getattr(self.agent, "representation", None)
+            rep_params = getattr(rep, "params", {}) if rep is not None else {}
+            rep_stimuli = rep_params.get("stimuli") if isinstance(rep_params, dict) else None
+            if isinstance(rep_stimuli, list) and rep_stimuli:
+                observation = rep_stimuli[0]
+            else:
+                observation = "lever"
         obs = make_observation(
             stimuli=[observation],
             context=self.context,

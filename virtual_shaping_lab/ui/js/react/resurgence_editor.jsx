@@ -28,7 +28,6 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "resurgence",
-      stimuli: { cs_plus: [params.cs_plus] },
       params: {
         n_acquisition_trials: params.n_acquisition_trials,
         n_suppression_trials: params.n_suppression_trials,
@@ -44,7 +43,6 @@ function buildPayload(params) {
 
 function ResurgenceApp() {
   const [params, setParams] = React.useState({
-    cs_plus: "lever",
     n_acquisition_trials: 40,
     n_suppression_trials: 40,
     n_resurgence_trials: 30,
@@ -85,14 +83,6 @@ function ResurgenceApp() {
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
           Back to Presets
         </button>
-      </div>
-
-      <div className="panel">
-        <h3>Stimulus</h3>
-        <label>CS+</label>
-        <select value={params.cs_plus} onChange={(e) => setParams((p) => ({ ...p, cs_plus: e.target.value }))}>
-          {STIMULI.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
       </div>
 
       <div className="panel">

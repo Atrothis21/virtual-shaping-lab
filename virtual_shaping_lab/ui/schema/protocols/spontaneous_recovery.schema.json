@@ -71,5 +71,5 @@
       ]
     }
   },
-  "required": ["name", "protocol", "stimuli", "params"]
+  "required": ["name", "protocol", "params"]
 }

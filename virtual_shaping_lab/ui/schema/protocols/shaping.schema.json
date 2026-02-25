@@ -49,5 +49,5 @@
       "required": ["n_stage_1_trials", "n_stage_2_trials", "schedule_stage_1", "schedule_stage_2"]
     }
   },
-  "required": ["name", "protocol", "stimuli", "params"]
+  "required": ["name", "protocol", "params"]
 }

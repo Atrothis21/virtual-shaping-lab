@@ -226,9 +226,10 @@ def _validate_protocol_or_phases(exp: dict) -> None:
         protocol_payload = {
             "name": exp.get("name", protocol),
             "protocol": protocol,
-            "stimuli": exp.get("stimuli", {}),
             "params": exp.get("params", {}),
         }
+        if "stimuli" in exp:
+            protocol_payload["stimuli"] = exp.get("stimuli")
 
         _validate_schema(protocol_payload, schema_path, f"protocol[{protocol}]")
         return

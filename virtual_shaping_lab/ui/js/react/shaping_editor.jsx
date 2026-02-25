@@ -21,7 +21,6 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "shaping",
-      stimuli: { cs_plus: [params.cs_plus] },
       params: {
         n_stage_1_trials: params.n_stage_1_trials,
         n_stage_2_trials: params.n_stage_2_trials,
@@ -35,7 +34,6 @@ function buildPayload(params) {
 
 function ShapingApp() {
   const [params, setParams] = React.useState({
-    cs_plus: "lever",
     n_stage_1_trials: 60,
     n_stage_2_trials: 60,
     fr_stage_1: 1,
@@ -74,14 +72,6 @@ function ShapingApp() {
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
           Back to Presets
         </button>
-      </div>
-
-      <div className="panel">
-        <h3>Stimulus</h3>
-        <label>CS+</label>
-        <select value={params.cs_plus} onChange={(e) => setParams((p) => ({ ...p, cs_plus: e.target.value }))}>
-          {STIMULI.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
       </div>
 
       <div className="panel">

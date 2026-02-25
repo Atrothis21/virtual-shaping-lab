@@ -51,9 +51,6 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "operant_conditioning",
-      stimuli: {
-        cs_plus: [params.cs_plus],
-      },
       params: {
         n_trials: params.n_trials,
         consequence_mode: params.consequence_mode,
@@ -83,7 +80,6 @@ function OperantConditioningApp() {
     epsilon: 0.1,
     temperature: 1.0,
     action: "leverpress",
-    cs_plus: "lever",
     learner: "q_learner",
     representation: "vector_elemental",
   });
@@ -238,19 +234,6 @@ function OperantConditioningApp() {
           {OPERANT_ACTIONS.map((a) => <option key={`op-a-${a}`} value={a}>{a}</option>)}
         </select>
 
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS+</label>
-        <select
-          value={params.cs_plus}
-          onChange={(e) => setParams((prev) => ({ ...prev, cs_plus: e.target.value }))}
-        >
-          {STIMULI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
       </div>
 
       <div className="panel">
