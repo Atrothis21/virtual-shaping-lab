@@ -5,13 +5,27 @@ from datetime import datetime
 from analysis.report.presets import get_report_preset
 from analysis.metrics.registry import METRIC_REGISTRY
 from analysis.visualizations.registry import VISUALIZATION_REGISTRY
+from analysis.report.pdf import ReportPDF
+from paths import REPORTS_DIR
+
+DEFAULT_REPORTS_DIR = REPORTS_DIR
+
+
+def _to_jsonable(value):
+    if isinstance(value, dict):
+        return {str(k): _to_jsonable(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_jsonable(v) for v in value]
+    if isinstance(value, tuple):
+        return [_to_jsonable(v) for v in value]
+    return value
 
 
 def run_report(
     records,
     preset: str,
     payload=None,
-    output_dir: str = "reports",
+    output_dir: str | None = None,
 ):
     """
     Generate analysis outputs and figures from experiment records
@@ -26,8 +40,11 @@ def run_report(
     # Create report directory
     # -------------------------------------------------
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    report_dir = Path(output_dir) / timestamp
+    base_dir = Path(output_dir) if output_dir is not None else DEFAULT_REPORTS_DIR
+    report_dir = base_dir / timestamp
     report_dir.mkdir(parents=True, exist_ok=False)
+    metrics_dir = report_dir / "metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
 
     # -------------------------------------------------
     # Save provenance + trial records
@@ -57,12 +74,15 @@ def run_report(
 
         metric = metric_cls(**metric_kwargs)
         metrics[metric_name] = metric.compute(records)
+        with open(metrics_dir / f"{metric_name}.json", "w") as f:
+            json.dump(_to_jsonable(metrics[metric_name]), f, indent=2)
 
     # -------------------------------------------------
     # Render visualizations
     # -------------------------------------------------
     figures = []
 
+    pdf = ReportPDF(report_dir / "report.pdf")
     for viz_name in report_config.visualizations:
         if viz_name not in VISUALIZATION_REGISTRY:
             raise KeyError(f"Unknown visualization '{viz_name}'")
@@ -88,8 +108,14 @@ def run_report(
         )
 
         fig_path = report_dir / f"{viz_name}.png"
+        if getattr(viz, "fig", None) is not None:
+            pdf.add_figure(viz.fig, viz_name)
         viz.save(fig_path)
 
         figures.append(str(fig_path))
+
+    for metric_name, metric_result in metrics.items():
+        pdf.add_metric_text(metric_name, _to_jsonable(metric_result))
+    pdf.close()
 
     return report_dir

@@ -36,13 +36,18 @@ class QLearner(OperantLearner):
         # Weight matrix: (num_actions, state_dim)
         self.weights = np.zeros((len(self.actions), state_dim))
 
+    def _action_index(self, action: Any) -> int:
+        if action not in self.action_index:
+            raise ValueError(f"Unknown action '{action}' for QLearner.")
+        return self.action_index[action]
+
     def value(self, state: np.ndarray, action: Optional[Any] = None) -> float:
         """
         Return Q(s, a). If action is None, return max_a Q(s, a).
         """
         if action is None:
             return float(np.max(self.weights @ state))
-        idx = self.action_index[action]
+        idx = self._action_index(action)
         return float(np.dot(self.weights[idx], state))
 
     def update(
@@ -59,7 +64,7 @@ class QLearner(OperantLearner):
         if action is None:
             raise ValueError("QLearner.update requires an action")
 
-        a_idx = self.action_index[action]
+        a_idx = self._action_index(action)
         q_sa = float(np.dot(self.weights[a_idx], state))
 
         if next_state is None or done:

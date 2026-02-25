@@ -37,6 +37,12 @@ from analysis.visualizations.operant import (
     CumulativeResponsePlot,
     CumulativeRewardPlot,
 )
+from analysis.visualizations.operant_diagnostics import (
+    RewardTimeSeriesPlot,
+    ActionDistributionPlot,
+    OutcomeTypeBarPlot,
+    PhaseRewardBarPlot,
+)
 from analysis.visualizations.matching_law import (
     MatchingLawPlot,
 )
@@ -58,6 +64,10 @@ VISUALIZATION_REGISTRY: Dict[str, Type[Visualization]] = {
     # ---- operant conditioning ----
     CumulativeResponsePlot.name: CumulativeResponsePlot,
     CumulativeRewardPlot.name: CumulativeRewardPlot,
+    RewardTimeSeriesPlot.name: RewardTimeSeriesPlot,
+    ActionDistributionPlot.name: ActionDistributionPlot,
+    OutcomeTypeBarPlot.name: OutcomeTypeBarPlot,
+    PhaseRewardBarPlot.name: PhaseRewardBarPlot,
     MatchingLawPlot.name: MatchingLawPlot,
 }
 

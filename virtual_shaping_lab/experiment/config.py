@@ -1,6 +1,15 @@
 from dataclasses import dataclass
 from typing import Dict, Any, List, Union, Tuple, Optional
 
+OPERANT_PROTOCOLS = {
+    "operant_conditioning",
+    "matching_law",
+    "shaping",
+    "resurgence",
+    "superextinction",
+    "spontaneous_recovery",
+}
+
 
 @dataclass
 class PhaseConfig:
@@ -234,12 +243,16 @@ class ExperimentConfig:
                 )
             return phases
 
-        required = ["protocol", "stimuli", "params"]
+        required = ["protocol", "params"]
         missing = [k for k in required if k not in exp]
         if missing:
             raise ValueError(
                 f"Missing required experiment fields: {', '.join(missing)}"
             )
+
+        protocol_name = exp["protocol"]
+        if protocol_name not in OPERANT_PROTOCOLS and "stimuli" not in exp:
+            raise ValueError("Missing required experiment fields: stimuli")
 
         params = exp.get("params") or {}
         if not isinstance(params, dict):
@@ -247,8 +260,8 @@ class ExperimentConfig:
         phases.append(
             PhaseConfig(
                 name="Phase 0",
-                protocol=exp["protocol"],
-                stimuli=cls._normalize_phase_stimuli(exp["stimuli"]),
+                protocol=protocol_name,
+                stimuli=cls._normalize_phase_stimuli(exp["stimuli"]) if "stimuli" in exp else None,
                 params=params,
             )
         )

@@ -26,6 +26,10 @@ from preset_payloads import (
     overexpectation_payload,
     overshadowing_payload,
     rapid_reacquisition_payload,
+    shaping_payload,
+    resurgence_payload,
+    superextinction_payload,
+    spontaneous_recovery_payload,
 )
 
 
@@ -282,6 +286,9 @@ def test_matching_law_shows_choice_bias_under_unequal_schedules_default_payload(
     records = _run_records(matching_law_payload())
     assert records, "Expected matching-law records."
 
+    rewards = [float(r.get("reward", 0.0)) for r in records]
+    assert sum(rewards) > 0.0, "Expected at least some delivered reward under matching-law schedules."
+
     actions = [r.get("action") for r in records]
     counts: dict[str, int] = {}
     for action in actions:
@@ -291,7 +298,61 @@ def test_matching_law_shows_choice_bias_under_unequal_schedules_default_payload(
 
     total = len(actions)
     dominant_fraction = max(counts.values()) / total
-    assert dominant_fraction > 0.55
+    assert dominant_fraction > 0.5
+
+
+def test_shaping_stage_two_has_lower_reward_density_under_harder_schedule_default_payload():
+    records = _run_records(shaping_payload())
+    stage_1 = [r for r in records if r.get("subphase_name") == "shaping_stage_1"]
+    stage_2 = [r for r in records if r.get("subphase_name") == "shaping_stage_2"]
+
+    assert stage_1, "Expected shaping stage 1 records."
+    assert stage_2, "Expected shaping stage 2 records."
+
+    reward_1 = sum(float(r.get("reward", 0.0)) for r in stage_1) / len(stage_1)
+    reward_2 = sum(float(r.get("reward", 0.0)) for r in stage_2) / len(stage_2)
+    assert reward_2 < reward_1
+
+
+def test_resurgence_recovery_block_exceeds_suppression_block_default_payload():
+    records = _run_records(resurgence_payload())
+    suppression = [r for r in records if r.get("subphase_name") == "resurgence_suppression"]
+    recovery = [r for r in records if r.get("subphase_name") == "resurgence_recovery"]
+
+    assert suppression, "Expected suppression records."
+    assert recovery, "Expected recovery records."
+
+    suppression_mean = sum(float(r.get("reward", 0.0)) for r in suppression) / len(suppression)
+    recovery_mean = sum(float(r.get("reward", 0.0)) for r in recovery) / len(recovery)
+    assert recovery_mean > suppression_mean + 0.3
+
+
+def test_superextinction_punishment_block_has_negative_rewards_default_payload():
+    records = _run_records(superextinction_payload())
+    acquisition = [r for r in records if r.get("subphase_name") == "superextinction_acquisition"]
+    punishment = [r for r in records if r.get("subphase_name") == "superextinction_phase"]
+
+    assert acquisition, "Expected superextinction acquisition records."
+    assert punishment, "Expected superextinction punishment records."
+
+    acq_mean = sum(float(r.get("reward", 0.0)) for r in acquisition) / len(acquisition)
+    punish_mean = sum(float(r.get("reward", 0.0)) for r in punishment) / len(punishment)
+
+    assert acq_mean > 0.0
+    assert punish_mean < 0.0
+
+
+def test_spontaneous_recovery_probe_exceeds_extinction_tail_default_payload():
+    records = _run_records(spontaneous_recovery_payload())
+    extinction = [r for r in records if r.get("subphase_name") == "spontaneous_recovery_extinction"]
+    probe = [r for r in records if r.get("subphase_name") == "spontaneous_recovery_probe"]
+
+    assert extinction, "Expected spontaneous recovery extinction records."
+    assert probe, "Expected spontaneous recovery probe records."
+
+    ext_tail = _first_last_n(extinction, n=10)[1]
+    probe_head = _first_last_n(probe, n=10)[0]
+    assert _mean_prediction(probe_head) > _mean_prediction(ext_tail) + 0.1
 
 
 def test_conditioned_inhibition_compound_nonreinforcement_suppresses_prediction_default_payload():

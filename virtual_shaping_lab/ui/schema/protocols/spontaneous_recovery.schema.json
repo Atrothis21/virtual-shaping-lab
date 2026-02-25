@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/spontaneous_recovery.schema.json",
+  "title": "Spontaneous Recovery Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "spontaneous_recovery" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_acquisition_trials": { "type": "integer", "minimum": 1 },
+        "n_extinction_trials": { "type": "integer", "minimum": 1 },
+        "n_probe_trials": { "type": "integer", "minimum": 1 },
+        "context_a": { "type": "string", "enum": ["A", "B", "C"] },
+        "context_b": { "type": "string", "enum": ["A", "B", "C"] },
+        "acquisition_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "extinction_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "probe_schedule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        }
+      },
+      "required": [
+        "n_acquisition_trials",
+        "n_extinction_trials",
+        "n_probe_trials",
+        "context_a",
+        "context_b",
+        "acquisition_schedule",
+        "extinction_schedule",
+        "probe_schedule"
+      ]
+    }
+  },
+  "required": ["name", "protocol", "params"]
+}

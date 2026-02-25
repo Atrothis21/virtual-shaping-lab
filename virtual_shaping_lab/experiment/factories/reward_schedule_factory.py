@@ -64,6 +64,7 @@ def build_reward_schedule(config: dict):
 
     schedule_type = config["type"]
     value = config["value"]
+    reward = config.get("reward", 1.0)
 
     validate_reward_schedule(schedule_type)
 
@@ -71,16 +72,16 @@ def build_reward_schedule(config: dict):
 
     # Map semantic value → constructor argument
     if schedule_type == "fixed_ratio":
-        return schedule_cls(n=value)
+        return schedule_cls(n=value, reward=reward)
 
     if schedule_type == "variable_ratio":
-        return schedule_cls(mean_n=value)
+        return schedule_cls(mean_n=value, reward=reward)
 
     if schedule_type == "fixed_interval":
-        return schedule_cls(interval=value)
+        return schedule_cls(interval=value, reward=reward)
 
     if schedule_type == "variable_interval":
-        return schedule_cls(mean_interval=value)
+        return schedule_cls(mean_interval=value, reward=reward)
 
     # Defensive fallback (should never happen)
     raise RuntimeError(

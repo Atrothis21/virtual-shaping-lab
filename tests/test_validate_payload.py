@@ -145,3 +145,184 @@ def test_validate_payload_top_level_path(monkeypatch):
     monkeypatch.setattr(vp, "_validate_protocol_or_phases", lambda exp: None)
 
     vp.validate_payload({"experiment": {}, "report": {}})
+
+
+def test_validate_payload_accepts_operant_negative_reward_schedule():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "protocol": "operant_conditioning",
+            "stimuli": {"cs_plus": ["lever"]},
+            "params": {
+                "n_trials": 5,
+                "consequence_mode": "positive_punishment",
+                "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": -0.5},
+            },
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
+def test_validate_payload_accepts_operant_without_stimuli_field():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "protocol": "operant_conditioning",
+            "params": {
+                "n_trials": 5,
+                "consequence_mode": "positive_reinforcement",
+                "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+            },
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
+def test_validate_payload_accepts_operant_phase_mode():
+    payload = {
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"actions": ["action_0"], "epsilon": 0.1},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Operant Conditioning",
+                    "protocol": "operant_conditioning",
+                    "stimuli": {"cs_plus": ["lever"]},
+                    "params": {
+                        "n_trials": 5,
+                        "consequence_mode": "positive_reinforcement",
+                        "reward_schedule": {"type": "fixed_ratio", "value": 1, "reward": 1.0},
+                    },
+                }
+            ],
+        },
+        "report": {"preset": "operant_conditioning"},
+    }
+    validate_payload(payload)
+
+
+def test_validate_operant_semantics_requires_policy():
+    exp = {
+        "protocol": "operant_conditioning",
+        "params": {"n_trials": 10, "reward_schedule": {"type": "fixed_ratio", "value": 1}},
+    }
+    with pytest.raises(vp.ValidationError, match="operant experiments require a policy object"):
+        vp._validate_operant_payload_semantics(exp)
+
+    shaping_exp = {
+        "protocol": "shaping",
+        "params": {
+            "n_stage_1_trials": 5,
+            "n_stage_2_trials": 5,
+            "schedule_stage_1": {"type": "fixed_ratio", "value": 1},
+            "schedule_stage_2": {"type": "fixed_ratio", "value": 2},
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="operant experiments require a policy object"):
+        vp._validate_operant_payload_semantics(shaping_exp)
+
+
+def test_validate_operant_semantics_rejects_bad_actions():
+    exp = {
+        "protocol": "operant_conditioning",
+        "policy": {"name": "epsilon_greedy", "params": {"actions": [], "epsilon": 0.1}},
+        "params": {"n_trials": 10, "reward_schedule": {"type": "fixed_ratio", "value": 1}},
+    }
+    with pytest.raises(vp.ValidationError, match="at least one action"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["policy"]["params"]["actions"] = ["a0", "a1"]
+    with pytest.raises(vp.ValidationError, match="operant_conditioning requires exactly 1"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["policy"]["params"]["actions"] = ["a0", "a0"]
+    with pytest.raises(vp.ValidationError, match="must be unique"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_requires_two_actions_for_resurgence():
+    exp = {
+        "protocol": "resurgence",
+        "policy": {"name": "softmax", "params": {"actions": ["a0"], "temperature": 1.0}},
+        "params": {
+            "n_acquisition_trials": 5,
+            "n_suppression_trials": 5,
+            "n_resurgence_trials": 5,
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="resurgence requires exactly 2"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_matching_law_action_shape():
+    exp = {
+        "protocol": "matching_law",
+        "policy": {"name": "softmax", "params": {"actions": ["left", "right", "extra"], "temperature": 1.0}},
+        "params": {
+            "n_trials": 20,
+            "schedule_left": {"type": "variable_interval", "value": 30},
+            "schedule_right": {"type": "variable_interval", "value": 60},
+            "action_labels": ["left", "left"],
+        },
+    }
+    with pytest.raises(vp.ValidationError, match="two distinct labels"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["params"]["action_labels"] = ["left", "right"]
+    with pytest.raises(vp.ValidationError, match="requires exactly 2"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["policy"]["params"]["actions"] = ["right", "left"]
+    with pytest.raises(vp.ValidationError, match="must match policy params.actions order"):
+        vp._validate_operant_payload_semantics(exp)
+
+
+def test_validate_operant_semantics_matching_law_action_shape_in_phase_mode():
+    exp = {
+        "phases": [
+            {
+                "protocol": "matching_law",
+                "params": {
+                    "n_trials": 20,
+                    "schedule_left": {"type": "variable_interval", "value": 30},
+                    "schedule_right": {"type": "variable_interval", "value": 60},
+                    "action_labels": ["left", "left"],
+                },
+            }
+        ],
+        "policy": {"name": "softmax", "params": {"actions": ["left", "right", "extra"], "temperature": 1.0}},
+    }
+    with pytest.raises(vp.ValidationError, match="two distinct labels"):
+        vp._validate_operant_payload_semantics(exp)
+
+    exp["phases"][0]["params"]["action_labels"] = ["left", "right"]
+    with pytest.raises(vp.ValidationError, match="requires exactly 2"):
+        vp._validate_operant_payload_semantics(exp)

@@ -54,10 +54,22 @@ class OperantAgent(Agent):
         self,
         state: np.ndarray,
         reward: float,
-        action: Optional[int] = None
+        action: Optional[int] = None,
+        next_state: Optional[np.ndarray] = None,
+        done: Optional[bool] = None,
     ) -> None:
         if hasattr(self.learner, "update"):
-            self.learner.update(state, reward, action)
+            try:
+                self.learner.update(
+                    state,
+                    reward,
+                    action=action,
+                    next_state=next_state,
+                    done=done,
+                )
+            except TypeError:
+                # Backward-compatible fallback for legacy learner signatures.
+                self.learner.update(state, reward, action)
         else:
             raise AttributeError("Learner does not implement update()")
 
@@ -67,10 +79,15 @@ class OperantAgent(Agent):
 
     def act(self, state: np.ndarray) -> Optional[int]:
         if self.policy is None:
-            return None
-        if hasattr(self.policy, "select_action"):
-            try:
-                return self.policy.select_action(state, value_fn=self.value)
-            except TypeError:
-                return self.policy.select_action(state)
-        return None
+            raise ValueError("OperantAgent requires a policy to select actions.")
+        if not hasattr(self.policy, "select_action"):
+            raise TypeError("OperantAgent policy must implement select_action(state, ...).")
+
+        try:
+            action = self.policy.select_action(state, value_fn=self.value)
+        except TypeError:
+            action = self.policy.select_action(state)
+
+        if action is None:
+            raise ValueError("OperantAgent policy returned None action.")
+        return action

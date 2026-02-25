@@ -1,24 +1,41 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
-const ACTIONS = ["action_0", "action_1"];
+const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
+const CONSEQUENCE_MODE_OPTIONS = [
+  { value: "positive_reinforcement", label: "Positive Reinforcement", rewardSign: +1 },
+  { value: "negative_reinforcement", label: "Negative Reinforcement", rewardSign: +1 },
+  { value: "positive_punishment", label: "Positive Punishment", rewardSign: -1 },
+  { value: "negative_punishment", label: "Negative Punishment", rewardSign: -1 },
+];
+
+function consequenceLabel(mode) {
+  const match = CONSEQUENCE_MODE_OPTIONS.find((opt) => opt.value === mode);
+  return match ? match.label : mode;
+}
+
+function consequenceReward(mode, magnitude) {
+  const match = CONSEQUENCE_MODE_OPTIONS.find((opt) => opt.value === mode);
+  const sign = match ? match.rewardSign : 1;
+  return sign * Math.max(0.1, Number(magnitude || 1));
+}
 
 function buildPolicy(params) {
   if (params.policy_type === "epsilon_greedy") {
     return {
       name: "epsilon_greedy",
-      params: { actions: ACTIONS, epsilon: params.epsilon },
+      params: { actions: [params.action], epsilon: params.epsilon },
     };
   }
   if (params.policy_type === "softmax") {
     return {
       name: "softmax",
-      params: { actions: ACTIONS, temperature: params.temperature },
+      params: { actions: [params.action], temperature: params.temperature },
     };
   }
   return {
     name: "fixed",
-    params: { action: params.fixed_action },
+    params: { action: params.action },
   };
 }
 
@@ -34,14 +51,13 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "operant_conditioning",
-      stimuli: {
-        cs_plus: [params.cs_plus],
-      },
       params: {
         n_trials: params.n_trials,
+        consequence_mode: params.consequence_mode,
         reward_schedule: {
           type: params.schedule_type,
           value: params.schedule_value,
+          reward: consequenceReward(params.consequence_mode, params.consequence_magnitude),
         },
       },
     },
@@ -56,13 +72,14 @@ function validate(params) {
 function OperantConditioningApp() {
   const [params, setParams] = React.useState({
     n_trials: 150,
+    consequence_mode: "positive_reinforcement",
+    consequence_magnitude: 1.0,
     schedule_type: "fixed_ratio",
     schedule_value: 5,
     policy_type: "epsilon_greedy",
     epsilon: 0.1,
     temperature: 1.0,
-    fixed_action: "action_0",
-    cs_plus: "lever",
+    action: "leverpress",
     learner: "q_learner",
     representation: "vector_elemental",
   });
@@ -102,7 +119,8 @@ function OperantConditioningApp() {
   return (
     <>
       <h1>Operant Conditioning Preset</h1>
-      <p>Operant learning with action-contingent reinforcement.</p>
+      <p>Single-action operant learning with explicit consequence-mode semantics.</p>
+      <p><em>Current v1.4 behavior:</em> consequence modes are sign-tracked (`+` appetitive vs `-` aversive) and do not yet model distinct process-level PR/NR or PP/NP mechanisms.</p>
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
@@ -123,7 +141,30 @@ function OperantConditioningApp() {
       </div>
 
       <div className="panel">
-        <h3>Reward Schedule</h3>
+        <h3>Consequence</h3>
+        <label>Consequence Mode</label>
+        <select
+          value={params.consequence_mode}
+          onChange={(e) => setParams((prev) => ({ ...prev, consequence_mode: e.target.value }))}
+        >
+          {CONSEQUENCE_MODE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        </select>
+
+        <label>Consequence Magnitude: <span>{params.consequence_magnitude.toFixed(1)}</span></label>
+        <input
+          type="range"
+          min="0.1"
+          max="3"
+          step="0.1"
+          value={params.consequence_magnitude}
+          onChange={(e) => setParams((prev) => ({ ...prev, consequence_magnitude: +e.target.value }))}
+        />
+
+        <p><strong>Resolved consequence:</strong> {consequenceLabel(params.consequence_mode)} ({consequenceReward(params.consequence_mode, params.consequence_magnitude).toFixed(1)})</p>
+      </div>
+
+      <div className="panel">
+        <h3>Schedule</h3>
         <label>Type</label>
         <select
           value={params.schedule_type}
@@ -133,7 +174,6 @@ function OperantConditioningApp() {
           <option value="variable_ratio">variable_ratio</option>
           <option value="fixed_interval">fixed_interval</option>
           <option value="variable_interval">variable_interval</option>
-          <option value="progressive_ratio">progressive_ratio</option>
         </select>
 
         <label>Value: <span>{params.schedule_value}</span></label>
@@ -186,31 +226,14 @@ function OperantConditioningApp() {
           </div>
         )}
 
-        {params.policy_type === "fixed" && (
-          <div>
-            <label>Fixed Action</label>
-            <select
-              value={params.fixed_action}
-              onChange={(e) => setParams((prev) => ({ ...prev, fixed_action: e.target.value }))}
-            >
-              <option value="action_0">action_0</option>
-              <option value="action_1">action_1</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS+</label>
+        <label>Action</label>
         <select
-          value={params.cs_plus}
-          onChange={(e) => setParams((prev) => ({ ...prev, cs_plus: e.target.value }))}
+          value={params.action}
+          onChange={(e) => setParams((prev) => ({ ...prev, action: e.target.value }))}
         >
-          {STIMULI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {OPERANT_ACTIONS.map((a) => <option key={`op-a-${a}`} value={a}>{a}</option>)}
         </select>
+
       </div>
 
       <div className="panel">

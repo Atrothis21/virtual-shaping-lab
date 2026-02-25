@@ -8,6 +8,8 @@ from experiment.factories.representation_factory import build_representation
 from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.factories.policy_factory import build_policy
 
+OPERANT_AGENT_NAME = "operant_agent"
+
 
 # Context inference: consolidates any context_* params across phases/protocols.
 # Keeps representation assembly independent of protocol structure.
@@ -92,6 +94,76 @@ def _extract_learner_params(config, representation, policy_actions):
     return learner_params
 
 
+def _assign_attention_map(config, learner):
+    if getattr(config, "attention", None):
+        if hasattr(learner, "set_attention_map"):
+            learner.set_attention_map(config.attention)
+        else:
+            learner.attention_map = dict(config.attention)
+
+
+def _build_policy_from_config(config):
+    if not (hasattr(config, "policy") and config.policy):
+        return None, None
+
+    if isinstance(config.policy, dict):
+        policy_name = config.policy.get("name")
+        policy_params = config.policy.get("params", {})
+        policy = build_policy(policy_name, **policy_params)
+        policy_actions = policy_params.get("actions")
+        if policy_actions is None and "action" in policy_params:
+            policy_actions = [policy_params.get("action")]
+        return policy, policy_actions
+
+    if isinstance(config.policy, str):
+        return build_policy(config.policy), None
+
+    return None, None
+
+
+def _build_classical_stack(config, representation):
+    if getattr(config, "policy", None):
+        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
+
+    learner_params = _extract_learner_params(config, representation, policy_actions=None)
+    learner = build_learner(
+        config.learner,
+        state_dim=representation.dimension,
+        **learner_params,
+    )
+    _assign_attention_map(config, learner)
+
+    agent = build_agent(
+        config.agent,
+        learner=learner,
+        representation=representation,
+        policy=None,
+    )
+    return agent
+
+
+def _build_operant_stack(config, representation):
+    policy, policy_actions = _build_policy_from_config(config)
+    if policy is None:
+        raise ValueError("Operant assembly path requires an explicit policy.")
+
+    learner_params = _extract_learner_params(config, representation, policy_actions)
+    learner = build_learner(
+        config.learner,
+        state_dim=representation.dimension,
+        **learner_params,
+    )
+    _assign_attention_map(config, learner)
+
+    agent = build_agent(
+        config.agent,
+        learner=learner,
+        representation=representation,
+        policy=policy,
+    )
+    return agent
+
+
 # Phase vs protocol routing helper
 def _is_protocol_phase(protocol_name: str) -> bool:
     """
@@ -145,45 +217,12 @@ def assemble_experiment(config):
     representation = build_representation(rep_name, **rep_params)
 
     # ----------------------------
-    # Policy (optional, shared)
+    # Agent stack (explicit split)
     # ----------------------------
-    policy = None
-    policy_actions = None
-
-    if hasattr(config, "policy") and config.policy:
-        if isinstance(config.policy, dict):
-            policy_name = config.policy.get("name")
-            policy_params = config.policy.get("params", {})
-            policy = build_policy(policy_name, **policy_params)
-            policy_actions = policy_params.get("actions")
-        elif isinstance(config.policy, str):
-            policy = build_policy(config.policy)
-
-    # ----------------------------
-    # Learner (shared)
-    # ----------------------------
-    learner_params = _extract_learner_params(config, representation, policy_actions)
-
-    learner = build_learner(
-        config.learner,
-        state_dim=representation.dimension,
-        **learner_params,
-    )
-    if getattr(config, "attention", None):
-        if hasattr(learner, "set_attention_map"):
-            learner.set_attention_map(config.attention)
-        else:
-            learner.attention_map = dict(config.attention)
-
-    # ----------------------------
-    # Agent (shared)
-    # ----------------------------
-    agent = build_agent(
-        config.agent,
-        learner=learner,
-        representation=representation,
-        policy=policy,
-    )
+    if config.agent == OPERANT_AGENT_NAME:
+        agent = _build_operant_stack(config, representation)
+    else:
+        agent = _build_classical_stack(config, representation)
 
     # ----------------------------
     # Runtime units

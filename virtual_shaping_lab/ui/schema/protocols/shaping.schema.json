@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtual-shaping-lab/protocols/shaping.schema.json",
+  "title": "Shaping Protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "shaping" },
+    "stimuli": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cs_plus": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      },
+      "required": ["cs_plus"]
+    },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "n_stage_1_trials": { "type": "integer", "minimum": 1 },
+        "n_stage_2_trials": { "type": "integer", "minimum": 1 },
+        "schedule_stage_1": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        },
+        "schedule_stage_2": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed_ratio", "variable_ratio", "fixed_interval", "variable_interval"] },
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
+          },
+          "required": ["type", "value"]
+        }
+      },
+      "required": ["n_stage_1_trials", "n_stage_2_trials", "schedule_stage_1", "schedule_stage_2"]
+    }
+  },
+  "required": ["name", "protocol", "params"]
+}

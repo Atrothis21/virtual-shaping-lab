@@ -3,8 +3,9 @@
 from pathlib import Path
 from datetime import datetime
 import json
+from paths import REPORTS_DIR
 
-def create_report_dir(base_dir: str = "reports") -> Path:
+def create_report_dir(base_dir: str | Path = REPORTS_DIR) -> Path:
     """
     Create a timestamped report directory.
     """

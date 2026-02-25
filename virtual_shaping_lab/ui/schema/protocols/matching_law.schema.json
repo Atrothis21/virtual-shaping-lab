@@ -37,7 +37,8 @@
                 "variable_interval"
               ]
             },
-            "value": { "type": "number", "minimum": 1 }
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
           },
           "required": ["type", "value"]
         },
@@ -54,7 +55,8 @@
                 "variable_interval"
               ]
             },
-            "value": { "type": "number", "minimum": 1 }
+            "value": { "type": "number", "minimum": 1 },
+            "reward": { "type": "number" }
           },
           "required": ["type", "value"]
         },
@@ -68,5 +70,5 @@
       "required": ["n_trials", "schedule_left", "schedule_right"]
     }
   },
-  "required": ["name", "protocol", "stimuli", "params"]
+  "required": ["name", "protocol", "params"]
 }

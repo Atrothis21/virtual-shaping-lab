@@ -22,6 +22,10 @@ from protocols.rapid_reacquisition import RapidReacquisitionProtocol
 from protocols.occasion_setting import OccasionSettingProtocol
 from protocols.blocking import BlockingProtocol
 from protocols.matching_law import MatchingLawProtocol
+from protocols.shaping import ShapingProtocol
+from protocols.resurgence import ResurgenceProtocol
+from protocols.superextinction import SuperextinctionProtocol
+from protocols.spontaneous_recovery import SpontaneousRecoveryProtocol
 
 
 PROTOCOL_REGISTRY: Dict[str, Type[BaseProtocol]] = {
@@ -35,6 +39,10 @@ PROTOCOL_REGISTRY: Dict[str, Type[BaseProtocol]] = {
     "occasion_setting": OccasionSettingProtocol,
     "blocking": BlockingProtocol,
     "matching_law": MatchingLawProtocol,
+    "shaping": ShapingProtocol,
+    "resurgence": ResurgenceProtocol,
+    "superextinction": SuperextinctionProtocol,
+    "spontaneous_recovery": SpontaneousRecoveryProtocol,
 }
 
 

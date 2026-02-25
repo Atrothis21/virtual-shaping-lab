@@ -7,6 +7,14 @@ from experiment.phases.learning_helpers import apply_attention_update
 from agents.representations.observation import make_observation
 
 
+def _classify_operant_outcome(reward: float) -> str:
+    if reward > 0:
+        return "reinforcement"
+    if reward < 0:
+        return "punishment"
+    return "extinction"
+
+
 class OperantAcquisitionPhase(PhaseBase):
     """
     Operant acquisition phase.
@@ -53,6 +61,16 @@ class OperantAcquisitionPhase(PhaseBase):
     # Trial definition
     # ------------------------------------------------------------------
 
+    def _default_observation_label(self) -> str:
+        if isinstance(self.stimuli, list) and self.stimuli:
+            return str(self.stimuli[0])
+        rep = getattr(self.agent, "representation", None)
+        rep_params = getattr(rep, "params", {}) if rep is not None else {}
+        rep_stimuli = rep_params.get("stimuli") if isinstance(rep_params, dict) else None
+        if isinstance(rep_stimuli, list) and rep_stimuli:
+            return str(rep_stimuli[0])
+        return "lever"
+
     def sample_trial(self) -> Dict[str, Any]:
         """
         Operant trials do not require stimulus sampling.
@@ -63,7 +81,7 @@ class OperantAcquisitionPhase(PhaseBase):
         """
         Select action and compute reward from schedule.
         """
-        observation = self.stimuli[0] if self.stimuli else "operant"
+        observation = self._default_observation_label()
         obs = make_observation(
             stimuli=[observation],
             context=self.context,
@@ -73,14 +91,15 @@ class OperantAcquisitionPhase(PhaseBase):
         prediction = self.agent.value(state)
         action = self.agent.act(state)
 
-        reward = self.reward_schedule.step(
+        reward = float(self.reward_schedule.step(
             action=action,
             t=self.trial_index,
-        )
+        ))
 
         return {
             "action": action,
             "reward": reward,
+            "outcome_type": _classify_operant_outcome(reward),
             "state": state,
             "prediction": prediction,
         }
@@ -111,6 +130,8 @@ class OperantAcquisitionPhase(PhaseBase):
             "action": outcome["action"],
             "response": outcome["action"] if outcome["action"] is not None else outcome["prediction"],
             "reward": outcome["reward"],
+            "outcome_type": outcome.get("outcome_type", _classify_operant_outcome(float(outcome["reward"]))),
+            "consequence_mode": self.params.get("consequence_mode"),
             "prediction": outcome["prediction"],
             "schedule": getattr(self.reward_schedule, "name", None),
         }

@@ -21,6 +21,8 @@ from analysis.metrics.base import Metric
 from analysis.metrics.time_series import (
     PredictionTimeSeries,
     RewardTimeSeries,
+    PredictionErrorTimeSeries,
+    ActionTimeSeries,
 )
 
 # -------------------------------------------------
@@ -49,6 +51,9 @@ from analysis.metrics.extinction import ExtinctionRate
 from analysis.metrics.operant import (
     CumulativeResponses,
     CumulativeRewards,
+    OutcomeTypeCounts,
+    ActionCounts,
+    PhaseRewardSummary,
 )
 
 # -------------------------------------------------
@@ -59,6 +64,8 @@ METRIC_REGISTRY = {
     # ---- time series ----
     PredictionTimeSeries.name: PredictionTimeSeries,
     RewardTimeSeries.name: RewardTimeSeries,
+    PredictionErrorTimeSeries.name: PredictionErrorTimeSeries,
+    ActionTimeSeries.name: ActionTimeSeries,
 
     # ---- stimulus statistics ----
     MeanPredictionByStimulus.name: MeanPredictionByStimulus,
@@ -74,6 +81,9 @@ METRIC_REGISTRY = {
     # ---- operant conditioning ----
     CumulativeResponses.name: CumulativeResponses,
     CumulativeRewards.name: CumulativeRewards,
+    OutcomeTypeCounts.name: OutcomeTypeCounts,
+    ActionCounts.name: ActionCounts,
+    PhaseRewardSummary.name: PhaseRewardSummary,
 }
 
 

@@ -1,19 +1,20 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["lever", "tone", "noise", "light", "click"];
-const ACTIONS = ["action_0", "action_1"];
-
+const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
+const resolveOperantPair = window.VSLReact.resolveOperantPair || ((a, b) => [a, b]);
 function buildPolicy(params) {
+  const actions = resolveOperantPair(params.action_left, params.action_right);
   if (params.policy_type === "epsilon_greedy") {
     return {
       name: "epsilon_greedy",
-      params: { actions: ACTIONS, epsilon: params.epsilon },
+      params: { actions, epsilon: params.epsilon },
     };
   }
   if (params.policy_type === "softmax") {
     return {
       name: "softmax",
-      params: { actions: ACTIONS, temperature: params.temperature },
+      params: { actions, temperature: params.temperature },
     };
   }
   return {
@@ -34,9 +35,6 @@ function buildPayload(params) {
       },
       context_inference: { enabled: false, max_contexts: 3 },
       protocol: "matching_law",
-      stimuli: {
-        cs_plus: [params.cs_plus],
-      },
       params: {
         n_trials: params.n_trials,
         schedule_left: {
@@ -47,6 +45,7 @@ function buildPayload(params) {
           type: params.right_schedule_type,
           value: params.right_schedule_value,
         },
+        action_labels: [params.action_left, params.action_right],
       },
     },
     report: { preset: "matching_law" },
@@ -58,17 +57,19 @@ function validate(params) {
 }
 
 function MatchingLawApp() {
+  const defaultPair = resolveOperantPair("nosepoke_L", "nosepoke_R");
   const [params, setParams] = React.useState({
     n_trials: 300,
     left_schedule_type: "variable_interval",
     left_schedule_value: 30,
     right_schedule_type: "variable_interval",
     right_schedule_value: 60,
-    policy_type: "epsilon_greedy",
+    policy_type: "softmax",
     epsilon: 0.1,
-    temperature: 1.0,
-    fixed_action: "action_0",
-    cs_plus: "lever",
+    temperature: 0.8,
+    action_left: defaultPair[0],
+    action_right: defaultPair[1],
+    fixed_action: defaultPair[0],
     learner: "q_learner",
     representation: "vector_elemental",
   });
@@ -214,6 +215,38 @@ function MatchingLawApp() {
           </div>
         )}
 
+        <label>Action 1</label>
+        <select
+          value={params.action_left}
+          onChange={(e) => {
+            const next = e.target.value;
+            setParams((prev) => ({
+              ...prev,
+              action_left: resolveOperantPair(next, prev.action_right)[0],
+              action_right: resolveOperantPair(next, prev.action_right)[1],
+              fixed_action: prev.fixed_action === prev.action_left ? resolveOperantPair(next, prev.action_right)[0] : prev.fixed_action,
+            }));
+          }}
+        >
+          {OPERANT_ACTIONS.map((a) => <option key={`ml-a1-${a}`} value={a}>{a}</option>)}
+        </select>
+
+        <label>Action 2</label>
+        <select
+          value={params.action_right}
+          onChange={(e) => {
+            const next = e.target.value;
+            setParams((prev) => ({
+              ...prev,
+              action_left: resolveOperantPair(prev.action_left, next)[0],
+              action_right: resolveOperantPair(prev.action_left, next)[1],
+              fixed_action: prev.fixed_action === prev.action_right ? resolveOperantPair(prev.action_left, next)[1] : prev.fixed_action,
+            }));
+          }}
+        >
+          {OPERANT_ACTIONS.map((a) => <option key={`ml-a2-${a}`} value={a}>{a}</option>)}
+        </select>
+
         {params.policy_type === "fixed" && (
           <div>
             <label>Fixed Action</label>
@@ -221,24 +254,11 @@ function MatchingLawApp() {
               value={params.fixed_action}
               onChange={(e) => setParams((prev) => ({ ...prev, fixed_action: e.target.value }))}
             >
-              <option value="action_0">action_0</option>
-              <option value="action_1">action_1</option>
+              <option value={params.action_left}>{params.action_left}</option>
+              <option value={params.action_right}>{params.action_right}</option>
             </select>
           </div>
         )}
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS+</label>
-        <select
-          value={params.cs_plus}
-          onChange={(e) => setParams((prev) => ({ ...prev, cs_plus: e.target.value }))}
-        >
-          {STIMULI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
       </div>
 
       <div className="panel">

@@ -18,6 +18,10 @@ const KNOWN_PRESETS = new Set([
   "occasion_setting",
   "operant_conditioning",
   "rapid_reacquisition",
+  "shaping",
+  "resurgence",
+  "superextinction",
+  "spontaneous_recovery",
 ]);
 
 const PHASE_DEFS = {

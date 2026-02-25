@@ -8,6 +8,14 @@ from experiment.factories.reward_schedule_factory import build_reward_schedule
 from agents.representations.observation import make_observation
 
 
+def _classify_operant_outcome(reward: float) -> str:
+    if reward > 0:
+        return "reinforcement"
+    if reward < 0:
+        return "punishment"
+    return "extinction"
+
+
 class ConcurrentSchedulePhase(PhaseBase):
     """
     Concurrent operant schedules for matching law.
@@ -32,7 +40,7 @@ class ConcurrentSchedulePhase(PhaseBase):
 
         super().__init__(
             agent=agent,
-            stimuli=stimuli or ["operant"],
+            stimuli=stimuli or [],
             n_trials=n_trials,
             params=params,
         )
@@ -43,6 +51,8 @@ class ConcurrentSchedulePhase(PhaseBase):
         self.action_labels = params.get("action_labels") or ["left", "right"]
         if len(self.action_labels) != 2:
             self.action_labels = ["left", "right"]
+        self.left_action = self.action_labels[0]
+        self.right_action = self.action_labels[1]
 
         if hasattr(self.schedule_left, "reset"):
             self.schedule_left.reset()
@@ -67,7 +77,13 @@ class ConcurrentSchedulePhase(PhaseBase):
             if isinstance(cs_plus, list) and cs_plus:
                 observation = cs_plus[0]
         if observation is None:
-            observation = "operant"
+            rep = getattr(self.agent, "representation", None)
+            rep_params = getattr(rep, "params", {}) if rep is not None else {}
+            rep_stimuli = rep_params.get("stimuli") if isinstance(rep_params, dict) else None
+            if isinstance(rep_stimuli, list) and rep_stimuli:
+                observation = rep_stimuli[0]
+            else:
+                observation = "lever"
         obs = make_observation(
             stimuli=[observation],
             context=self.context,
@@ -76,19 +92,26 @@ class ConcurrentSchedulePhase(PhaseBase):
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
         action = self.agent.act(state)
+        action_index = None
+        if action == self.left_action:
+            action_index = 0
+        elif action == self.right_action:
+            action_index = 1
 
         reward = 0.0
         reward_action = None
-        if action == 0:
-            reward = self.schedule_left.step(action=action, t=self.trial_index)
-            reward_action = 0 if reward > 0 else None
-        elif action == 1:
-            reward = self.schedule_right.step(action=action, t=self.trial_index)
-            reward_action = 1 if reward > 0 else None
+        if action_index == 0:
+            reward = float(self.schedule_left.step(action=action, t=self.trial_index))
+            reward_action = 0 if reward != 0 else None
+        elif action_index == 1:
+            reward = float(self.schedule_right.step(action=action, t=self.trial_index))
+            reward_action = 1 if reward != 0 else None
 
         return {
             "action": action,
+            "action_index": action_index,
             "reward": reward,
+            "outcome_type": _classify_operant_outcome(reward),
             "reward_action": reward_action,
             "state": state,
             "prediction": prediction,
@@ -107,20 +130,23 @@ class ConcurrentSchedulePhase(PhaseBase):
         trial_spec: Dict[str, Any],
         outcome: Any,
     ) -> Dict[str, Any]:
-        action = outcome["action"]
+        action = outcome.get("action")
+        action_index = outcome.get("action_index")
         action_label = None
-        if action in (0, 1):
-            action_label = self.action_labels[action]
+        if action_index in (0, 1):
+            action_label = self.action_labels[action_index]
 
         return {
             "phase": self.name,
             "trial": self.trial_index,
             "stimulus": None,
-            "action": action,
+            "action": action_index,
+            "action_raw": action,
             "action_label": action_label,
             "reward_action": outcome.get("reward_action"),
-            "response": action if action is not None else outcome["prediction"],
+            "response": action_index if action_index is not None else outcome["prediction"],
             "reward": outcome["reward"],
+            "outcome_type": outcome.get("outcome_type", _classify_operant_outcome(float(outcome["reward"]))),
             "prediction": outcome["prediction"],
             "schedule_left": getattr(self.schedule_left, "name", None),
             "schedule_right": getattr(self.schedule_right, "name", None),

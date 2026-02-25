@@ -7,9 +7,23 @@ const KNOWN_FIGURES = [
   "discrimination_curve_plot.png",
   "cumulative_response_plot.png",
   "cumulative_reward_plot.png",
+  "reward_time_series_plot.png",
+  "outcome_type_bar_plot.png",
+  "phase_reward_bar_plot.png",
+  "action_distribution_plot.png",
   "extinction_curve_plot.png",
   "probe_bar_plot.png",
   "auto_time_series_plot.png",
+];
+
+const KNOWN_METRICS = [
+  "prediction_time_series.json",
+  "reward_time_series.json",
+  "cumulative_responses.json",
+  "cumulative_rewards.json",
+  "outcome_type_counts.json",
+  "phase_reward_summary.json",
+  "action_counts.json",
 ];
 
 function getRunId() {
@@ -32,15 +46,30 @@ function valueToString(v) {
   return String(v);
 }
 
+function operantConsequenceClass(mode) {
+  if (mode === "positive_reinforcement" || mode === "negative_reinforcement") return "appetitive (+)";
+  if (mode === "positive_punishment" || mode === "negative_punishment") return "aversive (-)";
+  return "n/a";
+}
+
 function Summary({ payload, runId }) {
   const exp = payload?.experiment || {};
   const report = payload?.report || {};
   const representation = typeof exp.representation === "string"
     ? exp.representation
     : exp.representation?.name;
+  const policy = exp.policy || {};
+  const policyName = policy?.name || "unknown";
+  const policyParams = policy?.params || {};
+  const actions = Array.isArray(policyParams.actions)
+    ? policyParams.actions.join(", ")
+    : (policyParams.action ? String(policyParams.action) : "n/a");
   const phases = Array.isArray(exp.phases)
     ? exp.phases.map((p) => p.protocol).join(", ")
     : "";
+  const consequenceMode = exp?.params?.consequence_mode || "n/a";
+  const consequenceClass = operantConsequenceClass(consequenceMode);
+  const isOperantConditioning = exp?.protocol === "operant_conditioning";
 
   return (
     <div className="summary">
@@ -49,7 +78,16 @@ function Summary({ payload, runId }) {
       <div><strong>Learner:</strong> {exp.learner || "unknown"}</div>
       <div><strong>Agent:</strong> {exp.agent || "unknown"}</div>
       <div><strong>Representation:</strong> {representation || "unknown"}</div>
+      <div><strong>Policy:</strong> {policyName}</div>
+      <div><strong>Actions:</strong> {actions}</div>
       <div><strong>Phases:</strong> {phases || "none"}</div>
+      {isOperantConditioning && (
+        <>
+          <div><strong>Consequence Mode:</strong> {consequenceMode}</div>
+          <div><strong>Consequence Class:</strong> {consequenceClass}</div>
+          <div><strong>Interpretation Note:</strong> v1.4 tracks consequence sign/class only.</div>
+        </>
+      )}
     </div>
   );
 }
@@ -85,6 +123,7 @@ function ResultsApp() {
   const [payload, setPayload] = React.useState(null);
   const [records, setRecords] = React.useState([]);
   const [figureFiles, setFigureFiles] = React.useState([]);
+  const [metricFiles, setMetricFiles] = React.useState([]);
   const [showAll, setShowAll] = React.useState(false);
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(true);
@@ -124,9 +163,22 @@ function ResultsApp() {
           return;
         }
 
+        const existingMetrics = [];
+        for (const f of KNOWN_METRICS) {
+          try {
+            const res = await fetch(`/reports/${runId}/metrics/${f}`, { method: "HEAD" });
+            if (res.ok) {
+              existingMetrics.push(f);
+            }
+          } catch (_err) {
+            // ignore metric lookup failures
+          }
+        }
+
         setPayload(nextPayload);
         setRecords(Array.isArray(nextRecords) ? nextRecords : []);
         setFigureFiles(existingFigures);
+        setMetricFiles(existingMetrics);
       } catch (err) {
         if (!cancelled) {
           setError(err.message || "Failed to load results.");
@@ -184,6 +236,19 @@ function ResultsApp() {
           <img key={file} src={`/reports/${runId}/${file}`} alt={file} />
         ))}
       </div>
+
+      <h2>Metrics</h2>
+      {metricFiles.length ? (
+        <div className="links">
+          {metricFiles.map((file) => (
+            <a key={file} href={`/reports/${runId}/metrics/${file}`} target="_blank" rel="noreferrer">
+              {file}
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p>No metric JSON files found for this run.</p>
+      )}
 
       <h2>Trial Records</h2>
       <button className="btn" onClick={() => setShowAll((v) => !v)}>
