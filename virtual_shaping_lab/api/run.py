@@ -12,17 +12,14 @@ from experiment.config import ExperimentConfig
 from experiment.assemble import assemble_experiment
 from experiment.runner import Runner
 from analysis.report.report import run_report
+from paths import UI_DIR, REPORTS_DIR
 
 
 app = FastAPI(title="Virtual Shaping Lab API")
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = PACKAGE_ROOT.parent
-UI_DIR = PACKAGE_ROOT / "ui"
-
 app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
 
-reports_dir = REPO_ROOT / "reports"
+reports_dir = REPORTS_DIR
 reports_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
 

@@ -6,10 +6,9 @@ from analysis.report.presets import get_report_preset
 from analysis.metrics.registry import METRIC_REGISTRY
 from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
+from paths import REPORTS_DIR
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
-REPO_ROOT = PACKAGE_ROOT.parent
-DEFAULT_REPORTS_DIR = REPO_ROOT / "reports"
+DEFAULT_REPORTS_DIR = REPORTS_DIR
 
 
 def _to_jsonable(value):

@@ -131,6 +131,95 @@ Must preserve:
 - existing run/report APIs
 - existing classical phenomenon behavior
 
+## Contract Mapping (Implementation Traceability)
+
+### Architectural split and assembly invariants
+
+- Split orchestration and path-specific wiring:
+  - `virtual_shaping_lab/experiment/assemble.py`
+  - `virtual_shaping_lab/experiment/factories/agent_factory.py`
+  - `virtual_shaping_lab/experiment/factories/protocol_factory.py`
+- Validation gate for operant path requirements:
+  - `virtual_shaping_lab/ui/validate_payload.py`
+- Coverage:
+  - `tests/test_assemble_coverage.py`
+  - `tests/test_validate_payload.py`
+
+### Operant agent and learner interface contracts
+
+- Agent interface and policy ownership:
+  - `virtual_shaping_lab/agents/operant_agent.py`
+- Action-value learners:
+  - `virtual_shaping_lab/agents/learners/td_value.py`
+  - `virtual_shaping_lab/agents/learners/q_learner.py`
+- Policy implementations:
+  - `virtual_shaping_lab/agents/policies/epsilon_greedy.py`
+  - `virtual_shaping_lab/agents/policies/softmax.py`
+  - `virtual_shaping_lab/agents/policies/fixed_policy.py`
+- Coverage:
+  - `tests/test_agents.py`
+  - `tests/test_learners.py`
+
+### Outcome semantics and schedule/phase responsibilities
+
+- Operant outcome branch semantics (`reinforcement`, `extinction`, `punishment`):
+  - `virtual_shaping_lab/experiment/phases/operant_acquisition.py`
+  - `virtual_shaping_lab/experiment/phases/concurrent_schedule.py`
+- Schedule construction and validation:
+  - `virtual_shaping_lab/experiment/factories/reward_schedule_factory.py`
+- Coverage:
+  - `tests/test_phases.py`
+  - `tests/test_protocols.py`
+
+### Operant protocol support set
+
+- Protocol implementations:
+  - `virtual_shaping_lab/protocols/operant.py`
+  - `virtual_shaping_lab/protocols/matching_law.py`
+  - `virtual_shaping_lab/protocols/shaping.py`
+  - `virtual_shaping_lab/protocols/resurgence.py`
+  - `virtual_shaping_lab/protocols/superextinction.py`
+  - `virtual_shaping_lab/protocols/spontaneous_recovery.py`
+- Coverage:
+  - `tests/test_protocols.py`
+  - `tests/test_behavioral_phenomena_defaults.py`
+
+### UI/schema invariants for operant payload semantics
+
+- Operant payload semantics and policy guards:
+  - `virtual_shaping_lab/ui/validate_payload.py`
+  - `virtual_shaping_lab/ui/schema/policy.schema.json`
+- Preset editors and action-space controls:
+  - `virtual_shaping_lab/ui/js/react/operant_conditioning_editor.jsx`
+  - `virtual_shaping_lab/ui/js/react/matching_law_editor.jsx`
+  - `virtual_shaping_lab/ui/js/react/shaping_editor.jsx`
+  - `virtual_shaping_lab/ui/js/react/resurgence_editor.jsx`
+  - `virtual_shaping_lab/ui/js/react/superextinction_editor.jsx`
+  - `virtual_shaping_lab/ui/js/react/spontaneous_recovery_editor.jsx`
+- Shared action catalog:
+  - `virtual_shaping_lab/ui/js/react/operant_actions.js`
+- Coverage:
+  - `tests/test_validate_payload.py`
+  - `tests/test_ui_teaching_contract.py`
+  - `tests/preset_payloads.py`
+
+### Report/output compatibility and canonical report path
+
+- Report generation/output:
+  - `virtual_shaping_lab/analysis/report/report.py`
+  - `virtual_shaping_lab/analysis/report/presets.py`
+  - `virtual_shaping_lab/analysis/metrics/operant.py`
+  - `virtual_shaping_lab/analysis/visualizations/operant.py`
+  - `virtual_shaping_lab/analysis/visualizations/matching_law.py`
+- API report hosting and run response:
+  - `virtual_shaping_lab/api/run.py`
+- Canonical shared paths:
+  - `virtual_shaping_lab/paths.py`
+- Coverage:
+  - `tests/test_report.py`
+  - `tests/test_visualizations.py`
+  - `tests/test_run_api_contract.py`
+
 ## Definition of Done for Contract
 
 This contract is considered active when:
