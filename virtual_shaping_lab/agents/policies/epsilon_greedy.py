@@ -1,46 +1,43 @@
 # policies/epsilon_greedy.py
 
-"""
-Epsilon-greedy policy for action selection.
-"""
+"""Epsilon-greedy policy for action selection."""
+
+from __future__ import annotations
 
 from typing import Any, Sequence
-import numpy as np
-import random
 
-from agents.policies.base import Policy, ValueFn
+import numpy as np
+
+from virtual_shaping_lab.agents.policies.base import Policy, ValueFn
+from virtual_shaping_lab.domain.types import EncodedState
 
 
 class EpsilonGreedyPolicy(Policy):
-    """
-    Epsilon-greedy action selection policy.
-    """
+    """Epsilon-greedy action selection policy."""
 
     def __init__(
         self,
-        actions: Sequence[Any],
+        actions: Sequence[Any] | None = None,
         epsilon: float = 0.1,
     ):
-        """
-        Parameters
-        ----------
-        actions : sequence
-            Available actions
-        epsilon : float
-            Probability of random action
-        """
-        self.actions = list(actions)
-        self.epsilon = epsilon
+        self.actions = list(actions) if actions is not None else []
+        self.epsilon = float(epsilon)
 
-    def select_action(self, state: np.ndarray, value_fn: ValueFn) -> Any:
-        """
-        Choose an action using epsilon-greedy strategy.
-        """
-        if random.random() < self.epsilon:
-            return random.choice(self.actions)
+    def select_action(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+        rng: np.random.Generator,
+    ) -> Any:
+        pool = list(actions) if actions else list(self.actions)
+        if not pool:
+            return None
 
-        # Exploit: choose best action according to value_fn
-        values = [value_fn(state, action=a) for a in self.actions]
+        if float(rng.random()) < self.epsilon:
+            idx = int(rng.integers(0, len(pool)))
+            return pool[idx]
+
+        values = [value_fn(state, action=a) for a in pool]
         best_idx = int(np.argmax(values))
-        return self.actions[best_idx]
-
+        return pool[best_idx]
