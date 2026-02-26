@@ -1,20 +1,17 @@
-"""
-Q-learning with linear function approximation.
+"""Q-learning with linear function approximation over EncodedState."""
 
-Learns action-value functions:
-    Q(s, a) = w_a^T s
-"""
+from __future__ import annotations
 
 from typing import Dict, Optional, Sequence, Any
+
 import numpy as np
 
-from agents.learners.base import OperantLearner
+from virtual_shaping_lab.agents.learners.base import OperantLearner
+from virtual_shaping_lab.domain.types import EncodedState, Transition
 
 
 class QLearner(OperantLearner):
-    """
-    Linear Q-learning learner.
-    """
+    """Linear Q-learning learner."""
 
     name = "q_learner"
     learner_type = "operant"
@@ -28,65 +25,44 @@ class QLearner(OperantLearner):
         salience: Optional[np.ndarray] = None,
     ):
         super().__init__(alpha=alpha, gamma=gamma)
-
         self.actions = list(actions)
         self.action_index = {a: i for i, a in enumerate(self.actions)}
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
-
-        # Weight matrix: (num_actions, state_dim)
-        self.weights = np.zeros((len(self.actions), state_dim))
+        self.weights = np.zeros((len(self.actions), state_dim), dtype=float)
 
     def _action_index(self, action: Any) -> int:
         if action not in self.action_index:
             raise ValueError(f"Unknown action '{action}' for QLearner.")
         return self.action_index[action]
 
-    def value(self, state: np.ndarray, action: Optional[Any] = None) -> float:
-        """
-        Return Q(s, a). If action is None, return max_a Q(s, a).
-        """
+    def value(self, state: EncodedState, action: Optional[Any] = None) -> float:
+        x = state.x
         if action is None:
-            return float(np.max(self.weights @ state))
+            return float(np.max(self.weights @ x))
         idx = self._action_index(action)
-        return float(np.dot(self.weights[idx], state))
+        return float(np.dot(self.weights[idx], x))
 
-    def update(
-        self,
-        state: np.ndarray,
-        reward: float,
-        action: Optional[Any] = None,
-        next_state: Optional[np.ndarray] = None,
-        done: Optional[bool] = None
-    ) -> None:
-        """
-        Q-learning update rule.
-        """
+    def update(self, transition: Transition) -> None:
+        action = transition.a
         if action is None:
-            raise ValueError("QLearner.update requires an action")
+            raise ValueError("QLearner.update requires transition.a")
 
         a_idx = self._action_index(action)
-        q_sa = float(np.dot(self.weights[a_idx], state))
+        q_sa = float(np.dot(self.weights[a_idx], transition.s.x))
 
-        if next_state is None or done:
+        if transition.s_next is None or transition.done:
             q_next = 0.0
         else:
-            q_next = float(np.max(self.weights @ next_state))
+            q_next = float(np.max(self.weights @ transition.s_next.x))
 
-        td_error = reward + self.gamma * q_next - q_sa
+        delta = transition.metadata.get("delta_override")
+        if delta is None:
+            delta = transition.r + self.gamma * q_next - q_sa
 
-        self.weights[a_idx] += self.alpha * td_error * state
+        alpha = transition.metadata.get("alpha_override")
+        alpha = self.alpha if alpha is None else float(alpha)
 
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        if action is None:
-            return  # cannot update Q-values without action
-
-        a_idx = self._action_index(action)
-        q = self.value(state, action)
-        delta = delta_override if delta_override is not None else (reward - q)
-        alpha = self.alpha if alpha_override is None else alpha_override
-
-        self.weights[a_idx] += alpha * delta * state
+        self.weights[a_idx] += alpha * float(delta) * transition.s.x
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {"weights": self.weights.copy()}
-

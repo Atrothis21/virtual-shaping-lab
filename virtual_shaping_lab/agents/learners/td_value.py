@@ -1,17 +1,17 @@
 # learners/td_value.py
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import Optional, Any
+
 import numpy as np
 
-from agents.learners.base import BaseLearner
+from virtual_shaping_lab.agents.learners.base import BaseLearner
+from virtual_shaping_lab.domain.types import EncodedState, Transition
 
 
 class TDValueLearner(BaseLearner):
-    """
-    TD(0) value learner over a vector representation.
-
-    Learns V(s) only (Pavlovian).
-    """
+    """TD(0) value learner over vectorized EncodedState."""
 
     name = "td_value"
     learner_type = "pavlovian"
@@ -27,32 +27,25 @@ class TDValueLearner(BaseLearner):
         self.weights = np.zeros(state_dim, dtype=float)
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
 
-    def value(self, state: np.ndarray, action: Optional[int] = None) -> float:
-        return float(np.dot(self.weights, state))
+    def value(self, state: EncodedState, action: Any = None) -> float:
+        return float(np.dot(self.weights, state.x))
 
-    def update(
-        self,
-        state: np.ndarray,
-        reward: float,
-        action: Optional[int] = None,
-        next_state: Optional[np.ndarray] = None,
-        done: Optional[bool] = None
-    ) -> None:
-        v = self.value(state)
-        v_next = 0.0
-        if next_state is not None and not done:
-            v_next = self.value(next_state)
+    def update(self, transition: Transition) -> None:
+        v = self.value(transition.s)
 
-        delta = reward + self.gamma * v_next - v
+        if transition.s_next is None or transition.done:
+            v_next = 0.0
+        else:
+            v_next = self.value(transition.s_next)
 
-        self.weights += self.alpha * delta * state
-    
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        prediction = self.value(state)
-        delta = delta_override if delta_override is not None else (reward - prediction)
-        alpha = self.alpha if alpha_override is None else alpha_override
+        delta = transition.metadata.get("delta_override")
+        if delta is None:
+            delta = transition.r + self.gamma * v_next - v
 
-        self.weights += alpha * delta * state
+        alpha = transition.metadata.get("alpha_override")
+        alpha = self.alpha if alpha is None else float(alpha)
 
+        self.weights += alpha * float(delta) * transition.s.x
 
-
+    def get_parameters(self):
+        return {"weights": self.weights.copy()}
