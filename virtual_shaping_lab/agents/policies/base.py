@@ -1,42 +1,30 @@
 # policies/base.py
 
-"""
-Policy definitions.
+"""Policy contract bridge aligned to v2 composition interfaces."""
 
-A Policy:
-- Chooses actions based on state (and value estimates)
-- Does NOT update values
-- Does NOT know about rewards directly
-- Does NOT depend on concrete learner classes
-"""
+from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Callable
+from abc import abstractmethod
+from typing import Any, Sequence
+
 import numpy as np
 
-ValueFn = Callable[[np.ndarray, Any], float]
+from virtual_shaping_lab.agents.interfaces import IPolicy, ValueFn
+from virtual_shaping_lab.domain.types import EncodedState
 
 
-class Policy(ABC):
-    """
-    Abstract base class for all policies.
-    """
+class Policy(IPolicy):
+    """Abstract base class for concrete action-selection policies."""
+
+    def reset(self) -> None:
+        return None
 
     @abstractmethod
-    def select_action(self, state: np.ndarray, value_fn: ValueFn) -> Any:
-        """
-        Select an action given the current state.
-
-        Parameters
-        ----------
-        state : np.ndarray
-            Encoded state vector
-        value_fn : Callable
-            A function that returns value estimates, e.g. learner.value(state, action)
-
-        Returns
-        -------
-        action : Any
-            Action to take
-        """
+    def select_action(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+        rng: np.random.Generator,
+    ) -> Any:
         raise NotImplementedError
