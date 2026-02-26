@@ -18,6 +18,7 @@ class Observation:
 
     stimuli: list[Any]
     context: Any
+    compound: bool = False
     t_s: Optional[float] = None
     dt_s: Optional[float] = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -25,9 +26,7 @@ class Observation:
 
 @dataclass(frozen=True)
 class EncodedState:
-    """
-    Vectorized state output by representations and consumed by learners/policies.
-    """
+    """Vectorized state output by representations and consumed by learners/policies."""
 
     x: np.ndarray
     key: Optional[str] = None

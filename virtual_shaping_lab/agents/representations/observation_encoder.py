@@ -1,28 +1,18 @@
 # representations/observation_encoder.py
 
+from __future__ import annotations
+
 from typing import Any, Iterable, List
+
 import numpy as np
 
-from agents.representations.vector_encoder import VectorEncoder
-from agents.representations.observation import Observation, DEFAULT_CONTEXT
+from virtual_shaping_lab.agents.representations.vector_encoder import VectorEncoder
+from virtual_shaping_lab.agents.representations.observation import DEFAULT_CONTEXT
+from virtual_shaping_lab.domain.types import Observation
 
 
 class ObservationVectorEncoder(VectorEncoder):
-    """
-    Encode an Observation into a vector (multi-hot) with two channels:
-
-      1) Global features:      global:<feature>
-      2) Context-gated:        ctx:<context>|<feature>
-
-    Compound feature naming (also gated/global):
-      - global:compound:<sorted_features_joined>
-      - ctx:<context>|compound:<sorted_features_joined>
-
-    Modes:
-      - elemental: A+X -> elemental features only
-      - configural: A+X -> compound feature only
-      - hybrid: A+X -> elemental + compound
-    """
+    """Encode Observation into multi-hot vector with global and context channels."""
 
     def __init__(
         self,
@@ -37,10 +27,8 @@ class ObservationVectorEncoder(VectorEncoder):
         vocab = list(feature_vocab)
         if not vocab:
             raise ValueError("ObservationVectorEncoder requires a non-empty vocab.")
-
         if mode not in {"elemental", "configural", "hybrid"}:
             raise ValueError("mode must be one of: elemental, configural, hybrid")
-
         if not include_global and not include_context:
             raise ValueError("ObservationVectorEncoder requires at least one channel enabled.")
 
@@ -53,9 +41,16 @@ class ObservationVectorEncoder(VectorEncoder):
         self._include_global = include_global
         self._include_context = include_context
 
+    @staticmethod
+    def _obs_field(observation: Observation, key: str, default: Any) -> Any:
+        if hasattr(observation, key):
+            return getattr(observation, key)
+        if isinstance(observation, dict):
+            return observation.get(key, default)
+        return default
+
     def _compound_key(self, features: List[Any]) -> str:
-        parts = [str(f) for f in sorted(features)]
-        return f"{self._compound_prefix}{'|'.join(parts)}"
+        return f"{self._compound_prefix}{'|'.join(str(f) for f in sorted(features))}"
 
     def _ctx_key(self, context: Any, feature: str) -> str:
         return f"{self._context_prefix}{context}|{feature}"
@@ -68,17 +63,9 @@ class ObservationVectorEncoder(VectorEncoder):
             raise ValueError(f"Unknown feature: '{key}'")
         vec[self._index[key]] += value
 
-    def add_elemental_features(
-        self,
-        vec: np.ndarray,
-        features: List[Any],
-        context: Any,
-        weights: dict | None = None,
-    ) -> None:
+    def add_elemental_features(self, vec: np.ndarray, features: List[Any], context: Any, weights: dict | None = None) -> None:
         for f in features:
-            weight = 1.0
-            if weights is not None:
-                weight = float(weights.get(str(f), 1.0))
+            weight = float(weights.get(str(f), 1.0)) if weights is not None else 1.0
             if self._include_global:
                 self._add_feature(vec, self._global_key(str(f)), weight)
             if self._include_context:
@@ -92,19 +79,17 @@ class ObservationVectorEncoder(VectorEncoder):
             self._add_feature(vec, self._ctx_key(context, c_key), 1.0)
 
     def encode(self, observation: Observation) -> np.ndarray:
-        features = observation.get("stimuli", [])
-        compound = observation.get("compound", False)
-        context = observation.get("context", DEFAULT_CONTEXT)
+        features = list(self._obs_field(observation, "stimuli", []))
+        compound = bool(self._obs_field(observation, "compound", False))
+        context = self._obs_field(observation, "context", DEFAULT_CONTEXT)
 
         vec = np.zeros(self.dimension, dtype=float)
-
-        # Elemental features
         if self._mode in {"elemental", "hybrid"}:
             self.add_elemental_features(vec, features, context, weights=None)
 
-        # Compound feature
         if self._mode in {"configural", "hybrid"} and (compound or self._mode == "configural"):
             self.add_compound_feature(vec, features, context)
+
         return vec
 
     @property

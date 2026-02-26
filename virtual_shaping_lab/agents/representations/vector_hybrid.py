@@ -1,32 +1,29 @@
 # representations/vector_hybrid.py
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
+
 import numpy as np
 
-from agents.representations.base import RepresentationBase
-from agents.representations.observation import Observation, DEFAULT_CONTEXT
-from agents.representations.observation_encoder import ObservationVectorEncoder
-from agents.representations.vocab import (
-    build_feature_vocab,
-    build_feature_weight_vector,
-)
-from agents.representations.similarity import (
-    parse_similarity_matrix,
-    build_similarity_weights,
-)
+from virtual_shaping_lab.agents.representations.base import RepresentationBase
+from virtual_shaping_lab.agents.representations.observation import DEFAULT_CONTEXT
+from virtual_shaping_lab.agents.representations.observation_encoder import ObservationVectorEncoder
+from virtual_shaping_lab.agents.representations.vocab import build_feature_vocab, build_feature_weight_vector
+from virtual_shaping_lab.agents.representations.similarity import parse_similarity_matrix, build_similarity_weights
+from virtual_shaping_lab.domain.types import EncodedState, Observation
 
 
 class VectorHybridRepresentation(RepresentationBase):
-    """
-    Hybrid vector representation:
-    compounds are encoded as both elemental and configural features.
-
-    Supports two-component encoding:
-      - global:<stimulus> and global:compound:<...>
-      - ctx:<context>|<stimulus> and ctx:<context>|compound:<...>
-    """
-
     name = "vector_hybrid"
+
+    @staticmethod
+    def _obs_field(observation: Observation, key: str, default: Any) -> Any:
+        if hasattr(observation, key):
+            return getattr(observation, key)
+        if isinstance(observation, dict):
+            return observation.get(key, default)
+        return default
 
     def _apply_salience(self, vec: np.ndarray) -> np.ndarray:
         if self.salience.shape[0] == vec.shape[0]:
@@ -38,7 +35,6 @@ class VectorHybridRepresentation(RepresentationBase):
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         super().__init__(params=params)
-
         stimuli = self.params.get("stimuli")
         if not stimuli:
             raise ValueError("vector_hybrid requires params['stimuli']")
@@ -49,11 +45,9 @@ class VectorHybridRepresentation(RepresentationBase):
         attention_compound = self.params.get("attention_compound", "mean")
         compound_prefix = self.params.get("compound_prefix", "compound:")
         max_compound_size = self.params.get("max_compound_size", 2)
-
         contexts = self.params.get("contexts")
         context_prefix = self.params.get("context_prefix", "ctx:")
         global_prefix = self.params.get("global_prefix", "global:")
-
         include_global = self.params.get("include_global", True)
         include_context = self.params.get("include_context", True)
 
@@ -84,28 +78,30 @@ class VectorHybridRepresentation(RepresentationBase):
         self.attention_map = dict(attention) if attention else {}
         self.similarity_map = parse_similarity_matrix(similarity, stimuli) if similarity else {}
         if attention:
-            attention_vector = build_feature_weight_vector(
-                features=features,
-                weights=attention,
-                compound_rule=attention_compound,
-                context_prefix=context_prefix,
-                global_prefix=global_prefix,
-                compound_prefix=compound_prefix,
+            self.attention = np.asarray(
+                build_feature_weight_vector(
+                    features=features,
+                    weights=attention,
+                    compound_rule=attention_compound,
+                    context_prefix=context_prefix,
+                    global_prefix=global_prefix,
+                    compound_prefix=compound_prefix,
+                ),
+                dtype=float,
             )
-            self.attention = np.asarray(attention_vector, dtype=float)
         else:
             self.attention = None
 
-    def encode(self, observation: Observation) -> np.ndarray:
+    def encode(self, observation: Observation) -> EncodedState:
         if not self.similarity_map:
-            return self._apply_salience(self._encoder.encode(observation))
+            vec = self._apply_salience(self._encoder.encode(observation))
+            return EncodedState(x=vec)
 
-        features = observation.get("stimuli", [])
-        compound = observation.get("compound", False)
-        context = observation.get("context", DEFAULT_CONTEXT)
+        features = self._obs_field(observation, "stimuli", [])
+        compound = bool(self._obs_field(observation, "compound", False))
+        context = self._obs_field(observation, "context", DEFAULT_CONTEXT)
 
         vec = np.zeros(self.dimension, dtype=float)
-
         if self._encoder.mode in {"elemental", "hybrid"}:
             weights = build_similarity_weights(features, self.similarity_map)
             self._encoder.add_elemental_features(vec, list(weights.keys()), context, weights=weights)
@@ -113,7 +109,7 @@ class VectorHybridRepresentation(RepresentationBase):
         if self._encoder.mode in {"configural", "hybrid"} and (compound or self._encoder.mode == "configural"):
             self._encoder.add_compound_feature(vec, features, context)
 
-        return self._apply_salience(vec)
+        return EncodedState(x=self._apply_salience(vec))
 
     @property
     def dimension(self) -> int:
