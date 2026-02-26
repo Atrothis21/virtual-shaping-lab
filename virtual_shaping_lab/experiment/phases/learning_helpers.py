@@ -2,6 +2,8 @@
 
 from typing import Any, Optional
 
+from virtual_shaping_lab.domain.types import Transition
+
 
 def apply_attention_update(
     agent: Any,
@@ -9,6 +11,10 @@ def apply_attention_update(
     reward: float,
     action: Optional[int] = None,
     cue_labels: Any = None,
+    next_state: Any = None,
+    done: bool = False,
+    t_s: float | None = None,
+    dt_s: float | None = None,
 ) -> None:
     """
     Apply an attention-aware learning update if attention is present.
@@ -31,12 +37,17 @@ def apply_attention_update(
         if multiplier != 1.0:
             base_alpha = getattr(learner, "alpha", 1.0) or 1.0
             alpha_override = multiplier * base_alpha
-            agent.update_with_alpha(
-                state,
-                reward,
-                action=action,
-                alpha_override=alpha_override,
+            transition = Transition(
+                s=state,
+                r=reward,
+                a=action,
+                s_next=next_state,
+                done=done,
+                t_s=t_s,
+                dt_s=dt_s,
+                metadata={"alpha_override": alpha_override},
             )
+            agent.learn(transition)
             return
 
     # Legacy fallback for old representations carrying scalar attention.
@@ -44,12 +55,26 @@ def apply_attention_update(
     if attention is not None and not isinstance(attention, (list, tuple)):
         base_alpha = getattr(learner, "alpha", 1.0) if learner is not None else 1.0
         alpha_override = float(attention) * float(base_alpha or 1.0)
-        agent.update_with_alpha(
-            state,
-            reward,
-            action=action,
-            alpha_override=alpha_override,
+        transition = Transition(
+            s=state,
+            r=reward,
+            a=action,
+            s_next=next_state,
+            done=done,
+            t_s=t_s,
+            dt_s=dt_s,
+            metadata={"alpha_override": alpha_override},
         )
+        agent.learn(transition)
         return
 
-    agent.update(state, reward, action)
+    transition = Transition(
+        s=state,
+        r=reward,
+        a=action,
+        s_next=next_state,
+        done=done,
+        t_s=t_s,
+        dt_s=dt_s,
+    )
+    agent.learn(transition)

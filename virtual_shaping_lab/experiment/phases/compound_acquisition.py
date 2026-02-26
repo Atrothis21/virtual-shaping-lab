@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 from experiment.phases.base import PhaseBase
 from experiment.phases.series_helpers import make_dual_series
 from virtual_shaping_lab.agents.representations.observation import make_observation
+from virtual_shaping_lab.domain.types import Transition
 
 
 class CompoundAcquisitionPhase(PhaseBase):
@@ -148,8 +149,28 @@ class CompoundAcquisitionPhase(PhaseBase):
         # Shared compound prediction error
         delta = (reward - outcome["prediction"]) / 2
 
-        self.agent.learner.update_with_alpha(state_a, reward, action, alpha_cs1, delta_override=delta)
-        self.agent.learner.update_with_alpha(state_b, reward, action, alpha_cs2, delta_override=delta)
+        self.agent.learn(
+            Transition(
+                s=state_a,
+                r=reward,
+                a=action,
+                metadata={
+                    "alpha_override": alpha_cs1,
+                    "delta_override": delta,
+                },
+            )
+        )
+        self.agent.learn(
+            Transition(
+                s=state_b,
+                r=reward,
+                a=action,
+                metadata={
+                    "alpha_override": alpha_cs2,
+                    "delta_override": delta,
+                },
+            )
+        )
 
     def record_trial(
         self,
