@@ -29,6 +29,10 @@ class ComposedAgent:
     def _ensure_state(state: Any) -> EncodedState:
         if isinstance(state, EncodedState):
             return state
+        if hasattr(state, "x"):
+            vec = np.asarray(getattr(state, "x"), dtype=float)
+            key = getattr(state, "key", None)
+            return EncodedState(x=vec, key=key)
         if isinstance(state, np.ndarray):
             return EncodedState(x=state)
         return EncodedState(x=np.asarray(state, dtype=float))

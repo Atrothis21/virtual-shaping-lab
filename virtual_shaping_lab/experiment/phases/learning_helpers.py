@@ -5,6 +5,34 @@ from typing import Any, Optional
 from virtual_shaping_lab.domain.types import Transition
 
 
+def _dispatch_transition(agent: Any, transition: Transition) -> None:
+    # Preferred v2 path.
+    if hasattr(agent, "learn"):
+        agent.learn(transition)
+        return
+
+    # Legacy fallback retained for old tests/doubles.
+    metadata = transition.metadata or {}
+    alpha_override = metadata.get("alpha_override")
+    delta_override = metadata.get("delta_override")
+    if alpha_override is not None or delta_override is not None:
+        if hasattr(agent, "update_with_alpha"):
+            agent.update_with_alpha(
+                transition.s,
+                transition.r,
+                action=transition.a,
+                alpha_override=alpha_override,
+                delta_override=delta_override,
+            )
+            return
+
+    if hasattr(agent, "update"):
+        agent.update(transition.s, transition.r, transition.a)
+        return
+
+    raise AttributeError("Agent must implement learn(Transition) or legacy update methods.")
+
+
 def apply_attention_update(
     agent: Any,
     state: Any,
@@ -47,7 +75,7 @@ def apply_attention_update(
                 dt_s=dt_s,
                 metadata={"alpha_override": alpha_override},
             )
-            agent.learn(transition)
+            _dispatch_transition(agent, transition)
             return
 
     # Legacy fallback for old representations carrying scalar attention.
@@ -65,7 +93,7 @@ def apply_attention_update(
             dt_s=dt_s,
             metadata={"alpha_override": alpha_override},
         )
-        agent.learn(transition)
+        _dispatch_transition(agent, transition)
         return
 
     transition = Transition(
@@ -77,4 +105,4 @@ def apply_attention_update(
         t_s=t_s,
         dt_s=dt_s,
     )
-    agent.learn(transition)
+    _dispatch_transition(agent, transition)

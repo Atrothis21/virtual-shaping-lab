@@ -50,7 +50,7 @@ class DummyAgent:
     def value(self, state, action=None):
         return 0.5
 
-    def act(self, state):
+    def act(self, state, actions=None, rng=None):
         return None
 
     def update(self, state, reward, action=None):
@@ -73,3 +73,4 @@ class DummyAgent:
 @pytest.fixture
 def dummy_agent():
     return DummyAgent(attention=0.5)
+
