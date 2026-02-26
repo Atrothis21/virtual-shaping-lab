@@ -91,7 +91,7 @@ class ConcurrentSchedulePhase(PhaseBase):
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
         action_index = None
         if action == self.left_action:
             action_index = 0
@@ -151,4 +151,5 @@ class ConcurrentSchedulePhase(PhaseBase):
             "schedule_left": getattr(self.schedule_left, "name", None),
             "schedule_right": getattr(self.schedule_right, "name", None),
         }
+
 

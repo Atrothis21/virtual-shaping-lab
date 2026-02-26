@@ -98,7 +98,7 @@ class ProbePhase(PhaseBase):
 
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         reward = self.reward_value if self.deliver_reward else 0.0
 
@@ -135,5 +135,6 @@ class ProbePhase(PhaseBase):
             "series_labels": {"label_1": "CS1", "label_2": "CS2"},
             "series_values": {"CS1": outcome["prediction"], "CS2": None},
         }
+
 
 

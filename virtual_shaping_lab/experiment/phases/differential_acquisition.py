@@ -93,7 +93,7 @@ class DifferentialAcquisitionPhase(PhaseBase):
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         reward = self.reinforced_outcome if stimulus_type == "cs_plus" else 0.0
 
@@ -139,5 +139,6 @@ class DifferentialAcquisitionPhase(PhaseBase):
             "prediction": outcome["prediction"],
             **series,
         }
+
 
 

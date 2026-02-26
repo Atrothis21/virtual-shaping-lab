@@ -85,7 +85,7 @@ class CompoundNonReinforcementPhase(PhaseBase):
         state = self.agent.observe(obs)
 
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         # Compute excitor-only prediction without mutating agent state
         obs_a = make_observation(
@@ -156,6 +156,7 @@ class CompoundNonReinforcementPhase(PhaseBase):
             "stimulus": outcome["compound"],
             **series,
         }
+
 
 
 

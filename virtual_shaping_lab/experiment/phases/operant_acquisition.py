@@ -89,7 +89,7 @@ class OperantAcquisitionPhase(PhaseBase):
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         reward = float(self.reward_schedule.step(
             action=action,
@@ -135,5 +135,6 @@ class OperantAcquisitionPhase(PhaseBase):
             "prediction": outcome["prediction"],
             "schedule": getattr(self.reward_schedule, "name", None),
         }
+
 
 

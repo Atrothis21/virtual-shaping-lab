@@ -92,7 +92,7 @@ class AcquisitionPhase(PhaseBase):
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
 
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         return {
             "stimulus": stimulus,
@@ -136,5 +136,6 @@ class AcquisitionPhase(PhaseBase):
             "series_labels": {"label_1": "CS1", "label_2": "CS2"},
             "series_values": {"CS1": outcome["prediction"], "CS2": None},
         }
+
 
 

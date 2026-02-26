@@ -105,7 +105,7 @@ class CompoundAcquisitionPhase(PhaseBase):
         b_prediction = self.agent.value(state_b)
 
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         return {
             "compound": compound,
@@ -186,6 +186,7 @@ class CompoundAcquisitionPhase(PhaseBase):
                 "value": outcome.get("prediction")
             },
         }
+
 
 
 

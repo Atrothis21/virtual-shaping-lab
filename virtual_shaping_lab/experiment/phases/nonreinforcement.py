@@ -89,7 +89,7 @@ class NonReinforcementPhase(PhaseBase):
 
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         return {
             "stimulus": stimulus,
@@ -153,5 +153,6 @@ class NonReinforcementPhase(PhaseBase):
             "series_labels": labels,
             "series_values": series_values,
         }
+
 
 

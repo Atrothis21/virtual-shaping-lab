@@ -100,7 +100,7 @@ class CriterionShiftPhase(PhaseBase):
 
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         return {
             "stimulus": stimulus,
@@ -155,5 +155,6 @@ class CriterionShiftPhase(PhaseBase):
             "prediction": outcome["prediction"],
             **crit,
         }
+
 
 
