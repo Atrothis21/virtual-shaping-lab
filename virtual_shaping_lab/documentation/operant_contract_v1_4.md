@@ -1,5 +1,10 @@
 # VSL v1.4 Operant Architecture Contract
 
+Status
+This document remains valid for historical v1.4 operant split behavior.
+For active architecture contracts, use:
+- `virtual_shaping_lab/documentation/architecture_v2.md`
+
 ## Purpose
 
 This document defines the implementation contract for `v1.4` (Operant Architecture Split).
