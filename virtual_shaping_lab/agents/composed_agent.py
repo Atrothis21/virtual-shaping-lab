@@ -54,7 +54,7 @@ class ComposedAgent:
         rng: Optional[np.random.Generator] = None,
     ) -> Any:
         encoded = self._ensure_state(state)
-        pool = list(actions) if actions is not None else list(getattr(self.learner, "actions", []))
+        pool = list(actions) if actions is not None else []
         generator = rng if rng is not None else np.random.default_rng()
         return self.policy.select_action(encoded, pool, self.value, generator)
 
