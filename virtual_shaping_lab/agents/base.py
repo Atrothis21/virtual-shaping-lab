@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Any
 import inspect
 import numpy as np
-from agents.representations.observation import Observation
+from virtual_shaping_lab.agents.representations.observation import Observation
 
 
 class Agent(ABC):
@@ -146,4 +146,5 @@ class Agent(ABC):
             return
 
         self.update(state, reward, action)
+
 

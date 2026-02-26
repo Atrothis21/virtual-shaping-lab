@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.series_helpers import make_dual_series
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 class CompoundAcquisitionPhase(PhaseBase):
@@ -186,5 +186,6 @@ class CompoundAcquisitionPhase(PhaseBase):
                 "value": outcome.get("prediction")
             },
         }
+
 
 

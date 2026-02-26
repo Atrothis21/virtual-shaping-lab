@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from experiment.phases.series_helpers import make_dual_series
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 class CompoundNonReinforcementPhase(PhaseBase):
@@ -156,5 +156,6 @@ class CompoundNonReinforcementPhase(PhaseBase):
             "stimulus": outcome["compound"],
             **series,
         }
+
 
 

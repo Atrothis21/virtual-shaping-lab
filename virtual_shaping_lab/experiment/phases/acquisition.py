@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 class AcquisitionPhase(PhaseBase):
@@ -136,4 +136,5 @@ class AcquisitionPhase(PhaseBase):
             "series_labels": {"label_1": "CS1", "label_2": "CS2"},
             "series_values": {"CS1": outcome["prediction"], "CS2": None},
         }
+
 

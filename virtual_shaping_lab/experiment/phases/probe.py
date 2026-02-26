@@ -3,7 +3,7 @@
 from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 class ProbePhase(PhaseBase):
@@ -135,4 +135,5 @@ class ProbePhase(PhaseBase):
             "series_labels": {"label_1": "CS1", "label_2": "CS2"},
             "series_values": {"CS1": outcome["prediction"], "CS2": None},
         }
+
 

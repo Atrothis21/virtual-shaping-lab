@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 class NonReinforcementPhase(PhaseBase):
@@ -153,4 +153,5 @@ class NonReinforcementPhase(PhaseBase):
             "series_labels": labels,
             "series_values": series_values,
         }
+
 
