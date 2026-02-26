@@ -1,42 +1,42 @@
 # experiment/factories/agent_factory.py
 
+from __future__ import annotations
+
 from typing import Dict, Callable, Any
 
 
-def _build_classical_agent(**params: Any):
-    # Flat import — works when project root is on sys.path
-    from agents.classical_agent import ClassicalAgent
-    clean_params = dict(params)
-    clean_params.pop("policy", None)
-    return ClassicalAgent(**clean_params)
+def _build_composed_agent(**params: Any):
+    from virtual_shaping_lab.agents.composed_agent import ComposedAgent
+    from virtual_shaping_lab.agents.policies.null_policy import NullPolicy
 
+    clean = dict(params)
+    learner = clean.pop("learner")
+    representation = clean.pop("representation")
+    policy = clean.pop("policy", None)
 
-def _build_operant_agent(**params: Any):
-    # Flat import — works when project root is on sys.path
-    from agents.operant_agent import OperantAgent
-    return OperantAgent(**params)
+    if policy is None:
+        policy = NullPolicy()
+
+    return ComposedAgent(
+        learner=learner,
+        representation=representation,
+        policy=policy,
+    )
 
 
 AGENT_REGISTRY: Dict[str, Callable[..., Any]] = {
-    "classical_agent": _build_classical_agent,
-    "operant_agent": _build_operant_agent,
+    "classical_agent": _build_composed_agent,
+    "operant_agent": _build_composed_agent,
+    "composed_agent": _build_composed_agent,
 }
 
 
 def validate_agent(name: str) -> None:
     if name not in AGENT_REGISTRY:
         available = ", ".join(sorted(AGENT_REGISTRY.keys()))
-        raise KeyError(
-            f"Unknown agent '{name}'. "
-            f"Available agents: {available}"
-        )
+        raise KeyError(f"Unknown agent '{name}'. Available agents: {available}")
 
 
 def build_agent(name: str, **params: Any):
-    """
-    Construct an agent instance.
-
-    Params are passed through to the agent constructor.
-    """
     validate_agent(name)
     return AGENT_REGISTRY[name](**params)

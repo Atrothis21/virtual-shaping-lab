@@ -1,80 +1,19 @@
 # agents/classical_agent.py
 
+from __future__ import annotations
+
 from typing import Optional
-import numpy as np
 
-from agents.base import Agent
-from agents.representations.observation import Observation
+from virtual_shaping_lab.agents.composed_agent import ComposedAgent
+from virtual_shaping_lab.agents.policies.null_policy import NullPolicy
+from virtual_shaping_lab.domain.types import EncodedState, Observation
 
 
-class ClassicalAgent(Agent):
-    """
-    Classical (Pavlovian) agent.
-
-    Learns associative strength via the learner (e.g., Rescorla-Wagner).
-    Does not select actions (act returns None).
-    """
+class ClassicalAgent(ComposedAgent):
+    """Compatibility wrapper over ComposedAgent for classical workflows."""
 
     def __init__(self, learner, representation):
-        self.learner = learner
-        self.representation = representation
-        self._state: Optional[np.ndarray] = None
+        super().__init__(learner=learner, representation=representation, policy=NullPolicy())
 
-    # -------------------------------------------------
-    # Lifecycle
-    # -------------------------------------------------
-
-    def reset(self) -> None:
-        """
-        Reset internal agent and learner state.
-        """
-        self._state = None
-        if hasattr(self.learner, "reset"):
-            self.learner.reset()
-        if hasattr(self.representation, "reset"):
-            self.representation.reset()
-
-    # -------------------------------------------------
-    # Observation / Encoding (Agent contract)
-    # -------------------------------------------------
-
-    def observe(self, observation: Observation) -> np.ndarray:
-        """
-        Observe a raw stimulus/observation and cache its encoded state.
-        """
-        self._state = self.representation.encode(observation)
-        return self._state
-
-    # -------------------------------------------------
-    # Prediction (Agent contract)
-    # -------------------------------------------------
-
-    def value(self, state: np.ndarray, action: Optional[int] = None) -> float:
-        """
-        Return the agent's current value prediction for a state.
-        """
-        return self.learner.value(state, action)
-
-    # -------------------------------------------------
-    # Learning update (Agent contract)
-    # -------------------------------------------------
-
-    def update(
-        self,
-        state: np.ndarray,
-        reward: float,
-        action: Optional[int] = None
-    ) -> None:
-        """
-        Update the learner given a state and reward.
-        """
-        if hasattr(self.learner, "update"):
-            self.learner.update(state, reward, action)
-        else:
-            raise AttributeError("Learner does not implement update()")
-
-    def act(self, state: np.ndarray) -> Optional[int]:
-        """
-        Classical agents do not select actions.
-        """
+    def act(self, state: EncodedState, actions=None, rng=None):
         return None
