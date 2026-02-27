@@ -6,11 +6,11 @@ from typing import Dict, Optional, Sequence, Any
 
 import numpy as np
 
-from virtual_shaping_lab.agents.learners.base import OperantLearner
+from virtual_shaping_lab.agents.learners.base import BaseLearner
 from virtual_shaping_lab.domain.types import EncodedState, Transition
 
 
-class QLearner(OperantLearner):
+class QLearner(BaseLearner):
     """Linear Q-learning learner."""
 
     name = "q_learner"
@@ -63,6 +63,9 @@ class QLearner(OperantLearner):
         alpha = self.alpha if alpha is None else float(alpha)
 
         self.weights[a_idx] += alpha * float(delta) * transition.s.x
+
+    def expects_action(self) -> bool:
+        return True
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {"weights": self.weights.copy()}

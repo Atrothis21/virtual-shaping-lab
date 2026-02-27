@@ -88,11 +88,3 @@ class BaseLearner(ILearner, ABC):
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {}
 
-
-class OperantLearner(BaseLearner, ABC):
-    """Abstract base for operant learners."""
-
-    learner_type: str = "operant"
-
-    def expects_action(self) -> bool:
-        return True
