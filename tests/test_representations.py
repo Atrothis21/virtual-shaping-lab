@@ -18,13 +18,14 @@ from agents.representations.vocab import (
     build_feature_vocab,
     build_feature_weight_vector,
 )
+from domain.types import EncodedState
 
 
 class DummyRepresentation(RepresentationBase):
     name = "dummy"
 
     def encode(self, observation):
-        return np.asarray([1.0, 2.0])
+        return EncodedState(x=np.asarray([1.0, 2.0], dtype=float))
 
     @property
     def dimension(self):
@@ -34,7 +35,7 @@ class DummyRepresentation(RepresentationBase):
 def test_representation_base_hooks():
     rep = DummyRepresentation()
     assert rep.dimension == 2
-    assert rep.encode({}).shape == (2,)
+    assert rep.encode({}).x.shape == (2,)
     assert rep.reset() is None
     assert rep.get_summary() == {}
 
@@ -56,8 +57,10 @@ def test_representation_base_hooks():
 
 
 def test_identity_representation():
-    rep = IdentityRepresentation()
-    assert rep.encode("tone") == "tone"
+    rep = IdentityRepresentation(params={"dimension": 2})
+    obs = make_observation(["tone"], "A", metadata={"vector": [1.0, 0.5]})
+    state = rep.encode(obs)
+    np.testing.assert_allclose(state.x, np.asarray([1.0, 0.5], dtype=float))
 
 
 def test_make_observation_defaults():
@@ -65,8 +68,8 @@ def test_make_observation_defaults():
         make_observation(None, "A")
 
     obs = make_observation(["tone"], None)
-    assert obs["context"] == DEFAULT_CONTEXT
-    assert obs["compound"] is False
+    assert obs.context == DEFAULT_CONTEXT
+    assert obs.compound is False
 
 
 def test_observation_vector_encoder_errors_and_encode():
@@ -255,9 +258,9 @@ def test_vector_representations():
     c_vec = configural.encode(obs)
     h_vec = hybrid.encode(obs)
 
-    assert e_vec.shape == (elemental.dimension,)
-    assert c_vec.shape == (configural.dimension,)
-    assert h_vec.shape == (hybrid.dimension,)
+    assert e_vec.x.shape == (elemental.dimension,)
+    assert c_vec.x.shape == (configural.dimension,)
+    assert h_vec.x.shape == (hybrid.dimension,)
 
     configural_attn = VectorConfiguralRepresentation(
         params={
@@ -324,7 +327,7 @@ def test_salience_applies_in_representation_encoding():
         }
     )
 
-    vec = rep.encode(make_observation(["tone"], "A"))
+    vec = rep.encode(make_observation(["tone"], "A")).x
     idx_global_tone = rep._encoder._index["global:tone"]
     idx_ctx_tone = rep._encoder._index["ctx:A|tone"]
     idx_global_noise = rep._encoder._index["global:noise"]
@@ -393,8 +396,8 @@ def test_similarity_identity_matrix_matches_no_similarity_elemental():
     obs_single = make_observation(["tone"], "A", compound=False)
     obs_compound = make_observation(["tone", "noise"], "A", compound=True)
 
-    np.testing.assert_allclose(rep_no_sim.encode(obs_single), rep_identity.encode(obs_single))
-    np.testing.assert_allclose(rep_no_sim.encode(obs_compound), rep_identity.encode(obs_compound))
+    np.testing.assert_allclose(rep_no_sim.encode(obs_single).x, rep_identity.encode(obs_single).x)
+    np.testing.assert_allclose(rep_no_sim.encode(obs_compound).x, rep_identity.encode(obs_compound).x)
 
 
 def test_similarity_non_identity_spreads_activation_elemental():
@@ -414,7 +417,7 @@ def test_similarity_non_identity_spreads_activation_elemental():
         },
     }
     rep = VectorElementalRepresentation(params=params)
-    vec = rep.encode(make_observation(["tone"], "A", compound=False))
+    vec = rep.encode(make_observation(["tone"], "A", compound=False)).x
 
     idx_global_noise = rep._encoder._index["global:noise"]
     idx_ctx_noise = rep._encoder._index["ctx:A|noise"]
@@ -425,3 +428,31 @@ def test_similarity_non_identity_spreads_activation_elemental():
     assert vec[idx_ctx_tone] == pytest.approx(1.0)
     assert vec[idx_global_noise] == pytest.approx(0.4)
     assert vec[idx_ctx_noise] == pytest.approx(0.4)
+
+
+def test_similarity_then_salience_order_is_deterministic():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone", "noise"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+            "salience": {"tone": 0.5, "noise": 0.25},
+            "similarity": {
+                "type": "matrix",
+                "stimuli": ["tone", "noise"],
+                "values": [
+                    [1.0, 0.4],
+                    [0.4, 1.0],
+                ],
+            },
+        }
+    )
+    vec = rep.encode(make_observation(["tone"], "A", compound=False)).x
+    idx_global_tone = rep._encoder._index["global:tone"]
+    idx_global_noise = rep._encoder._index["global:noise"]
+
+    # tone activation: 1.0 then salience 0.5 -> 0.5
+    assert vec[idx_global_tone] == pytest.approx(0.5)
+    # similarity spread to noise: 0.4 then salience 0.25 -> 0.1
+    assert vec[idx_global_noise] == pytest.approx(0.1)
