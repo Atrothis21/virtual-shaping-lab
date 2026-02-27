@@ -13,8 +13,16 @@ def _dispatch_transition(agent: Any, transition: Transition) -> None:
 
     # Legacy fallback retained for old tests/doubles.
     metadata = transition.metadata or {}
-    alpha_override = metadata.get("alpha_override")
-    delta_override = metadata.get("delta_override")
+    alpha_override = (
+        transition.alpha_override
+        if transition.alpha_override is not None
+        else metadata.get("alpha_override")
+    )
+    delta_override = (
+        transition.delta_override
+        if transition.delta_override is not None
+        else metadata.get("delta_override")
+    )
     if alpha_override is not None or delta_override is not None:
         if hasattr(agent, "update_with_alpha"):
             agent.update_with_alpha(
@@ -73,7 +81,7 @@ def apply_attention_update(
                 done=done,
                 t_s=t_s,
                 dt_s=dt_s,
-                metadata={"alpha_override": alpha_override},
+                alpha_override=alpha_override,
             )
             _dispatch_transition(agent, transition)
             return
@@ -91,7 +99,7 @@ def apply_attention_update(
             done=done,
             t_s=t_s,
             dt_s=dt_s,
-            metadata={"alpha_override": alpha_override},
+            alpha_override=alpha_override,
         )
         _dispatch_transition(agent, transition)
         return
@@ -106,3 +114,4 @@ def apply_attention_update(
         dt_s=dt_s,
     )
     _dispatch_transition(agent, transition)
+

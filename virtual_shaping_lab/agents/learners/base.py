@@ -65,10 +65,8 @@ class BaseLearner(ILearner, ABC):
             done=done,
             t_s=t_s,
             dt_s=dt_s,
-            metadata={
-                "alpha_override": alpha_override,
-                "delta_override": delta_override,
-            },
+            alpha_override=alpha_override,
+            delta_override=delta_override,
         )
         self.update(transition)
 
@@ -87,4 +85,3 @@ class BaseLearner(ILearner, ABC):
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {}
-

@@ -55,11 +55,11 @@ class QLearner(BaseLearner):
         else:
             q_next = float(np.max(self.weights @ transition.s_next.x))
 
-        delta = transition.metadata.get("delta_override")
+        delta = transition.delta_override if transition.delta_override is not None else transition.metadata.get("delta_override")
         if delta is None:
             delta = transition.r + self.gamma * q_next - q_sa
 
-        alpha = transition.metadata.get("alpha_override")
+        alpha = transition.alpha_override if transition.alpha_override is not None else transition.metadata.get("alpha_override")
         alpha = self.alpha if alpha is None else float(alpha)
 
         self.weights[a_idx] += alpha * float(delta) * transition.s.x
@@ -69,3 +69,4 @@ class QLearner(BaseLearner):
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {"weights": self.weights.copy()}
+

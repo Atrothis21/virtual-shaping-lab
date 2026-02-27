@@ -38,14 +38,15 @@ class TDValueLearner(BaseLearner):
         else:
             v_next = self.value(transition.s_next)
 
-        delta = transition.metadata.get("delta_override")
+        delta = transition.delta_override if transition.delta_override is not None else transition.metadata.get("delta_override")
         if delta is None:
             delta = transition.r + self.gamma * v_next - v
 
-        alpha = transition.metadata.get("alpha_override")
+        alpha = transition.alpha_override if transition.alpha_override is not None else transition.metadata.get("alpha_override")
         alpha = self.alpha if alpha is None else float(alpha)
 
         self.weights += alpha * float(delta) * transition.s.x
 
     def get_parameters(self):
         return {"weights": self.weights.copy()}
+

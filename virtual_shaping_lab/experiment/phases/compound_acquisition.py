@@ -154,10 +154,8 @@ class CompoundAcquisitionPhase(PhaseBase):
                 s=state_a,
                 r=reward,
                 a=action,
-                metadata={
-                    "alpha_override": alpha_cs1,
-                    "delta_override": delta,
-                },
+                alpha_override=alpha_cs1,
+                delta_override=delta,
             )
         )
         self.agent.learn(
@@ -165,10 +163,8 @@ class CompoundAcquisitionPhase(PhaseBase):
                 s=state_b,
                 r=reward,
                 a=action,
-                metadata={
-                    "alpha_override": alpha_cs2,
-                    "delta_override": delta,
-                },
+                alpha_override=alpha_cs2,
+                delta_override=delta,
             )
         )
 
@@ -207,6 +203,7 @@ class CompoundAcquisitionPhase(PhaseBase):
                 "value": outcome.get("prediction")
             },
         }
+
 
 
 

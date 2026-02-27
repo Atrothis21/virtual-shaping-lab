@@ -53,4 +53,12 @@ class Transition:
     done: bool = False
     t_s: Optional[float] = None
     dt_s: Optional[float] = None
+    alpha_override: Optional[float] = None
+    delta_override: Optional[float] = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.alpha_override is not None:
+            object.__setattr__(self, "alpha_override", float(self.alpha_override))
+        if self.delta_override is not None:
+            object.__setattr__(self, "delta_override", float(self.delta_override))
