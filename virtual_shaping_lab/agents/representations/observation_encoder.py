@@ -41,14 +41,6 @@ class ObservationVectorEncoder(VectorEncoder):
         self._include_global = include_global
         self._include_context = include_context
 
-    @staticmethod
-    def _obs_field(observation: Observation, key: str, default: Any) -> Any:
-        if hasattr(observation, key):
-            return getattr(observation, key)
-        if isinstance(observation, dict):
-            return observation.get(key, default)
-        return default
-
     def _compound_key(self, features: List[Any]) -> str:
         return f"{self._compound_prefix}{'|'.join(str(f) for f in sorted(features))}"
 
@@ -79,9 +71,9 @@ class ObservationVectorEncoder(VectorEncoder):
             self._add_feature(vec, self._ctx_key(context, c_key), 1.0)
 
     def encode(self, observation: Observation) -> np.ndarray:
-        features = list(self._obs_field(observation, "stimuli", []))
-        compound = bool(self._obs_field(observation, "compound", False))
-        context = self._obs_field(observation, "context", DEFAULT_CONTEXT)
+        features = list(observation.stimuli)
+        compound = bool(observation.compound)
+        context = observation.context if observation.context is not None else DEFAULT_CONTEXT
 
         vec = np.zeros(self.dimension, dtype=float)
         if self._mode in {"elemental", "hybrid"}:

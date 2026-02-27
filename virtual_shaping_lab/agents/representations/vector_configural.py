@@ -17,14 +17,6 @@ from virtual_shaping_lab.domain.types import EncodedState, Observation
 class VectorConfiguralRepresentation(RepresentationBase):
     name = "vector_configural"
 
-    @staticmethod
-    def _obs_field(observation: Observation, key: str, default: Any) -> Any:
-        if hasattr(observation, key):
-            return getattr(observation, key)
-        if isinstance(observation, dict):
-            return observation.get(key, default)
-        return default
-
     def _apply_salience(self, vec: np.ndarray) -> np.ndarray:
         if self.salience.shape[0] == vec.shape[0]:
             return vec * self.salience
@@ -97,9 +89,9 @@ class VectorConfiguralRepresentation(RepresentationBase):
             vec = self._apply_salience(self._encoder.encode(observation))
             return EncodedState(x=vec)
 
-        features = self._obs_field(observation, "stimuli", [])
-        compound = bool(self._obs_field(observation, "compound", False))
-        context = self._obs_field(observation, "context", DEFAULT_CONTEXT)
+        features = list(observation.stimuli)
+        compound = bool(observation.compound)
+        context = observation.context if observation.context is not None else DEFAULT_CONTEXT
 
         vec = np.zeros(self.dimension, dtype=float)
         if self._encoder.mode in {"elemental", "hybrid"}:
