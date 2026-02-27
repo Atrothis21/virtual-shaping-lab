@@ -149,24 +149,27 @@ class CompoundAcquisitionPhase(PhaseBase):
         # Shared compound prediction error
         delta = (reward - outcome["prediction"]) / 2
 
-        self.agent.learn(
-            Transition(
-                s=state_a,
-                r=reward,
-                a=action,
+        learner = getattr(self.agent, "learner", None)
+        if learner is not None and hasattr(learner, "update_with_alpha"):
+            learner.update_with_alpha(
+                state_a,
+                reward,
+                action=action,
                 alpha_override=alpha_cs1,
                 delta_override=delta,
             )
-        )
-        self.agent.learn(
-            Transition(
-                s=state_b,
-                r=reward,
-                a=action,
+            learner.update_with_alpha(
+                state_b,
+                reward,
+                action=action,
                 alpha_override=alpha_cs2,
                 delta_override=delta,
             )
-        )
+            return
+
+        # Fallback if learner does not expose update_with_alpha.
+        self.agent.learn(Transition(s=state_a, r=reward, a=action))
+        self.agent.learn(Transition(s=state_b, r=reward, a=action))
 
     def record_trial(
         self,

@@ -13,16 +13,8 @@ def _dispatch_transition(agent: Any, transition: Transition) -> None:
 
     # Legacy fallback retained for old tests/doubles.
     metadata = transition.metadata or {}
-    alpha_override = (
-        transition.alpha_override
-        if transition.alpha_override is not None
-        else metadata.get("alpha_override")
-    )
-    delta_override = (
-        transition.delta_override
-        if transition.delta_override is not None
-        else metadata.get("delta_override")
-    )
+    alpha_override = metadata.get("alpha_override")
+    delta_override = metadata.get("delta_override")
     if alpha_override is not None or delta_override is not None:
         if hasattr(agent, "update_with_alpha"):
             agent.update_with_alpha(
@@ -73,36 +65,52 @@ def apply_attention_update(
         if multiplier != 1.0:
             base_alpha = getattr(learner, "alpha", 1.0) or 1.0
             alpha_override = multiplier * base_alpha
-            transition = Transition(
-                s=state,
-                r=reward,
-                a=action,
-                s_next=next_state,
-                done=done,
-                t_s=t_s,
-                dt_s=dt_s,
-                alpha_override=alpha_override,
-            )
-            _dispatch_transition(agent, transition)
-            return
+            if hasattr(learner, "update_with_alpha"):
+                try:
+                    learner.update_with_alpha(
+                        state,
+                        reward,
+                        action=action,
+                        alpha_override=alpha_override,
+                        next_state=next_state,
+                        done=done,
+                        t_s=t_s,
+                        dt_s=dt_s,
+                    )
+                except TypeError:
+                    learner.update_with_alpha(
+                        state,
+                        reward,
+                        action=action,
+                        alpha_override=alpha_override,
+                    )
+                return
 
     # Legacy fallback for old representations carrying scalar attention.
     attention = getattr(getattr(agent, "representation", None), "attention", None)
     if attention is not None and not isinstance(attention, (list, tuple)):
         base_alpha = getattr(learner, "alpha", 1.0) if learner is not None else 1.0
         alpha_override = float(attention) * float(base_alpha or 1.0)
-        transition = Transition(
-            s=state,
-            r=reward,
-            a=action,
-            s_next=next_state,
-            done=done,
-            t_s=t_s,
-            dt_s=dt_s,
-            alpha_override=alpha_override,
-        )
-        _dispatch_transition(agent, transition)
-        return
+        if learner is not None and hasattr(learner, "update_with_alpha"):
+            try:
+                learner.update_with_alpha(
+                    state,
+                    reward,
+                    action=action,
+                    alpha_override=alpha_override,
+                    next_state=next_state,
+                    done=done,
+                    t_s=t_s,
+                    dt_s=dt_s,
+                )
+            except TypeError:
+                learner.update_with_alpha(
+                    state,
+                    reward,
+                    action=action,
+                    alpha_override=alpha_override,
+                )
+            return
 
     transition = Transition(
         s=state,

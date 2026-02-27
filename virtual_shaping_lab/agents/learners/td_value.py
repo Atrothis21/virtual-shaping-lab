@@ -38,14 +38,27 @@ class TDValueLearner(BaseLearner):
         else:
             v_next = self.value(transition.s_next)
 
-        delta = transition.delta_override if transition.delta_override is not None else transition.metadata.get("delta_override")
-        if delta is None:
-            delta = transition.r + self.gamma * v_next - v
-
-        alpha = transition.alpha_override if transition.alpha_override is not None else transition.metadata.get("alpha_override")
-        alpha = self.alpha if alpha is None else float(alpha)
+        delta = transition.r + self.gamma * v_next - v
+        alpha = self.alpha
 
         self.weights += alpha * float(delta) * transition.s.x
+
+    def update_with_alpha(
+        self,
+        state: EncodedState,
+        reward: float,
+        action: Any = None,
+        alpha_override: Optional[float] = None,
+        delta_override: Optional[float] = None,
+        next_state: Optional[EncodedState] = None,
+        done: bool = False,
+        t_s: Optional[float] = None,
+        dt_s: Optional[float] = None,
+    ) -> None:
+        prediction = self.value(state)
+        delta = (reward - prediction) if delta_override is None else float(delta_override)
+        alpha = self.alpha if alpha_override is None else float(alpha_override)
+        self.weights += alpha * delta * state.x
 
     def get_parameters(self):
         return {"weights": self.weights.copy()}

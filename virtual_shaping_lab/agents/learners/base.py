@@ -65,9 +65,21 @@ class BaseLearner(ILearner, ABC):
             done=done,
             t_s=t_s,
             dt_s=dt_s,
-            alpha_override=alpha_override,
-            delta_override=delta_override,
         )
+        if alpha_override is not None or delta_override is not None:
+            transition = Transition(
+                s=state,
+                r=reward,
+                a=action,
+                s_next=next_state,
+                done=done,
+                t_s=t_s,
+                dt_s=dt_s,
+                metadata={
+                    "alpha_override": alpha_override,
+                    "delta_override": delta_override,
+                },
+            )
         self.update(transition)
 
     @abstractmethod
