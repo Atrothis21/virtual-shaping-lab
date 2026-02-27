@@ -12,11 +12,11 @@ Core Principles
 
 Shared Domain Contracts
 - `domain.types.Observation`
-  - `stimuli`, `context`, `compound`, optional `t_s`, `dt_s`, `metadata`
+  - `stimuli`, `context`, `compound`, optional `t_s`, `dt_s`, optional `trial_step`, optional `trial_id`, `metadata`
 - `domain.types.EncodedState`
   - `x` (vector), optional `key`
 - `domain.types.Transition`
-  - `s`, `r`, optional `a`, optional `s_next`, `done`, optional `t_s`, `dt_s`, `metadata`
+  - `s`, `r`, optional `a`, optional `s_next`, `done`, optional `t_s`, `dt_s`, optional `trial_step`, optional `trial_id`, `metadata`
 
 Component Interfaces
 - `agents.interfaces.IRepresentation`
@@ -59,6 +59,17 @@ Boundaries
 - Learner owns all value-function parameters and updates.
 - Policy is read-only with respect to learner state.
 
+Mechanism Ownership (v2)
+- Representation-owned:
+  - `context` (feature namespacing/gating)
+  - `similarity` (generalization spread)
+  - `salience` (feature scaling)
+- Learner-owned:
+  - `attention` (effective plasticity/learning-rate modulation)
+- Deterministic representation mechanism order:
+  - `context -> similarity -> salience`
+- Protocol/phase code must not inject learner parameter overrides; learning uses only `update(Transition)`.
+
 Classical vs Operant
 - Both use the same agent class.
 - Classical: `policy = NullPolicy()`
@@ -72,4 +83,3 @@ Runner/Protocol Notes
 Compatibility Notes
 - Config names `classical_agent` and `operant_agent` remain supported as assembly aliases.
 - Legacy split-agent class files were removed in v2.
-

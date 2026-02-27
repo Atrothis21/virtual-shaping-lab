@@ -187,10 +187,15 @@ class ExperimentConfig:
                 raise ValueError("representation object must include 'name'")
             if "params" in representation and not isinstance(representation["params"], dict):
                 raise ValueError("representation.params must be an object")
-            if "params" in representation and "similarity" in representation["params"]:
+            params = representation.get("params", {}) or {}
+            if "attention" in params or "attention_compound" in params:
+                raise ValueError(
+                    "representation.params must not include attention fields; use experiment.attention (learner-owned)."
+                )
+            if "similarity" in params:
                 cls._validate_similarity_matrix(
-                    representation["params"]["similarity"],
-                    representation["params"].get("stimuli", []) or [],
+                    params["similarity"],
+                    params.get("stimuli", []) or [],
                 )
             cls._validate_representation_name(representation.get("name"))
             return representation

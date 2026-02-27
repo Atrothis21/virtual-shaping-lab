@@ -142,9 +142,21 @@ def test_validate_phase_order_constraints():
 def test_validate_payload_top_level_path(monkeypatch):
     monkeypatch.setattr(vp, "_validate_top_level", lambda payload: {"protocol": "acquisition"})
     monkeypatch.setattr(vp, "_validate_policy_guard", lambda exp: None)
+    monkeypatch.setattr(vp, "_validate_representation_mechanism_split", lambda exp: None)
     monkeypatch.setattr(vp, "_validate_protocol_or_phases", lambda exp: None)
 
     vp.validate_payload({"experiment": {}, "report": {}})
+
+
+def test_validate_representation_mechanism_split_rejects_attention_in_representation():
+    exp = {
+        "representation": {
+            "name": "vector_elemental",
+            "params": {"stimuli": ["tone"], "attention": {"tone": 0.7}},
+        }
+    }
+    with pytest.raises(vp.ValidationError, match="must not include attention"):
+        vp._validate_representation_mechanism_split(exp)
 
 
 def test_validate_payload_accepts_operant_negative_reward_schedule():

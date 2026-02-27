@@ -16,6 +16,19 @@ class RepresentationBase(IRepresentation, ABC):
 
     def __init__(self, params: Optional[Dict[str, Any]] = None):
         self.params = params or {}
+        self._validate_mechanism_ownership()
+
+    def _validate_mechanism_ownership(self) -> None:
+        forbidden = []
+        if "attention" in self.params:
+            forbidden.append("attention")
+        if "attention_compound" in self.params:
+            forbidden.append("attention_compound")
+        if forbidden:
+            names = ", ".join(forbidden)
+            raise ValueError(
+                f"Representation params must not define {names}; attention is learner-owned in v2."
+            )
 
     @abstractmethod
     def encode(self, observation: Observation) -> EncodedState:

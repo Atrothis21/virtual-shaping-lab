@@ -262,14 +262,14 @@ def test_vector_representations():
     assert c_vec.x.shape == (configural.dimension,)
     assert h_vec.x.shape == (hybrid.dimension,)
 
-    configural_attn = VectorConfiguralRepresentation(
-        params={
-            "stimuli": ["tone", "noise"],
-            "contexts": ["A"],
-            "attention": {"tone": 0.6},
-        }
-    )
-    _ = configural_attn.encode(make_observation(["tone"], "A", compound=True))
+    with pytest.raises(ValueError, match="learner-owned"):
+        VectorConfiguralRepresentation(
+            params={
+                "stimuli": ["tone", "noise"],
+                "contexts": ["A"],
+                "attention": {"tone": 0.6},
+            }
+        )
 
     configural_sim = VectorConfiguralRepresentation(
         params={

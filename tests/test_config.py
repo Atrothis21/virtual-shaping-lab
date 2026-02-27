@@ -148,6 +148,9 @@ def test_parse_representation_errors():
     exp = {"representation": 123}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_representation(exp)
+    exp = {"representation": {"name": "vector_elemental", "params": {"attention": {"tone": 0.8}}}}
+    with pytest.raises(ValueError, match="must not include attention"):
+        ExperimentConfig._parse_representation(exp)
 
 
 def test_parse_policy_errors():

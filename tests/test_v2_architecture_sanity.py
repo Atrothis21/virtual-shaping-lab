@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from agents.composed_agent import ComposedAgent
 from agents.interfaces import ILearner, IPolicy, IRepresentation
@@ -130,3 +131,39 @@ def test_transition_time_fields_passthrough_to_learner() -> None:
     assert learner.last_transition is not None
     assert learner.last_transition.t_s == 3.0
     assert learner.last_transition.dt_s == 0.5
+
+
+def test_mechanism_split_representation_vs_learner_attention() -> None:
+    rep = VectorElementalRepresentation(
+        {
+            "stimuli": ["tone", "noise"],
+            "contexts": ["A"],
+            "salience": {"tone": 0.5, "noise": 0.5},
+            "similarity": {
+                "type": "matrix",
+                "stimuli": ["tone", "noise"],
+                "values": [
+                    [1.0, 0.4],
+                    [0.4, 1.0],
+                ],
+            },
+        }
+    )
+    learner = RescorlaWagnerLearner(state_dim=rep.dimension, alpha=1.0)
+    learner.set_attention_map({"tone": 0.2})
+    agent = ComposedAgent(learner=learner, representation=rep, policy=NullPolicy())
+
+    obs = Observation(stimuli=["tone"], context="A")
+    state = agent.observe(obs)
+    before = learner.weights.copy()
+    agent.learn(Transition(s=state, r=1.0, metadata={"cue_labels": ["tone"]}))
+    delta = learner.weights - before
+
+    idx_tone = rep._encoder._index["global:tone"]
+    idx_noise = rep._encoder._index["global:noise"]
+    # Representation side: similarity + salience already applied in state.x.
+    assert state.x[idx_tone] == 0.5
+    assert state.x[idx_noise] == 0.2
+    # Learner side: attention scales update magnitude (alpha_eff = 1.0 * 0.2).
+    assert delta[idx_tone] == pytest.approx(0.1)
+    assert delta[idx_noise] == pytest.approx(0.04)
