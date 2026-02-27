@@ -7,6 +7,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 VSL_ROOT = ROOT / "virtual_shaping_lab"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 if str(VSL_ROOT) not in sys.path:
     sys.path.insert(0, str(VSL_ROOT))
 

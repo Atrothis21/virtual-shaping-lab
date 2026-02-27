@@ -1,79 +1,88 @@
 from __future__ import annotations
 
-import inspect
-
 import numpy as np
 import pytest
 from jsonschema import ValidationError
 
-from agents.operant_agent import OperantAgent
+from agents.composed_agent import ComposedAgent
 from agents.learners.q_learner import QLearner
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from ui.validate_payload import validate_payload
 
-from preset_payloads import operant_conditioning_payload, acquisition_payload
+from domain.types import EncodedState, Observation, Transition
+from preset_payloads import acquisition_payload, operant_conditioning_payload
 
 
 class _DummyRepresentation:
+    def reset(self):
+        return None
+
     def encode(self, observation):
-        return np.asarray([1.0, 0.0], dtype=float)
+        return EncodedState(x=np.asarray([1.0, 0.0], dtype=float))
 
 
 class _SpyLearner:
     def __init__(self):
         self.calls = []
 
-    def value(self, state, action=None):
-        return float(np.sum(state))
+    def reset(self):
+        return None
 
-    def update(self, state, reward, action=None, next_state=None, done=None):
-        next_state_copy = None if next_state is None else next_state.copy()
-        self.calls.append((state.copy(), float(reward), action, next_state_copy, done))
+    def value(self, state, action=None):
+        return float(np.sum(state.x))
+
+    def update(self, transition: Transition):
+        self.calls.append(transition)
 
 
 class _ConstantPolicy:
     def __init__(self, action):
         self._action = action
 
-    def select_action(self, state, value_fn=None):
-        return self._action
+    def reset(self):
+        return None
+
+    def select_action(self, state, actions, value_fn, rng):
+        if self._action is not None:
+            return self._action
+        return actions[0] if actions else None
 
 
 def test_operant_agent_forwards_action_and_signed_reward_to_learner():
     learner = _SpyLearner()
-    agent = OperantAgent(
+    agent = ComposedAgent(
         learner=learner,
         representation=_DummyRepresentation(),
         policy=_ConstantPolicy(action="left"),
     )
-    state = agent.observe({"stimuli": ["lever"], "context": "A", "compound": False, "metadata": {}})
-    assert agent.act(state) == "left"
+    state = agent.observe(Observation(stimuli=["lever"], context="A"))
+    assert agent.act(state, actions=["left"]) == "left"
 
-    agent.update(state, reward=1.0, action="left")
-    agent.update(state, reward=0.0, action="left")
-    agent.update(state, reward=-1.0, action="left")
+    agent.learn(Transition(s=state, r=1.0, a="left", done=True))
+    agent.learn(Transition(s=state, r=0.0, a="left", done=True))
+    agent.learn(Transition(s=state, r=-1.0, a="left", done=True))
 
-    rewards = [r for (_s, r, _a, _ns, _d) in learner.calls]
-    actions = [a for (_s, _r, a, _ns, _d) in learner.calls]
+    rewards = [tr.r for tr in learner.calls]
+    actions = [tr.a for tr in learner.calls]
     assert rewards == [1.0, 0.0, -1.0]
     assert actions == ["left", "left", "left"]
 
 
 def test_qlearner_reward_sign_branches_update_direction():
-    state = np.asarray([1.0, 0.0], dtype=float)
+    state = EncodedState(x=np.asarray([1.0, 0.0], dtype=float))
 
     pos = QLearner(state_dim=2, actions=["a0"], alpha=0.5, gamma=0.0)
-    pos.update(state, reward=1.0, action="a0", next_state=None, done=True)
+    pos.update(Transition(s=state, r=1.0, a="a0", s_next=None, done=True))
     assert pos.value(state, action="a0") > 0
 
     zero = QLearner(state_dim=2, actions=["a0"], alpha=0.5, gamma=0.0)
-    zero.update(state, reward=0.0, action="a0", next_state=None, done=True)
+    zero.update(Transition(s=state, r=0.0, a="a0", s_next=None, done=True))
     assert zero.value(state, action="a0") == pytest.approx(0.0, abs=1e-12)
 
     neg = QLearner(state_dim=2, actions=["a0"], alpha=0.5, gamma=0.0)
-    neg.update(state, reward=-1.0, action="a0", next_state=None, done=True)
+    neg.update(Transition(s=state, r=-1.0, a="a0", s_next=None, done=True))
     assert neg.value(state, action="a0") < 0
 
 
@@ -104,7 +113,7 @@ def test_operant_phase_records_signed_rewards_and_actions():
         def value(self, state):
             return 0.25
 
-        def act(self, state):
+        def act(self, state, actions=None, rng=None):
             return self._action
 
         def update(self, state, reward, action=None):
@@ -149,47 +158,41 @@ def test_operant_payload_requires_policy_at_validation():
         validate_payload(payload)
 
 
-def test_operant_fixture_assembles_operant_agent_and_action_learner():
+def test_operant_fixture_assembles_composed_agent_and_action_learner():
     payload = operant_conditioning_payload()
     cfg = ExperimentConfig.from_payload(payload)
     runtime_units, agent, _rep = assemble_experiment(cfg)
     assert runtime_units
-    assert agent.__class__.__name__ == "OperantAgent"
+    assert agent.__class__.__name__ == "ComposedAgent"
     assert agent.learner.__class__.__name__ == "QLearner"
     assert agent.learner.expects_action() is True
 
 
-def test_operant_agent_should_not_allow_none_action_path():
-    agent = OperantAgent(
+def test_operant_agent_none_policy_uses_null_behavior():
+    agent = ComposedAgent(
         learner=_SpyLearner(),
         representation=_DummyRepresentation(),
         policy=None,
     )
-    with pytest.raises(ValueError, match="requires a policy"):
-        agent.act(np.asarray([1.0, 0.0], dtype=float))
+    state = agent.observe(Observation(stimuli=["lever"], context="A"))
+    assert agent.act(state, actions=["left"]) is None
 
 
-def test_operant_agent_update_signature_should_accept_next_state_and_done():
-    sig = inspect.signature(OperantAgent.update)
-    assert "next_state" in sig.parameters
-    assert "done" in sig.parameters
-
-
-def test_operant_agent_forwards_next_state_and_done_to_learner():
+def test_composed_agent_learn_forwards_next_state_and_done_to_learner():
     learner = _SpyLearner()
-    agent = OperantAgent(
+    agent = ComposedAgent(
         learner=learner,
         representation=_DummyRepresentation(),
         policy=_ConstantPolicy(action="left"),
     )
-    state = np.asarray([1.0, 0.0], dtype=float)
-    next_state = np.asarray([0.5, 0.0], dtype=float)
-    agent.update(state, reward=0.25, action="left", next_state=next_state, done=False)
+    state = EncodedState(x=np.asarray([1.0, 0.0], dtype=float))
+    next_state = EncodedState(x=np.asarray([0.5, 0.0], dtype=float))
+    agent.learn(Transition(s=state, r=0.25, a="left", s_next=next_state, done=False))
 
     assert len(learner.calls) == 1
-    _s, r, a, ns, d = learner.calls[0]
-    assert r == pytest.approx(0.25, abs=1e-12)
-    assert a == "left"
-    assert ns is not None
-    np.testing.assert_allclose(ns, next_state)
-    assert d is False
+    tr = learner.calls[0]
+    assert tr.r == pytest.approx(0.25, abs=1e-12)
+    assert tr.a == "left"
+    assert tr.s_next is not None
+    np.testing.assert_allclose(tr.s_next.x, next_state.x)
+    assert tr.done is False
