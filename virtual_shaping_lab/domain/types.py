@@ -31,6 +31,12 @@ class EncodedState:
     x: np.ndarray
     key: Optional[str] = None
 
+    def __post_init__(self) -> None:
+        vec = np.asarray(self.x, dtype=float)
+        if vec.ndim != 1:
+            raise ValueError("EncodedState.x must be a 1-D numeric vector.")
+        object.__setattr__(self, "x", vec)
+
 
 @dataclass(frozen=True)
 class Transition:
