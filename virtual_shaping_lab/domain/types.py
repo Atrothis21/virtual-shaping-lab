@@ -7,6 +7,9 @@ from typing import Any, Optional
 
 import numpy as np
 
+META_CUE_LABELS = "cue_labels"
+META_EVENT_TYPE = "event_type"
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -21,7 +24,15 @@ class Observation:
     compound: bool = False
     t_s: Optional[float] = None
     dt_s: Optional[float] = None
+    trial_step: Optional[int] = None
+    trial_id: Optional[Any] = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.dt_s is not None and self.dt_s < 0.0:
+            raise ValueError("Observation.dt_s must be >= 0.")
+        if self.trial_step is not None and self.trial_step < 0:
+            raise ValueError("Observation.trial_step must be >= 0.")
 
 
 @dataclass(frozen=True)
@@ -53,4 +64,12 @@ class Transition:
     done: bool = False
     t_s: Optional[float] = None
     dt_s: Optional[float] = None
+    trial_step: Optional[int] = None
+    trial_id: Optional[Any] = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.dt_s is not None and self.dt_s < 0.0:
+            raise ValueError("Transition.dt_s must be >= 0.")
+        if self.trial_step is not None and self.trial_step < 0:
+            raise ValueError("Transition.trial_step must be >= 0.")
