@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from experiment.phases.base import PhaseBase
 from experiment.phases.series_helpers import make_dual_series
 from virtual_shaping_lab.agents.representations.observation import make_observation
-from virtual_shaping_lab.domain.types import Transition
+from virtual_shaping_lab.domain.types import META_CUE_LABELS, Transition
 
 
 class CompoundAcquisitionPhase(PhaseBase):
@@ -129,16 +129,10 @@ class CompoundAcquisitionPhase(PhaseBase):
 
     def apply_learning(self, trial_spec: Dict[str, Any], outcome: Any) -> None:
         """
-        Apply cue-specific learning using shared compound prediction error.
+        Apply cue-specific learning via transition metadata and learner-owned attention.
         """
-        alpha_cs1 = self.params.get("alpha_cs1", self.agent.learner.alpha)
-        alpha_cs2 = self.params.get("alpha_cs2", self.agent.learner.alpha)
-
-        attention_map = getattr(self.agent.learner, "attention_map", {}) or {}
         stim_a = outcome.get("a_stimulus")
         stim_b = outcome.get("b_stimulus")
-        alpha_cs1 = alpha_cs1 * float(attention_map.get(stim_a, 1.0))
-        alpha_cs2 = alpha_cs2 * float(attention_map.get(stim_b, 1.0))
 
         state_a = outcome.get("state_a")
         state_b = outcome.get("state_b")
@@ -146,11 +140,8 @@ class CompoundAcquisitionPhase(PhaseBase):
         reward = outcome["reward"]
         action = outcome.get("action")
 
-        # Shared compound prediction error
-        # Single update pathway: learner handles attention/modulation internally.
-        # Per-cue transitions preserve cue-specific learning structure.
-        self.agent.learn(Transition(s=state_a, r=reward, a=action, metadata={"cue_labels": [stim_a]}))
-        self.agent.learn(Transition(s=state_b, r=reward, a=action, metadata={"cue_labels": [stim_b]}))
+        self.agent.learn(Transition(s=state_a, r=reward, a=action, metadata={META_CUE_LABELS: [stim_a]}))
+        self.agent.learn(Transition(s=state_b, r=reward, a=action, metadata={META_CUE_LABELS: [stim_b]}))
 
     def record_trial(
         self,

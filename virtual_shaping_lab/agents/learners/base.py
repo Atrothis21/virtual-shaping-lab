@@ -10,7 +10,7 @@ from typing import Dict, Optional, Any
 import numpy as np
 
 from virtual_shaping_lab.agents.interfaces import ILearner
-from virtual_shaping_lab.domain.types import EncodedState, Transition
+from virtual_shaping_lab.domain.types import EncodedState, META_CUE_LABELS, Transition
 
 
 class BaseLearner(ILearner, ABC):
@@ -46,7 +46,7 @@ class BaseLearner(ILearner, ABC):
         raise NotImplementedError
 
     def effective_alpha(self, transition: Transition) -> float:
-        cue_labels = transition.metadata.get("cue_labels")
+        cue_labels = transition.metadata.get(META_CUE_LABELS)
         return float(self.alpha) * float(self.attention_multiplier(cue_labels))
 
     @abstractmethod
