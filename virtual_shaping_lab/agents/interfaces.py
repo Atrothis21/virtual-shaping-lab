@@ -14,7 +14,7 @@ ValueFn = Callable[[EncodedState, Any], float]
 
 
 class IRepresentation(ABC):
-    """Encodes raw observations into vectorized states."""
+    """Encodes raw observations (including optional timing fields) into vectorized states."""
 
     @abstractmethod
     def reset(self) -> None:
@@ -26,7 +26,7 @@ class IRepresentation(ABC):
 
 
 class ILearner(ABC):
-    """Owns value function parameters and learning updates."""
+    """Owns value function parameters and transition-based learning updates."""
 
     @abstractmethod
     def reset(self) -> None:

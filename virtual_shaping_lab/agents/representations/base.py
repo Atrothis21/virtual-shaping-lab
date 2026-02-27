@@ -29,5 +29,14 @@ class RepresentationBase(IRepresentation, ABC):
     def reset(self) -> None:
         return None
 
+    def timing_fields(self, observation: Observation) -> Dict[str, Any]:
+        """Return normalized timing fields for time-aware encoders."""
+        return {
+            "t_s": observation.t_s,
+            "dt_s": observation.dt_s,
+            "trial_step": observation.trial_step,
+            "trial_id": observation.trial_id,
+        }
+
     def get_summary(self) -> Dict[str, Any]:
         return {}

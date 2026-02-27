@@ -17,6 +17,8 @@ def make_observation(
     metadata: Dict[str, Any] | None = None,
     t_s: float | None = None,
     dt_s: float | None = None,
+    trial_step: int | None = None,
+    trial_id: Any = None,
 ) -> Observation:
     """Build a canonical Observation dataclass with required context."""
     if stimuli is None:
@@ -29,5 +31,7 @@ def make_observation(
         compound=bool(compound),
         t_s=t_s,
         dt_s=dt_s,
+        trial_step=trial_step,
+        trial_id=trial_id,
         metadata=metadata or {},
     )
