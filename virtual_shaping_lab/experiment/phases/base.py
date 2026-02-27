@@ -1,7 +1,9 @@
 # experiment/phases/base.py
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TypeAlias
+from typing import Any, Dict, List, Optional, Sequence, TypeAlias
+
+import numpy as np
 
 
 TrialSpec: TypeAlias = Dict[str, Any]
@@ -59,6 +61,7 @@ class PhaseBase(ABC):
         self.context = self.params.get("context", "A")
         self.trial_index: int = 0
         self.records: List[Dict[str, Any]] = []
+        self._rng: Optional[np.random.Generator] = None
 
     # ------------------------------------------------------------------
     # Validation
@@ -190,6 +193,37 @@ class PhaseBase(ABC):
             record.setdefault("context_source", self.context_source)
             if self.context_source == "inferred":
                 record.setdefault("inferred_context", self.context)
+
+    # ------------------------------------------------------------------
+    # Action selection helpers
+    # ------------------------------------------------------------------
+
+    def _get_rng(self) -> np.random.Generator:
+        if self._rng is None:
+            seed = self.params.get("rng_seed")
+            self._rng = np.random.default_rng(seed)
+        return self._rng
+
+    def get_available_actions(self, trial_spec: Optional[TrialSpec] = None) -> Sequence[Any]:
+        if isinstance(trial_spec, dict) and "available_actions" in trial_spec:
+            actions = trial_spec.get("available_actions")
+            if actions is None:
+                return []
+            return list(actions)
+
+        param_actions = self.params.get("available_actions")
+        if param_actions is not None:
+            return list(param_actions)
+
+        policy_actions = getattr(getattr(self.agent, "policy", None), "actions", None)
+        if policy_actions is not None:
+            return list(policy_actions)
+
+        return []
+
+    def select_action(self, state: Any, trial_spec: Optional[TrialSpec] = None) -> Any:
+        actions = self.get_available_actions(trial_spec)
+        return self.agent.act(state, actions=actions, rng=self._get_rng())
 
     def get_phase_summary(self) -> Dict[str, Any]:
         """

@@ -2,10 +2,10 @@
 
 from typing import Dict, Type
 
-from agents.representations.base import RepresentationBase
-from agents.representations.vector_configural import VectorConfiguralRepresentation
-from agents.representations.vector_elemental import VectorElementalRepresentation
-from agents.representations.vector_hybrid import VectorHybridRepresentation
+from virtual_shaping_lab.agents.representations.base import RepresentationBase
+from virtual_shaping_lab.agents.representations.vector_configural import VectorConfiguralRepresentation
+from virtual_shaping_lab.agents.representations.vector_elemental import VectorElementalRepresentation
+from virtual_shaping_lab.agents.representations.vector_hybrid import VectorHybridRepresentation
 
 
 REPRESENTATION_REGISTRY: Dict[str, Type[RepresentationBase]] = {
@@ -32,5 +32,6 @@ def build_representation(name: str, **params):
     """
     validate_representation(name)
     return REPRESENTATION_REGISTRY[name](params=params)
+
 
 

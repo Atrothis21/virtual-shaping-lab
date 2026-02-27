@@ -1,30 +1,13 @@
 # representations/observation.py
 
-from typing import Any, Dict, List, TypedDict
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+from virtual_shaping_lab.domain.types import Observation
 
 
 DEFAULT_CONTEXT = "A"
-
-
-class Observation(TypedDict):
-    """
-    Canonical observation format emitted by phases.
-
-    Vector-first contract:
-      - stimuli are feature keys used by vector encoders
-      - context is always present (used for context-gated features)
-      - compound indicates whether stimuli should be treated as a single
-        configural unit by configural encoders
-      - metadata holds optional auxiliary info (e.g., timing, modality)
-
-    This structure supports two-component representations:
-      - global features (context-independent)
-      - context-gated features (context-dependent)
-    """
-    stimuli: List[Any]
-    context: Any
-    compound: bool
-    metadata: Dict[str, Any]
 
 
 def make_observation(
@@ -32,36 +15,23 @@ def make_observation(
     context: Any,
     compound: bool = False,
     metadata: Dict[str, Any] | None = None,
+    t_s: float | None = None,
+    dt_s: float | None = None,
+    trial_step: int | None = None,
+    trial_id: Any = None,
 ) -> Observation:
-    """
-    Build a canonical observation with required context.
-
-    Parameters
-    ----------
-    stimuli :
-        List of feature keys. These are the atomic units for vector encoding.
-    context :
-        Required context key (e.g., "A", "B"). If None, DEFAULT_CONTEXT is used.
-    compound :
-        If True, configural encoders may treat the entire stimulus list as
-        a single compound unit.
-    metadata :
-        Optional extra info.
-
-    Returns
-    -------
-    Observation
-    """
+    """Build a canonical Observation dataclass with required context."""
     if stimuli is None:
         raise ValueError("make_observation requires a non-empty stimuli list")
 
-    if context is None:
-        context = DEFAULT_CONTEXT
-
-    obs: Observation = {
-        "stimuli": list(stimuli),
-        "context": context,
-        "compound": compound,
-        "metadata": metadata or {},
-    }
-    return obs
+    ctx = DEFAULT_CONTEXT if context is None else context
+    return Observation(
+        stimuli=list(stimuli),
+        context=ctx,
+        compound=bool(compound),
+        t_s=t_s,
+        dt_s=dt_s,
+        trial_step=trial_step,
+        trial_id=trial_id,
+        metadata=metadata or {},
+    )

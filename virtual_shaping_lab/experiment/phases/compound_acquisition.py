@@ -4,7 +4,8 @@ from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.series_helpers import make_dual_series
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
+from virtual_shaping_lab.domain.types import META_CUE_LABELS, Transition
 
 
 class CompoundAcquisitionPhase(PhaseBase):
@@ -105,7 +106,7 @@ class CompoundAcquisitionPhase(PhaseBase):
         b_prediction = self.agent.value(state_b)
 
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
 
         return {
             "compound": compound,
@@ -128,16 +129,10 @@ class CompoundAcquisitionPhase(PhaseBase):
 
     def apply_learning(self, trial_spec: Dict[str, Any], outcome: Any) -> None:
         """
-        Apply cue-specific learning using shared compound prediction error.
+        Apply cue-specific learning via transition metadata and learner-owned attention.
         """
-        alpha_cs1 = self.params.get("alpha_cs1", self.agent.learner.alpha)
-        alpha_cs2 = self.params.get("alpha_cs2", self.agent.learner.alpha)
-
-        attention_map = getattr(self.agent.learner, "attention_map", {}) or {}
         stim_a = outcome.get("a_stimulus")
         stim_b = outcome.get("b_stimulus")
-        alpha_cs1 = alpha_cs1 * float(attention_map.get(stim_a, 1.0))
-        alpha_cs2 = alpha_cs2 * float(attention_map.get(stim_b, 1.0))
 
         state_a = outcome.get("state_a")
         state_b = outcome.get("state_b")
@@ -145,11 +140,8 @@ class CompoundAcquisitionPhase(PhaseBase):
         reward = outcome["reward"]
         action = outcome.get("action")
 
-        # Shared compound prediction error
-        delta = (reward - outcome["prediction"]) / 2
-
-        self.agent.learner.update_with_alpha(state_a, reward, action, alpha_cs1, delta_override=delta)
-        self.agent.learner.update_with_alpha(state_b, reward, action, alpha_cs2, delta_override=delta)
+        self.agent.learn(Transition(s=state_a, r=reward, a=action, metadata={META_CUE_LABELS: [stim_a]}))
+        self.agent.learn(Transition(s=state_b, r=reward, a=action, metadata={META_CUE_LABELS: [stim_b]}))
 
     def record_trial(
         self,
@@ -186,5 +178,8 @@ class CompoundAcquisitionPhase(PhaseBase):
                 "value": outcome.get("prediction")
             },
         }
+
+
+
 
 

@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from experiment.factories.reward_schedule_factory import build_reward_schedule
-from agents.representations.observation import make_observation
+from virtual_shaping_lab.agents.representations.observation import make_observation
 
 
 def _classify_operant_outcome(reward: float) -> str:
@@ -91,7 +91,7 @@ class ConcurrentSchedulePhase(PhaseBase):
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)
-        action = self.agent.act(state)
+        action = self.select_action(state, trial_spec)
         action_index = None
         if action == self.left_action:
             action_index = 0
@@ -151,3 +151,5 @@ class ConcurrentSchedulePhase(PhaseBase):
             "schedule_left": getattr(self.schedule_left, "name", None),
             "schedule_right": getattr(self.schedule_right, "name", None),
         }
+
+

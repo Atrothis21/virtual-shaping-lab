@@ -1,5 +1,9 @@
-Virtual Shaping Lab — Architecture v1 (Agent-Centric, Phase-Oriented)
+ï»¿Virtual Shaping Lab - Architecture v1 (Agent-Centric, Phase-Oriented)
 
+Status
+This document is retained for historical reference.
+The active architecture contract is v2:
+- virtual_shaping_lab/documentation/architecture_v2.md
 Purpose
 This document describes the current architecture of Virtual Shaping Lab. The system is phase-oriented for behavioral logic and agent-centric for learning. Phases own trial logic, protocols orchestrate phases, and agents encapsulate learners, representations, and (when applicable) policies.
 
@@ -117,3 +121,6 @@ Future Implementation
 - Full latent-cause modeling
 - Learned attention
 - Learned similarity / generalization kernels
+
+
+

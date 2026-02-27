@@ -1,19 +1,17 @@
 # learners/rescorla_wagner.py
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import Optional, Any
+
 import numpy as np
 
-from agents.learners.base import BaseLearner
+from virtual_shaping_lab.agents.learners.base import BaseLearner
+from virtual_shaping_lab.domain.types import EncodedState, Transition
 
 
 class RescorlaWagnerLearner(BaseLearner):
-    """
-    Linear Rescorla-Wagner learner over a vector representation.
-
-    Update rule:
-        delta = reward - prediction
-        w += alpha * delta * state
-    """
+    """Linear Rescorla-Wagner learner over vectorized EncodedState."""
 
     name = "rescorla_wagner"
     learner_type = "pavlovian"
@@ -29,28 +27,16 @@ class RescorlaWagnerLearner(BaseLearner):
         self.weights = np.zeros(state_dim, dtype=float)
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
 
-    def value(self, state: np.ndarray, action: Optional[int] = None) -> float:
-        return float(np.dot(self.weights, state))
+    def value(self, state: EncodedState, action: Any = None) -> float:
+        return float(np.dot(self.weights, state.x))
 
-    def update(
-        self,
-        state: np.ndarray,
-        reward: float,
-        action: Optional[int] = None,
-        next_state: Optional[np.ndarray] = None,
-        done: Optional[bool] = None
-    ) -> None:
-        prediction = self.value(state)
-        delta = reward - prediction
+    def update(self, transition: Transition) -> None:
+        prediction = self.value(transition.s)
+        delta = transition.r - prediction
+        alpha = self.effective_alpha(transition)
 
-        self.weights += self.alpha * delta * state
-    
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        prediction = self.value(state)
-        delta = delta_override if delta_override is not None else (reward - prediction)
-        alpha = self.alpha if alpha_override is None else alpha_override
+        self.weights += alpha * float(delta) * transition.s.x
 
-        self.weights += alpha * delta * state
-
-
+    def get_parameters(self):
+        return {"weights": self.weights.copy()}
 

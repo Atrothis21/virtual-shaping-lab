@@ -4,17 +4,17 @@ from typing import Dict, Callable, Any
 
 
 def _build_epsilon_greedy(**params: Any):
-    from agents.policies.epsilon_greedy import EpsilonGreedyPolicy
+    from virtual_shaping_lab.agents.policies.epsilon_greedy import EpsilonGreedyPolicy
     return EpsilonGreedyPolicy(**params)
 
 
 def _build_softmax(**params: Any):
-    from agents.policies.softmax import SoftmaxPolicy
+    from virtual_shaping_lab.agents.policies.softmax import SoftmaxPolicy
     return SoftmaxPolicy(**params)
 
 
 def _build_fixed(**params: Any):
-    from agents.policies.fixed_policy import FixedPolicy
+    from virtual_shaping_lab.agents.policies.fixed_policy import FixedPolicy
     return FixedPolicy(**params)
 
 
@@ -42,4 +42,5 @@ def build_policy(name: str, **params: Any):
     """
     validate_policy(name)
     return POLICY_REGISTRY[name](**params)
+
 

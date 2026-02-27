@@ -80,15 +80,18 @@ class DummyRepresentation:
     attention = None
 
     def encode(self, observation):
-        stimuli = observation.get("stimuli", [])
+        if hasattr(observation, "stimuli"):
+            stimuli = observation.stimuli
+        else:
+            stimuli = observation.get("stimuli", [])
         return np.asarray([len(stimuli), 1.0], dtype=float)
 
 
 class DummyLearner:
     alpha = 0.5
 
-    def update_with_alpha(self, *args, **kwargs):
-        self.last_update = (args, kwargs)
+    def update(self, transition):
+        self.last_update = transition
 
 
 class DummyAgent:
@@ -104,13 +107,14 @@ class DummyAgent:
     def value(self, state):
         return float(np.sum(state))
 
-    def act(self, state):
+    def act(self, state, actions=None, rng=None):
         return self._action
 
     def update(self, state, reward, action=None):
         self.updated = True
 
-    def update_with_alpha(self, *args, **kwargs):
+    def learn(self, transition):
+        self.learner.update(transition)
         self.updated = True
 
 
@@ -343,3 +347,4 @@ def test_compound_nonreinforcement_phase_smoke(dummy_agent):
     )
     record = phase.step()
     assert record["phase"] == "compound_nonreinforcement"
+

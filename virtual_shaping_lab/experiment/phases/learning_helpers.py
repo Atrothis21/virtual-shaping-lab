@@ -2,6 +2,21 @@
 
 from typing import Any, Optional
 
+from virtual_shaping_lab.domain.types import META_CUE_LABELS, META_EVENT_TYPE, Transition
+
+
+def _dispatch_transition(agent: Any, transition: Transition) -> None:
+    # Preferred v2 path.
+    if hasattr(agent, "learn"):
+        agent.learn(transition)
+        return
+
+    if hasattr(agent, "update"):
+        agent.update(transition.s, transition.r, transition.a)
+        return
+
+    raise AttributeError("Agent must implement learn(Transition) or legacy update methods.")
+
 
 def apply_attention_update(
     agent: Any,
@@ -9,47 +24,33 @@ def apply_attention_update(
     reward: float,
     action: Optional[int] = None,
     cue_labels: Any = None,
+    next_state: Any = None,
+    done: bool = False,
+    t_s: float | None = None,
+    dt_s: float | None = None,
+    trial_step: int | None = None,
+    trial_id: Any = None,
+    event_type: str | None = None,
 ) -> None:
     """
-    Apply an attention-aware learning update if attention is present.
-    Falls back to the agent's default update otherwise.
+    Build a Transition and delegate learning via a single update pathway.
+    Attention is handled inside the learner from transition metadata.
     """
-    learner = getattr(agent, "learner", None)
-    if learner is not None:
-        if hasattr(learner, "attention_multiplier"):
-            multiplier = float(learner.attention_multiplier(cue_labels))
-        else:
-            attention_map = getattr(learner, "attention_map", {}) or {}
-            if isinstance(cue_labels, (list, tuple)) and cue_labels:
-                values = [float(attention_map.get(str(c), 1.0)) for c in cue_labels]
-                multiplier = sum(values) / len(values)
-            elif cue_labels is not None:
-                multiplier = float(attention_map.get(str(cue_labels), 1.0))
-            else:
-                multiplier = 1.0
+    metadata = {META_CUE_LABELS: cue_labels}
+    if event_type is not None:
+        metadata[META_EVENT_TYPE] = event_type
 
-        if multiplier != 1.0:
-            base_alpha = getattr(learner, "alpha", 1.0) or 1.0
-            alpha_override = multiplier * base_alpha
-            agent.update_with_alpha(
-                state,
-                reward,
-                action=action,
-                alpha_override=alpha_override,
-            )
-            return
+    transition = Transition(
+        s=state,
+        r=reward,
+        a=action,
+        s_next=next_state,
+        done=done,
+        t_s=t_s,
+        dt_s=dt_s,
+        trial_step=trial_step,
+        trial_id=trial_id,
+        metadata=metadata,
+    )
+    _dispatch_transition(agent, transition)
 
-    # Legacy fallback for old representations carrying scalar attention.
-    attention = getattr(getattr(agent, "representation", None), "attention", None)
-    if attention is not None and not isinstance(attention, (list, tuple)):
-        base_alpha = getattr(learner, "alpha", 1.0) if learner is not None else 1.0
-        alpha_override = float(attention) * float(base_alpha or 1.0)
-        agent.update_with_alpha(
-            state,
-            reward,
-            action=action,
-            alpha_override=alpha_override,
-        )
-        return
-
-    agent.update(state, reward, action)

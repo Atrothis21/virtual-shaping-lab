@@ -204,6 +204,19 @@ def _validate_operant_payload_semantics(exp: dict) -> None:
                 )
 
 
+def _validate_representation_mechanism_split(exp: dict) -> None:
+    rep = exp.get("representation")
+    if not isinstance(rep, dict):
+        return
+    params = rep.get("params")
+    if not isinstance(params, dict):
+        return
+    if "attention" in params or "attention_compound" in params:
+        raise ValidationError(
+            "representation.params must not include attention fields; use experiment.attention."
+        )
+
+
 # Schema validation: enforce protocol-mode XOR phase-mode and validate schemas.
 def _validate_protocol_or_phases(exp: dict) -> None:
     has_protocol = "protocol" in exp and exp.get("protocol")
@@ -290,4 +303,5 @@ def validate_payload(payload: dict) -> None:
     exp = _validate_top_level(payload)
     _validate_policy_guard(exp)
     _validate_operant_payload_semantics(exp)
+    _validate_representation_mechanism_split(exp)
     _validate_protocol_or_phases(exp)
