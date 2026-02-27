@@ -46,7 +46,7 @@ def t(state, reward, action=None, next_state=None, done=False, metadata=None):
 def test_base_learner_hooks():
     learner = CoverageDummyLearner(alpha=0.1, gamma=0.9)
     state = s([1.0, 2.0])
-    learner.update_with_alpha(state, 1.0)
+    learner.update(t(state, 1.0))
 
     assert learner.value(state) == 3.0
     assert learner.expects_action() is False
@@ -73,7 +73,7 @@ def test_rescorla_wagner_update_paths():
     learner2.update(t(state, reward=1.0))
     assert learner2.value(state) > 0
 
-    learner2.update_with_alpha(state, reward=1.0, alpha_override=0.1, delta_override=0.5)
+    learner2.update(t(state, reward=1.0, metadata={"cue_labels": ["tone"]}))
     assert learner2.value(state) > 0
 
 
@@ -87,7 +87,7 @@ def test_td_value_update_paths():
     salience = np.asarray([0.5, 0.5])
     learner2 = TDValueLearner(state_dim=2, alpha=0.5, gamma=0.9, salience=salience)
     learner2.update(t(state, reward=1.0, next_state=next_state, done=False))
-    learner2.update_with_alpha(state, reward=1.0, alpha_override=0.1, delta_override=0.2)
+    learner2.update(t(state, reward=1.0, metadata={"cue_labels": ["tone"]}))
 
 
 def test_qlearner_paths():
@@ -108,7 +108,7 @@ def test_qlearner_paths():
     learner.salience = np.asarray([1.0, 1.0])
     learner.update(t(state, reward=1.0, action=0, next_state=next_state, done=False))
 
-    learner.update_with_alpha(state, reward=1.0, action=1, alpha_override=0.1, delta_override=0.2)
+    learner.update(t(state, reward=1.0, action=1, metadata={"cue_labels": ["tone"]}))
     assert "weights" in learner.get_parameters()
 
 

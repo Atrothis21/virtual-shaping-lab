@@ -1,6 +1,7 @@
-import sys
 import os
+import sys
 from pathlib import Path
+
 import pytest
 
 
@@ -10,6 +11,8 @@ if str(VSL_ROOT) not in sys.path:
     sys.path.insert(0, str(VSL_ROOT))
 
 os.environ.setdefault("MPLBACKEND", "Agg")
+
+from domain.types import Transition
 
 
 class DummyRepresentation:
@@ -23,16 +26,10 @@ class DummyRepresentation:
 class DummyLearner:
     def __init__(self, alpha=0.2):
         self.alpha = alpha
-        self.last_update = None
+        self.last_transition = None
 
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        self.last_update = {
-            "state": state,
-            "reward": reward,
-            "action": action,
-            "alpha_override": alpha_override,
-            "delta_override": delta_override,
-        }
+    def update(self, transition: Transition):
+        self.last_transition = transition
 
 
 class DummyAgent:
@@ -60,17 +57,11 @@ class DummyAgent:
             "action": action,
         }
 
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        self.learner.update_with_alpha(
-            state,
-            reward,
-            action=action,
-            alpha_override=alpha_override,
-            delta_override=delta_override,
-        )
+    def learn(self, transition: Transition):
+        self.last_update = transition
+        self.learner.update(transition)
 
 
 @pytest.fixture
 def dummy_agent():
     return DummyAgent(attention=0.5)
-

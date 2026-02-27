@@ -56,29 +56,9 @@ class QLearner(BaseLearner):
             q_next = float(np.max(self.weights @ transition.s_next.x))
 
         delta = transition.r + self.gamma * q_next - q_sa
-        alpha = self.alpha
+        alpha = self.effective_alpha(transition)
 
         self.weights[a_idx] += alpha * float(delta) * transition.s.x
-
-    def update_with_alpha(
-        self,
-        state: EncodedState,
-        reward: float,
-        action: Any = None,
-        alpha_override: Optional[float] = None,
-        delta_override: Optional[float] = None,
-        next_state: Optional[EncodedState] = None,
-        done: bool = False,
-        t_s: Optional[float] = None,
-        dt_s: Optional[float] = None,
-    ) -> None:
-        if action is None:
-            return
-        a_idx = self._action_index(action)
-        q = self.value(state, action)
-        delta = (reward - q) if delta_override is None else float(delta_override)
-        alpha = self.alpha if alpha_override is None else float(alpha_override)
-        self.weights[a_idx] += alpha * delta * state.x
 
     def expects_action(self) -> bool:
         return True

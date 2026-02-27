@@ -6,16 +6,7 @@ class DummyLearner:
     def __init__(self, alpha=0.2):
         self.alpha = alpha
         self.attention_map = {}
-        self.last_update = None
-
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        self.last_update = {
-            "state": state,
-            "reward": reward,
-            "action": action,
-            "alpha_override": alpha_override,
-            "delta_override": delta_override,
-        }
+        self.last_transition = None
 
 
     def attention_multiplier(self, cue_labels):
@@ -26,6 +17,9 @@ class DummyLearner:
             return sum(vals) / len(vals) if vals else 1.0
         return float(self.attention_map.get(str(cue_labels), 1.0))
 
+    def update(self, transition):
+        self.last_transition = transition
+
 
 class DummyAgent:
     def __init__(self, attention_map=None):
@@ -34,24 +28,16 @@ class DummyAgent:
         self.learner.attention_map = dict(attention_map or {})
         self.last_update = None
 
-    def update(self, state, reward, action=None):
-        self.last_update = {"state": state, "reward": reward, "action": action}
-
-    def update_with_alpha(self, state, reward, action=None, alpha_override=None, delta_override=None):
-        self.learner.update_with_alpha(
-            state,
-            reward,
-            action=action,
-            alpha_override=alpha_override,
-            delta_override=delta_override,
-        )
+    def learn(self, transition):
+        self.last_update = transition
+        self.learner.update(transition)
 
 
-def test_apply_attention_update_uses_override():
+def test_apply_attention_update_sets_cue_labels_for_attention():
     agent = DummyAgent(attention_map={"tone": 0.5})
     apply_attention_update(agent, state="s", reward=1.0, action=None, cue_labels="tone")
-    assert agent.learner.last_update is not None
-    assert agent.learner.last_update["alpha_override"] == 0.5 * agent.learner.alpha
+    assert agent.learner.last_transition is not None
+    assert agent.learner.last_transition.metadata["cue_labels"] == "tone"
 
 
 def test_apply_attention_update_falls_back():
@@ -60,8 +46,8 @@ def test_apply_attention_update_falls_back():
     assert agent.last_update is not None
 
 
-def test_apply_attention_update_uses_mean_for_multiple_cues():
+def test_apply_attention_update_uses_mean_for_multiple_cues_metadata():
     agent = DummyAgent(attention_map={"tone": 0.4, "noise": 0.8})
     apply_attention_update(agent, state="s", reward=1.0, action=None, cue_labels=["tone", "noise"])
-    assert agent.learner.last_update is not None
-    assert agent.learner.last_update["alpha_override"] == pytest.approx(0.6 * agent.learner.alpha)
+    assert agent.learner.last_transition is not None
+    assert agent.learner.last_transition.metadata["cue_labels"] == ["tone", "noise"]

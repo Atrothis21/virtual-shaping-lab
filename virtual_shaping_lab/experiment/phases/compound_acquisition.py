@@ -147,29 +147,10 @@ class CompoundAcquisitionPhase(PhaseBase):
         action = outcome.get("action")
 
         # Shared compound prediction error
-        delta = (reward - outcome["prediction"]) / 2
-
-        learner = getattr(self.agent, "learner", None)
-        if learner is not None and hasattr(learner, "update_with_alpha"):
-            learner.update_with_alpha(
-                state_a,
-                reward,
-                action=action,
-                alpha_override=alpha_cs1,
-                delta_override=delta,
-            )
-            learner.update_with_alpha(
-                state_b,
-                reward,
-                action=action,
-                alpha_override=alpha_cs2,
-                delta_override=delta,
-            )
-            return
-
-        # Fallback if learner does not expose update_with_alpha.
-        self.agent.learn(Transition(s=state_a, r=reward, a=action))
-        self.agent.learn(Transition(s=state_b, r=reward, a=action))
+        # Single update pathway: learner handles attention/modulation internally.
+        # Per-cue transitions preserve cue-specific learning structure.
+        self.agent.learn(Transition(s=state_a, r=reward, a=action, metadata={"cue_labels": [stim_a]}))
+        self.agent.learn(Transition(s=state_b, r=reward, a=action, metadata={"cue_labels": [stim_b]}))
 
     def record_trial(
         self,

@@ -45,42 +45,9 @@ class BaseLearner(ILearner, ABC):
     def update(self, transition: Transition) -> None:
         raise NotImplementedError
 
-    def update_with_alpha(
-        self,
-        state: EncodedState,
-        reward: float,
-        action: Any = None,
-        alpha_override: Optional[float] = None,
-        delta_override: Optional[float] = None,
-        next_state: Optional[EncodedState] = None,
-        done: bool = False,
-        t_s: Optional[float] = None,
-        dt_s: Optional[float] = None,
-    ) -> None:
-        transition = Transition(
-            s=state,
-            r=reward,
-            a=action,
-            s_next=next_state,
-            done=done,
-            t_s=t_s,
-            dt_s=dt_s,
-        )
-        if alpha_override is not None or delta_override is not None:
-            transition = Transition(
-                s=state,
-                r=reward,
-                a=action,
-                s_next=next_state,
-                done=done,
-                t_s=t_s,
-                dt_s=dt_s,
-                metadata={
-                    "alpha_override": alpha_override,
-                    "delta_override": delta_override,
-                },
-            )
-        self.update(transition)
+    def effective_alpha(self, transition: Transition) -> float:
+        cue_labels = transition.metadata.get("cue_labels")
+        return float(self.alpha) * float(self.attention_multiplier(cue_labels))
 
     @abstractmethod
     def value(self, state: EncodedState, action: Any = None) -> float:
