@@ -370,3 +370,9 @@ class ExperimentConfig:
             raise ValueError(
                 f"Missing required {label} fields: {', '.join(missing)}"
             )
+
+    def to_plan(self):
+        """Build a declarative ExperimentPlan from this config."""
+        from experiment.plan_builder import build_experiment_plan
+
+        return build_experiment_plan(self)

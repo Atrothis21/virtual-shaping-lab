@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from experiment.domain.types import ExperimentContext
 from protocols.base import BaseProtocol
 from protocols.blocking import BlockingProtocol
 from protocols.conditioned_inhibition import ConditionedInhibitionProtocol
@@ -66,6 +67,15 @@ def test_base_protocol_run_and_reset():
     assert protocol.trial_index == 0
     assert protocol.records == []
     assert getattr(agent, "was_reset", False) is True
+
+
+def test_base_protocol_iter_steps_contract_emits_step_results():
+    agent = DummyAgent()
+    protocol = DummyProtocol(agent=agent)
+    ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(7))
+    steps = list(protocol.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[0].metadata.get("record", {}).get("subphase_name") == "dummy"
 
 
 def test_base_protocol_safety_limit():

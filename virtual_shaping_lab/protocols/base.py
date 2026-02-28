@@ -4,8 +4,12 @@ import random
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from experiment.phases.series_helpers import attach_reference_stimuli
 from experiment.runtime_records import finalize_record
+from virtual_shaping_lab.domain.types import Observation
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult
 
 
 class BaseProtocol(ABC):
@@ -80,24 +84,26 @@ class BaseProtocol(ABC):
 
     def run(self) -> List[Dict[str, Any]]:
         """
-        Execute the protocol by stepping through its phases in order.
+        Execute the protocol by stepping through composed phases.
+        """
+        ctx = ExperimentContext(agent=self.agent, rng=np.random.default_rng())
+        for _ in self.iter_steps(ctx):
+            pass
+        return self.records
+
+    def iter_steps(self, ctx: ExperimentContext):
+        """
+        v2.1 runnable-unit contract: protocol is pure composition over phases.
         """
         max_debug_trials = self._max_debug_trials()
-
         phases = self.build_phases()
-
-        # Attach reference stimuli for plotting continuity in single-stimulus phases.
         attach_reference_stimuli(phases)
-
-        # Validate phase ordering
         self._validate_phase_ordering(phases)
 
         phase_index = 0
-
         while self.has_next_trial():
             self._check_safety_limit(max_debug_trials)
 
-            # Skip zero-trial phases (e.g., context_shift)
             while phase_index < len(phases) and not phases[phase_index].has_next_trial():
                 phase_index += 1
             if phase_index >= len(phases):
@@ -114,6 +120,14 @@ class BaseProtocol(ABC):
                     protocol_phase_name=getattr(phase, "name", str(phase_index)),
                 )
                 self.records.append(record)
+                observation = Observation(stimuli=[], context=record.get("context", "A"), metadata={"record": record})
+                yield StepResult(
+                    observation=observation,
+                    reward=float(record.get("reward", 0.0)),
+                    learning_enabled=True,
+                    done=False,
+                    metadata={"record": record},
+                )
 
             if not phase.has_next_trial():
                 phase_index += 1
@@ -121,8 +135,6 @@ class BaseProtocol(ABC):
                     break
 
             self.trial_index += 1
-
-        return self.records
 
     # ------------------------------------------------------------------
     # Reference stimulus helpers (plot continuity)
@@ -150,7 +162,7 @@ class BaseProtocol(ABC):
                 f"({max_debug_trials} trials)"
             )
 
-    def reset(self) -> None:
+    def reset(self, ctx: Optional[ExperimentContext] = None) -> None:
         self.trial_index = 0
         self.records = []
         if hasattr(self.agent, "reset"):
