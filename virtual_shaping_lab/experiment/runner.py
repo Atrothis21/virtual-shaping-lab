@@ -1,6 +1,5 @@
 # experiment/runner.py
 
-import os
 from typing import List, Dict, Any, Optional, Protocol, runtime_checkable
 
 import numpy as np
@@ -11,14 +10,7 @@ from experiment.sinks import InMemorySink
 from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
-from virtual_shaping_lab.experiment.phases.series_helpers import attach_reference_stimuli
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
-
-
-@runtime_checkable
-class PhaseLike(Protocol):
-    def has_next_trial(self) -> bool: ...
-    def step(self) -> Dict[str, Any] | None: ...
 
 
 @runtime_checkable
@@ -56,8 +48,6 @@ class Runner:
         self.hooks = hooks or RunnerHooks()
         self.update_mode = self.settings.get("update_mode", "trial")
         self.record_mode = self.settings.get("record_mode", "trial")
-        strict_from_env = str(os.getenv("RUNNER_STRICT", "")).strip().lower() in {"1", "true", "yes", "on"}
-        self.strict_mode = bool(self.settings.get("strict_mode", strict_from_env))
         self._trial_executor = TrialExecutor(
             update_mode=self.update_mode,
             record_mode=self.record_mode,
@@ -65,31 +55,6 @@ class Runner:
 
     def _emit_record(self, record: Dict[str, Any]) -> None:
         self.sink.emit(record)
-
-    def _prepare_phase_rng(self, phase: Any, ctx: ExperimentContext) -> None:
-        # Respect explicit per-phase seeds when present.
-        params = getattr(phase, "params", {}) or {}
-        if params.get("rng_seed") is not None:
-            return
-        if hasattr(phase, "_rng") and getattr(phase, "_rng") is None:
-            phase._rng = ctx.rng
-
-    def _run_phase(self, phase: PhaseLike, ctx: ExperimentContext) -> List[Dict[str, Any]]:
-        self._prepare_phase_rng(phase, ctx)
-        records: List[Dict[str, Any]] = []
-        while phase.has_next_trial():
-            trial_id = len(records)
-            self.hooks.on_trial_start(unit=phase, ctx=ctx, trial_id=trial_id, step=None)
-            record = phase.step()
-            if record is not None:
-                finalize_record(
-                    record,
-                    phase_name=record.get("phase"),
-                )
-                self._emit_record(record)
-                records.append(record)
-                self.hooks.on_trial_end(unit=phase, ctx=ctx, trial_id=trial_id, records=[record])
-        return records
 
     def _build_context(self, unit: Any) -> ExperimentContext:
         if self.context is not None:
@@ -201,10 +166,6 @@ class Runner:
         records: List[Dict[str, Any]] = []
         ctx: Optional[ExperimentContext] = self.context
 
-        # Attach reference stimuli across phase-mode sequences
-        if units and isinstance(units[0], PhaseLike):
-            attach_reference_stimuli(units)
-
         for unit in units:
             if ctx is None:
                 ctx = self._build_context(unit)
@@ -218,19 +179,9 @@ class Runner:
                 unit_records = self._run_runnable_unit(unit, ctx)
                 records.extend(unit_records)
                 self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
-            elif isinstance(unit, PhaseLike):
-                if self.strict_mode:
-                    raise TypeError(
-                        "Runner strict mode is enabled; legacy phase fallback is not allowed. "
-                        "Unit must implement iter_steps(context)."
-                    )
-                unit_records = self._run_phase(unit, ctx)
-                records.extend(unit_records)
-                self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
             else:
                 raise TypeError(
-                    f"Unsupported runtime unit: {type(unit).__name__} must implement one of: "
-                    "iter_steps(context) or (has_next_trial + step)."
+                    f"Unsupported runtime unit: {type(unit).__name__} must implement iter_steps(context)."
                 )
 
         if self._owns_sink:

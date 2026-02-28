@@ -257,27 +257,26 @@ def test_runner_record_mode_tick_emits_tick_records_for_timed_schedule():
     assert records[1]["reward"] == 1.0
 
 
-def test_runner_strict_mode_blocks_legacy_phase_fallback():
-    agent = DummyAgent()
-    phase = LegacyOnlyPhase(agent, n_trials=1)
-    runner = Runner(phase, settings={"strict_mode": True})
-    try:
-        runner.run()
-        assert False, "Expected strict mode to reject legacy phase fallback"
-    except TypeError as exc:
-        assert "strict mode" in str(exc).lower()
-
-
-def test_runner_env_strict_blocks_legacy_phase_fallback(monkeypatch):
-    monkeypatch.setenv("RUNNER_STRICT", "1")
+def test_runner_rejects_legacy_phase_without_iter_steps():
     agent = DummyAgent()
     phase = LegacyOnlyPhase(agent, n_trials=1)
     runner = Runner(phase)
     try:
         runner.run()
-        assert False, "Expected RUNNER_STRICT=1 to reject legacy phase fallback"
+        assert False, "Expected runner to reject legacy phase units without iter_steps(context)"
     except TypeError as exc:
-        assert "strict mode" in str(exc).lower()
+        assert "iter_steps(context)" in str(exc)
+
+
+def test_runner_rejects_legacy_phase_even_without_env_flags():
+    agent = DummyAgent()
+    phase = LegacyOnlyPhase(agent, n_trials=1)
+    runner = Runner(phase)
+    try:
+        runner.run()
+        assert False, "Expected runner to reject legacy phase units without iter_steps(context)"
+    except TypeError as exc:
+        assert "iter_steps(context)" in str(exc)
 
 
 def test_runner_hooks_emit_unit_and_trial_lifecycle_events():
