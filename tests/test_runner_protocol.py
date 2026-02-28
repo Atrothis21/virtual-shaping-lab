@@ -131,6 +131,21 @@ class SeededRunnableUnit:
         )
 
 
+class MultiSeededRunnableUnit:
+    def reset(self, ctx):
+        return None
+
+    def iter_steps(self, ctx):
+        for i in range(3):
+            reward = float(ctx.rng.integers(0, 1000))
+            yield StepResult(
+                observation=Observation(stimuli=["tone"], context="A"),
+                reward=reward,
+                done=(i == 2),
+                metadata={"record": {"phase": "seeded_multi", "trial": i, "reward": reward}},
+            )
+
+
 class TimedRunnableUnit:
     def reset(self, ctx):
         return None
@@ -209,6 +224,15 @@ def test_runner_seed_controls_runnable_unit_rng_deterministically():
 
     assert r1[0]["reward"] == r2[0]["reward"]
     assert r1[0]["reward"] != r3[0]["reward"]
+
+
+def test_runner_seed_replay_is_identical_for_full_record_stream():
+    r1 = Runner(MultiSeededRunnableUnit(), seed=123).run()
+    r2 = Runner(MultiSeededRunnableUnit(), seed=123).run()
+    r3 = Runner(MultiSeededRunnableUnit(), seed=456).run()
+
+    assert r1 == r2
+    assert r1 != r3
 
 
 def test_runner_emits_to_sink_and_returns_records():
