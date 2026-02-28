@@ -74,6 +74,21 @@ class DummyRunnableUnit:
         )
 
 
+class SeededRunnableUnit:
+    def reset(self, ctx):
+        return None
+
+    def iter_steps(self, ctx):
+        # Deterministic given runner seed/context RNG.
+        reward = float(ctx.rng.integers(0, 1000))
+        yield StepResult(
+            observation=Observation(stimuli=["tone"], context="A"),
+            reward=reward,
+            done=True,
+            metadata={"record": {"phase": "seeded", "trial": 0, "reward": reward}},
+        )
+
+
 def test_runner_handles_phase():
     agent = DummyAgent()
     phase = DummyPhase(agent, n_trials=1)
@@ -99,3 +114,12 @@ def test_runner_handles_runnable_unit_iter_steps():
     assert unit.reset_called is True
     assert len(records) == 2
     assert records[0]["phase_name"] == "iter_phase"
+
+
+def test_runner_seed_controls_runnable_unit_rng_deterministically():
+    r1 = Runner(SeededRunnableUnit(), seed=123).run()
+    r2 = Runner(SeededRunnableUnit(), seed=123).run()
+    r3 = Runner(SeededRunnableUnit(), seed=456).run()
+
+    assert r1[0]["reward"] == r2[0]["reward"]
+    assert r1[0]["reward"] != r3[0]["reward"]

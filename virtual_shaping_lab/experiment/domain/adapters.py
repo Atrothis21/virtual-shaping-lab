@@ -40,7 +40,7 @@ class PhaseUnitAdapter(IPhase):
             self.phase.records = []
 
     def iter_steps(self, ctx: ExperimentContext) -> Iterator[StepResult]:
-        records = Runner(self.phase).run()
+        records = Runner(self.phase, context=ctx).run()
         total = len(records)
         for i, rec in enumerate(records):
             yield _record_to_step(rec, done=(i == total - 1))
@@ -62,8 +62,7 @@ class ProtocolUnitAdapter(IProtocol):
             self.protocol.records = []
 
     def iter_steps(self, ctx: ExperimentContext) -> Iterator[StepResult]:
-        records = Runner(self.protocol).run()
+        records = Runner(self.protocol, context=ctx).run()
         total = len(records)
         for i, rec in enumerate(records):
             yield _record_to_step(rec, done=(i == total - 1))
-
