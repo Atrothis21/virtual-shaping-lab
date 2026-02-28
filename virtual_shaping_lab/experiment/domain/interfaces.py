@@ -9,6 +9,7 @@ from virtual_shaping_lab.experiment.domain.types import (
     ExperimentContext,
     RunResult,
     StepResult,
+    TrialSchedule,
     TrialRecord,
 )
 
@@ -39,6 +40,12 @@ class IRunnableUnit(ABC):
 
 class IPhase(IRunnableUnit, ABC):
     """Marker contract for phase units."""
+
+    def build_trial_schedule(self, ctx: ExperimentContext, trial_index: int) -> TrialSchedule | None:
+        """
+        Optional hook for tick-level trial execution.
+        """
+        return None
 
 
 class IProtocol(IRunnableUnit, ABC):

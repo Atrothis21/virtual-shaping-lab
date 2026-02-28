@@ -3,6 +3,9 @@
 from typing import Any, Dict, List
 
 from experiment.phases.base import PhaseBase
+from virtual_shaping_lab.domain.types import Observation
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext
+from virtual_shaping_lab.experiment.domain.types import StepResult
 
 
 class ContextShiftPhase(PhaseBase):
@@ -86,3 +89,26 @@ class ContextShiftPhase(PhaseBase):
             "reward": 0.0,
             "prediction": 0.0,
         }
+
+    # ------------------------------------------------------------------
+    # v2.2 runnable-unit hooks
+    # ------------------------------------------------------------------
+
+    def reset(self, ctx: ExperimentContext) -> None:
+        self.trial_index = 0
+        self.records = []
+
+    def iter_steps(self, ctx: ExperimentContext):
+        if self.trial_index != 0:
+            self.reset(ctx)
+        while self.has_next_trial():
+            record = self.step()
+            if record is None:
+                continue
+            yield StepResult(
+                observation=Observation(stimuli=[], context=record.get("context", self.context)),
+                reward=float(record.get("reward", 0.0)),
+                learning_enabled=self.allows_learning,
+                done=not self.has_next_trial(),
+                metadata={"record": record},
+            )

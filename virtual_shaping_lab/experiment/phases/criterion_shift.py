@@ -3,9 +3,13 @@
 from collections import deque
 from typing import Any, Dict, List, Optional
 
+import numpy as np
+
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from virtual_shaping_lab.agents.representations.observation import make_observation
+from virtual_shaping_lab.domain.types import Observation
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
 
 class CriterionShiftPhase(PhaseBase):
@@ -155,6 +159,57 @@ class CriterionShiftPhase(PhaseBase):
             "prediction": outcome["prediction"],
             **crit,
         }
+
+    # ------------------------------------------------------------------
+    # v2.2 runnable-unit hooks
+    # ------------------------------------------------------------------
+
+    def reset(self, ctx: ExperimentContext) -> None:
+        self.trial_index = 0
+        self.records = []
+        self.criterion_met = False
+        self.trials_to_criterion = None
+        self._prediction_window.clear()
+        if self.params.get("rng_seed") is None:
+            self._rng = ctx.rng
+        else:
+            self._rng = np.random.default_rng(self.params.get("rng_seed"))
+
+    def iter_steps(self, ctx: ExperimentContext):
+        if self.trial_index != 0:
+            self.reset(ctx)
+        while self.has_next_trial():
+            record = self.step()
+            if record is None:
+                continue
+            stimulus = record.get("stimulus")
+            stimuli = list(stimulus) if isinstance(stimulus, tuple) else ([stimulus] if stimulus is not None else [])
+            observation = Observation(stimuli=stimuli, context=record.get("context", self.context))
+            metadata = {"record": record}
+            trial_schedule = self.build_trial_schedule(ctx, int(record.get("trial", self.trial_index)))
+            if trial_schedule is not None:
+                metadata["trial_schedule"] = trial_schedule
+            yield StepResult(
+                observation=observation,
+                reward=float(record.get("reward", 0.0)),
+                learning_enabled=self.allows_learning,
+                done=not self.has_next_trial(),
+                metadata=metadata,
+            )
+
+    def build_trial_schedule(
+        self,
+        ctx: ExperimentContext,
+        trial_index: int,
+    ) -> TrialSchedule | None:
+        spec = self.params.get("trial_time_spec")
+        if spec is None or not hasattr(spec, "duration_s") or not hasattr(spec, "dt_s"):
+            return None
+        return TrialSchedule(
+            time=spec,
+            base_stimuli=[],
+            available_actions=list(self.get_available_actions()),
+        )
 
 
 

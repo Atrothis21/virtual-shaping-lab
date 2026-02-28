@@ -1,6 +1,7 @@
 # protocols/base.py
 
 import random
+from dataclasses import replace
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
@@ -8,7 +9,6 @@ import numpy as np
 
 from experiment.phases.series_helpers import attach_reference_stimuli
 from experiment.runtime_records import finalize_record
-from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult
 
 
@@ -93,48 +93,55 @@ class BaseProtocol(ABC):
 
     def iter_steps(self, ctx: ExperimentContext):
         """
-        v2.1 runnable-unit contract: protocol is pure composition over phases.
+        Runnable-unit contract: protocol composes child runnable units only.
         """
         max_debug_trials = self._max_debug_trials()
         phases = self.build_phases()
         attach_reference_stimuli(phases)
         self._validate_phase_ordering(phases)
-
-        phase_index = 0
-        while self.has_next_trial():
+        for phase_index, phase in enumerate(phases):
             self._check_safety_limit(max_debug_trials)
-
-            while phase_index < len(phases) and not phases[phase_index].has_next_trial():
-                phase_index += 1
-            if phase_index >= len(phases):
-                break
-
-            phase = phases[phase_index]
-            record = phase.step()
-
-            if record is not None:
-                finalize_record(
-                    record,
-                    phase_name=record.get("phase"),
-                    protocol_phase_index=phase_index,
-                    protocol_phase_name=getattr(phase, "name", str(phase_index)),
+            if not hasattr(phase, "iter_steps"):
+                raise TypeError(
+                    f"Protocol child unit '{type(phase).__name__}' must implement iter_steps(context)."
                 )
-                self.records.append(record)
-                observation = Observation(stimuli=[], context=record.get("context", "A"), metadata={"record": record})
-                yield StepResult(
-                    observation=observation,
-                    reward=float(record.get("reward", 0.0)),
-                    learning_enabled=True,
-                    done=False,
-                    metadata={"record": record},
+            if hasattr(phase, "reset"):
+                phase.reset(ctx)
+
+            phase_name = getattr(phase, "name", str(phase_index))
+
+            for step in phase.iter_steps(ctx):
+                self._check_safety_limit(max_debug_trials)
+                if not self.has_next_trial():
+                    return
+
+                metadata = dict(getattr(step, "metadata", {}) or {})
+                record = metadata.get("record")
+
+                if isinstance(record, dict):
+                    record.setdefault("phase", phase_name)
+                    record.setdefault("protocol_name", self.name)
+                    record.setdefault("subphase", phase_index)
+                    record.setdefault("subphase_name", phase_name)
+                    record.setdefault("unit_path", f"{self.name}.{phase_name}")
+                    finalize_record(
+                        record,
+                        phase_name=record.get("phase"),
+                        protocol_phase_index=record.get("subphase"),
+                        protocol_phase_name=record.get("subphase_name"),
+                    )
+                    self.records.append(record)
+                    metadata["record"] = record
+
+                metadata.setdefault("protocol_name", self.name)
+                metadata.setdefault("phase_name", phase_name)
+                metadata.setdefault("unit_path", f"{self.name}.{phase_name}")
+
+                done = bool(getattr(step, "done", False)) and (
+                    phase_index == len(phases) - 1 and self.trial_index + 1 >= self.n_trials
                 )
-
-            if not phase.has_next_trial():
-                phase_index += 1
-                if phase_index >= len(phases):
-                    break
-
-            self.trial_index += 1
+                yield replace(step, done=done, metadata=metadata)
+                self.trial_index += 1
 
     # ------------------------------------------------------------------
     # Reference stimulus helpers (plot continuity)

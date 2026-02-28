@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 import numpy as np
 
@@ -11,7 +13,43 @@ from virtual_shaping_lab.domain.types import Observation
 
 
 TrialSpec = dict[str, Any]
-TrialRecord = dict[str, Any]
+
+
+class TrialRecord(TypedDict, total=False):
+    """
+    Stable analysis/runtime record contract.
+
+    Units may add extra keys, but these base keys should always be present
+    after runtime finalization (with None/default values when not applicable).
+    """
+
+    phase: str | None
+    phase_name: str | None
+    protocol_name: str | None
+    unit_path: str | None
+    subphase: int | None
+    subphase_name: str | None
+
+    trial: int | None
+    tick: int | None
+    t_s: float | None
+    dt_s: float | None
+    trial_step: int | None
+    trial_id: Any
+
+    context: Any
+    stimulus: Any
+    stimulus_type: str | None
+    action: Any
+    response: Any
+    reward: float | None
+    prediction: float | None
+    outcome_type: str | None
+    schedule: str | None
+    done: bool | None
+    learning_enabled: bool | None
+
+    metadata: dict[str, Any]
 
 
 def _is_time_grid_aligned(duration_s: float, dt_s: float, tol: float = 1e-9) -> bool:
@@ -87,6 +125,21 @@ class TrialTimeSpec:
 
 
 @dataclass(frozen=True)
+class TrialSchedule:
+    """
+    Executable trial schedule used by tick-based runtime paths.
+
+    A phase can provide this in StepResult metadata so runtime can execute
+    intra-trial ticks without embedding phase logic in the runner.
+    """
+
+    time: TrialTimeSpec
+    base_stimuli: list[Any] = field(default_factory=list)
+    available_actions: list[Any] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class StepResult:
     """
     Single execution step produced by a runnable unit.
@@ -116,6 +169,40 @@ class ExperimentPlan:
     seed: Optional[int] = None
     record_schema_version: str = "v1"
     settings: dict[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def _to_primitive(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {str(k): ExperimentPlan._to_primitive(v) for k, v in sorted(value.items(), key=lambda item: str(item[0]))}
+        if isinstance(value, list):
+            return [ExperimentPlan._to_primitive(v) for v in value]
+        if isinstance(value, tuple):
+            return [ExperimentPlan._to_primitive(v) for v in value]
+        return value
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable deterministic dict representation."""
+        return {
+            "units": self._to_primitive(self.units),
+            "seed": self.seed,
+            "record_schema_version": self.record_schema_version,
+            "settings": self._to_primitive(self.settings),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ExperimentPlan":
+        """Rebuild an ExperimentPlan from to_dict-compatible data."""
+        return cls(
+            units=list(data.get("units", [])),
+            seed=data.get("seed"),
+            record_schema_version=data.get("record_schema_version", "v1"),
+            settings=dict(data.get("settings", {}) or {}),
+        )
+
+    def stable_hash(self) -> str:
+        """Stable content hash for caching/replay identity."""
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 @dataclass

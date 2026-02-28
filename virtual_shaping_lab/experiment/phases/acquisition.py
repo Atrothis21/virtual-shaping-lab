@@ -8,7 +8,7 @@ from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import Observation
-from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
 
 class AcquisitionPhase(PhaseBase):
@@ -163,13 +163,31 @@ class AcquisitionPhase(PhaseBase):
             stimulus = record.get("stimulus")
             stimuli = list(stimulus) if isinstance(stimulus, tuple) else ([stimulus] if stimulus is not None else [])
             observation = Observation(stimuli=stimuli, context=record.get("context", self.context))
+            metadata = {"record": record}
+            trial_schedule = self.build_trial_schedule(ctx, int(record.get("trial", self.trial_index)))
+            if trial_schedule is not None:
+                metadata["trial_schedule"] = trial_schedule
             yield StepResult(
                 observation=observation,
                 reward=float(record.get("reward", 0.0)),
                 learning_enabled=self.allows_learning,
                 done=not self.has_next_trial(),
-                metadata={"record": record},
+                metadata=metadata,
             )
+
+    def build_trial_schedule(
+        self,
+        ctx: ExperimentContext,
+        trial_index: int,
+    ) -> TrialSchedule | None:
+        spec = self.params.get("trial_time_spec")
+        if spec is None or not hasattr(spec, "duration_s") or not hasattr(spec, "dt_s"):
+            return None
+        return TrialSchedule(
+            time=spec,
+            base_stimuli=[],
+            available_actions=list(self.get_available_actions()),
+        )
 
 
 
