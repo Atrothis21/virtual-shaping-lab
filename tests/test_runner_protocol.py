@@ -1,7 +1,9 @@
 from typing import Any, Dict, List
 
 from experiment.runner import Runner
-from experiment.sinks import InMemorySink
+import json
+
+from experiment.sinks import CompositeSink, InMemorySink, JsonlSink
 from experiment.phases.base import PhaseBase
 from experiment.domain.types import EventSpec, StepResult, TrialSchedule, TrialTimeSpec
 from protocols.base import BaseProtocol
@@ -278,3 +280,27 @@ def test_runner_hooks_emit_tick_events_for_timed_schedule():
     assert len(tick_events) == 2
     assert tick_events[0][3] == 0
     assert tick_events[1][4] == 1.0
+
+
+def test_runner_jsonl_sink_writes_append_only_records(tmp_path):
+    path = tmp_path / "records.jsonl"
+    sink = JsonlSink(path)
+    records = Runner(DummyRunnableUnit(), sink=sink).run()
+    assert len(records) == 2
+    lines = path.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 2
+    parsed = [json.loads(line) for line in lines]
+    assert parsed[0]["phase_name"] == "iter_phase"
+    assert parsed[1]["trial"] == 1
+
+
+def test_runner_composite_sink_fanout(tmp_path):
+    mem = InMemorySink()
+    jsonl = JsonlSink(tmp_path / "records.jsonl")
+    sink = CompositeSink([mem, jsonl])
+    records = Runner(DummyRunnableUnit(), sink=sink).run()
+    assert len(records) == 2
+    assert len(mem.records) == 2
+    lines = (tmp_path / "records.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 2
+    assert sink.closed is False
