@@ -1,5 +1,6 @@
 # experiment/runner.py
 
+import os
 from typing import List, Dict, Any, Optional, Protocol, runtime_checkable
 
 import numpy as np
@@ -52,6 +53,8 @@ class Runner:
         self._owns_sink = sink is None
         self.update_mode = self.settings.get("update_mode", "trial")
         self.record_mode = self.settings.get("record_mode", "trial")
+        strict_from_env = str(os.getenv("RUNNER_STRICT", "")).strip().lower() in {"1", "true", "yes", "on"}
+        self.strict_mode = bool(self.settings.get("strict_mode", strict_from_env))
         self._trial_executor = TrialExecutor(
             update_mode=self.update_mode,
             record_mode=self.record_mode,
@@ -203,6 +206,11 @@ class Runner:
             if isinstance(unit, RunnableUnitLike):
                 records.extend(self._run_runnable_unit(unit, ctx))
             elif isinstance(unit, PhaseLike):
+                if self.strict_mode:
+                    raise TypeError(
+                        "Runner strict mode is enabled; legacy phase fallback is not allowed. "
+                        "Unit must implement iter_steps(context)."
+                    )
                 records.extend(self._run_phase(unit, ctx))
             else:
                 raise TypeError(

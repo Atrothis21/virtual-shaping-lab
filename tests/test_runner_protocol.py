@@ -170,3 +170,26 @@ def test_runner_record_mode_tick_emits_tick_records_for_timed_schedule():
     assert records[0]["phase_name"] == "timed"
     assert records[0]["tick"] == 0
     assert records[1]["reward"] == 1.0
+
+
+def test_runner_strict_mode_blocks_legacy_phase_fallback():
+    agent = DummyAgent()
+    phase = DummyPhase(agent, n_trials=1)
+    runner = Runner(phase, settings={"strict_mode": True})
+    try:
+        runner.run()
+        assert False, "Expected strict mode to reject legacy phase fallback"
+    except TypeError as exc:
+        assert "strict mode" in str(exc).lower()
+
+
+def test_runner_env_strict_blocks_legacy_phase_fallback(monkeypatch):
+    monkeypatch.setenv("RUNNER_STRICT", "1")
+    agent = DummyAgent()
+    phase = DummyPhase(agent, n_trials=1)
+    runner = Runner(phase)
+    try:
+        runner.run()
+        assert False, "Expected RUNNER_STRICT=1 to reject legacy phase fallback"
+    except TypeError as exc:
+        assert "strict mode" in str(exc).lower()
