@@ -153,6 +153,26 @@ class TimedRunnableUnit:
         )
 
 
+class CapturingHooks:
+    def __init__(self):
+        self.events = []
+
+    def on_unit_start(self, *, unit, ctx):
+        self.events.append(("unit_start", type(unit).__name__))
+
+    def on_unit_end(self, *, unit, ctx, records):
+        self.events.append(("unit_end", type(unit).__name__, len(records)))
+
+    def on_trial_start(self, *, unit, ctx, trial_id, step):
+        self.events.append(("trial_start", type(unit).__name__, trial_id))
+
+    def on_tick(self, *, unit, ctx, trial_id, tick, observation, action, reward, metadata):
+        self.events.append(("tick", type(unit).__name__, trial_id, tick, reward))
+
+    def on_trial_end(self, *, unit, ctx, trial_id, records):
+        self.events.append(("trial_end", type(unit).__name__, trial_id, len(records)))
+
+
 def test_runner_handles_phase():
     agent = DummyAgent()
     phase = DummyPhase(agent, n_trials=1)
@@ -232,3 +252,29 @@ def test_runner_env_strict_blocks_legacy_phase_fallback(monkeypatch):
         assert False, "Expected RUNNER_STRICT=1 to reject legacy phase fallback"
     except TypeError as exc:
         assert "strict mode" in str(exc).lower()
+
+
+def test_runner_hooks_emit_unit_and_trial_lifecycle_events():
+    hooks = CapturingHooks()
+    records = Runner(DummyRunnableUnit(), hooks=hooks).run()
+    assert len(records) == 2
+    assert hooks.events[0][0] == "unit_start"
+    assert hooks.events[1] == ("trial_start", "DummyRunnableUnit", 0)
+    assert hooks.events[2] == ("trial_end", "DummyRunnableUnit", 0, 1)
+    assert hooks.events[3] == ("trial_start", "DummyRunnableUnit", 1)
+    assert hooks.events[4] == ("trial_end", "DummyRunnableUnit", 1, 1)
+    assert hooks.events[-1] == ("unit_end", "DummyRunnableUnit", 2)
+
+
+def test_runner_hooks_emit_tick_events_for_timed_schedule():
+    hooks = CapturingHooks()
+    records = Runner(
+        TimedRunnableUnit(),
+        settings={"record_mode": "tick"},
+        hooks=hooks,
+    ).run()
+    assert len(records) == 2
+    tick_events = [e for e in hooks.events if e[0] == "tick"]
+    assert len(tick_events) == 2
+    assert tick_events[0][3] == 0
+    assert tick_events[1][4] == 1.0

@@ -48,10 +48,14 @@ class TrialExecutor:
         schedule: TrialSchedule,
         base_record: dict[str, Any],
         trial_id: Any,
+        hooks: Any = None,
+        unit: Any = None,
     ) -> list[dict[str, Any]]:
         spec = schedule.time
         trial_records: list[dict[str, Any]] = []
         agent = ctx.agent
+        if hooks is not None and hasattr(hooks, "on_trial_start"):
+            hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
 
         for tick, t_s, dt_tick, t_next_s in self._iter_tick_times(
             spec.duration_s, spec.dt_s, spec.allow_partial_last_step
@@ -113,6 +117,11 @@ class TrialExecutor:
                     )
                 )
 
+            tick_meta = {
+                "active_event_types": [e.event_type for e in active_events],
+                "active_windows": [w.label for w in active_windows],
+            }
+
             if self.record_mode == "tick":
                 trial_records.append(
                     {
@@ -125,15 +134,27 @@ class TrialExecutor:
                         "action": action,
                         "reward": reward,
                         "context": observation.context,
-                        "metadata": {
-                            "active_event_types": [e.event_type for e in active_events],
-                            "active_windows": [w.label for w in active_windows],
-                        },
+                        "metadata": tick_meta,
                     }
+                )
+
+            if hooks is not None and hasattr(hooks, "on_tick"):
+                hooks.on_tick(
+                    unit=unit,
+                    ctx=ctx,
+                    trial_id=trial_id,
+                    tick=tick,
+                    observation=observation,
+                    action=action,
+                    reward=reward,
+                    metadata=tick_meta,
                 )
 
         ctx.clock_s += spec.duration_s + spec.iti_s
 
-        if self.record_mode == "tick":
-            return trial_records
-        return [base_record]
+        emitted = trial_records if self.record_mode == "tick" else [base_record]
+
+        if hooks is not None and hasattr(hooks, "on_trial_end"):
+            hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=emitted)
+
+        return emitted

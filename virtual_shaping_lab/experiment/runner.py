@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Protocol, runtime_checkable
 import numpy as np
 
 from experiment.domain.types import ExperimentContext
+from experiment.hooks import RunnerHooks
 from experiment.sinks import InMemorySink
 from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
@@ -44,6 +45,7 @@ class Runner:
         context: Optional[ExperimentContext] = None,
         settings: Optional[dict[str, Any]] = None,
         sink: Optional[Any] = None,
+        hooks: Optional[RunnerHooks] = None,
     ):
         self.runtime_units = runtime_units
         self.seed = seed
@@ -51,6 +53,7 @@ class Runner:
         self.settings = settings or {}
         self.sink = sink if sink is not None else InMemorySink()
         self._owns_sink = sink is None
+        self.hooks = hooks or RunnerHooks()
         self.update_mode = self.settings.get("update_mode", "trial")
         self.record_mode = self.settings.get("record_mode", "trial")
         strict_from_env = str(os.getenv("RUNNER_STRICT", "")).strip().lower() in {"1", "true", "yes", "on"}
@@ -75,6 +78,8 @@ class Runner:
         self._prepare_phase_rng(phase, ctx)
         records: List[Dict[str, Any]] = []
         while phase.has_next_trial():
+            trial_id = len(records)
+            self.hooks.on_trial_start(unit=phase, ctx=ctx, trial_id=trial_id, step=None)
             record = phase.step()
             if record is not None:
                 finalize_record(
@@ -83,6 +88,7 @@ class Runner:
                 )
                 self._emit_record(record)
                 records.append(record)
+                self.hooks.on_trial_end(unit=phase, ctx=ctx, trial_id=trial_id, records=[record])
         return records
 
     def _build_context(self, unit: Any) -> ExperimentContext:
@@ -159,9 +165,13 @@ class Runner:
                     schedule=normalized_schedule,
                     base_record=record,
                     trial_id=trial_id,
+                    hooks=self.hooks,
+                    unit=unit,
                 )
             else:
+                self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
                 emitted = [record]
+                self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=emitted)
 
             for emitted_record in emitted:
                 finalize_record(
@@ -202,16 +212,21 @@ class Runner:
                 candidate_agent = getattr(unit, "agent", None)
                 if candidate_agent is not None:
                     ctx.agent = candidate_agent
+            self.hooks.on_unit_start(unit=unit, ctx=ctx)
 
             if isinstance(unit, RunnableUnitLike):
-                records.extend(self._run_runnable_unit(unit, ctx))
+                unit_records = self._run_runnable_unit(unit, ctx)
+                records.extend(unit_records)
+                self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
             elif isinstance(unit, PhaseLike):
                 if self.strict_mode:
                     raise TypeError(
                         "Runner strict mode is enabled; legacy phase fallback is not allowed. "
                         "Unit must implement iter_steps(context)."
                     )
-                records.extend(self._run_phase(unit, ctx))
+                unit_records = self._run_phase(unit, ctx)
+                records.extend(unit_records)
+                self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
             else:
                 raise TypeError(
                     f"Unsupported runtime unit: {type(unit).__name__} must implement one of: "
