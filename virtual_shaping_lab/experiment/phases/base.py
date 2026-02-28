@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Sequence, TypeAlias
 
 import numpy as np
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, TrialSchedule
 
 
 TrialSpec: TypeAlias = Dict[str, Any]
@@ -230,3 +231,19 @@ class PhaseBase(ABC):
         Optional phase-level summary statistics.
         """
         return {}
+
+    # ------------------------------------------------------------------
+    # Optional intra-trial schedule contract (v2.2+)
+    # ------------------------------------------------------------------
+
+    def build_trial_schedule(
+        self,
+        ctx: ExperimentContext,
+        trial_index: int,
+    ) -> TrialSchedule | None:
+        """
+        Optional hook for tick-level runtime execution.
+
+        Default returns None so existing trial-level phases remain valid.
+        """
+        return None

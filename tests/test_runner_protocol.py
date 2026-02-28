@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from experiment.runner import Runner
 from experiment.sinks import InMemorySink
 from experiment.phases.base import PhaseBase
-from experiment.domain.types import StepResult
+from experiment.domain.types import EventSpec, StepResult, TrialSchedule, TrialTimeSpec
 from protocols.base import BaseProtocol
 from domain.types import Observation
 
@@ -90,6 +90,30 @@ class SeededRunnableUnit:
         )
 
 
+class TimedRunnableUnit:
+    def reset(self, ctx):
+        return None
+
+    def iter_steps(self, ctx):
+        spec = TrialTimeSpec(
+            duration_s=1.0,
+            dt_s=0.5,
+            events=[
+                EventSpec(event_type="stimulus", start_s=0.0, end_s=0.5, metadata={"stimulus": "tone"}),
+                EventSpec(event_type="reward", start_s=0.5, end_s=1.0, magnitude=1.0),
+            ],
+        )
+        yield StepResult(
+            observation=Observation(stimuli=[], context="A"),
+            reward=0.0,
+            done=True,
+            metadata={
+                "record": {"phase": "timed", "trial": 0},
+                "trial_schedule": TrialSchedule(time=spec, available_actions=[]),
+            },
+        )
+
+
 def test_runner_handles_phase():
     agent = DummyAgent()
     phase = DummyPhase(agent, n_trials=1)
@@ -135,3 +159,14 @@ def test_runner_emits_to_sink_and_returns_records():
     assert len(records) == 1
     assert sink.records == records
     assert sink.closed is False
+
+
+def test_runner_record_mode_tick_emits_tick_records_for_timed_schedule():
+    records = Runner(
+        TimedRunnableUnit(),
+        settings={"record_mode": "tick"},
+    ).run()
+    assert len(records) == 2
+    assert records[0]["phase_name"] == "timed"
+    assert records[0]["tick"] == 0
+    assert records[1]["reward"] == 1.0

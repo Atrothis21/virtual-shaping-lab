@@ -87,6 +87,21 @@ class TrialTimeSpec:
 
 
 @dataclass(frozen=True)
+class TrialSchedule:
+    """
+    Executable trial schedule used by tick-based runtime paths.
+
+    A phase can provide this in StepResult metadata so runtime can execute
+    intra-trial ticks without embedding phase logic in the runner.
+    """
+
+    time: TrialTimeSpec
+    base_stimuli: list[Any] = field(default_factory=list)
+    available_actions: list[Any] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class StepResult:
     """
     Single execution step produced by a runnable unit.

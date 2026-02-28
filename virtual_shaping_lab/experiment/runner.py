@@ -6,7 +6,9 @@ import numpy as np
 
 from experiment.domain.types import ExperimentContext
 from experiment.sinks import InMemorySink
+from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
+from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
 from virtual_shaping_lab.experiment.phases.series_helpers import attach_reference_stimuli
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
 
@@ -48,6 +50,12 @@ class Runner:
         self.settings = settings or {}
         self.sink = sink if sink is not None else InMemorySink()
         self._owns_sink = sink is None
+        self.update_mode = self.settings.get("update_mode", "trial")
+        self.record_mode = self.settings.get("record_mode", "trial")
+        self._trial_executor = TrialExecutor(
+            update_mode=self.update_mode,
+            record_mode=self.record_mode,
+        )
 
     def _emit_record(self, record: Dict[str, Any]) -> None:
         self.sink.emit(record)
@@ -94,11 +102,27 @@ class Runner:
         records: List[Dict[str, Any]] = []
         for step in unit.iter_steps(ctx):
             record = None
+            schedule = None
             metadata = getattr(step, "metadata", None)
             if isinstance(metadata, dict):
                 candidate = metadata.get("record")
                 if isinstance(candidate, dict):
                     record = candidate
+                schedule_candidate = metadata.get("trial_schedule")
+                if isinstance(schedule_candidate, TrialSchedule) or (
+                    schedule_candidate is not None and hasattr(schedule_candidate, "time")
+                ):
+                    schedule = schedule_candidate
+                elif isinstance(metadata.get("trial_time_spec"), TrialTimeSpec) or (
+                    metadata.get("trial_time_spec") is not None
+                    and hasattr(metadata.get("trial_time_spec"), "duration_s")
+                    and hasattr(metadata.get("trial_time_spec"), "dt_s")
+                ):
+                    schedule = TrialSchedule(
+                        time=metadata["trial_time_spec"],
+                        base_stimuli=list(getattr(step.observation, "stimuli", [])),
+                        available_actions=list(step.available_actions),
+                    )
 
             if record is None:
                 observation = getattr(step, "observation", None)
@@ -114,14 +138,37 @@ class Runner:
                     "context": context,
                 }
 
-            finalize_record(
-                record,
-                phase_name=record.get("phase"),
-                protocol_phase_index=record.get("subphase"),
-                protocol_phase_name=record.get("subphase_name"),
-            )
-            self._emit_record(record)
-            records.append(record)
+            trial_id = record.get("trial", len(records))
+            if schedule is not None:
+                normalized_schedule = (
+                    schedule
+                    if isinstance(schedule, TrialSchedule)
+                    else TrialSchedule(
+                        time=schedule.time,
+                        base_stimuli=list(getattr(schedule, "base_stimuli", [])),
+                        available_actions=list(getattr(schedule, "available_actions", [])),
+                        metadata=dict(getattr(schedule, "metadata", {}) or {}),
+                    )
+                )
+                emitted = self._trial_executor.execute(
+                    ctx=ctx,
+                    step=step,
+                    schedule=normalized_schedule,
+                    base_record=record,
+                    trial_id=trial_id,
+                )
+            else:
+                emitted = [record]
+
+            for emitted_record in emitted:
+                finalize_record(
+                    emitted_record,
+                    phase_name=emitted_record.get("phase"),
+                    protocol_phase_index=emitted_record.get("subphase"),
+                    protocol_phase_name=emitted_record.get("subphase_name"),
+                )
+                self._emit_record(emitted_record)
+                records.append(emitted_record)
 
         return records
 
