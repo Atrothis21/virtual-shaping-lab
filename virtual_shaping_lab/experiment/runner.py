@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional, Protocol, runtime_checkable
 import numpy as np
 
 from experiment.domain.types import ExperimentContext
+from experiment.sinks import InMemorySink
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.phases.series_helpers import attach_reference_stimuli
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
@@ -44,11 +45,17 @@ class Runner:
         seed: Optional[int] = None,
         context: Optional[ExperimentContext] = None,
         settings: Optional[dict[str, Any]] = None,
+        sink: Optional[Any] = None,
     ):
         self.runtime_units = runtime_units
         self.seed = seed
         self.context = context
         self.settings = settings or {}
+        self.sink = sink if sink is not None else InMemorySink()
+        self._owns_sink = sink is None
+
+    def _emit_record(self, record: Dict[str, Any]) -> None:
+        self.sink.emit(record)
 
     def _prepare_phase_rng(self, phase: Any, ctx: ExperimentContext) -> None:
         # Respect explicit per-phase seeds when present.
@@ -68,6 +75,7 @@ class Runner:
                     record,
                     phase_name=record.get("phase"),
                 )
+                self._emit_record(record)
                 records.append(record)
         return records
 
@@ -119,6 +127,7 @@ class Runner:
                     protocol_phase_index=phase_index,
                     protocol_phase_name=getattr(phase, "name", str(phase_index)),
                 )
+                self._emit_record(record)
                 records.append(record)
 
             protocol.trial_index = getattr(protocol, "trial_index", 0) + 1
@@ -180,6 +189,7 @@ class Runner:
                 }
 
             finalize_record(record, phase_name=record.get("phase"))
+            self._emit_record(record)
             records.append(record)
 
         return records
@@ -223,5 +233,8 @@ class Runner:
                     f"Unsupported runtime unit: {type(unit).__name__} must implement one of: "
                     "iter_steps(context), run(), or (has_next_trial + step)."
                 )
+
+        if self._owns_sink:
+            self.sink.close()
 
         return records

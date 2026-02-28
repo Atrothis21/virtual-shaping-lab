@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 
 from experiment.runner import Runner
+from experiment.sinks import InMemorySink
 from experiment.phases.base import PhaseBase
 from experiment.domain.types import StepResult
 from protocols.base import BaseProtocol
@@ -123,3 +124,14 @@ def test_runner_seed_controls_runnable_unit_rng_deterministically():
 
     assert r1[0]["reward"] == r2[0]["reward"]
     assert r1[0]["reward"] != r3[0]["reward"]
+
+
+def test_runner_emits_to_sink_and_returns_records():
+    agent = DummyAgent()
+    phase = DummyPhase(agent, n_trials=1)
+    sink = InMemorySink()
+    runner = Runner(phase, sink=sink)
+    records = runner.run()
+    assert len(records) == 1
+    assert sink.records == records
+    assert sink.closed is False
