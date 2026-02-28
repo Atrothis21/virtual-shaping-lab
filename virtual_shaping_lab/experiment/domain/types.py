@@ -14,6 +14,78 @@ TrialSpec = dict[str, Any]
 TrialRecord = dict[str, Any]
 
 
+def _is_time_grid_aligned(duration_s: float, dt_s: float, tol: float = 1e-9) -> bool:
+    steps = duration_s / dt_s
+    return abs(steps - round(steps)) <= tol
+
+
+@dataclass(frozen=True)
+class EventSpec:
+    """Intra-trial event window (e.g., CS/US/context on-off span)."""
+
+    event_type: str
+    start_s: float
+    end_s: float
+    magnitude: float = 1.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.start_s < 0.0:
+            raise ValueError("EventSpec.start_s must be >= 0.")
+        if self.end_s <= self.start_s:
+            raise ValueError("EventSpec.end_s must be > start_s.")
+
+
+@dataclass(frozen=True)
+class WindowSpec:
+    """Optional response/availability window inside a trial."""
+
+    start_s: float
+    end_s: float
+    label: str = "window"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.start_s < 0.0:
+            raise ValueError("WindowSpec.start_s must be >= 0.")
+        if self.end_s <= self.start_s:
+            raise ValueError("WindowSpec.end_s must be > start_s.")
+
+
+@dataclass(frozen=True)
+class TrialTimeSpec:
+    """
+    Validated time-grid contract for a single trial.
+
+    Keeps timing logic out of runner/phase wiring while making constraints explicit.
+    """
+
+    duration_s: float
+    dt_s: float
+    iti_s: float = 0.0
+    allow_partial_last_step: bool = False
+    events: list[EventSpec] = field(default_factory=list)
+    response_windows: list[WindowSpec] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if self.duration_s <= 0.0:
+            raise ValueError("TrialTimeSpec.duration_s must be > 0.")
+        if self.dt_s <= 0.0:
+            raise ValueError("TrialTimeSpec.dt_s must be > 0.")
+        if self.iti_s < 0.0:
+            raise ValueError("TrialTimeSpec.iti_s must be >= 0.")
+        if not self.allow_partial_last_step and not _is_time_grid_aligned(self.duration_s, self.dt_s):
+            raise ValueError(
+                "TrialTimeSpec duration_s must align to dt_s when allow_partial_last_step is False."
+            )
+        for e in self.events:
+            if e.end_s > self.duration_s + 1e-9:
+                raise ValueError("EventSpec end_s must be within trial duration_s.")
+        for w in self.response_windows:
+            if w.end_s > self.duration_s + 1e-9:
+                raise ValueError("WindowSpec end_s must be within trial duration_s.")
+
+
 @dataclass(frozen=True)
 class StepResult:
     """
@@ -64,4 +136,3 @@ class RunResult:
     run_id: str
     records: list[TrialRecord] = field(default_factory=list)
     artifacts: dict[str, Any] = field(default_factory=dict)
-
