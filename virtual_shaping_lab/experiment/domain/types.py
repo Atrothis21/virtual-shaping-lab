@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -131,6 +133,40 @@ class ExperimentPlan:
     seed: Optional[int] = None
     record_schema_version: str = "v1"
     settings: dict[str, Any] = field(default_factory=dict)
+
+    @staticmethod
+    def _to_primitive(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {str(k): ExperimentPlan._to_primitive(v) for k, v in sorted(value.items(), key=lambda item: str(item[0]))}
+        if isinstance(value, list):
+            return [ExperimentPlan._to_primitive(v) for v in value]
+        if isinstance(value, tuple):
+            return [ExperimentPlan._to_primitive(v) for v in value]
+        return value
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable deterministic dict representation."""
+        return {
+            "units": self._to_primitive(self.units),
+            "seed": self.seed,
+            "record_schema_version": self.record_schema_version,
+            "settings": self._to_primitive(self.settings),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ExperimentPlan":
+        """Rebuild an ExperimentPlan from to_dict-compatible data."""
+        return cls(
+            units=list(data.get("units", [])),
+            seed=data.get("seed"),
+            record_schema_version=data.get("record_schema_version", "v1"),
+            settings=dict(data.get("settings", {}) or {}),
+        )
+
+    def stable_hash(self) -> str:
+        """Stable content hash for caching/replay identity."""
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 @dataclass

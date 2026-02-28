@@ -214,6 +214,8 @@ def _plan_to_config(plan: ExperimentPlan):
         attention=settings.get("attention", {}),
         context_inference=settings.get("context_inference", {}),
         phases=phases,
+        resolved_plan=bool(settings.get("resolved_plan", False)),
+        resolved_phase_contexts=list(settings.get("resolved_phase_contexts", [])),
     )
 
 
@@ -244,12 +246,16 @@ def _assemble_from_config(config):
     if getattr(config, "salience", None):
         rep_params.setdefault("salience", config.salience)
 
-    rep_params = _infer_contexts(rep_params, config)
-    inferred_contexts = _infer_phase_contexts(config)
-    if any(label is not None for label in inferred_contexts):
-        contexts = set(rep_params.get("contexts", []))
-        contexts.update(label for label in inferred_contexts if label is not None)
-        rep_params["contexts"] = sorted(contexts)
+    resolved_plan = bool(getattr(config, "resolved_plan", False))
+    if resolved_plan:
+        inferred_contexts = list(getattr(config, "resolved_phase_contexts", []) or [])
+    else:
+        rep_params = _infer_contexts(rep_params, config)
+        inferred_contexts = _infer_phase_contexts(config)
+        if any(label is not None for label in inferred_contexts):
+            contexts = set(rep_params.get("contexts", []))
+            contexts.update(label for label in inferred_contexts if label is not None)
+            rep_params["contexts"] = sorted(contexts)
 
     representation = build_representation(rep_name, **rep_params)
 

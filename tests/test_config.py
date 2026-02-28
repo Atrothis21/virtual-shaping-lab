@@ -293,6 +293,7 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert plan.units[0]["protocol"] == "acquisition"
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
+    assert plan.settings["resolved_plan"] is True
 
 
 def test_assemble_experiment_accepts_plan():
@@ -303,3 +304,43 @@ def test_assemble_experiment_accepts_plan():
     assert units
     assert agent is not None
     assert representation is not None
+
+
+def test_experiment_plan_round_trip_and_stable_hash():
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = cfg.to_plan()
+    blob = plan.to_dict()
+    rebuilt = ExperimentPlan.from_dict(blob)
+
+    assert rebuilt.to_dict() == blob
+    assert rebuilt.stable_hash() == plan.stable_hash()
+
+
+def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
+    payload = _base_payload()
+    payload["experiment"]["context_inference"] = {"enabled": True, "max_contexts": 2}
+    payload["experiment"]["phases"] = [
+        {
+            "name": "Acq",
+            "protocol": "acquisition",
+            "stimuli": {"cs_plus": ["tone"]},
+            "params": {"n_trials": 1},
+        },
+        {
+            "name": "Ext",
+            "protocol": "nonreinforcement",
+            "stimuli": {"cs_plus": ["tone"]},
+            "params": {"n_trials": 1},
+        },
+    ]
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = cfg.to_plan()
+
+    monkeypatch.setattr(
+        assemble_mod,
+        "_infer_contexts",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("should not be called")),
+    )
+    units, _agent, _rep = assemble_mod.assemble_experiment(plan)
+    assert len(units) == 2
