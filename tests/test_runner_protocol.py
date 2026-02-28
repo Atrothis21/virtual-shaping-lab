@@ -2,7 +2,9 @@ from typing import Any, Dict, List
 
 from experiment.runner import Runner
 from experiment.phases.base import PhaseBase
+from experiment.domain.types import StepResult
 from protocols.base import BaseProtocol
+from domain.types import Observation
 
 
 class DummyPhase(PhaseBase):
@@ -50,6 +52,28 @@ class DummyAgent:
         return 0.5
 
 
+class DummyRunnableUnit:
+    def __init__(self):
+        self.reset_called = False
+
+    def reset(self, ctx):
+        self.reset_called = True
+
+    def iter_steps(self, ctx):
+        yield StepResult(
+            observation=Observation(stimuli=["tone"], context="A"),
+            reward=0.1,
+            done=False,
+            metadata={"record": {"phase": "iter_phase", "trial": 0, "prediction": 0.2}},
+        )
+        yield StepResult(
+            observation=Observation(stimuli=["tone"], context="A"),
+            reward=0.2,
+            done=True,
+            metadata={"record": {"phase": "iter_phase", "trial": 1, "prediction": 0.3}},
+        )
+
+
 def test_runner_handles_phase():
     agent = DummyAgent()
     phase = DummyPhase(agent, n_trials=1)
@@ -66,3 +90,12 @@ def test_runner_handles_protocol():
     records = runner.run()
     assert len(records) == 2
     assert records[0]["subphase_name"] == "dummy"
+
+
+def test_runner_handles_runnable_unit_iter_steps():
+    unit = DummyRunnableUnit()
+    runner = Runner(unit)
+    records = runner.run()
+    assert unit.reset_called is True
+    assert len(records) == 2
+    assert records[0]["phase_name"] == "iter_phase"

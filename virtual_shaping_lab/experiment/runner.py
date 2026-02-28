@@ -2,6 +2,10 @@
 
 from typing import List, Dict, Any, Protocol, runtime_checkable
 
+import numpy as np
+
+from experiment.domain.types import ExperimentContext
+from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.phases.series_helpers import attach_reference_stimuli
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
 
@@ -15,6 +19,12 @@ class ProtocolLike(Protocol):
 class PhaseLike(Protocol):
     def has_next_trial(self) -> bool: ...
     def step(self) -> Dict[str, Any] | None: ...
+
+
+@runtime_checkable
+class RunnableUnitLike(Protocol):
+    def reset(self, ctx: ExperimentContext) -> None: ...
+    def iter_steps(self, ctx: ExperimentContext): ...
 
 
 class Runner:
@@ -100,6 +110,53 @@ class Runner:
         protocol.records = records
         return records
 
+    def _build_context(self, unit: Any) -> ExperimentContext:
+        agent = getattr(unit, "agent", None)
+        if agent is None and hasattr(unit, "phase"):
+            agent = getattr(unit.phase, "agent", None)
+        if agent is None and hasattr(unit, "protocol"):
+            agent = getattr(unit.protocol, "agent", None)
+        return ExperimentContext(agent=agent, rng=np.random.default_rng())
+
+    def _run_runnable_unit(self, unit: RunnableUnitLike) -> List[Dict[str, Any]]:
+        """
+        v2.1 path for units implementing iter_steps(context).
+        """
+        ctx = self._build_context(unit)
+        try:
+            unit.reset(ctx)
+        except TypeError:
+            # Backward-compatible for adapters that expose reset without context.
+            unit.reset()
+
+        records: List[Dict[str, Any]] = []
+        for step in unit.iter_steps(ctx):
+            record = None
+            metadata = getattr(step, "metadata", None)
+            if isinstance(metadata, dict):
+                candidate = metadata.get("record")
+                if isinstance(candidate, dict):
+                    record = candidate
+
+            if record is None:
+                observation = getattr(step, "observation", None)
+                context = (
+                    observation.context
+                    if isinstance(observation, Observation)
+                    else "A"
+                )
+                record = {
+                    "phase": "runnable_unit",
+                    "trial": len(records),
+                    "reward": float(getattr(step, "reward", 0.0)),
+                    "context": context,
+                }
+
+            finalize_record(record, phase_name=record.get("phase"))
+            records.append(record)
+
+        return records
+
     def run(self) -> List[Dict[str, Any]]:
         """
         Run protocols/phases to completion.
@@ -120,14 +177,16 @@ class Runner:
             attach_reference_stimuli(units)
 
         for unit in units:
-            if isinstance(unit, ProtocolLike):
+            if isinstance(unit, RunnableUnitLike):
+                records.extend(self._run_runnable_unit(unit))
+            elif isinstance(unit, ProtocolLike):
                 records.extend(self._run_protocol(unit))
             elif isinstance(unit, PhaseLike):
                 records.extend(self._run_phase(unit))
             else:
                 raise TypeError(
-                    f"Unsupported runtime unit: {type(unit).__name__} "
-                    "must implement run() or (has_next_trial + step)."
+                    f"Unsupported runtime unit: {type(unit).__name__} must implement one of: "
+                    "iter_steps(context), run(), or (has_next_trial + step)."
                 )
 
         return records
