@@ -188,7 +188,12 @@ class Runner:
                     "context": context,
                 }
 
-            finalize_record(record, phase_name=record.get("phase"))
+            finalize_record(
+                record,
+                phase_name=record.get("phase"),
+                protocol_phase_index=record.get("subphase"),
+                protocol_phase_name=record.get("subphase_name"),
+            )
             self._emit_record(record)
             records.append(record)
 
