@@ -30,6 +30,45 @@ class DummyPhase(PhaseBase):
             "prediction": outcome["prediction"],
         }
 
+    def reset(self, ctx):
+        self.trial_index = 0
+        self.records = []
+        self._rng = ctx.rng
+
+    def iter_steps(self, ctx):
+        if self.trial_index != 0:
+            self.reset(ctx)
+        while self.has_next_trial():
+            record = self.step()
+            if record is None:
+                continue
+            yield StepResult(
+                observation=Observation(stimuli=["tone"], context=record.get("context", "A")),
+                reward=float(record.get("reward", 0.0)),
+                learning_enabled=self.allows_learning,
+                done=not self.has_next_trial(),
+                metadata={"record": record},
+            )
+
+
+class LegacyOnlyPhase(PhaseBase):
+    name = "legacy_only"
+
+    def __init__(self, agent, n_trials=1):
+        super().__init__(agent=agent, stimuli=["tone"], n_trials=n_trials, params={})
+
+    def sample_trial(self):
+        return {"stimulus": "tone"}
+
+    def run_trial(self, trial_spec):
+        return {"reward": 0.0, "state": "s", "prediction": 0.5, "action": None}
+
+    def apply_learning(self, trial_spec, outcome):
+        return None
+
+    def record_trial(self, trial_spec, outcome):
+        return {"phase": self.name, "trial": self.trial_index, "prediction": outcome["prediction"]}
+
 
 class DummyProtocol(BaseProtocol):
     name = "dummy_protocol"
@@ -174,7 +213,7 @@ def test_runner_record_mode_tick_emits_tick_records_for_timed_schedule():
 
 def test_runner_strict_mode_blocks_legacy_phase_fallback():
     agent = DummyAgent()
-    phase = DummyPhase(agent, n_trials=1)
+    phase = LegacyOnlyPhase(agent, n_trials=1)
     runner = Runner(phase, settings={"strict_mode": True})
     try:
         runner.run()
@@ -186,7 +225,7 @@ def test_runner_strict_mode_blocks_legacy_phase_fallback():
 def test_runner_env_strict_blocks_legacy_phase_fallback(monkeypatch):
     monkeypatch.setenv("RUNNER_STRICT", "1")
     agent = DummyAgent()
-    phase = DummyPhase(agent, n_trials=1)
+    phase = LegacyOnlyPhase(agent, n_trials=1)
     runner = Runner(phase)
     try:
         runner.run()

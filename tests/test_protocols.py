@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from experiment.domain.types import ExperimentContext
+from experiment.domain.types import ExperimentContext, StepResult
 from protocols.base import BaseProtocol
 from protocols.blocking import BlockingProtocol
 from protocols.conditioned_inhibition import ConditionedInhibitionProtocol
@@ -23,6 +23,7 @@ from protocols.reward_schedules import (
     VariableIntervalSchedule,
 )
 from experiment.phases.base import PhaseBase
+from domain.types import Observation
 
 
 class DummyPhase(PhaseBase):
@@ -42,6 +43,26 @@ class DummyPhase(PhaseBase):
 
     def record_trial(self, trial_spec, outcome):
         return {"phase": self.name, "trial": self.trial_index}
+
+    def reset(self, ctx):
+        self.trial_index = 0
+        self.records = []
+        self._rng = ctx.rng
+
+    def iter_steps(self, ctx):
+        if self.trial_index != 0:
+            self.reset(ctx)
+        while self.has_next_trial():
+            record = self.step()
+            if record is None:
+                continue
+            yield StepResult(
+                observation=Observation(stimuli=["tone"], context=record.get("context", "A")),
+                reward=float(record.get("reward", 0.0)),
+                learning_enabled=self.allows_learning,
+                done=not self.has_next_trial(),
+                metadata={"record": record},
+            )
 
 
 class DummyAgent:
