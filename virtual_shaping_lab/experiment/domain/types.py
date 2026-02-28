@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 import numpy as np
 
@@ -13,7 +13,43 @@ from virtual_shaping_lab.domain.types import Observation
 
 
 TrialSpec = dict[str, Any]
-TrialRecord = dict[str, Any]
+
+
+class TrialRecord(TypedDict, total=False):
+    """
+    Stable analysis/runtime record contract.
+
+    Units may add extra keys, but these base keys should always be present
+    after runtime finalization (with None/default values when not applicable).
+    """
+
+    phase: str | None
+    phase_name: str | None
+    protocol_name: str | None
+    unit_path: str | None
+    subphase: int | None
+    subphase_name: str | None
+
+    trial: int | None
+    tick: int | None
+    t_s: float | None
+    dt_s: float | None
+    trial_step: int | None
+    trial_id: Any
+
+    context: Any
+    stimulus: Any
+    stimulus_type: str | None
+    action: Any
+    response: Any
+    reward: float | None
+    prediction: float | None
+    outcome_type: str | None
+    schedule: str | None
+    done: bool | None
+    learning_enabled: bool | None
+
+    metadata: dict[str, Any]
 
 
 def _is_time_grid_aligned(duration_s: float, dt_s: float, tol: float = 1e-9) -> bool:

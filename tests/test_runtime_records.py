@@ -12,3 +12,36 @@ def test_finalize_record_sets_fields():
     assert record["phase_name"] == "Phase 1"
     assert record["subphase"] == 0
     assert record["subphase_name"] == "acquisition"
+
+
+def test_finalize_record_applies_stable_trial_record_schema_defaults():
+    record = {"phase": "acquisition", "trial": 2, "reward": 1.0}
+    out = finalize_record(record, phase_name="acquisition")
+    for key in (
+        "phase",
+        "phase_name",
+        "protocol_name",
+        "unit_path",
+        "subphase",
+        "subphase_name",
+        "trial",
+        "tick",
+        "t_s",
+        "dt_s",
+        "trial_step",
+        "trial_id",
+        "context",
+        "stimulus",
+        "stimulus_type",
+        "action",
+        "response",
+        "reward",
+        "prediction",
+        "outcome_type",
+        "schedule",
+        "done",
+        "learning_enabled",
+        "metadata",
+    ):
+        assert key in out
+    assert out["metadata"] == {}
