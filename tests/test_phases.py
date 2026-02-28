@@ -10,6 +10,7 @@ from experiment.phases.compound_nonreinforcement import CompoundNonReinforcement
 from experiment.phases.probe import ProbePhase
 from experiment.phases.concurrent_schedule import ConcurrentSchedulePhase
 from experiment.phases.context_shift import ContextShiftPhase
+from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from experiment.phases.series_helpers import attach_reference_stimuli
 from experiment.domain.types import EventSpec, ExperimentContext, TrialTimeSpec
@@ -429,4 +430,82 @@ def test_nonreinforcement_build_trial_schedule_attaches_metadata(dummy_agent):
     ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(17))
     step = list(phase.iter_steps(ctx))[0]
     assert step.metadata.get("trial_schedule") is not None
+
+
+def test_probe_phase_supports_iter_steps_contract(dummy_agent):
+    phase = ProbePhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+        params={},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(19))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "probe"
+
+
+def test_compound_acquisition_phase_supports_iter_steps_contract(dummy_agent):
+    phase = CompoundAcquisitionPhase(
+        agent=dummy_agent,
+        stimuli={"compound": ["tone", "noise"]},
+        n_trials=2,
+        params={},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(21))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "compound_acquisition"
+
+
+def test_compound_nonreinforcement_phase_supports_iter_steps_contract(dummy_agent):
+    phase = CompoundNonReinforcementPhase(
+        agent=dummy_agent,
+        stimuli={"compound": ["tone", "noise"]},
+        n_trials=2,
+        params={},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(23))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "compound_nonreinforcement"
+
+
+def test_concurrent_schedule_phase_supports_iter_steps_contract():
+    phase = ConcurrentSchedulePhase(
+        agent=DummyAgent(action="left"),
+        n_trials=2,
+        schedule_left={"type": "fixed_ratio", "value": 1},
+        schedule_right={"type": "fixed_ratio", "value": 1},
+        params={"action_labels": ["left", "right"]},
+        stimuli={"cs_plus": ["tone"]},
+    )
+    ctx = ExperimentContext(agent=phase.agent, rng=np.random.default_rng(25))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "concurrent_schedule"
+
+
+def test_criterion_shift_phase_supports_iter_steps_contract(dummy_agent):
+    phase = CriterionShiftPhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=5,
+        params={"criterion": {"type": "prediction_threshold", "threshold": 0.1, "window": 1}},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(27))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) >= 1
+    assert steps[-1].metadata.get("record", {}).get("phase") == "criterion_shift"
+
+
+def test_context_shift_phase_supports_iter_steps_contract(dummy_agent):
+    phase = ContextShiftPhase(agent=dummy_agent, params={"context": "B"})
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(29))
+    steps = list(phase.iter_steps(ctx))
+    assert steps == []
 
