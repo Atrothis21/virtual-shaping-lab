@@ -12,6 +12,7 @@ from experiment.phases.concurrent_schedule import ConcurrentSchedulePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from experiment.phases.series_helpers import attach_reference_stimuli
+from experiment.domain.types import ExperimentContext
 
 
 class DummyPhase(PhaseBase):
@@ -347,4 +348,40 @@ def test_compound_nonreinforcement_phase_smoke(dummy_agent):
     )
     record = phase.step()
     assert record["phase"] == "compound_nonreinforcement"
+
+
+def test_acquisition_phase_supports_iter_steps_contract(dummy_agent):
+    phase = AcquisitionPhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+        params={"outcome": 1.0},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(7))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "acquisition"
+
+
+def test_operant_acquisition_phase_supports_iter_steps_contract():
+    class DummySchedule:
+        name = "dummy"
+        def reset(self):
+            self.reset_called = True
+        def step(self, action, t):
+            return 1.0
+
+    agent = DummyAgent(action=1)
+    phase = OperantAcquisitionPhase(
+        agent=agent,
+        stimuli={"cs_plus": ["lever"]},
+        n_trials=2,
+        reward_schedule=DummySchedule(),
+    )
+    ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(9))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "operant_acquisition"
 

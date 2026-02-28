@@ -2,9 +2,13 @@
 
 from typing import Any, Dict, List
 
+import numpy as np
+
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from virtual_shaping_lab.agents.representations.observation import make_observation
+from virtual_shaping_lab.domain.types import Observation
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult
 
 
 class AcquisitionPhase(PhaseBase):
@@ -136,6 +140,36 @@ class AcquisitionPhase(PhaseBase):
             "series_labels": {"label_1": "CS1", "label_2": "CS2"},
             "series_values": {"CS1": outcome["prediction"], "CS2": None},
         }
+
+    # ------------------------------------------------------------------
+    # v2.1 runnable-unit hooks
+    # ------------------------------------------------------------------
+
+    def reset(self, ctx: ExperimentContext) -> None:
+        self.trial_index = 0
+        self.records = []
+        if self.params.get("rng_seed") is None:
+            self._rng = ctx.rng
+        else:
+            self._rng = np.random.default_rng(self.params.get("rng_seed"))
+
+    def iter_steps(self, ctx: ExperimentContext):
+        if self.trial_index != 0:
+            self.reset(ctx)
+        while self.has_next_trial():
+            record = self.step()
+            if record is None:
+                continue
+            stimulus = record.get("stimulus")
+            stimuli = list(stimulus) if isinstance(stimulus, tuple) else ([stimulus] if stimulus is not None else [])
+            observation = Observation(stimuli=stimuli, context=record.get("context", self.context))
+            yield StepResult(
+                observation=observation,
+                reward=float(record.get("reward", 0.0)),
+                learning_enabled=self.allows_learning,
+                done=not self.has_next_trial(),
+                metadata={"record": record},
+            )
 
 
 
