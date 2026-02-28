@@ -12,11 +12,6 @@ from virtual_shaping_lab.experiment.runtime_records import finalize_record
 
 
 @runtime_checkable
-class ProtocolLike(Protocol):
-    def run(self) -> List[Dict[str, Any]]: ...
-
-
-@runtime_checkable
 class PhaseLike(Protocol):
     def has_next_trial(self) -> bool: ...
     def step(self) -> Dict[str, Any] | None: ...
@@ -79,76 +74,11 @@ class Runner:
                 records.append(record)
         return records
 
-    def _run_protocol(self, protocol: Any, ctx: ExperimentContext) -> List[Dict[str, Any]]:
-        """
-        Standardized protocol execution path driven by phase stepping.
-
-        This keeps runtime orchestration in one place while preserving
-        protocol-specific phase construction logic.
-        """
-        if not hasattr(protocol, "build_phases"):
-            return protocol.run()
-
-        phases = protocol.build_phases()
-        attach_reference_stimuli(phases)
-        for phase in phases:
-            self._prepare_phase_rng(phase, ctx)
-
-        if hasattr(protocol, "_validate_phase_ordering"):
-            protocol._validate_phase_ordering(phases)
-
-        max_debug_trials = (
-            protocol._max_debug_trials()
-            if hasattr(protocol, "_max_debug_trials")
-            else max(getattr(protocol, "n_trials", 0) * 2, 10_000)
-        )
-
-        phase_index = 0
-        records: List[Dict[str, Any]] = []
-
-        while getattr(protocol, "trial_index", 0) < getattr(protocol, "n_trials", 0):
-            if getattr(protocol, "trial_index", 0) > max_debug_trials:
-                raise RuntimeError(
-                    f"Protocol exceeded safety limit ({max_debug_trials} trials)"
-                )
-
-            while phase_index < len(phases) and not phases[phase_index].has_next_trial():
-                phase_index += 1
-            if phase_index >= len(phases):
-                break
-
-            phase = phases[phase_index]
-            record = phase.step()
-
-            if record is not None:
-                finalize_record(
-                    record,
-                    phase_name=record.get("phase"),
-                    protocol_phase_index=phase_index,
-                    protocol_phase_name=getattr(phase, "name", str(phase_index)),
-                )
-                self._emit_record(record)
-                records.append(record)
-
-            protocol.trial_index = getattr(protocol, "trial_index", 0) + 1
-
-            if not phase.has_next_trial():
-                phase_index += 1
-                if phase_index >= len(phases):
-                    break
-
-        protocol.records = records
-        return records
-
     def _build_context(self, unit: Any) -> ExperimentContext:
         if self.context is not None:
             return self.context
 
         agent = getattr(unit, "agent", None)
-        if agent is None and hasattr(unit, "phase"):
-            agent = getattr(unit.phase, "agent", None)
-        if agent is None and hasattr(unit, "protocol"):
-            agent = getattr(unit.protocol, "agent", None)
         return ExperimentContext(
             agent=agent,
             rng=np.random.default_rng(self.seed),
@@ -159,11 +89,7 @@ class Runner:
         """
         v2.1 path for units implementing iter_steps(context).
         """
-        try:
-            unit.reset(ctx)
-        except TypeError:
-            # Backward-compatible for adapters that expose reset without context.
-            unit.reset()
+        unit.reset(ctx)
 
         records: List[Dict[str, Any]] = []
         for step in unit.iter_steps(ctx):
@@ -229,14 +155,12 @@ class Runner:
 
             if isinstance(unit, RunnableUnitLike):
                 records.extend(self._run_runnable_unit(unit, ctx))
-            elif isinstance(unit, ProtocolLike):
-                records.extend(self._run_protocol(unit, ctx))
             elif isinstance(unit, PhaseLike):
                 records.extend(self._run_phase(unit, ctx))
             else:
                 raise TypeError(
                     f"Unsupported runtime unit: {type(unit).__name__} must implement one of: "
-                    "iter_steps(context), run(), or (has_next_trial + step)."
+                    "iter_steps(context) or (has_next_trial + step)."
                 )
 
         if self._owns_sink:

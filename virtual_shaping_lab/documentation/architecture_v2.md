@@ -77,8 +77,15 @@ Classical vs Operant
 - Distinction is assembly-time component choice, not agent subclassing.
 
 Runner/Protocol Notes
-- Runner uses a standardized phase-stepping loop for protocols.
-- Phases provide action availability and RNG-driven action selection via `PhaseBase` helpers.
+- v2.1 runtime contracts:
+  - `IRunnableUnit.reset(context)`
+  - `IRunnableUnit.iter_steps(context) -> StepResult`
+- `BaseProtocol` now executes as a native runnable unit and composes phases via `iter_steps`.
+- `Runner` is contract-first:
+  - executes runnable units through `iter_steps(context)`
+  - keeps phase `step()` fallback for atomic phase-mode compatibility
+  - emits records through `IRecordSink` (default `InMemorySink`)
+- `ExperimentContext` centralizes `agent`, deterministic `rng`, `clock_s`, and shared runtime settings/state.
 
 Compatibility Notes
 - Config names `classical_agent` and `operant_agent` remain supported as assembly aliases.
