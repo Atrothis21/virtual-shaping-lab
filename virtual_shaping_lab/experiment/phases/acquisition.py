@@ -8,7 +8,7 @@ from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import Observation
-from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule, TrialTimeSpec
+from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
 
 class AcquisitionPhase(PhaseBase):
@@ -181,7 +181,7 @@ class AcquisitionPhase(PhaseBase):
         trial_index: int,
     ) -> TrialSchedule | None:
         spec = self.params.get("trial_time_spec")
-        if not isinstance(spec, TrialTimeSpec):
+        if spec is None or not hasattr(spec, "duration_s") or not hasattr(spec, "dt_s"):
             return None
         return TrialSchedule(
             time=spec,

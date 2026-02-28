@@ -12,7 +12,7 @@ from experiment.phases.concurrent_schedule import ConcurrentSchedulePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from experiment.phases.series_helpers import attach_reference_stimuli
-from experiment.domain.types import ExperimentContext
+from experiment.domain.types import EventSpec, ExperimentContext, TrialTimeSpec
 
 
 class DummyPhase(PhaseBase):
@@ -384,4 +384,49 @@ def test_operant_acquisition_phase_supports_iter_steps_contract():
     assert len(steps) == 2
     assert steps[-1].done is True
     assert steps[0].metadata.get("record", {}).get("phase") == "operant_acquisition"
+
+
+def test_nonreinforcement_phase_supports_iter_steps_contract(dummy_agent):
+    phase = NonReinforcementPhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+        params={},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(11))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "nonreinforcement"
+
+
+def test_differential_phase_supports_iter_steps_contract(dummy_agent):
+    phase = DifferentialAcquisitionPhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+        n_trials=2,
+        params={},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(13))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "differential_acquisition"
+
+
+def test_nonreinforcement_build_trial_schedule_attaches_metadata(dummy_agent):
+    spec = TrialTimeSpec(
+        duration_s=1.0,
+        dt_s=0.5,
+        events=[EventSpec(event_type="stimulus", start_s=0.0, end_s=1.0)],
+    )
+    phase = NonReinforcementPhase(
+        agent=dummy_agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+        params={"trial_time_spec": spec},
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(17))
+    step = list(phase.iter_steps(ctx))[0]
+    assert step.metadata.get("trial_schedule") is not None
 
