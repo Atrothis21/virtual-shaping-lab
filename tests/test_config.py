@@ -4,6 +4,7 @@ import pytest
 
 from experiment import assemble as assemble_mod
 from experiment.config import ExperimentConfig, PhaseConfig
+from experiment.domain.types import ExperimentPlan
 
 
 def _base_payload():
@@ -280,3 +281,25 @@ def test_require_fields_error():
         ExperimentConfig._require_fields({"a": 1}, ["a", "b"], "experiment")
     except ValueError as exc:
         assert "Missing required experiment fields" in str(exc)
+
+
+def test_experiment_config_to_plan_contains_units_and_settings():
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = cfg.to_plan()
+
+    assert isinstance(plan, ExperimentPlan)
+    assert len(plan.units) == 1
+    assert plan.units[0]["protocol"] == "acquisition"
+    assert plan.settings["learner"] == "rescorla_wagner"
+    assert plan.settings["agent"] == "classical_agent"
+
+
+def test_assemble_experiment_accepts_plan():
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = cfg.to_plan()
+    units, agent, representation = assemble_mod.assemble_experiment(plan)
+    assert units
+    assert agent is not None
+    assert representation is not None

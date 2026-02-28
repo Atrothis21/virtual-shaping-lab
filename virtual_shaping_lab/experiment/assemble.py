@@ -1,5 +1,7 @@
 # experiment/assemble.py
 
+from types import SimpleNamespace
+
 from experiment.factories.learner_factory import build_learner
 from experiment.factories.agent_factory import build_agent
 from experiment.factories.protocol_factory import build_protocol, PROTOCOL_REGISTRY
@@ -7,6 +9,8 @@ from experiment.factories.phase_factory import build_phase
 from experiment.factories.representation_factory import build_representation
 from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.factories.policy_factory import build_policy
+from experiment.config import PhaseConfig
+from experiment.domain.types import ExperimentPlan
 
 OPERANT_AGENT_NAME = "operant_agent"
 
@@ -180,7 +184,40 @@ def _is_atomic_phase(protocol_name: str) -> bool:
 
 
 # Assembly pipeline: build representation -> policy (optional) -> learner -> agent -> runtime units.
-def assemble_experiment(config):
+def _plan_to_config(plan: ExperimentPlan):
+    settings = plan.settings or {}
+    phases = []
+    for i, unit in enumerate(plan.units):
+        if isinstance(unit, PhaseConfig):
+            phases.append(unit)
+            continue
+        if not isinstance(unit, dict):
+            raise TypeError(
+                f"ExperimentPlan.units[{i}] must be dict or PhaseConfig, got {type(unit).__name__}."
+            )
+        phases.append(
+            PhaseConfig(
+                name=unit.get("name", f"Phase {i}"),
+                protocol=unit["protocol"],
+                stimuli=unit.get("stimuli"),
+                params=unit.get("params") or {},
+            )
+        )
+
+    return SimpleNamespace(
+        learner=settings["learner"],
+        agent=settings["agent"],
+        representation=settings["representation"],
+        policy=settings.get("policy"),
+        stimuli=settings.get("stimuli", []),
+        salience=settings.get("salience", {}),
+        attention=settings.get("attention", {}),
+        context_inference=settings.get("context_inference", {}),
+        phases=phases,
+    )
+
+
+def _assemble_from_config(config):
     """
     Assemble runtime objects from an ExperimentConfig.
 
@@ -261,3 +298,12 @@ def assemble_experiment(config):
             unit.context_source = "inferred"
 
     return runtime_units, agent, representation
+
+
+def assemble_experiment(config):
+    """
+    Assemble runtime objects from an ExperimentConfig or ExperimentPlan.
+    """
+    if isinstance(config, ExperimentPlan):
+        config = _plan_to_config(config)
+    return _assemble_from_config(config)
