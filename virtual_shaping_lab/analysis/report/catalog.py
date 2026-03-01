@@ -12,6 +12,7 @@ DEFAULT_REPORT_BY_PROTOCOL: dict[str, str] = {
     "aba_renewal": "verification_report",
     "abc_renewal": "verification_report",
     "aab_renewal": "verification_report",
+    "operant_conditioning": "verification_report",
 }
 
 
