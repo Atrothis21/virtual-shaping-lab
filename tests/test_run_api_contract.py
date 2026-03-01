@@ -254,8 +254,48 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("plan_hash"), str) and report_body["metadata"]["plan_hash"]
     assert report_body["metadata"].get("record_schema_version") == "v1"
     assert isinstance(report_body["metadata"].get("template_version_used"), int)
+    assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
+    assert report_body["metadata"]["source_metadata_complete"] is True
+    assert report_body["metadata"]["missing_source_metadata"] == []
     assert report_body["lifecycle"]["state"] == "ReportComplete"
     assert "view_report" in report_body["lifecycle"]["next_actions"]
+
+
+def test_run_report_endpoint_flags_missing_source_metadata(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    fixture_output_dir = tmp_path / "report_regen_missing_meta_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(output_dir),
+        )
+
+    monkeypatch.setattr(api_run, "reports_dir", fixture_output_dir)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    run_body = api_run.run_api(payload)
+    source_run_id = run_body["run_id"]
+
+    # Simulate legacy/degraded source status metadata.
+    api_services.RunStatusStore.set(
+        source_run_id,
+        state="completed",
+        artifacts=run_body["artifacts"],
+        metadata={"plan_hash": "abc"},
+        error=None,
+    )
+
+    report_body = api_run.run_report_api(source_run_id)
+    assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
+    assert report_body["metadata"]["source_metadata_complete"] is False
+    assert set(report_body["metadata"]["missing_source_metadata"]) == {
+        "record_schema_version",
+        "template_version_used",
+    }
 
 
 def test_run_report_endpoint_404_for_missing_run():

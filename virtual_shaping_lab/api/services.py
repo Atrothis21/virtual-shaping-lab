@@ -255,6 +255,12 @@ class ReportService:
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
         }
+        source_status = store.get(run_id) or {}
+        source_metadata = dict(source_status.get("metadata", {}))
+        required_source_keys = {"plan_hash", "record_schema_version", "template_version_used"}
+        missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
+        source_metadata_complete = len(missing_source_keys) == 0
+
         new_run_id = report_dir.name
         _set_status_with_lifecycle(
             store,
@@ -265,6 +271,10 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "source_run_id": run_id,
+                "source_metadata_complete": source_metadata_complete,
+                "missing_source_metadata": missing_source_keys,
+                "regeneration_mode": "from_artifacts",
             },
             error=None,
         )
@@ -278,5 +288,8 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "source_metadata_complete": source_metadata_complete,
+                "missing_source_metadata": missing_source_keys,
+                "regeneration_mode": "from_artifacts",
             },
         }
