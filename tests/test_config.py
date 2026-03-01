@@ -474,6 +474,31 @@ def test_config_pipeline_supports_injected_components():
     ]
 
 
+def test_config_pipeline_supports_partial_component_overrides():
+    calls = []
+
+    class PartialNormalizer:
+        @staticmethod
+        def normalize_report(report):
+            calls.append("normalize_report")
+            return PayloadNormalizer.normalize_report(report)
+
+    class PartialValidator:
+        @staticmethod
+        def validate_payload_shape(payload):
+            calls.append("validate_payload_shape")
+
+    payload = _base_payload()
+    cfg = ConfigPipeline(
+        ExperimentConfig,
+        normalizer=PartialNormalizer,
+        validator=PartialValidator,
+    ).build(payload)
+
+    assert isinstance(cfg, ExperimentConfig)
+    assert calls == ["validate_payload_shape", "normalize_report"]
+
+
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
     payload = _base_payload()
     payload["experiment"]["context_inference"] = {"enabled": True, "max_contexts": 2}

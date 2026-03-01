@@ -132,23 +132,72 @@ class ConfigPipeline:
         self._normalizer = normalizer
         self._validator = validator
 
+    @staticmethod
+    def _resolve_component_method(component: Any, method_name: str, fallback_component: Any):
+        method = getattr(component, method_name, None)
+        if callable(method):
+            return method
+        return getattr(fallback_component, method_name)
+
     def build(self, payload: Dict[str, Any]) -> "ExperimentConfig":
-        self._validator.validate_payload_shape(payload)
+        validate_payload_shape = self._resolve_component_method(
+            self._validator,
+            "validate_payload_shape",
+            PayloadValidator,
+        )
+        validate_phase_shape = self._resolve_component_method(
+            self._validator,
+            "validate_phase_shape",
+            PayloadValidator,
+        )
+        validate_required_fields = self._resolve_component_method(
+            self._validator,
+            "validate_required_fields",
+            PayloadValidator,
+        )
+        validate_experiment_identity_fields = self._resolve_component_method(
+            self._validator,
+            "validate_experiment_identity_fields",
+            PayloadValidator,
+        )
+        validate_runtime = self._resolve_component_method(
+            self._validator,
+            "validate_runtime",
+            PayloadValidator,
+        )
+
+        normalize_experiment = self._resolve_component_method(
+            self._normalizer,
+            "normalize_experiment",
+            PayloadNormalizer,
+        )
+        normalize_report = self._resolve_component_method(
+            self._normalizer,
+            "normalize_report",
+            PayloadNormalizer,
+        )
+        normalize_experiment_identity = self._resolve_component_method(
+            self._normalizer,
+            "normalize_experiment_identity",
+            PayloadNormalizer,
+        )
+
+        validate_payload_shape(payload)
 
         exp = payload["experiment"]
         rep = payload["report"]
 
-        self._validator.validate_phase_shape(exp)
-        self._validator.validate_required_fields(self._config_cls._require_fields, exp, rep)
-        self._validator.validate_experiment_identity_fields(exp)
+        validate_phase_shape(exp)
+        validate_required_fields(self._config_cls._require_fields, exp, rep)
+        validate_experiment_identity_fields(exp)
 
-        normalized = self._normalizer.normalize_experiment(
+        normalized = normalize_experiment(
             exp,
             parser=self._parser,
         )
-        normalized_report = self._normalizer.normalize_report(rep)
-        normalized_identity = self._normalizer.normalize_experiment_identity(exp)
-        self._validator.validate_runtime(
+        normalized_report = normalize_report(rep)
+        normalized_identity = normalize_experiment_identity(exp)
+        validate_runtime(
             self._config_cls.validate_runtime_constraints,
             normalized["phases"],
         )
