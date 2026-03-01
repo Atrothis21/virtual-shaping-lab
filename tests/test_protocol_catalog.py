@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+import pytest
+
+from protocols import catalog
+
+
+class _DummyProtocol:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+
+def test_protocol_catalog_has_expected_entries():
+    names = catalog.available_protocols()
+    assert "extinction" in names
+    assert "operant_conditioning" in names
+
+
+def test_protocol_catalog_validate_rejects_unknown():
+    with pytest.raises(KeyError):
+        catalog.validate_protocol_name("missing_protocol")
+
+
+def test_protocol_catalog_build_constructs_protocol(monkeypatch):
+    monkeypatch.setattr(catalog, "PROTOCOL_BUILDERS", {"dummy": _DummyProtocol})
+    proto = catalog.build_protocol(
+        "dummy",
+        agent="agent",
+        stimuli={"cs_plus": ["tone"]},
+        params={"n_trials": 5},
+    )
+    assert isinstance(proto, _DummyProtocol)
+    assert proto.kwargs["agent"] == "agent"
+    assert proto.kwargs["stimuli"] == {"cs_plus": ["tone"]}
+    assert proto.kwargs["params"] == {"n_trials": 5}
+
