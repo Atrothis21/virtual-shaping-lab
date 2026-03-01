@@ -182,10 +182,16 @@ class OperantAcquisitionPhase(PhaseBase):
         spec = self.params.get("trial_time_spec")
         if spec is None or not hasattr(spec, "duration_s") or not hasattr(spec, "dt_s"):
             return None
+        metadata: dict[str, Any] = {}
+        if hasattr(self.reward_schedule, "build_tick_runtime"):
+            runtime = self.reward_schedule.build_tick_runtime(spec)
+            if runtime is not None:
+                metadata["schedule_runtime"] = runtime
         return TrialSchedule(
             time=spec,
             base_stimuli=[],
             available_actions=list(self.get_available_actions()),
+            metadata=metadata,
         )
 
 

@@ -2,6 +2,17 @@
 
 import random
 
+from .schedule_runtime import (
+    AlwaysAvailable,
+    ConstantConsequenceMapper,
+    FixedIntervalAvailability,
+    FixedRatioGate,
+    FirstResponseGate,
+    TickScheduleRuntime,
+    VariableIntervalAvailability,
+    VariableRatioGate,
+)
+
 
 class RewardSchedule:
     """
@@ -38,6 +49,10 @@ class RewardSchedule:
         """
         raise NotImplementedError
 
+    def build_tick_runtime(self, time_spec):
+        """Optional tick-native schedule runtime adapter."""
+        return None
+
 
 # -------------------------------------------------
 # Ratio schedules
@@ -73,6 +88,13 @@ class FixedRatioSchedule(RewardSchedule):
 
         return 0.0
 
+    def build_tick_runtime(self, time_spec):
+        return TickScheduleRuntime(
+            availability=AlwaysAvailable(),
+            gate=FixedRatioGate(n=self.n),
+            consequence_mapper=ConstantConsequenceMapper(reward=self.reward),
+        )
+
 
 class VariableRatioSchedule(RewardSchedule):
     """
@@ -98,6 +120,13 @@ class VariableRatioSchedule(RewardSchedule):
         if random.random() < (1.0 / self.mean_n):
             return self.reward
         return 0.0
+
+    def build_tick_runtime(self, time_spec):
+        return TickScheduleRuntime(
+            availability=AlwaysAvailable(),
+            gate=VariableRatioGate(mean_n=self.mean_n),
+            consequence_mapper=ConstantConsequenceMapper(reward=self.reward),
+        )
 
 
 # -------------------------------------------------
@@ -130,6 +159,15 @@ class FixedIntervalSchedule(RewardSchedule):
             return self.reward
         return 0.0
 
+    def build_tick_runtime(self, time_spec):
+        dt_s = float(getattr(time_spec, "dt_s", 1.0) or 1.0)
+        interval_s = float(self.interval) * dt_s
+        return TickScheduleRuntime(
+            availability=FixedIntervalAvailability(interval_s=max(interval_s, 1e-12)),
+            gate=FirstResponseGate(),
+            consequence_mapper=ConstantConsequenceMapper(reward=self.reward),
+        )
+
 
 class VariableIntervalSchedule(RewardSchedule):
     """
@@ -161,3 +199,12 @@ class VariableIntervalSchedule(RewardSchedule):
             self._next_available = t + self._sample_interval()
             return self.reward
         return 0.0
+
+    def build_tick_runtime(self, time_spec):
+        dt_s = float(getattr(time_spec, "dt_s", 1.0) or 1.0)
+        mean_interval_s = float(self.mean_interval) * dt_s
+        return TickScheduleRuntime(
+            availability=VariableIntervalAvailability(mean_interval_s=max(mean_interval_s, 1e-12)),
+            gate=FirstResponseGate(),
+            consequence_mapper=ConstantConsequenceMapper(reward=self.reward),
+        )
