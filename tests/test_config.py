@@ -3,7 +3,13 @@ from types import SimpleNamespace
 import pytest
 
 from experiment import assemble as assemble_mod
-from experiment.config import ExperimentConfig, PhaseConfig, PayloadNormalizer, PayloadValidator
+from experiment.config import (
+    ExperimentConfig,
+    PhaseConfig,
+    PayloadNormalizer,
+    PayloadValidator,
+    PlanBuilder,
+)
 from experiment.domain.types import ExperimentPlan
 
 
@@ -334,6 +340,15 @@ def test_payload_normalizer_and_validator_pipeline_smoke():
     assert "representation" in normalized
     assert "phases" in normalized
     PayloadValidator.validate_runtime(ExperimentConfig.validate_runtime_constraints, normalized["phases"])
+
+
+def test_plan_builder_pipeline_smoke():
+    from experiment.plan_builder import build_experiment_plan
+
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = PlanBuilder.build(cfg, build_experiment_plan=build_experiment_plan)
+    assert isinstance(plan, ExperimentPlan)
 
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):

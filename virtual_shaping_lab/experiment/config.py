@@ -51,6 +51,14 @@ class PayloadValidator:
         validate_runtime_constraints(phases)
 
 
+class PlanBuilder:
+    """Declarative plan construction pipeline."""
+
+    @staticmethod
+    def build(config: "ExperimentConfig", *, build_experiment_plan):
+        return build_experiment_plan(config)
+
+
 @dataclass
 class PhaseConfig:
     """
@@ -404,4 +412,4 @@ class ExperimentConfig:
         """Build a declarative ExperimentPlan from this config."""
         from experiment.plan_builder import build_experiment_plan
 
-        return build_experiment_plan(self)
+        return PlanBuilder.build(self, build_experiment_plan=build_experiment_plan)
