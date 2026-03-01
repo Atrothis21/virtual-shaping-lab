@@ -8,6 +8,10 @@ from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
 from experiment.domain.types import ExperimentPlan
 from experiment.runner import Runner
+from api.lifecycle import (
+    LIFECYCLE_RUN_COMPLETE,
+    validate_lifecycle_transition,
+)
 
 
 class RunStatusStore:
@@ -25,8 +29,13 @@ class RunStatusStore:
         metadata: Optional[Dict[str, Any]] = None,
         error: Optional[Dict[str, Any]] = None,
     ) -> None:
+        previous = cls._runs.get(run_id, {})
+        previous_lifecycle_state = previous.get("lifecycle_state")
+        lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else state
+        validate_lifecycle_transition(previous_lifecycle_state, lifecycle_state)
         cls._runs[run_id] = {
             "state": state,
+            "lifecycle_state": lifecycle_state,
             "artifacts": artifacts or {},
             "metadata": metadata or {},
             "error": error,

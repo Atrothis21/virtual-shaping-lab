@@ -1,6 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
+from api.lifecycle import (
+    LIFECYCLE_PLAN_RESOLVED,
+    LIFECYCLE_REPORT_COMPLETE,
+    LIFECYCLE_RUN_COMPLETE,
+    LIFECYCLE_RUN_IN_PROGRESS,
+)
 
 def _require_fields(data: Dict[str, Any], required: tuple[str, ...], label: str) -> None:
     missing = [k for k in required if k not in data]
@@ -128,7 +134,7 @@ def build_run_create_response(
     *,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    lifecycle_state = "RunComplete" if state == "completed" else "RunInProgress"
+    lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else LIFECYCLE_RUN_IN_PROGRESS
     response = RunCreateResponse(
         status="success",
         run_id=run_id,
@@ -150,7 +156,7 @@ def build_plan_resolve_response(plan: Dict[str, Any], stable_hash: str) -> Dict[
         status="success",
         plan=plan,
         stable_hash=stable_hash,
-        lifecycle=_lifecycle("PlanResolved", ["create_run"]),
+        lifecycle=_lifecycle(LIFECYCLE_PLAN_RESOLVED, ["create_run"]),
     ).to_dict()
     _require_fields(response, ("status", "plan", "stable_hash", "lifecycle"), "PlanResolveResponse")
     return response
@@ -164,7 +170,7 @@ def build_run_status_response(
     metadata: Optional[Dict[str, Any]] = None,
     error: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    lifecycle_state = "RunComplete" if state == "completed" else "RunInProgress"
+    lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else LIFECYCLE_RUN_IN_PROGRESS
     response = RunStatusResponse(
         status="success",
         run_id=run_id,
@@ -193,7 +199,7 @@ def build_report_create_response(
         run_id=run_id,
         artifacts=artifacts,
         metadata=metadata or {},
-        lifecycle=_lifecycle("ReportComplete", ["view_report", "resolve_plan"]),
+        lifecycle=_lifecycle(LIFECYCLE_REPORT_COMPLETE, ["view_report", "resolve_plan"]),
     ).to_dict()
     _require_fields(response, ("status", "run_id", "artifacts", "metadata", "lifecycle"), "ReportCreateResponse")
     return response
