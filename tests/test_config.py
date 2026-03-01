@@ -4,6 +4,7 @@ import pytest
 
 from experiment import assemble as assemble_mod
 from experiment.config import (
+    ConfigParser,
     ExperimentConfig,
     PhaseConfig,
     PayloadNormalizer,
@@ -343,14 +344,12 @@ def test_payload_normalizer_and_validator_pipeline_smoke():
     payload = _base_payload()
     exp = payload["experiment"]
     rep = payload["report"]
+    parser = ConfigParser(ExperimentConfig)
 
     PayloadValidator.validate_required_fields(ExperimentConfig._require_fields, exp, rep)
     normalized = PayloadNormalizer.normalize_experiment(
         exp,
-        parse_representation=ExperimentConfig._parse_representation,
-        parse_policy=ExperimentConfig._parse_policy,
-        parse_experiment_fields=ExperimentConfig._parse_experiment_fields,
-        parse_phases=ExperimentConfig._parse_phases,
+        parser=parser,
     )
 
     assert "representation" in normalized
@@ -365,6 +364,15 @@ def test_plan_builder_pipeline_smoke():
     cfg = ExperimentConfig.from_payload(payload)
     plan = PlanBuilder.build(cfg, build_experiment_plan=build_experiment_plan)
     assert isinstance(plan, ExperimentPlan)
+
+
+def test_config_parser_composite_smoke():
+    payload = _base_payload()
+    exp = payload["experiment"]
+    parser = ConfigParser(ExperimentConfig)
+    assert parser.parse_representation(exp)["name"] == "vector_elemental"
+    assert parser.parse_policy(exp) is None
+    assert len(parser.parse_phases(exp)) == 1
 
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):

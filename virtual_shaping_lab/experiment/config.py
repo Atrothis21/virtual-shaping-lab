@@ -17,16 +17,12 @@ class PayloadNormalizer:
     @staticmethod
     def normalize_experiment(
         exp: Dict[str, Any],
-        *,
-        parse_representation,
-        parse_policy,
-        parse_experiment_fields,
-        parse_phases,
+        parser: "ConfigParser",
     ) -> Dict[str, Any]:
-        representation = parse_representation(exp)
-        policy = parse_policy(exp)
-        exp_stimuli, exp_salience, exp_attention, exp_context_inference = parse_experiment_fields(exp)
-        phases = parse_phases(exp)
+        representation = parser.parse_representation(exp)
+        policy = parser.parse_policy(exp)
+        exp_stimuli, exp_salience, exp_attention, exp_context_inference = parser.parse_experiment_fields(exp)
+        phases = parser.parse_phases(exp)
         return {
             "representation": representation,
             "policy": policy,
@@ -75,6 +71,28 @@ class PlanBuilder:
     @staticmethod
     def build(config: "ExperimentConfig", *, build_experiment_plan):
         return build_experiment_plan(config)
+
+
+class ConfigParser:
+    """Parser composite that adapts ExperimentConfig parse methods."""
+
+    def __init__(self, config_cls: "type[ExperimentConfig]"):
+        self._config_cls = config_cls
+
+    def parse_representation(self, exp: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
+        return self._config_cls._parse_representation(exp)
+
+    def parse_policy(self, exp: Dict[str, Any]) -> Optional[Union[str, Dict[str, Any]]]:
+        return self._config_cls._parse_policy(exp)
+
+    def parse_experiment_fields(
+        self,
+        exp: Dict[str, Any],
+    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any]]:
+        return self._config_cls._parse_experiment_fields(exp)
+
+    def parse_phases(self, exp: Dict[str, Any]) -> List["PhaseConfig"]:
+        return self._config_cls._parse_phases(exp)
 
 
 @dataclass
@@ -387,16 +405,14 @@ class ExperimentConfig:
 
         exp = payload["experiment"]
         rep = payload["report"]
+        parser = ConfigParser(cls)
 
         PayloadValidator.validate_phase_shape(exp)
         PayloadValidator.validate_required_fields(cls._require_fields, exp, rep)
 
         normalized = PayloadNormalizer.normalize_experiment(
             exp,
-            parse_representation=cls._parse_representation,
-            parse_policy=cls._parse_policy,
-            parse_experiment_fields=cls._parse_experiment_fields,
-            parse_phases=cls._parse_phases,
+            parser=parser,
         )
 
         config = cls(
