@@ -106,6 +106,13 @@ def test_protocol_factory_unknown_and_build(monkeypatch):
     assert inst.kwargs["params"] == {}
 
 
+def test_protocol_factory_normalizes_protocol_key(monkeypatch):
+    monkeypatch.setattr(protocol_factory, "PROTOCOL_REGISTRY", {"dummy_proto": DummyProtocol})
+    protocol_factory.validate_protocol("Dummy-Proto")
+    inst = protocol_factory.build_protocol("DUMMY-PROTO", agent="agent")
+    assert isinstance(inst, DummyProtocol)
+
+
 def test_representation_factory_unknown_and_build(monkeypatch):
     monkeypatch.setattr(representation_factory, "REPRESENTATION_REGISTRY", {"dummy": DummyRepresentation})
     with pytest.raises(KeyError):
