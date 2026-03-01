@@ -40,6 +40,13 @@ class PayloadNormalizer:
             raise ValueError("report.preset must be a non-empty string")
         return {"preset": preset.strip()}
 
+    @staticmethod
+    def normalize_experiment_identity(exp: Dict[str, Any]) -> Dict[str, str]:
+        return {
+            "learner": exp["learner"].strip(),
+            "agent": exp["agent"].strip(),
+        }
+
 
 class PayloadValidator:
     """Semantic/runtime constraint validation pipeline."""
@@ -140,14 +147,15 @@ class ConfigPipeline:
             parser=self._parser,
         )
         normalized_report = self._normalizer.normalize_report(rep)
+        normalized_identity = self._normalizer.normalize_experiment_identity(exp)
         self._validator.validate_runtime(
             self._config_cls.validate_runtime_constraints,
             normalized["phases"],
         )
 
         return self._config_cls(
-            learner=exp["learner"],
-            agent=exp["agent"],
+            learner=normalized_identity["learner"],
+            agent=normalized_identity["agent"],
             representation=normalized["representation"],
             policy=normalized["policy"],
             stimuli=normalized["stimuli"],

@@ -231,6 +231,15 @@ def test_from_payload_rejects_invalid_experiment_identity_fields():
         ExperimentConfig.from_payload(payload)
 
 
+def test_from_payload_normalizes_experiment_identity_fields():
+    payload = _base_payload()
+    payload["experiment"]["learner"] = "  rescorla_wagner  "
+    payload["experiment"]["agent"] = "  classical_agent  "
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.learner == "rescorla_wagner"
+    assert cfg.agent == "classical_agent"
+
+
 def test_infer_contexts_from_protocol_params():
     rep_params = {}
     config = SimpleNamespace(
@@ -440,6 +449,11 @@ def test_config_pipeline_supports_injected_components():
             calls.append("normalize_report")
             return PayloadNormalizer.normalize_report(report)
 
+        @staticmethod
+        def normalize_experiment_identity(exp):
+            calls.append("normalize_experiment_identity")
+            return PayloadNormalizer.normalize_experiment_identity(exp)
+
     payload = _base_payload()
     cfg = ConfigPipeline(
         ExperimentConfig,
@@ -455,6 +469,7 @@ def test_config_pipeline_supports_injected_components():
         "validate_experiment_identity_fields",
         "normalize_experiment",
         "normalize_report",
+        "normalize_experiment_identity",
         "validate_runtime",
     ]
 
