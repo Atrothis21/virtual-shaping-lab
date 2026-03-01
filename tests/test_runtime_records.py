@@ -1,4 +1,10 @@
-from experiment.runtime_records import finalize_record
+from experiment.runtime_records import (
+    FinalizationContext,
+    ProtocolMetadataNormalizer,
+    RecordFinalizationPipeline,
+    SchemaDefaultsNormalizer,
+    finalize_record,
+)
 
 
 def test_finalize_record_sets_fields():
@@ -45,3 +51,22 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
     ):
         assert key in out
     assert out["metadata"] == {}
+
+
+def test_record_finalization_pipeline_matches_finalize_record_contract():
+    pipeline = RecordFinalizationPipeline(
+        normalizers=[SchemaDefaultsNormalizer(), ProtocolMetadataNormalizer()]
+    )
+    rec = {"phase": "acquisition", "trial": 1}
+    out = pipeline.finalize(
+        rec,
+        FinalizationContext(
+            phase_name="acquisition",
+            protocol_phase_index=0,
+            protocol_phase_name="acquisition",
+        ),
+    )
+    assert out["phase_name"] == "acquisition"
+    assert out["subphase"] == 0
+    assert out["subphase_name"] == "acquisition"
+    assert "metadata" in out
