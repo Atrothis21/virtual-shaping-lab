@@ -11,6 +11,7 @@ from api.contracts import (
 )
 from analysis.report.report import run_report as real_run_report
 from api import run as api_run
+from api.services import PlanService
 from preset_payloads import CONTRACT_FIXTURES
 
 
@@ -29,6 +30,29 @@ def test_api_response_dto_required_fields_smoke():
 
     error = ErrorEnvelope(code="validation_error", message="bad payload").to_dict()
     assert set(("code", "message", "details")).issubset(error.keys())
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ["classical_preset", "operant_preset", "multi_phase_builder"],
+)
+def test_plan_api_contract_fixtures(fixture_name):
+    payload = copy.deepcopy(CONTRACT_FIXTURES[fixture_name])
+    body = api_run.plan_api(payload)
+    assert body.get("status") == "success"
+    assert isinstance(body.get("plan"), dict)
+    assert isinstance(body.get("stable_hash"), str) and body["stable_hash"]
+
+
+def test_plan_service_returns_stable_hash_parity():
+    from experiment.domain.types import ExperimentPlan
+
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    resolved = PlanService.resolve(payload)
+    assert "plan" in resolved and isinstance(resolved["plan"], dict)
+    assert "stable_hash" in resolved and isinstance(resolved["stable_hash"], str)
+    rebuilt = ExperimentPlan.from_dict(resolved["plan"])
+    assert resolved["stable_hash"] == rebuilt.stable_hash()
 
 
 @pytest.mark.parametrize(

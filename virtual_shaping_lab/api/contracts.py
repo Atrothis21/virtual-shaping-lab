@@ -107,3 +107,12 @@ def build_run_create_response(run_id: str, artifacts: Dict[str, Any]) -> Dict[st
     _require_fields(response, ("status", "run_id", "artifacts"), "RunCreateResponse")
     return response
 
+
+def build_plan_resolve_response(plan: Dict[str, Any], stable_hash: str) -> Dict[str, Any]:
+    response = PlanResolveResponse(
+        status="success",
+        plan=plan,
+        stable_hash=stable_hash,
+    ).to_dict()
+    _require_fields(response, ("status", "plan", "stable_hash"), "PlanResolveResponse")
+    return response

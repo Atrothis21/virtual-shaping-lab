@@ -12,7 +12,8 @@ from experiment.config import ExperimentConfig
 from experiment.assemble import assemble_experiment
 from experiment.runner import Runner
 from analysis.report.report import run_report
-from api.contracts import build_run_create_response
+from api.contracts import build_plan_resolve_response, build_run_create_response
+from api.services import PlanService
 from paths import UI_DIR, REPORTS_DIR
 
 
@@ -28,6 +29,30 @@ app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
 @app.get("/")
 def root():
     return FileResponse(str(UI_DIR / "index.html"))
+
+
+@app.post("/plan")
+def plan_api(payload: dict):
+    try:
+        raw_payload = copy.deepcopy(payload)
+        validate_payload(raw_payload)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Payload validation failed: {str(e)}"
+        )
+
+    try:
+        resolved = PlanService.resolve(raw_payload)
+        return build_plan_resolve_response(
+            plan=resolved["plan"],
+            stable_hash=resolved["stable_hash"],
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 # Orchestration helper: keeps API thin.
 # Responsibility: run config → assemble objects → run protocols → generate report.
