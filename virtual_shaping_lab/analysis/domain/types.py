@@ -34,6 +34,7 @@ class ReportTemplateSpec:
     """Default compositional report bundle for a protocol."""
 
     report_name: str
+    template_version: int = 1
     metric_names: tuple[str, ...] = ()
     figure_names: tuple[str, ...] = ()
     meta: dict[str, Any] = field(default_factory=dict)

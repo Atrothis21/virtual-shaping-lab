@@ -1,3 +1,5 @@
+import pytest
+
 from analysis.report.catalog import (
     DEFAULT_REPORT_BY_PROTOCOL,
     get_default_report_for_protocol,
@@ -24,11 +26,14 @@ def test_report_catalog_falls_back_to_verification_report():
 def test_report_catalog_returns_compositional_template():
     template = get_default_template_for_protocol("extinction")
     assert template.report_name == "verification_report"
+    assert template.template_version == 1
     assert template.metric_names == ("mean_reward",)
     assert template.figure_names == ("trial_curve", "tick_response_curve", "probe_bar")
 
 
 def test_report_template_fallback_is_stable():
-    template = get_default_template_for_protocol("missing_protocol")
+    with pytest.warns(UserWarning, match="No default report template mapping"):
+        template = get_default_template_for_protocol("missing_protocol")
     assert template.report_name == "verification_report"
+    assert template.template_version == 1
     assert "trial_curve" in template.figure_names

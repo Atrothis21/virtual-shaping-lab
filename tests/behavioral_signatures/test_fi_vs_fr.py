@@ -41,13 +41,13 @@ def _reinforcement_rate(records: list[dict]) -> float:
     return sum(1.0 for r in rewards if r > 0.0) / float(len(rewards))
 
 
-def test_signature_fixed_ratio_yields_higher_reinforcement_density_than_fixed_interval():
+def test_schedule_proxy_fixed_ratio_yields_higher_reinforcement_density_than_fixed_interval():
     fr_records = _run_records(_operant_payload("fixed_ratio", 1))
     fi_records = _run_records(_operant_payload("fixed_interval", 10))
 
     fr_rate = _reinforcement_rate(fr_records)
     fi_rate = _reinforcement_rate(fi_records)
 
-    # Under FR-1, almost every response is reinforced; FI-10 is sparse by design.
+    # Proxy signal only: this asserts schedule-level reinforcement density under
+    # current operant implementation; it is not a within-trial FI hallmark test.
     assert fr_rate > fi_rate + 0.6
-

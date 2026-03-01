@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from analysis.domain.types import ReportTemplateSpec
 
 DEFAULT_REPORT_BY_PROTOCOL: dict[str, str] = {
@@ -37,4 +39,12 @@ def get_default_report_for_protocol(protocol_name: str) -> str:
 
 
 def get_default_template_for_protocol(protocol_name: str) -> ReportTemplateSpec:
-    return DEFAULT_TEMPLATE_BY_PROTOCOL.get(protocol_name, FALLBACK_TEMPLATE)
+    if protocol_name not in DEFAULT_TEMPLATE_BY_PROTOCOL:
+        warnings.warn(
+            f"No default report template mapping for protocol '{protocol_name}'. "
+            "Using fallback verification template.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return FALLBACK_TEMPLATE
+    return DEFAULT_TEMPLATE_BY_PROTOCOL[protocol_name]
