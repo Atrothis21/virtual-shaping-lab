@@ -8,6 +8,7 @@ DEFAULT_REPORT_BY_PROTOCOL: dict[str, str] = {
     "rapid_reacquisition": "verification_report",
     "blocking": "verification_report",
     "overshadowing": "verification_report",
+    "conditioned_inhibition": "verification_report",
 }
 
 
