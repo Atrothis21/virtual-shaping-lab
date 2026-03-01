@@ -7,6 +7,7 @@ from analysis.registry import (
     build_figure,
     build_metric,
     build_report,
+    run_protocol_default_report,
 )
 
 
@@ -35,3 +36,14 @@ def test_analysis_registry_rejects_unknown_names():
         build_figure("missing_figure")
     with pytest.raises(KeyError):
         build_report("missing_report")
+
+
+def test_analysis_registry_runs_protocol_default_report(tmp_path):
+    records = [
+        {"trial": 0, "reward": 0.0, "prediction": 0.1, "stimulus": "tone", "context": "A"},
+        {"trial": 1, "reward": 1.0, "prediction": 0.3, "stimulus": "tone", "context": "A"},
+    ]
+    out = run_protocol_default_report("extinction", records, str(tmp_path))
+    assert out.name == "verification_report"
+    assert "mean_reward" in out.artifacts["metrics"]
+    assert len(out.artifacts["figures"]) == 3

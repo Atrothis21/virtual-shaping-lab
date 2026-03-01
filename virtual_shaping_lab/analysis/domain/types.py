@@ -30,6 +30,16 @@ class ReportResult:
 
 
 @dataclass(frozen=True)
+class ReportTemplateSpec:
+    """Default compositional report bundle for a protocol."""
+
+    report_name: str
+    metric_names: tuple[str, ...] = ()
+    figure_names: tuple[str, ...] = ()
+    meta: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class AnalysisContext:
     plan_hash: Optional[str] = None
     protocol_path: Optional[str] = None
