@@ -215,6 +215,10 @@ class ConfigPipeline:
             report_preset=normalized_report["preset"],
         )
 
+    def build_plan(self, payload: Dict[str, Any], *, build_experiment_plan):
+        config = self.build(payload)
+        return PlanBuilder.build(config, build_experiment_plan=build_experiment_plan)
+
 
 @dataclass
 class PhaseConfig:
@@ -523,6 +527,16 @@ class ExperimentConfig:
         Construct an ExperimentConfig from a validated UI payload.
         """
         return ConfigPipeline(cls).build(payload)
+
+    @classmethod
+    def plan_from_payload(cls, payload: dict):
+        """Build a declarative ExperimentPlan directly from payload."""
+        from experiment.plan_builder import build_experiment_plan
+
+        return ConfigPipeline(cls).build_plan(
+            payload,
+            build_experiment_plan=build_experiment_plan,
+        )
 
     @staticmethod
     def _require_fields(data: Dict[str, Any], fields: List[str], label: str) -> None:

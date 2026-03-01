@@ -348,6 +348,15 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert plan.settings["resolved_plan"] is True
 
 
+def test_plan_from_payload_contains_units_and_settings():
+    payload = _base_payload()
+    plan = ExperimentConfig.plan_from_payload(payload)
+    assert isinstance(plan, ExperimentPlan)
+    assert len(plan.units) == 1
+    assert plan.settings["learner"] == "rescorla_wagner"
+    assert plan.settings["agent"] == "classical_agent"
+
+
 def test_assemble_experiment_accepts_plan():
     payload = _base_payload()
     cfg = ExperimentConfig.from_payload(payload)
@@ -409,6 +418,17 @@ def test_config_pipeline_build_smoke():
     cfg = ConfigPipeline(ExperimentConfig).build(payload)
     assert isinstance(cfg, ExperimentConfig)
     assert cfg.learner == "rescorla_wagner"
+
+
+def test_config_pipeline_build_plan_smoke():
+    from experiment.plan_builder import build_experiment_plan
+
+    payload = _base_payload()
+    plan = ConfigPipeline(ExperimentConfig).build_plan(
+        payload,
+        build_experiment_plan=build_experiment_plan,
+    )
+    assert isinstance(plan, ExperimentPlan)
 
 
 def test_config_pipeline_supports_injected_components():
