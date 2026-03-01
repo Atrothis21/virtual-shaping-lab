@@ -1,6 +1,8 @@
 # experiment/assemble.py
 
+from dataclasses import dataclass
 from types import SimpleNamespace
+from typing import Any
 
 from experiment.factories.learner_factory import build_learner
 from experiment.factories.agent_factory import build_agent
@@ -219,6 +221,94 @@ def _plan_to_config(plan: ExperimentPlan):
     )
 
 
+@dataclass
+class AgentAssembler:
+    config: Any
+
+    def build_representation_and_contexts(self):
+        rep = self.config.representation
+        if isinstance(rep, dict):
+            rep_name = rep.get("name")
+            rep_params = rep.get("params", {}).copy()
+        else:
+            rep_name = rep
+            rep_params = {}
+
+        if getattr(self.config, "stimuli", None):
+            rep_params.setdefault("stimuli", self.config.stimuli)
+
+        if getattr(self.config, "salience", None):
+            rep_params.setdefault("salience", self.config.salience)
+
+        resolved_plan = bool(getattr(self.config, "resolved_plan", False))
+        if resolved_plan:
+            inferred_contexts = list(getattr(self.config, "resolved_phase_contexts", []) or [])
+        else:
+            rep_params = _infer_contexts(rep_params, self.config)
+            inferred_contexts = _infer_phase_contexts(self.config)
+            if any(label is not None for label in inferred_contexts):
+                contexts = set(rep_params.get("contexts", []))
+                contexts.update(label for label in inferred_contexts if label is not None)
+                rep_params["contexts"] = sorted(contexts)
+
+        representation = build_representation(rep_name, **rep_params)
+        return representation, inferred_contexts
+
+    def build_agent(self, representation):
+        if self.config.agent == OPERANT_AGENT_NAME:
+            return _build_operant_stack(self.config, representation)
+        return _build_classical_stack(self.config, representation)
+
+
+@dataclass
+class UnitAssembler:
+    config: Any
+
+    def build_units(self, *, agent, inferred_contexts):
+        runtime_units = []
+        for i, phase in enumerate(self.config.phases):
+            params = phase.params.copy()
+
+            if "reward_schedule" in params:
+                params["reward_schedule"] = build_reward_schedule(params["reward_schedule"])
+
+            if _is_protocol_phase(phase.protocol):
+                unit = build_protocol(
+                    phase.protocol,
+                    agent=agent,
+                    stimuli=phase.stimuli,
+                    params=params,
+                )
+            else:
+                unit = build_phase(
+                    phase.protocol,
+                    agent=agent,
+                    stimuli=phase.stimuli,
+                    **params,
+                )
+
+            inferred_context = inferred_contexts[i] if i < len(inferred_contexts) else None
+            if inferred_context and not _has_explicit_phase_context(phase):
+                if hasattr(unit, "context"):
+                    unit.context = inferred_context
+                unit.context_source = "inferred"
+
+            runtime_units.append(unit)
+        return runtime_units
+
+
+@dataclass
+class ExperimentAssembler:
+    config: Any
+
+    def assemble(self):
+        agent_assembler = AgentAssembler(self.config)
+        representation, inferred_contexts = agent_assembler.build_representation_and_contexts()
+        agent = agent_assembler.build_agent(representation)
+        units = UnitAssembler(self.config).build_units(agent=agent, inferred_contexts=inferred_contexts)
+        return units, agent, representation
+
+
 def _assemble_from_config(config):
     """
     Assemble runtime objects from an ExperimentConfig.
@@ -228,82 +318,7 @@ def _assemble_from_config(config):
         agent: shared agent instance
         representation: shared representation instance
     """
-
-    # ----------------------------
-    # Representation (shared)
-    # ----------------------------
-    rep = config.representation
-    if isinstance(rep, dict):
-        rep_name = rep.get("name")
-        rep_params = rep.get("params", {}).copy()
-    else:
-        rep_name = rep
-        rep_params = {}
-
-    if getattr(config, "stimuli", None):
-        rep_params.setdefault("stimuli", config.stimuli)
-
-    if getattr(config, "salience", None):
-        rep_params.setdefault("salience", config.salience)
-
-    resolved_plan = bool(getattr(config, "resolved_plan", False))
-    if resolved_plan:
-        inferred_contexts = list(getattr(config, "resolved_phase_contexts", []) or [])
-    else:
-        rep_params = _infer_contexts(rep_params, config)
-        inferred_contexts = _infer_phase_contexts(config)
-        if any(label is not None for label in inferred_contexts):
-            contexts = set(rep_params.get("contexts", []))
-            contexts.update(label for label in inferred_contexts if label is not None)
-            rep_params["contexts"] = sorted(contexts)
-
-    representation = build_representation(rep_name, **rep_params)
-
-    # ----------------------------
-    # Agent stack (explicit split)
-    # ----------------------------
-    if config.agent == OPERANT_AGENT_NAME:
-        agent = _build_operant_stack(config, representation)
-    else:
-        agent = _build_classical_stack(config, representation)
-
-    # ----------------------------
-    # Runtime units
-    # - Atomic phases via phase_factory
-    # - Multi-phase protocols via protocol_factory
-    # ----------------------------
-    runtime_units = []
-
-    for i, phase in enumerate(config.phases):
-        params = phase.params.copy()
-
-        if "reward_schedule" in params:
-            params["reward_schedule"] = build_reward_schedule(params["reward_schedule"])
-
-        if _is_protocol_phase(phase.protocol):
-            unit = build_protocol(
-                phase.protocol,
-                agent=agent,
-                stimuli=phase.stimuli,
-                params=params,
-            )
-        else:
-            unit = build_phase(
-                phase.protocol,
-                agent=agent,
-                stimuli=phase.stimuli,
-                **params,
-            )
-
-        runtime_units.append(unit)
-
-        inferred_context = inferred_contexts[i] if i < len(inferred_contexts) else None
-        if inferred_context and not _has_explicit_phase_context(phase):
-            if hasattr(unit, "context"):
-                unit.context = inferred_context
-            unit.context_source = "inferred"
-
-    return runtime_units, agent, representation
+    return ExperimentAssembler(config).assemble()
 
 
 def assemble_experiment(config):
