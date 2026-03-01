@@ -194,6 +194,22 @@ def test_from_payload_missing_sections():
         ExperimentConfig.from_payload({"experiment": {}})
 
 
+def test_from_payload_rejects_invalid_section_shapes():
+    with pytest.raises(ValueError, match="Payload must be an object"):
+        ExperimentConfig.from_payload("bad")
+    with pytest.raises(ValueError, match="Payload 'experiment' section must be an object"):
+        ExperimentConfig.from_payload({"experiment": "bad", "report": {}})
+    with pytest.raises(ValueError, match="Payload 'report' section must be an object"):
+        ExperimentConfig.from_payload({"experiment": {}, "report": "bad"})
+
+
+def test_from_payload_rejects_non_list_phases():
+    payload = _base_payload()
+    payload["experiment"]["phases"] = {"protocol": "acquisition"}
+    with pytest.raises(ValueError, match="experiment.phases must be an array"):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_infer_contexts_from_protocol_params():
     rep_params = {}
     config = SimpleNamespace(

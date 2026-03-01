@@ -42,6 +42,24 @@ class PayloadValidator:
     """Semantic/runtime constraint validation pipeline."""
 
     @staticmethod
+    def validate_payload_shape(payload: Dict[str, Any]) -> None:
+        if not isinstance(payload, dict):
+            raise ValueError("Payload must be an object")
+        if "experiment" not in payload:
+            raise ValueError("Payload missing 'experiment' section")
+        if "report" not in payload:
+            raise ValueError("Payload missing 'report' section")
+        if not isinstance(payload["experiment"], dict):
+            raise ValueError("Payload 'experiment' section must be an object")
+        if not isinstance(payload["report"], dict):
+            raise ValueError("Payload 'report' section must be an object")
+
+    @staticmethod
+    def validate_phase_shape(exp: Dict[str, Any]) -> None:
+        if "phases" in exp and not isinstance(exp["phases"], list):
+            raise ValueError("experiment.phases must be an array")
+
+    @staticmethod
     def validate_required_fields(require_fields, exp: Dict[str, Any], rep: Dict[str, Any]) -> None:
         require_fields(exp, ["learner", "agent", "representation"], "experiment")
         require_fields(rep, ["preset"], "report")
@@ -365,16 +383,12 @@ class ExperimentConfig:
         """
         Construct an ExperimentConfig from a validated UI payload.
         """
-
-        if "experiment" not in payload:
-            raise ValueError("Payload missing 'experiment' section")
-
-        if "report" not in payload:
-            raise ValueError("Payload missing 'report' section")
+        PayloadValidator.validate_payload_shape(payload)
 
         exp = payload["experiment"]
         rep = payload["report"]
 
+        PayloadValidator.validate_phase_shape(exp)
         PayloadValidator.validate_required_fields(cls._require_fields, exp, rep)
 
         normalized = PayloadNormalizer.normalize_experiment(
