@@ -11,6 +11,215 @@ OPERANT_PROTOCOLS = {
 }
 
 
+class PayloadNormalizer:
+    """Config normalization pipeline (defaults/coercions only)."""
+
+    @staticmethod
+    def normalize_experiment(
+        exp: Dict[str, Any],
+        parser: "ConfigParser",
+    ) -> Dict[str, Any]:
+        representation = parser.parse_representation(exp)
+        policy = parser.parse_policy(exp)
+        exp_stimuli, exp_salience, exp_attention, exp_context_inference = parser.parse_experiment_fields(exp)
+        phases = parser.parse_phases(exp)
+        return {
+            "representation": representation,
+            "policy": policy,
+            "stimuli": exp_stimuli,
+            "salience": exp_salience,
+            "attention": exp_attention,
+            "context_inference": exp_context_inference,
+            "phases": phases,
+        }
+
+    @staticmethod
+    def normalize_report(report: Dict[str, Any]) -> Dict[str, Any]:
+        preset = report.get("preset")
+        if not isinstance(preset, str) or not preset.strip():
+            raise ValueError("report.preset must be a non-empty string")
+        return {"preset": preset.strip()}
+
+    @staticmethod
+    def normalize_experiment_identity(exp: Dict[str, Any]) -> Dict[str, str]:
+        return {
+            "learner": exp["learner"].strip(),
+            "agent": exp["agent"].strip(),
+        }
+
+
+class PayloadValidator:
+    """Semantic/runtime constraint validation pipeline."""
+
+    @staticmethod
+    def validate_payload_shape(payload: Dict[str, Any]) -> None:
+        if not isinstance(payload, dict):
+            raise ValueError("Payload must be an object")
+        if "experiment" not in payload:
+            raise ValueError("Payload missing 'experiment' section")
+        if "report" not in payload:
+            raise ValueError("Payload missing 'report' section")
+        if not isinstance(payload["experiment"], dict):
+            raise ValueError("Payload 'experiment' section must be an object")
+        if not isinstance(payload["report"], dict):
+            raise ValueError("Payload 'report' section must be an object")
+
+    @staticmethod
+    def validate_phase_shape(exp: Dict[str, Any]) -> None:
+        if "phases" in exp and not isinstance(exp["phases"], list):
+            raise ValueError("experiment.phases must be an array")
+
+    @staticmethod
+    def validate_required_fields(require_fields, exp: Dict[str, Any], rep: Dict[str, Any]) -> None:
+        require_fields(exp, ["learner", "agent", "representation"], "experiment")
+        require_fields(rep, ["preset"], "report")
+
+    @staticmethod
+    def validate_experiment_identity_fields(exp: Dict[str, Any]) -> None:
+        if not isinstance(exp.get("learner"), str) or not exp["learner"].strip():
+            raise ValueError("experiment.learner must be a non-empty string")
+        if not isinstance(exp.get("agent"), str) or not exp["agent"].strip():
+            raise ValueError("experiment.agent must be a non-empty string")
+
+    @staticmethod
+    def validate_runtime(validate_runtime_constraints, phases: List["PhaseConfig"]) -> None:
+        validate_runtime_constraints(phases)
+
+
+class PlanBuilder:
+    """Declarative plan construction pipeline."""
+
+    @staticmethod
+    def build(config: "ExperimentConfig", *, build_experiment_plan):
+        return build_experiment_plan(config)
+
+
+class ConfigParser:
+    """Parser composite that adapts ExperimentConfig parse methods."""
+
+    def __init__(self, config_cls: "type[ExperimentConfig]"):
+        self._config_cls = config_cls
+
+    def parse_representation(self, exp: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
+        return self._config_cls._parse_representation(exp)
+
+    def parse_policy(self, exp: Dict[str, Any]) -> Optional[Union[str, Dict[str, Any]]]:
+        return self._config_cls._parse_policy(exp)
+
+    def parse_experiment_fields(
+        self,
+        exp: Dict[str, Any],
+    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any]]:
+        return self._config_cls._parse_experiment_fields(exp)
+
+    def parse_phases(self, exp: Dict[str, Any]) -> List["PhaseConfig"]:
+        return self._config_cls._parse_phases(exp)
+
+
+class ConfigPipeline:
+    """End-to-end payload -> ExperimentConfig pipeline."""
+
+    def __init__(
+        self,
+        config_cls: "type[ExperimentConfig]",
+        *,
+        parser: Optional[ConfigParser] = None,
+        normalizer=PayloadNormalizer,
+        validator=PayloadValidator,
+    ):
+        self._config_cls = config_cls
+        self._parser = parser or ConfigParser(config_cls)
+        self._normalizer = normalizer
+        self._validator = validator
+
+    @staticmethod
+    def _resolve_component_method(component: Any, method_name: str, fallback_component: Any):
+        method = getattr(component, method_name, None)
+        if callable(method):
+            return method
+        return getattr(fallback_component, method_name)
+
+    def build(self, payload: Dict[str, Any]) -> "ExperimentConfig":
+        validate_payload_shape = self._resolve_component_method(
+            self._validator,
+            "validate_payload_shape",
+            PayloadValidator,
+        )
+        validate_phase_shape = self._resolve_component_method(
+            self._validator,
+            "validate_phase_shape",
+            PayloadValidator,
+        )
+        validate_required_fields = self._resolve_component_method(
+            self._validator,
+            "validate_required_fields",
+            PayloadValidator,
+        )
+        validate_experiment_identity_fields = self._resolve_component_method(
+            self._validator,
+            "validate_experiment_identity_fields",
+            PayloadValidator,
+        )
+        validate_runtime = self._resolve_component_method(
+            self._validator,
+            "validate_runtime",
+            PayloadValidator,
+        )
+
+        normalize_experiment = self._resolve_component_method(
+            self._normalizer,
+            "normalize_experiment",
+            PayloadNormalizer,
+        )
+        normalize_report = self._resolve_component_method(
+            self._normalizer,
+            "normalize_report",
+            PayloadNormalizer,
+        )
+        normalize_experiment_identity = self._resolve_component_method(
+            self._normalizer,
+            "normalize_experiment_identity",
+            PayloadNormalizer,
+        )
+
+        validate_payload_shape(payload)
+
+        exp = payload["experiment"]
+        rep = payload["report"]
+
+        validate_phase_shape(exp)
+        validate_required_fields(self._config_cls._require_fields, exp, rep)
+        validate_experiment_identity_fields(exp)
+
+        normalized = normalize_experiment(
+            exp,
+            parser=self._parser,
+        )
+        normalized_report = normalize_report(rep)
+        normalized_identity = normalize_experiment_identity(exp)
+        validate_runtime(
+            self._config_cls.validate_runtime_constraints,
+            normalized["phases"],
+        )
+
+        return self._config_cls(
+            learner=normalized_identity["learner"],
+            agent=normalized_identity["agent"],
+            representation=normalized["representation"],
+            policy=normalized["policy"],
+            stimuli=normalized["stimuli"],
+            salience=normalized["salience"],
+            attention=normalized["attention"],
+            context_inference=normalized["context_inference"],
+            phases=normalized["phases"],
+            report_preset=normalized_report["preset"],
+        )
+
+    def build_plan(self, payload: Dict[str, Any], *, build_experiment_plan):
+        config = self.build(payload)
+        return PlanBuilder.build(config, build_experiment_plan=build_experiment_plan)
+
+
 @dataclass
 class PhaseConfig:
     """
@@ -317,51 +526,17 @@ class ExperimentConfig:
         """
         Construct an ExperimentConfig from a validated UI payload.
         """
+        return ConfigPipeline(cls).build(payload)
 
-        if "experiment" not in payload:
-            raise ValueError("Payload missing 'experiment' section")
+    @classmethod
+    def plan_from_payload(cls, payload: dict):
+        """Build a declarative ExperimentPlan directly from payload."""
+        from experiment.plan_builder import build_experiment_plan
 
-        if "report" not in payload:
-            raise ValueError("Payload missing 'report' section")
-
-        exp = payload["experiment"]
-        rep = payload["report"]
-
-        # ---- required experiment-level fields ----
-        cls._require_fields(exp, ["learner", "agent", "representation"], "experiment")
-
-        # ---- representation normalization ----
-        representation = cls._parse_representation(exp)
-
-        # ---- policy normalization (optional) ----
-        policy = cls._parse_policy(exp)
-
-        # ---- required report fields ----
-        cls._require_fields(rep, ["preset"], "report")
-
-        # ---- experiment-level stimuli normalization ----
-        exp_stimuli, exp_salience, exp_attention, exp_context_inference = (
-            cls._parse_experiment_fields(exp)
+        return ConfigPipeline(cls).build_plan(
+            payload,
+            build_experiment_plan=build_experiment_plan,
         )
-
-        # ---- phase normalization ----
-        phases = cls._parse_phases(exp)
-
-
-        config = cls(
-            learner=exp["learner"],
-            agent=exp["agent"],
-            representation=representation,
-            policy=policy,
-            stimuli=exp_stimuli,
-            salience=exp_salience,
-            attention=exp_attention,
-            context_inference=exp_context_inference,
-            phases=phases,
-            report_preset=rep["preset"],
-        )
-        cls.validate_runtime_constraints(phases)
-        return config
 
     @staticmethod
     def _require_fields(data: Dict[str, Any], fields: List[str], label: str) -> None:
@@ -375,4 +550,4 @@ class ExperimentConfig:
         """Build a declarative ExperimentPlan from this config."""
         from experiment.plan_builder import build_experiment_plan
 
-        return build_experiment_plan(self)
+        return PlanBuilder.build(self, build_experiment_plan=build_experiment_plan)

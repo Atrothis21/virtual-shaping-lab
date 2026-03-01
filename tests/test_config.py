@@ -3,7 +3,15 @@ from types import SimpleNamespace
 import pytest
 
 from experiment import assemble as assemble_mod
-from experiment.config import ExperimentConfig, PhaseConfig
+from experiment.config import (
+    ConfigPipeline,
+    ConfigParser,
+    ExperimentConfig,
+    PhaseConfig,
+    PayloadNormalizer,
+    PayloadValidator,
+    PlanBuilder,
+)
 from experiment.domain.types import ExperimentPlan
 
 
@@ -188,6 +196,50 @@ def test_from_payload_missing_sections():
         ExperimentConfig.from_payload({"experiment": {}})
 
 
+def test_from_payload_rejects_invalid_section_shapes():
+    with pytest.raises(ValueError, match="Payload must be an object"):
+        ExperimentConfig.from_payload("bad")
+    with pytest.raises(ValueError, match="Payload 'experiment' section must be an object"):
+        ExperimentConfig.from_payload({"experiment": "bad", "report": {}})
+    with pytest.raises(ValueError, match="Payload 'report' section must be an object"):
+        ExperimentConfig.from_payload({"experiment": {}, "report": "bad"})
+
+
+def test_from_payload_rejects_non_list_phases():
+    payload = _base_payload()
+    payload["experiment"]["phases"] = {"protocol": "acquisition"}
+    with pytest.raises(ValueError, match="experiment.phases must be an array"):
+        ExperimentConfig.from_payload(payload)
+
+
+def test_from_payload_rejects_invalid_report_preset():
+    payload = _base_payload()
+    payload["report"]["preset"] = "   "
+    with pytest.raises(ValueError, match="report.preset must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+
+def test_from_payload_rejects_invalid_experiment_identity_fields():
+    payload = _base_payload()
+    payload["experiment"]["learner"] = "  "
+    with pytest.raises(ValueError, match="experiment.learner must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["agent"] = 123
+    with pytest.raises(ValueError, match="experiment.agent must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+
+def test_from_payload_normalizes_experiment_identity_fields():
+    payload = _base_payload()
+    payload["experiment"]["learner"] = "  rescorla_wagner  "
+    payload["experiment"]["agent"] = "  classical_agent  "
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.learner == "rescorla_wagner"
+    assert cfg.agent == "classical_agent"
+
+
 def test_infer_contexts_from_protocol_params():
     rep_params = {}
     config = SimpleNamespace(
@@ -296,6 +348,23 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert plan.settings["resolved_plan"] is True
 
 
+def test_plan_from_payload_contains_units_and_settings():
+    payload = _base_payload()
+    plan = ExperimentConfig.plan_from_payload(payload)
+    assert isinstance(plan, ExperimentPlan)
+    assert len(plan.units) == 1
+    assert plan.settings["learner"] == "rescorla_wagner"
+    assert plan.settings["agent"] == "classical_agent"
+
+
+def test_plan_from_payload_matches_from_payload_error_behavior():
+    bad_payload = {"report": {"preset": "acquisition"}}
+    with pytest.raises(ValueError, match="Payload missing 'experiment' section"):
+        ExperimentConfig.from_payload(bad_payload)
+    with pytest.raises(ValueError, match="Payload missing 'experiment' section"):
+        ExperimentConfig.plan_from_payload(bad_payload)
+
+
 def test_assemble_experiment_accepts_plan():
     payload = _base_payload()
     cfg = ExperimentConfig.from_payload(payload)
@@ -315,6 +384,158 @@ def test_experiment_plan_round_trip_and_stable_hash():
 
     assert rebuilt.to_dict() == blob
     assert rebuilt.stable_hash() == plan.stable_hash()
+
+
+def test_payload_normalizer_and_validator_pipeline_smoke():
+    payload = _base_payload()
+    exp = payload["experiment"]
+    rep = payload["report"]
+    parser = ConfigParser(ExperimentConfig)
+
+    PayloadValidator.validate_required_fields(ExperimentConfig._require_fields, exp, rep)
+    normalized = PayloadNormalizer.normalize_experiment(
+        exp,
+        parser=parser,
+    )
+
+    assert "representation" in normalized
+    assert "phases" in normalized
+    PayloadValidator.validate_runtime(ExperimentConfig.validate_runtime_constraints, normalized["phases"])
+
+
+def test_plan_builder_pipeline_smoke():
+    from experiment.plan_builder import build_experiment_plan
+
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    plan = PlanBuilder.build(cfg, build_experiment_plan=build_experiment_plan)
+    assert isinstance(plan, ExperimentPlan)
+
+
+def test_config_parser_composite_smoke():
+    payload = _base_payload()
+    exp = payload["experiment"]
+    parser = ConfigParser(ExperimentConfig)
+    assert parser.parse_representation(exp)["name"] == "vector_elemental"
+    assert parser.parse_policy(exp) is None
+    assert len(parser.parse_phases(exp)) == 1
+
+
+def test_config_pipeline_build_smoke():
+    payload = _base_payload()
+    cfg = ConfigPipeline(ExperimentConfig).build(payload)
+    assert isinstance(cfg, ExperimentConfig)
+    assert cfg.learner == "rescorla_wagner"
+
+
+def test_config_pipeline_build_plan_smoke():
+    from experiment.plan_builder import build_experiment_plan
+
+    payload = _base_payload()
+    plan = ConfigPipeline(ExperimentConfig).build_plan(
+        payload,
+        build_experiment_plan=build_experiment_plan,
+    )
+    assert isinstance(plan, ExperimentPlan)
+
+
+def test_config_pipeline_build_plan_propagates_validation_errors():
+    from experiment.plan_builder import build_experiment_plan
+
+    bad_payload = {"experiment": {}, "report": {}}
+    with pytest.raises(ValueError, match="Missing required experiment fields"):
+        ConfigPipeline(ExperimentConfig).build_plan(
+            bad_payload,
+            build_experiment_plan=build_experiment_plan,
+        )
+
+
+def test_config_pipeline_supports_injected_components():
+    calls = []
+
+    class SpyValidator:
+        @staticmethod
+        def validate_payload_shape(payload):
+            calls.append("validate_payload_shape")
+
+        @staticmethod
+        def validate_phase_shape(exp):
+            calls.append("validate_phase_shape")
+
+        @staticmethod
+        def validate_required_fields(require_fields, exp, rep):
+            calls.append("validate_required_fields")
+            require_fields(exp, ["learner", "agent", "representation"], "experiment")
+            require_fields(rep, ["preset"], "report")
+
+        @staticmethod
+        def validate_experiment_identity_fields(exp):
+            calls.append("validate_experiment_identity_fields")
+
+        @staticmethod
+        def validate_runtime(validate_runtime_constraints, phases):
+            calls.append("validate_runtime")
+            validate_runtime_constraints(phases)
+
+    class SpyNormalizer:
+        @staticmethod
+        def normalize_experiment(exp, parser):
+            calls.append("normalize_experiment")
+            return PayloadNormalizer.normalize_experiment(exp, parser)
+
+        @staticmethod
+        def normalize_report(report):
+            calls.append("normalize_report")
+            return PayloadNormalizer.normalize_report(report)
+
+        @staticmethod
+        def normalize_experiment_identity(exp):
+            calls.append("normalize_experiment_identity")
+            return PayloadNormalizer.normalize_experiment_identity(exp)
+
+    payload = _base_payload()
+    cfg = ConfigPipeline(
+        ExperimentConfig,
+        normalizer=SpyNormalizer,
+        validator=SpyValidator,
+    ).build(payload)
+
+    assert isinstance(cfg, ExperimentConfig)
+    assert calls == [
+        "validate_payload_shape",
+        "validate_phase_shape",
+        "validate_required_fields",
+        "validate_experiment_identity_fields",
+        "normalize_experiment",
+        "normalize_report",
+        "normalize_experiment_identity",
+        "validate_runtime",
+    ]
+
+
+def test_config_pipeline_supports_partial_component_overrides():
+    calls = []
+
+    class PartialNormalizer:
+        @staticmethod
+        def normalize_report(report):
+            calls.append("normalize_report")
+            return PayloadNormalizer.normalize_report(report)
+
+    class PartialValidator:
+        @staticmethod
+        def validate_payload_shape(payload):
+            calls.append("validate_payload_shape")
+
+    payload = _base_payload()
+    cfg = ConfigPipeline(
+        ExperimentConfig,
+        normalizer=PartialNormalizer,
+        validator=PartialValidator,
+    ).build(payload)
+
+    assert isinstance(cfg, ExperimentConfig)
+    assert calls == ["validate_payload_shape", "normalize_report"]
 
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
