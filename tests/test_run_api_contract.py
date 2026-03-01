@@ -24,13 +24,13 @@ def test_api_response_dto_required_fields_smoke():
         state="completed",
         artifacts={"pdf": "p"},
     ).to_dict()
-    assert set(("status", "run_id", "state", "artifacts")).issubset(run_create.keys())
+    assert set(("status", "run_id", "state", "artifacts", "lifecycle")).issubset(run_create.keys())
 
     run_status = RunStatusResponse(status="success", run_id="r1", state="completed").to_dict()
-    assert set(("status", "run_id", "state", "artifacts", "error")).issubset(run_status.keys())
+    assert set(("status", "run_id", "state", "artifacts", "error", "lifecycle")).issubset(run_status.keys())
 
     plan_resolve = PlanResolveResponse(status="success", plan={"units": []}, stable_hash="abc").to_dict()
-    assert set(("status", "plan", "stable_hash")).issubset(plan_resolve.keys())
+    assert set(("status", "plan", "stable_hash", "lifecycle")).issubset(plan_resolve.keys())
 
     report_create = ReportCreateResponse(
         status="success",
@@ -38,7 +38,7 @@ def test_api_response_dto_required_fields_smoke():
         artifacts={"pdf": "p"},
         metadata={"preset": "acquisition"},
     ).to_dict()
-    assert set(("status", "run_id", "artifacts", "metadata")).issubset(report_create.keys())
+    assert set(("status", "run_id", "artifacts", "metadata", "lifecycle")).issubset(report_create.keys())
 
     error = ErrorEnvelope(code="validation_error", message="bad payload").to_dict()
     assert set(("code", "message", "details")).issubset(error.keys())
@@ -54,6 +54,8 @@ def test_plan_api_contract_fixtures(fixture_name):
     assert body.get("status") == "success"
     assert isinstance(body.get("plan"), dict)
     assert isinstance(body.get("stable_hash"), str) and body["stable_hash"]
+    assert body["lifecycle"]["state"] == "PlanResolved"
+    assert "create_run" in body["lifecycle"]["next_actions"]
 
 
 def test_plan_service_returns_stable_hash_parity():
@@ -92,6 +94,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(run_id, str) and run_id
     assert body.get("state") == "completed"
     assert "artifacts" in body and isinstance(body["artifacts"], dict)
+    assert body["lifecycle"]["state"] == "RunComplete"
+    assert "create_report" in body["lifecycle"]["next_actions"]
 
     run_dir = fixture_output_dir / run_id
     assert run_dir.exists()
@@ -120,6 +124,8 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert status["status"] == "success"
     assert status["run_id"] == run_id
     assert status["state"] == "completed"
+    assert status["lifecycle"]["state"] == "RunComplete"
+    assert "create_report" in status["lifecycle"]["next_actions"]
 
 
 def test_run_status_endpoint_404_for_missing_run():
@@ -156,6 +162,8 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["artifacts"], dict)
     assert report_body["metadata"]["source_run_id"] == source_run_id
     assert report_body["metadata"]["regenerated"] is True
+    assert report_body["lifecycle"]["state"] == "ReportComplete"
+    assert "view_report" in report_body["lifecycle"]["next_actions"]
 
 
 def test_run_report_endpoint_404_for_missing_run():
