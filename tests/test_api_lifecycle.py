@@ -31,7 +31,7 @@ def test_validate_lifecycle_transition_rejects_invalid_edges():
 def test_run_status_store_enforces_transition_guard():
     run_id = "lifecycle-test-run"
     # reset any previous test residue
-    RunStatusStore._runs.pop(run_id, None)
+    RunStatusStore.clear(run_id)
 
     RunStatusStore.set(run_id, state="completed", artifacts={})
     # idempotent write is allowed

@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 from typing import Any, Dict, Optional
 
+from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
 from analysis.report.catalog import get_default_template_for_protocol
 from analysis.report.report import run_report
 from experiment.assemble import assemble_experiment
@@ -14,10 +15,40 @@ from api.lifecycle import (
 )
 
 
-class RunStatusStore:
-    """In-process run status registry."""
+_DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
 
-    _runs: Dict[str, Dict[str, Any]] = {}
+
+def _set_status_with_lifecycle(
+    store: RunStatusStoreProtocol,
+    run_id: str,
+    *,
+    state: str,
+    artifacts: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    error: Optional[Dict[str, Any]] = None,
+) -> None:
+    previous = store.get(run_id) or {}
+    prev_meta = dict(previous.get("metadata", {}))
+    previous_lifecycle_state = previous.get("lifecycle_state") or prev_meta.get("lifecycle_state")
+    lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else state
+    validate_lifecycle_transition(previous_lifecycle_state, lifecycle_state)
+    merged_meta = dict(metadata or {})
+    merged_meta["lifecycle_state"] = lifecycle_state
+    store.set(
+        run_id,
+        state=state,
+        artifacts=artifacts or {},
+        metadata=merged_meta,
+        error=error,
+    )
+
+
+class RunStatusStore:
+    """
+    Backward-compatible facade over the default run status store.
+
+    New code should inject RunStatusStoreProtocol into services.
+    """
 
     @classmethod
     def set(
@@ -29,21 +60,31 @@ class RunStatusStore:
         metadata: Optional[Dict[str, Any]] = None,
         error: Optional[Dict[str, Any]] = None,
     ) -> None:
-        previous = cls._runs.get(run_id, {})
-        previous_lifecycle_state = previous.get("lifecycle_state")
-        lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else state
-        validate_lifecycle_transition(previous_lifecycle_state, lifecycle_state)
-        cls._runs[run_id] = {
-            "state": state,
-            "lifecycle_state": lifecycle_state,
-            "artifacts": artifacts or {},
-            "metadata": metadata or {},
-            "error": error,
-        }
+        _set_status_with_lifecycle(
+            _DEFAULT_RUN_STATUS_STORE,
+            run_id,
+            state=state,
+            artifacts=artifacts,
+            metadata=metadata,
+            error=error,
+        )
 
     @classmethod
     def get(cls, run_id: str) -> Optional[Dict[str, Any]]:
-        return cls._runs.get(run_id)
+        data = _DEFAULT_RUN_STATUS_STORE.get(run_id)
+        if data is None:
+            return None
+        out = dict(data)
+        metadata = dict(out.get("metadata", {}))
+        lifecycle_state = metadata.pop("lifecycle_state", None)
+        if lifecycle_state is not None:
+            out["lifecycle_state"] = lifecycle_state
+        out["metadata"] = metadata
+        return out
+
+    @classmethod
+    def clear(cls, run_id: Optional[str] = None) -> None:
+        _DEFAULT_RUN_STATUS_STORE.clear(run_id)
 
 
 class PlanService:
@@ -110,7 +151,9 @@ class RunService:
         *,
         reports_dir: Path,
         expected_plan_hash: Optional[str] = None,
+        status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
         plan = ExperimentConfig.plan_from_payload(payload)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
@@ -129,7 +172,8 @@ class RunService:
             "record_schema_version": plan.record_schema_version,
             "template_version_used": 1,
         }
-        RunStatusStore.set(
+        _set_status_with_lifecycle(
+            store,
             run_id,
             state="completed",
             artifacts=artifacts,
@@ -145,8 +189,18 @@ class RunService:
         }
 
     @staticmethod
-    def status(run_id: str) -> Optional[Dict[str, Any]]:
-        return RunStatusStore.get(run_id)
+    def status(run_id: str, *, status_store: Optional[RunStatusStoreProtocol] = None) -> Optional[Dict[str, Any]]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
+        data = store.get(run_id)
+        if data is None:
+            return None
+        out = dict(data)
+        metadata = dict(out.get("metadata", {}))
+        lifecycle_state = metadata.pop("lifecycle_state", None)
+        if lifecycle_state is not None:
+            out["lifecycle_state"] = lifecycle_state
+        out["metadata"] = metadata
+        return out
 
 
 class ReportService:
@@ -159,7 +213,9 @@ class ReportService:
         *,
         reports_dir: Path,
         preset_override: Optional[str] = None,
+        status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
         run_dir = Path(reports_dir) / run_id
         records_path = run_dir / "records.json"
         payload_path = run_dir / "payload.json"
@@ -200,7 +256,8 @@ class ReportService:
             "figures": [str(p) for p in report_dir.glob("*.png")],
         }
         new_run_id = report_dir.name
-        RunStatusStore.set(
+        _set_status_with_lifecycle(
+            store,
             new_run_id,
             state="completed",
             artifacts=artifacts,

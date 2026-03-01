@@ -108,6 +108,49 @@ def test_run_service_executes_from_resolved_plan(monkeypatch, tmp_path):
     assert result["state"] == "completed"
 
 
+def test_run_service_supports_injected_status_store(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+
+    class DummyStore:
+        def __init__(self):
+            self.data = {}
+
+        def set(self, run_id, *, state, artifacts=None, metadata=None, error=None):
+            self.data[run_id] = {
+                "state": state,
+                "artifacts": artifacts or {},
+                "metadata": metadata or {},
+                "error": error,
+            }
+
+        def get(self, run_id):
+            return self.data.get(run_id)
+
+        def clear(self, run_id=None):
+            if run_id is None:
+                self.data.clear()
+                return
+            self.data.pop(run_id, None)
+
+    store = DummyStore()
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(tmp_path),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    result = api_services.RunService.execute(payload, reports_dir=tmp_path, status_store=store)
+    status = api_services.RunService.status(result["run_id"], status_store=store)
+
+    assert result["run_id"] in store.data
+    assert status is not None
+    assert status["state"] == "completed"
+
+
 @pytest.mark.parametrize(
     "fixture_name",
     ["classical_preset", "operant_preset", "multi_phase_builder"],
