@@ -50,12 +50,14 @@ class RunCreateRequest:
 class RunCreateResponse:
     status: str
     run_id: str
+    state: str
     artifacts: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "status": self.status,
             "run_id": self.run_id,
+            "state": self.state,
             "artifacts": self.artifacts,
         }
 
@@ -98,13 +100,14 @@ class ReportCreateResponse:
         }
 
 
-def build_run_create_response(run_id: str, artifacts: Dict[str, Any]) -> Dict[str, Any]:
+def build_run_create_response(run_id: str, artifacts: Dict[str, Any], state: str = "completed") -> Dict[str, Any]:
     response = RunCreateResponse(
         status="success",
         run_id=run_id,
+        state=state,
         artifacts=artifacts,
     ).to_dict()
-    _require_fields(response, ("status", "run_id", "artifacts"), "RunCreateResponse")
+    _require_fields(response, ("status", "run_id", "state", "artifacts"), "RunCreateResponse")
     return response
 
 
@@ -115,4 +118,22 @@ def build_plan_resolve_response(plan: Dict[str, Any], stable_hash: str) -> Dict[
         stable_hash=stable_hash,
     ).to_dict()
     _require_fields(response, ("status", "plan", "stable_hash"), "PlanResolveResponse")
+    return response
+
+
+def build_run_status_response(
+    run_id: str,
+    state: str,
+    *,
+    artifacts: Optional[Dict[str, Any]] = None,
+    error: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    response = RunStatusResponse(
+        status="success",
+        run_id=run_id,
+        state=state,
+        artifacts=artifacts or {},
+        error=error,
+    ).to_dict()
+    _require_fields(response, ("status", "run_id", "state", "artifacts", "error"), "RunStatusResponse")
     return response

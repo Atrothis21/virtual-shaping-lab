@@ -1,6 +1,7 @@
 import copy
 
 import pytest
+from fastapi import HTTPException
 
 from api.contracts import (
     ErrorEnvelope,
@@ -11,13 +12,19 @@ from api.contracts import (
 )
 from analysis.report.report import run_report as real_run_report
 from api import run as api_run
+from api import services as api_services
 from api.services import PlanService
 from preset_payloads import CONTRACT_FIXTURES
 
 
 def test_api_response_dto_required_fields_smoke():
-    run_create = RunCreateResponse(status="success", run_id="r1", artifacts={"pdf": "p"}).to_dict()
-    assert set(("status", "run_id", "artifacts")).issubset(run_create.keys())
+    run_create = RunCreateResponse(
+        status="success",
+        run_id="r1",
+        state="completed",
+        artifacts={"pdf": "p"},
+    ).to_dict()
+    assert set(("status", "run_id", "state", "artifacts")).issubset(run_create.keys())
 
     run_status = RunStatusResponse(status="success", run_id="r1", state="completed").to_dict()
     assert set(("status", "run_id", "state", "artifacts", "error")).issubset(run_status.keys())
@@ -72,15 +79,45 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
             output_dir=str(fixture_output_dir),
         )
 
-    monkeypatch.setattr(api_run, "run_report", _run_report_to_tmp)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
 
     body = api_run.run_api(payload)
     assert body.get("status") == "success"
     run_id = body.get("run_id")
     assert isinstance(run_id, str) and run_id
+    assert body.get("state") == "completed"
     assert "artifacts" in body and isinstance(body["artifacts"], dict)
 
     run_dir = fixture_output_dir / run_id
     assert run_dir.exists()
     assert (run_dir / "payload.json").exists()
     assert (run_dir / "records.json").exists()
+
+
+def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    fixture_output_dir = tmp_path / "status_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    body = api_run.run_api(payload)
+    run_id = body["run_id"]
+    status = api_run.run_status_api(run_id)
+    assert status["status"] == "success"
+    assert status["run_id"] == run_id
+    assert status["state"] == "completed"
+
+
+def test_run_status_endpoint_404_for_missing_run():
+    with pytest.raises(HTTPException) as exc:
+        api_run.run_status_api("missing-run-id")
+    assert exc.value.status_code == 404

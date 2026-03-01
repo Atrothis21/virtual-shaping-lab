@@ -1,20 +1,20 @@
 # api/run.py
 
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pathlib import Path
-import traceback
 import copy
+import traceback
 
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from api.contracts import (
+    build_plan_resolve_response,
+    build_run_create_response,
+    build_run_status_response,
+)
+from api.services import PlanService, RunService
+from paths import REPORTS_DIR, UI_DIR
 from ui.validate_payload import validate_payload
-from experiment.config import ExperimentConfig
-from experiment.assemble import assemble_experiment
-from experiment.runner import Runner
-from analysis.report.report import run_report
-from api.contracts import build_plan_resolve_response, build_run_create_response
-from api.services import PlanService
-from paths import UI_DIR, REPORTS_DIR
 
 
 app = FastAPI(title="Virtual Shaping Lab API")
@@ -36,10 +36,10 @@ def plan_api(payload: dict):
     try:
         raw_payload = copy.deepcopy(payload)
         validate_payload(raw_payload)
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=400,
-            detail=f"Payload validation failed: {str(e)}"
+            detail=f"Payload validation failed: {str(exc)}",
         )
 
     try:
@@ -48,52 +48,13 @@ def plan_api(payload: dict):
             plan=resolved["plan"],
             stable_hash=resolved["stable_hash"],
         )
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=str(exc),
         )
 
-# Orchestration helper: keeps API thin.
-# Responsibility: run config → assemble objects → run protocols → generate report.
-# Returns only data needed by the HTTP response layer.
-def _run_experiment(raw_payload: dict):
-    config = ExperimentConfig.from_payload(raw_payload)
-    protocols, agent, representation = assemble_experiment(config)
 
-    records = []
-    for phase_index, protocol in enumerate(protocols):
-        runner = Runner(protocol)
-        phase_records = runner.run()
-
-        for r in phase_records:
-            r["phase"] = phase_index
-            from experiment.runtime_records import finalize_record
-            finalize_record(
-                r,
-                phase_name=config.phases[phase_index].name,
-            )
-
-        records.extend(phase_records)
-
-    report_dir = run_report(
-        records=records,
-        preset=config.report_preset,
-        payload=raw_payload,
-        output_dir=str(reports_dir),
-    )
-
-    report_dir = Path(report_dir)
-
-    artifacts = {
-        "pdf": str(report_dir / "report.pdf"),
-        "figures": [str(p) for p in report_dir.glob("*.png")]
-    }
-
-    return records, report_dir, artifacts
-
-# HTTP handler: validation + error translation only.
-# Any experiment logic belongs in _run_experiment().
 @app.post("/run")
 def run_api(payload: dict):
     print("=== /run called ===", flush=True)
@@ -102,28 +63,43 @@ def run_api(payload: dict):
         raw_payload = copy.deepcopy(payload)
         validate_payload(raw_payload)
         print("Payload validated", flush=True)
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=400,
-            detail=f"Payload validation failed: {str(e)}"
+            detail=f"Payload validation failed: {str(exc)}",
         )
 
     try:
-        print("Parsing ExperimentConfig", flush=True)
-        records, report_dir, artifacts = _run_experiment(raw_payload)
+        print("Executing RunService", flush=True)
+        result = RunService.execute(raw_payload, reports_dir=reports_dir)
 
-        print(f"Run complete ({len(records)} records)", flush=True)
+        print(f"Run complete ({result['record_count']} records)", flush=True)
         print("=== /run completed successfully ===", flush=True)
 
         return build_run_create_response(
-            run_id=report_dir.name,
-            artifacts=artifacts,
+            run_id=result["run_id"],
+            artifacts=result["artifacts"],
+            state=result["state"],
         )
 
-    except Exception as e:
+    except Exception as exc:
         print("=== /run ERROR ===", flush=True)
         traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=str(exc),
         )
+
+
+@app.get("/runs/{run_id}")
+def run_status_api(run_id: str):
+    status = RunService.status(run_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+    return build_run_status_response(
+        run_id=run_id,
+        state=status["state"],
+        artifacts=status.get("artifacts", {}),
+        error=status.get("error"),
+    )
+
