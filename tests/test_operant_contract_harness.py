@@ -8,6 +8,7 @@ from agents.composed_agent import ComposedAgent
 from agents.learners.q_learner import QLearner
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
+from experiment.domain.types import TrialTimeSpec
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from ui.validate_payload import validate_payload
 
@@ -196,3 +197,46 @@ def test_composed_agent_learn_forwards_next_state_and_done_to_learner():
     assert tr.s_next is not None
     np.testing.assert_allclose(tr.s_next.x, next_state.x)
     assert tr.done is False
+
+
+def test_operant_phase_build_trial_schedule_attaches_schedule_runtime():
+    class _Schedule:
+        name = "fixed_ratio"
+
+        def reset(self):
+            return None
+
+        def step(self, action, t):
+            return 0.0
+
+        def build_tick_runtime(self, time_spec):
+            return object()
+
+    class _Agent:
+        def __init__(self):
+            self.representation = _DummyRepresentation()
+            self.learner = type("L", (), {"attention_map": {}})()
+            self.policy = type("P", (), {"actions": ["press"]})()
+
+        def reset(self):
+            return None
+
+        def observe(self, obs):
+            return self.representation.encode(obs)
+
+        def value(self, state):
+            return 0.0
+
+        def act(self, state, actions=None, rng=None):
+            return "press"
+
+    phase = OperantAcquisitionPhase(
+        agent=_Agent(),
+        stimuli={"cs_plus": ["lever"]},
+        n_trials=1,
+        reward_schedule=_Schedule(),
+        params={"trial_time_spec": TrialTimeSpec(duration_s=1.0, dt_s=0.25)},
+    )
+    schedule = phase.build_trial_schedule(ctx=None, trial_index=0)
+    assert schedule is not None
+    assert "schedule_runtime" in schedule.metadata

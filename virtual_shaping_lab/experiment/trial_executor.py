@@ -7,6 +7,7 @@ from typing import Any
 
 from virtual_shaping_lab.domain.types import Observation, Transition
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
+from virtual_shaping_lab.protocols.schedule_runtime import ScheduleTickInput
 
 
 _STIMULUS_EVENT_TYPES = {"stimulus", "cs", "cue"}
@@ -54,6 +55,11 @@ class TrialExecutor:
         spec = schedule.time
         trial_records: list[dict[str, Any]] = []
         agent = ctx.agent
+        schedule_runtime = None
+        if isinstance(getattr(schedule, "metadata", None), dict):
+            schedule_runtime = schedule.metadata.get("schedule_runtime")
+        if schedule_runtime is not None and hasattr(schedule_runtime, "reset"):
+            schedule_runtime.reset(ctx.rng)
         if hooks is not None and hasattr(hooks, "on_trial_start"):
             hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
 
@@ -73,7 +79,7 @@ class TrialExecutor:
                     stim_label = event.metadata.get("stimulus", event.metadata.get("label", event.event_type))
                     active_stimuli.append(stim_label)
 
-            reward = float(
+            event_reward = float(
                 sum(e.magnitude for e in active_events if e.event_type in _REINFORCEMENT_EVENT_TYPES)
             )
             actions = list(schedule.available_actions)
@@ -95,6 +101,24 @@ class TrialExecutor:
                 state = agent.observe(observation)
                 if actions and hasattr(agent, "act"):
                     action = agent.act(state, actions=actions, rng=ctx.rng)
+
+            runtime_reward = 0.0
+            runtime_event_type = None
+            runtime_meta: dict[str, Any] = {}
+            if schedule_runtime is not None and hasattr(schedule_runtime, "step"):
+                runtime_out = schedule_runtime.step(
+                    ScheduleTickInput(
+                        t_s=t_s,
+                        dt_s=dt_tick,
+                        action=action,
+                        tick=tick,
+                        trial_id=trial_id,
+                    )
+                )
+                runtime_reward = float(getattr(runtime_out, "reward", 0.0) or 0.0)
+                runtime_event_type = getattr(runtime_out, "event_type", None)
+                runtime_meta = dict(getattr(runtime_out, "metadata", {}) or {})
+            reward = event_reward + runtime_reward
 
             if (
                 self.update_mode == "tick"
@@ -120,6 +144,8 @@ class TrialExecutor:
             tick_meta = {
                 "active_event_types": [e.event_type for e in active_events],
                 "active_windows": [w.label for w in active_windows],
+                "schedule_runtime_event_type": runtime_event_type,
+                "schedule_runtime": runtime_meta,
             }
 
             if self.record_mode == "tick":

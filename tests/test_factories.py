@@ -10,6 +10,7 @@ from experiment.factories import policy_factory
 from experiment.factories import protocol_factory
 from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
+from experiment.domain.types import TrialTimeSpec
 
 
 def test_validate_agent_rejects_unknown():
@@ -172,3 +173,15 @@ def test_reward_schedule_factory_branches(monkeypatch):
 
     with pytest.raises(RuntimeError):
         reward_schedule_factory.build_reward_schedule({"type": "other", "value": 1})
+
+
+def test_reward_schedules_expose_tick_runtime_adapter():
+    spec = TrialTimeSpec(duration_s=1.0, dt_s=0.1)
+    fr = reward_schedule_factory.build_reward_schedule({"type": "fixed_ratio", "value": 2})
+    fi = reward_schedule_factory.build_reward_schedule({"type": "fixed_interval", "value": 3})
+
+    fr_rt = fr.build_tick_runtime(spec)
+    fi_rt = fi.build_tick_runtime(spec)
+
+    assert fr_rt is not None and hasattr(fr_rt, "step")
+    assert fi_rt is not None and hasattr(fi_rt, "step")
