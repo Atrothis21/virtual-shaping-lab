@@ -1,14 +1,13 @@
 # protocols/base.py
 
 import random
-from dataclasses import replace
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from experiment.phases.series_helpers import attach_reference_stimuli
-from experiment.runtime_records import finalize_record
+from protocols.step_adapter import ProtocolStepAdapter
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult
 
 
@@ -52,6 +51,7 @@ class BaseProtocol(ABC):
 
         self.trial_index: int = 0
         self.records: List[Dict[str, Any]] = []
+        self._step_adapter = ProtocolStepAdapter(self.name)
 
     # ------------------------------------------------------------------
     # Required protocol hook
@@ -114,33 +114,15 @@ class BaseProtocol(ABC):
                 self._check_safety_limit(max_debug_trials)
                 if not self.has_next_trial():
                     return
-
-                metadata = dict(getattr(step, "metadata", {}) or {})
-                record = metadata.get("record")
-
-                if isinstance(record, dict):
-                    record.setdefault("phase", phase_name)
-                    record.setdefault("protocol_name", self.name)
-                    record.setdefault("subphase", phase_index)
-                    record.setdefault("subphase_name", phase_name)
-                    record.setdefault("unit_path", f"{self.name}.{phase_name}")
-                    finalize_record(
-                        record,
-                        phase_name=record.get("phase"),
-                        protocol_phase_index=record.get("subphase"),
-                        protocol_phase_name=record.get("subphase_name"),
-                    )
-                    self.records.append(record)
-                    metadata["record"] = record
-
-                metadata.setdefault("protocol_name", self.name)
-                metadata.setdefault("phase_name", phase_name)
-                metadata.setdefault("unit_path", f"{self.name}.{phase_name}")
-
-                done = bool(getattr(step, "done", False)) and (
-                    phase_index == len(phases) - 1 and self.trial_index + 1 >= self.n_trials
+                yield self._step_adapter.adapt(
+                    step=step,
+                    phase_name=phase_name,
+                    phase_index=phase_index,
+                    is_last_phase=(phase_index == len(phases) - 1),
+                    trial_index=self.trial_index,
+                    n_trials=self.n_trials,
+                    records_sink=self.records,
                 )
-                yield replace(step, done=done, metadata=metadata)
                 self.trial_index += 1
 
     # ------------------------------------------------------------------
