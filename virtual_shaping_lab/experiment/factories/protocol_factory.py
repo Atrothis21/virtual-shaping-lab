@@ -9,41 +9,12 @@ All protocol-specific validation lives in the protocol class itself.
 Protocols must read all settings from `params`.
 """
 
-from typing import Dict, Type, Any
+from typing import Any
 
-from protocols.base import BaseProtocol
-from protocols.operant import OperantConditioningProtocol
-from protocols.extinction import ExtinctionProtocol
-from protocols.conditioned_inhibition import ConditionedInhibitionProtocol
-from protocols.aba_renewal import ABARenewalProtocol
-from protocols.abc_renewal import ABCRenewalProtocol
-from protocols.aab_renewal import AABRenewalProtocol
-from protocols.rapid_reacquisition import RapidReacquisitionProtocol
-from protocols.occasion_setting import OccasionSettingProtocol
-from protocols.blocking import BlockingProtocol
-from protocols.matching_law import MatchingLawProtocol
-from protocols.shaping import ShapingProtocol
-from protocols.resurgence import ResurgenceProtocol
-from protocols.superextinction import SuperextinctionProtocol
-from protocols.spontaneous_recovery import SpontaneousRecoveryProtocol
+from protocols.catalog import PROTOCOL_BUILDERS
 
 
-PROTOCOL_REGISTRY: Dict[str, Type[BaseProtocol]] = {
-    "operant_conditioning": OperantConditioningProtocol,
-    "extinction": ExtinctionProtocol,
-    "conditioned_inhibition": ConditionedInhibitionProtocol,
-    "aba_renewal": ABARenewalProtocol,
-    "abc_renewal": ABCRenewalProtocol,
-    "aab_renewal": AABRenewalProtocol,
-    "rapid_reacquisition": RapidReacquisitionProtocol,
-    "occasion_setting": OccasionSettingProtocol,
-    "blocking": BlockingProtocol,
-    "matching_law": MatchingLawProtocol,
-    "shaping": ShapingProtocol,
-    "resurgence": ResurgenceProtocol,
-    "superextinction": SuperextinctionProtocol,
-    "spontaneous_recovery": SpontaneousRecoveryProtocol,
-}
+PROTOCOL_REGISTRY = dict(PROTOCOL_BUILDERS)
 
 
 def validate_protocol(name: str) -> None:
@@ -55,7 +26,7 @@ def validate_protocol(name: str) -> None:
         )
 
 
-def build_protocol(name: str, *, agent: Any, stimuli: Any = None, params: Dict[str, Any] = None):
+def build_protocol(name: str, *, agent: Any, stimuli: Any = None, params: dict[str, Any] | None = None):
     """
     Construct a protocol instance.
 

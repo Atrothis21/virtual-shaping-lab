@@ -21,5 +21,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r virtual_shaping_lab/requirements.txt
           pip install -r requirements-dev.txt
+      - name: Run behavioral signature gates
+        run: pytest -q tests/behavioral_signatures
       - name: Run tests
         run: pytest
