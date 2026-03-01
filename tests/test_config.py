@@ -402,6 +402,63 @@ def test_config_pipeline_build_smoke():
     assert cfg.learner == "rescorla_wagner"
 
 
+def test_config_pipeline_supports_injected_components():
+    calls = []
+
+    class SpyValidator:
+        @staticmethod
+        def validate_payload_shape(payload):
+            calls.append("validate_payload_shape")
+
+        @staticmethod
+        def validate_phase_shape(exp):
+            calls.append("validate_phase_shape")
+
+        @staticmethod
+        def validate_required_fields(require_fields, exp, rep):
+            calls.append("validate_required_fields")
+            require_fields(exp, ["learner", "agent", "representation"], "experiment")
+            require_fields(rep, ["preset"], "report")
+
+        @staticmethod
+        def validate_experiment_identity_fields(exp):
+            calls.append("validate_experiment_identity_fields")
+
+        @staticmethod
+        def validate_runtime(validate_runtime_constraints, phases):
+            calls.append("validate_runtime")
+            validate_runtime_constraints(phases)
+
+    class SpyNormalizer:
+        @staticmethod
+        def normalize_experiment(exp, parser):
+            calls.append("normalize_experiment")
+            return PayloadNormalizer.normalize_experiment(exp, parser)
+
+        @staticmethod
+        def normalize_report(report):
+            calls.append("normalize_report")
+            return PayloadNormalizer.normalize_report(report)
+
+    payload = _base_payload()
+    cfg = ConfigPipeline(
+        ExperimentConfig,
+        normalizer=SpyNormalizer,
+        validator=SpyValidator,
+    ).build(payload)
+
+    assert isinstance(cfg, ExperimentConfig)
+    assert calls == [
+        "validate_payload_shape",
+        "validate_phase_shape",
+        "validate_required_fields",
+        "validate_experiment_identity_fields",
+        "normalize_experiment",
+        "normalize_report",
+        "validate_runtime",
+    ]
+
+
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
     payload = _base_payload()
     payload["experiment"]["context_inference"] = {"enabled": True, "max_contexts": 2}

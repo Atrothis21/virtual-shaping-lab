@@ -112,26 +112,35 @@ class ConfigParser:
 class ConfigPipeline:
     """End-to-end payload -> ExperimentConfig pipeline."""
 
-    def __init__(self, config_cls: "type[ExperimentConfig]"):
+    def __init__(
+        self,
+        config_cls: "type[ExperimentConfig]",
+        *,
+        parser: Optional[ConfigParser] = None,
+        normalizer=PayloadNormalizer,
+        validator=PayloadValidator,
+    ):
         self._config_cls = config_cls
-        self._parser = ConfigParser(config_cls)
+        self._parser = parser or ConfigParser(config_cls)
+        self._normalizer = normalizer
+        self._validator = validator
 
     def build(self, payload: Dict[str, Any]) -> "ExperimentConfig":
-        PayloadValidator.validate_payload_shape(payload)
+        self._validator.validate_payload_shape(payload)
 
         exp = payload["experiment"]
         rep = payload["report"]
 
-        PayloadValidator.validate_phase_shape(exp)
-        PayloadValidator.validate_required_fields(self._config_cls._require_fields, exp, rep)
-        PayloadValidator.validate_experiment_identity_fields(exp)
+        self._validator.validate_phase_shape(exp)
+        self._validator.validate_required_fields(self._config_cls._require_fields, exp, rep)
+        self._validator.validate_experiment_identity_fields(exp)
 
-        normalized = PayloadNormalizer.normalize_experiment(
+        normalized = self._normalizer.normalize_experiment(
             exp,
             parser=self._parser,
         )
-        normalized_report = PayloadNormalizer.normalize_report(rep)
-        PayloadValidator.validate_runtime(
+        normalized_report = self._normalizer.normalize_report(rep)
+        self._validator.validate_runtime(
             self._config_cls.validate_runtime_constraints,
             normalized["phases"],
         )
