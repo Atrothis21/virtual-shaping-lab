@@ -95,6 +95,45 @@ class ConfigParser:
         return self._config_cls._parse_phases(exp)
 
 
+class ConfigPipeline:
+    """End-to-end payload -> ExperimentConfig pipeline."""
+
+    def __init__(self, config_cls: "type[ExperimentConfig]"):
+        self._config_cls = config_cls
+        self._parser = ConfigParser(config_cls)
+
+    def build(self, payload: Dict[str, Any]) -> "ExperimentConfig":
+        PayloadValidator.validate_payload_shape(payload)
+
+        exp = payload["experiment"]
+        rep = payload["report"]
+
+        PayloadValidator.validate_phase_shape(exp)
+        PayloadValidator.validate_required_fields(self._config_cls._require_fields, exp, rep)
+
+        normalized = PayloadNormalizer.normalize_experiment(
+            exp,
+            parser=self._parser,
+        )
+        PayloadValidator.validate_runtime(
+            self._config_cls.validate_runtime_constraints,
+            normalized["phases"],
+        )
+
+        return self._config_cls(
+            learner=exp["learner"],
+            agent=exp["agent"],
+            representation=normalized["representation"],
+            policy=normalized["policy"],
+            stimuli=normalized["stimuli"],
+            salience=normalized["salience"],
+            attention=normalized["attention"],
+            context_inference=normalized["context_inference"],
+            phases=normalized["phases"],
+            report_preset=rep["preset"],
+        )
+
+
 @dataclass
 class PhaseConfig:
     """
@@ -401,34 +440,7 @@ class ExperimentConfig:
         """
         Construct an ExperimentConfig from a validated UI payload.
         """
-        PayloadValidator.validate_payload_shape(payload)
-
-        exp = payload["experiment"]
-        rep = payload["report"]
-        parser = ConfigParser(cls)
-
-        PayloadValidator.validate_phase_shape(exp)
-        PayloadValidator.validate_required_fields(cls._require_fields, exp, rep)
-
-        normalized = PayloadNormalizer.normalize_experiment(
-            exp,
-            parser=parser,
-        )
-
-        config = cls(
-            learner=exp["learner"],
-            agent=exp["agent"],
-            representation=normalized["representation"],
-            policy=normalized["policy"],
-            stimuli=normalized["stimuli"],
-            salience=normalized["salience"],
-            attention=normalized["attention"],
-            context_inference=normalized["context_inference"],
-            phases=normalized["phases"],
-            report_preset=rep["preset"],
-        )
-        PayloadValidator.validate_runtime(cls.validate_runtime_constraints, normalized["phases"])
-        return config
+        return ConfigPipeline(cls).build(payload)
 
     @staticmethod
     def _require_fields(data: Dict[str, Any], fields: List[str], label: str) -> None:

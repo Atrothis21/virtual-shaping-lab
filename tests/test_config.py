@@ -4,6 +4,7 @@ import pytest
 
 from experiment import assemble as assemble_mod
 from experiment.config import (
+    ConfigPipeline,
     ConfigParser,
     ExperimentConfig,
     PhaseConfig,
@@ -373,6 +374,13 @@ def test_config_parser_composite_smoke():
     assert parser.parse_representation(exp)["name"] == "vector_elemental"
     assert parser.parse_policy(exp) is None
     assert len(parser.parse_phases(exp)) == 1
+
+
+def test_config_pipeline_build_smoke():
+    payload = _base_payload()
+    cfg = ConfigPipeline(ExperimentConfig).build(payload)
+    assert isinstance(cfg, ExperimentConfig)
+    assert cfg.learner == "rescorla_wagner"
 
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
