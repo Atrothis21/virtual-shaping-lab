@@ -12,6 +12,7 @@ from experiment.config import ExperimentConfig
 from experiment.assemble import assemble_experiment
 from experiment.runner import Runner
 from analysis.report.report import run_report
+from api.contracts import build_run_create_response
 from paths import UI_DIR, REPORTS_DIR
 
 
@@ -89,11 +90,10 @@ def run_api(payload: dict):
         print(f"Run complete ({len(records)} records)", flush=True)
         print("=== /run completed successfully ===", flush=True)
 
-        return {
-            "status": "success",
-            "run_id": report_dir.name,
-            "artifacts": artifacts
-        }
+        return build_run_create_response(
+            run_id=report_dir.name,
+            artifacts=artifacts,
+        )
 
     except Exception as e:
         print("=== /run ERROR ===", flush=True)

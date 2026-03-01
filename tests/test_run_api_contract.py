@@ -2,9 +2,33 @@ import copy
 
 import pytest
 
+from api.contracts import (
+    ErrorEnvelope,
+    PlanResolveResponse,
+    ReportCreateResponse,
+    RunCreateResponse,
+    RunStatusResponse,
+)
 from analysis.report.report import run_report as real_run_report
 from api import run as api_run
 from preset_payloads import CONTRACT_FIXTURES
+
+
+def test_api_response_dto_required_fields_smoke():
+    run_create = RunCreateResponse(status="success", run_id="r1", artifacts={"pdf": "p"}).to_dict()
+    assert set(("status", "run_id", "artifacts")).issubset(run_create.keys())
+
+    run_status = RunStatusResponse(status="success", run_id="r1", state="completed").to_dict()
+    assert set(("status", "run_id", "state", "artifacts", "error")).issubset(run_status.keys())
+
+    plan_resolve = PlanResolveResponse(status="success", plan={"units": []}, stable_hash="abc").to_dict()
+    assert set(("status", "plan", "stable_hash")).issubset(plan_resolve.keys())
+
+    report_create = ReportCreateResponse(status="success", run_id="r1", artifacts={"pdf": "p"}).to_dict()
+    assert set(("status", "run_id", "artifacts")).issubset(report_create.keys())
+
+    error = ErrorEnvelope(code="validation_error", message="bad payload").to_dict()
+    assert set(("code", "message", "details")).issubset(error.keys())
 
 
 @pytest.mark.parametrize(
@@ -30,6 +54,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert body.get("status") == "success"
     run_id = body.get("run_id")
     assert isinstance(run_id, str) and run_id
+    assert "artifacts" in body and isinstance(body["artifacts"], dict)
 
     run_dir = fixture_output_dir / run_id
     assert run_dir.exists()
