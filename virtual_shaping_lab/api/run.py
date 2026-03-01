@@ -9,10 +9,11 @@ from fastapi.staticfiles import StaticFiles
 
 from api.contracts import (
     build_plan_resolve_response,
+    build_report_create_response,
     build_run_create_response,
     build_run_status_response,
 )
-from api.services import PlanService, RunService
+from api.services import PlanService, ReportService, RunService
 from paths import REPORTS_DIR, UI_DIR
 from ui.validate_payload import validate_payload
 
@@ -103,3 +104,24 @@ def run_status_api(run_id: str):
         error=status.get("error"),
     )
 
+
+@app.post("/runs/{run_id}/report")
+def run_report_api(run_id: str, payload: dict | None = None):
+    try:
+        preset_override = None
+        if payload and isinstance(payload, dict):
+            preset_override = payload.get("preset")
+        result = ReportService.create_default(
+            run_id,
+            reports_dir=reports_dir,
+            preset_override=preset_override,
+        )
+        return build_report_create_response(
+            run_id=result["run_id"],
+            artifacts=result["artifacts"],
+            metadata=result["metadata"],
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))

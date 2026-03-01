@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 from typing import Any, Dict, Optional
 
 from analysis.report.report import run_report
@@ -102,3 +103,61 @@ class RunService:
     @staticmethod
     def status(run_id: str) -> Optional[Dict[str, Any]]:
         return RunStatusStore.get(run_id)
+
+
+class ReportService:
+    """Application-layer facade for report generation from prior runs."""
+
+    @classmethod
+    def create_default(
+        cls,
+        run_id: str,
+        *,
+        reports_dir: Path,
+        preset_override: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        run_dir = Path(reports_dir) / run_id
+        records_path = run_dir / "records.json"
+        payload_path = run_dir / "payload.json"
+
+        if not records_path.exists() or not payload_path.exists():
+            raise FileNotFoundError(f"Run artifacts for '{run_id}' not found.")
+
+        with records_path.open("r", encoding="utf-8") as f:
+            records = json.load(f)
+        with payload_path.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+
+        preset = preset_override or payload.get("report", {}).get("preset")
+        if not preset:
+            preset = "acquisition"
+
+        regen_root = Path(reports_dir) / "regenerated"
+        regen_root.mkdir(parents=True, exist_ok=True)
+        report_dir = run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(regen_root),
+        )
+        report_dir = Path(report_dir)
+        artifacts = {
+            "pdf": str(report_dir / "report.pdf"),
+            "figures": [str(p) for p in report_dir.glob("*.png")],
+        }
+        new_run_id = report_dir.name
+        RunStatusStore.set(
+            new_run_id,
+            state="completed",
+            artifacts=artifacts,
+            error=None,
+        )
+        return {
+            "run_id": new_run_id,
+            "artifacts": artifacts,
+            "metadata": {
+                "source_run_id": run_id,
+                "preset": preset,
+                "regenerated": True,
+            },
+        }

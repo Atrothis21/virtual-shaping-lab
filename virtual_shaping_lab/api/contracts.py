@@ -91,12 +91,14 @@ class ReportCreateResponse:
     status: str
     run_id: str
     artifacts: Dict[str, Any]
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "status": self.status,
             "run_id": self.run_id,
             "artifacts": self.artifacts,
+            "metadata": dict(self.metadata),
         }
 
 
@@ -136,4 +138,20 @@ def build_run_status_response(
         error=error,
     ).to_dict()
     _require_fields(response, ("status", "run_id", "state", "artifacts", "error"), "RunStatusResponse")
+    return response
+
+
+def build_report_create_response(
+    run_id: str,
+    artifacts: Dict[str, Any],
+    *,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    response = ReportCreateResponse(
+        status="success",
+        run_id=run_id,
+        artifacts=artifacts,
+        metadata=metadata or {},
+    ).to_dict()
+    _require_fields(response, ("status", "run_id", "artifacts", "metadata"), "ReportCreateResponse")
     return response
