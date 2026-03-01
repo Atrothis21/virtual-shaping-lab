@@ -357,6 +357,14 @@ def test_plan_from_payload_contains_units_and_settings():
     assert plan.settings["agent"] == "classical_agent"
 
 
+def test_plan_from_payload_matches_from_payload_error_behavior():
+    bad_payload = {"report": {"preset": "acquisition"}}
+    with pytest.raises(ValueError, match="Payload missing 'experiment' section"):
+        ExperimentConfig.from_payload(bad_payload)
+    with pytest.raises(ValueError, match="Payload missing 'experiment' section"):
+        ExperimentConfig.plan_from_payload(bad_payload)
+
+
 def test_assemble_experiment_accepts_plan():
     payload = _base_payload()
     cfg = ExperimentConfig.from_payload(payload)
@@ -429,6 +437,17 @@ def test_config_pipeline_build_plan_smoke():
         build_experiment_plan=build_experiment_plan,
     )
     assert isinstance(plan, ExperimentPlan)
+
+
+def test_config_pipeline_build_plan_propagates_validation_errors():
+    from experiment.plan_builder import build_experiment_plan
+
+    bad_payload = {"experiment": {}, "report": {}}
+    with pytest.raises(ValueError, match="Missing required experiment fields"):
+        ConfigPipeline(ExperimentConfig).build_plan(
+            bad_payload,
+            build_experiment_plan=build_experiment_plan,
+        )
 
 
 def test_config_pipeline_supports_injected_components():
