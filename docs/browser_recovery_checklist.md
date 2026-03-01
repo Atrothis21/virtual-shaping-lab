@@ -44,6 +44,9 @@ Verify:
   - `state = "completed"`
   - `artifacts.pdf` path present
   - `artifacts.figures` list present
+  - `metadata.plan_hash` string present
+  - `metadata.record_schema_version` present
+  - `metadata.template_version_used` present
   - `lifecycle.state = "RunComplete"`
   - `lifecycle.next_actions` includes `create_report`
 
@@ -64,6 +67,9 @@ Verify:
   - `run_id` matches
   - `state` present
   - `artifacts` object present
+  - `metadata.plan_hash` matches run response
+  - `metadata.record_schema_version` present
+  - `metadata.template_version_used` present
   - `lifecycle` object present
 
 Negative:
@@ -83,6 +89,12 @@ Verify:
   - `artifacts` object present
   - `metadata.source_run_id` matches original run
   - `metadata.regenerated = true`
+  - `metadata.regeneration_mode = "from_artifacts"`
+  - `metadata.plan_hash` present
+  - `metadata.record_schema_version` present
+  - `metadata.template_version_used` present
+  - `metadata.source_metadata_complete` present
+  - `metadata.missing_source_metadata` present
   - `lifecycle.state = "ReportComplete"`
   - `lifecycle.next_actions` includes `view_report`
 
