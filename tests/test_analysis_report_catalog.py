@@ -7,6 +7,9 @@ def test_report_catalog_has_extinction_and_rapid_reacquisition_mapping():
     assert DEFAULT_REPORT_BY_PROTOCOL["blocking"] == "verification_report"
     assert DEFAULT_REPORT_BY_PROTOCOL["overshadowing"] == "verification_report"
     assert DEFAULT_REPORT_BY_PROTOCOL["conditioned_inhibition"] == "verification_report"
+    assert DEFAULT_REPORT_BY_PROTOCOL["aba_renewal"] == "verification_report"
+    assert DEFAULT_REPORT_BY_PROTOCOL["abc_renewal"] == "verification_report"
+    assert DEFAULT_REPORT_BY_PROTOCOL["aab_renewal"] == "verification_report"
 
 
 def test_report_catalog_falls_back_to_verification_report():

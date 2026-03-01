@@ -9,6 +9,9 @@ DEFAULT_REPORT_BY_PROTOCOL: dict[str, str] = {
     "blocking": "verification_report",
     "overshadowing": "verification_report",
     "conditioned_inhibition": "verification_report",
+    "aba_renewal": "verification_report",
+    "abc_renewal": "verification_report",
+    "aab_renewal": "verification_report",
 }
 
 
