@@ -41,6 +41,7 @@ class FinalizationContext:
     phase_name: str | None = None
     protocol_phase_index: int | None = None
     protocol_phase_name: str | None = None
+    strict_mode: bool = False
 
 
 class RecordNormalizer(Protocol):
@@ -70,6 +71,42 @@ class ProtocolMetadataNormalizer:
                 record["subphase_name"] = ctx.protocol_phase_name
 
 
+class StrictModeValidator:
+    """
+    Optional strict validator for record invariants.
+
+    Enabled only when FinalizationContext.strict_mode is True.
+    """
+
+    def apply(self, record: Dict[str, Any], ctx: FinalizationContext) -> None:
+        if not ctx.strict_mode:
+            return
+
+        tick = record.get("tick")
+        t_s = record.get("t_s")
+        dt_s = record.get("dt_s")
+        trial_step = record.get("trial_step")
+
+        # Tick records must include time/grid fields.
+        if tick is not None:
+            if t_s is None:
+                raise ValueError("Strict mode: tick record requires t_s.")
+            if dt_s is None:
+                raise ValueError("Strict mode: tick record requires dt_s.")
+            if trial_step is None:
+                raise ValueError("Strict mode: tick record requires trial_step.")
+
+        # Monotonic check for contexts that provide previous tick info.
+        metadata = record.get("metadata")
+        if isinstance(metadata, dict):
+            prev_tick = metadata.get("prev_tick")
+            prev_t_s = metadata.get("prev_t_s")
+            if prev_tick is not None and tick is not None and int(tick) < int(prev_tick):
+                raise ValueError("Strict mode: tick must be monotonic non-decreasing.")
+            if prev_t_s is not None and t_s is not None and float(t_s) < float(prev_t_s):
+                raise ValueError("Strict mode: t_s must be monotonic non-decreasing.")
+
+
 class RecordFinalizationPipeline:
     def __init__(self, normalizers: list[RecordNormalizer]):
         self.normalizers = list(normalizers)
@@ -84,6 +121,7 @@ DEFAULT_FINALIZATION_PIPELINE = RecordFinalizationPipeline(
     normalizers=[
         SchemaDefaultsNormalizer(),
         ProtocolMetadataNormalizer(),
+        StrictModeValidator(),
     ]
 )
 
@@ -93,6 +131,7 @@ def finalize_record(
     phase_name: str | None = None,
     protocol_phase_index: int | None = None,
     protocol_phase_name: str | None = None,
+    strict_mode: bool = False,
 ) -> TrialRecord:
     """
     Normalize record metadata across protocol and phase execution modes.
@@ -101,5 +140,6 @@ def finalize_record(
         phase_name=phase_name,
         protocol_phase_index=protocol_phase_index,
         protocol_phase_name=protocol_phase_name,
+        strict_mode=strict_mode,
     )
     return DEFAULT_FINALIZATION_PIPELINE.finalize(record, ctx)
