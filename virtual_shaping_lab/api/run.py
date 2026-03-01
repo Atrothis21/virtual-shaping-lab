@@ -3,7 +3,7 @@
 import copy
 import traceback
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -13,6 +13,7 @@ from api.contracts import (
     build_run_create_response,
     build_run_status_response,
 )
+from api.errors import raise_internal_error, raise_not_found, raise_validation_error
 from api.services import PlanService, ReportService, RunService
 from paths import REPORTS_DIR, UI_DIR
 from ui.validate_payload import validate_payload
@@ -38,9 +39,9 @@ def plan_api(payload: dict):
         raw_payload = copy.deepcopy(payload)
         validate_payload(raw_payload)
     except Exception as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Payload validation failed: {str(exc)}",
+        raise_validation_error(
+            "Payload validation failed.",
+            details={"reason": str(exc)},
         )
 
     try:
@@ -50,9 +51,9 @@ def plan_api(payload: dict):
             stable_hash=resolved["stable_hash"],
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
+        raise_internal_error(
+            "Plan resolution failed.",
+            details={"reason": str(exc)},
         )
 
 
@@ -65,9 +66,9 @@ def run_api(payload: dict):
         validate_payload(raw_payload)
         print("Payload validated", flush=True)
     except Exception as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Payload validation failed: {str(exc)}",
+        raise_validation_error(
+            "Payload validation failed.",
+            details={"reason": str(exc)},
         )
 
     try:
@@ -86,9 +87,9 @@ def run_api(payload: dict):
     except Exception as exc:
         print("=== /run ERROR ===", flush=True)
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
+        raise_internal_error(
+            "Run execution failed.",
+            details={"reason": str(exc)},
         )
 
 
@@ -96,7 +97,10 @@ def run_api(payload: dict):
 def run_status_api(run_id: str):
     status = RunService.status(run_id)
     if status is None:
-        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
+        raise_not_found(
+            f"Run '{run_id}' not found.",
+            details={"run_id": run_id},
+        )
     return build_run_status_response(
         run_id=run_id,
         state=status["state"],
@@ -122,6 +126,12 @@ def run_report_api(run_id: str, payload: dict | None = None):
             metadata=result["metadata"],
         )
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise_not_found(
+            str(exc),
+            details={"run_id": run_id},
+        )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise_internal_error(
+            "Report generation failed.",
+            details={"reason": str(exc), "run_id": run_id},
+        )

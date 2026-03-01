@@ -126,6 +126,9 @@ def test_run_status_endpoint_404_for_missing_run():
     with pytest.raises(HTTPException) as exc:
         api_run.run_status_api("missing-run-id")
     assert exc.value.status_code == 404
+    assert exc.value.detail["code"] == "not_found"
+    assert "message" in exc.value.detail
+    assert "details" in exc.value.detail
 
 
 def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
@@ -159,3 +162,30 @@ def test_run_report_endpoint_404_for_missing_run():
     with pytest.raises(HTTPException) as exc:
         api_run.run_report_api("missing-run-id")
     assert exc.value.status_code == 404
+    assert exc.value.detail["code"] == "not_found"
+    assert "message" in exc.value.detail
+    assert "details" in exc.value.detail
+
+
+def test_plan_api_validation_error_envelope():
+    with pytest.raises(HTTPException) as exc:
+        api_run.plan_api({"report": {"preset": "acquisition"}})
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert "message" in exc.value.detail
+    assert "details" in exc.value.detail
+
+
+def test_plan_api_internal_error_envelope(monkeypatch):
+    monkeypatch.setattr(api_run, "validate_payload", lambda _: None)
+
+    def _boom(_):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(api_services.PlanService, "resolve", _boom)
+    with pytest.raises(HTTPException) as exc:
+        api_run.plan_api({"experiment": {}, "report": {}})
+    assert exc.value.status_code == 500
+    assert exc.value.detail["code"] == "internal_error"
+    assert "message" in exc.value.detail
+    assert "details" in exc.value.detail
