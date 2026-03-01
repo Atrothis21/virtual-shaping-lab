@@ -4,6 +4,7 @@ from experiment.runtime_records import (
     RecordFinalizationPipeline,
     SchemaDefaultsNormalizer,
     StrictModeValidator,
+    VersionMigrator,
     finalize_record,
 )
 
@@ -56,7 +57,12 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
 
 def test_record_finalization_pipeline_matches_finalize_record_contract():
     pipeline = RecordFinalizationPipeline(
-        normalizers=[SchemaDefaultsNormalizer(), ProtocolMetadataNormalizer(), StrictModeValidator()]
+        normalizers=[
+            VersionMigrator(),
+            SchemaDefaultsNormalizer(),
+            ProtocolMetadataNormalizer(),
+            StrictModeValidator(),
+        ]
     )
     rec = {"phase": "acquisition", "trial": 1}
     out = pipeline.finalize(
@@ -103,3 +109,18 @@ def test_finalize_record_default_mode_keeps_backward_compatibility():
     record = {"phase": "timed", "trial": 0, "tick": 0}
     out = finalize_record(record)
     assert out["tick"] == 0
+
+
+def test_finalize_record_version_migration_noop_for_v1_to_v1():
+    record = {"phase": "acquisition", "trial": 1}
+    out = finalize_record(record, from_version="v1", to_version="v1")
+    assert out["phase"] == "acquisition"
+
+
+def test_finalize_record_version_migration_rejects_unsupported_paths():
+    record = {"phase": "acquisition", "trial": 1}
+    try:
+        finalize_record(record, from_version="v1", to_version="v2")
+        assert False, "Expected unsupported migration path to raise."
+    except ValueError as exc:
+        assert "Unsupported record schema migration" in str(exc)

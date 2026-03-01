@@ -42,6 +42,8 @@ class FinalizationContext:
     protocol_phase_index: int | None = None
     protocol_phase_name: str | None = None
     strict_mode: bool = False
+    from_version: str = "v1"
+    to_version: str = "v1"
 
 
 class RecordNormalizer(Protocol):
@@ -107,6 +109,22 @@ class StrictModeValidator:
                 raise ValueError("Strict mode: t_s must be monotonic non-decreasing.")
 
 
+class VersionMigrator:
+    """
+    Version migration hook for TrialRecord schema evolution.
+
+    Current behavior:
+    - v1 -> v1 : no-op
+    """
+
+    def apply(self, record: Dict[str, Any], ctx: FinalizationContext) -> None:
+        if ctx.from_version == ctx.to_version:
+            return
+        raise ValueError(
+            f"Unsupported record schema migration: {ctx.from_version} -> {ctx.to_version}"
+        )
+
+
 class RecordFinalizationPipeline:
     def __init__(self, normalizers: list[RecordNormalizer]):
         self.normalizers = list(normalizers)
@@ -119,6 +137,7 @@ class RecordFinalizationPipeline:
 
 DEFAULT_FINALIZATION_PIPELINE = RecordFinalizationPipeline(
     normalizers=[
+        VersionMigrator(),
         SchemaDefaultsNormalizer(),
         ProtocolMetadataNormalizer(),
         StrictModeValidator(),
@@ -132,6 +151,8 @@ def finalize_record(
     protocol_phase_index: int | None = None,
     protocol_phase_name: str | None = None,
     strict_mode: bool = False,
+    from_version: str = "v1",
+    to_version: str = "v1",
 ) -> TrialRecord:
     """
     Normalize record metadata across protocol and phase execution modes.
@@ -141,5 +162,7 @@ def finalize_record(
         protocol_phase_index=protocol_phase_index,
         protocol_phase_name=protocol_phase_name,
         strict_mode=strict_mode,
+        from_version=from_version,
+        to_version=to_version,
     )
     return DEFAULT_FINALIZATION_PIPELINE.finalize(record, ctx)
