@@ -6,6 +6,7 @@ from analysis.report.catalog import get_default_template_for_protocol
 from analysis.report.report import run_report
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
+from experiment.domain.types import ExperimentPlan
 from experiment.runner import Runner
 
 
@@ -52,14 +53,20 @@ class RunService:
     """Application-layer facade for plan execution and run-status tracking."""
 
     @staticmethod
-    def _run_experiment(raw_payload: dict, *, reports_dir: Path):
-        config = ExperimentConfig.from_payload(raw_payload)
-        protocols, _agent, _representation = assemble_experiment(config)
+    def _run_experiment(raw_payload: dict, *, plan: ExperimentPlan, reports_dir: Path):
+        protocols, _agent, _representation = assemble_experiment(plan)
 
         records = []
+        units = list(plan.units or [])
         for phase_index, protocol in enumerate(protocols):
             runner = Runner(protocol)
             phase_records = runner.run()
+
+            phase_name = f"Phase {phase_index}"
+            if phase_index < len(units):
+                unit = units[phase_index]
+                if isinstance(unit, dict):
+                    phase_name = str(unit.get("name", phase_name))
 
             for record in phase_records:
                 record["phase"] = phase_index
@@ -67,14 +74,15 @@ class RunService:
 
                 finalize_record(
                     record,
-                    phase_name=config.phases[phase_index].name,
+                    phase_name=phase_name,
                 )
 
             records.extend(phase_records)
 
+        report_preset = str((plan.settings or {}).get("report_preset", "verification_report"))
         report_dir = run_report(
             records=records,
-            preset=config.report_preset,
+            preset=report_preset,
             payload=raw_payload,
             output_dir=str(reports_dir),
         )
@@ -87,12 +95,28 @@ class RunService:
         return records, report_dir, artifacts
 
     @classmethod
-    def execute(cls, payload: Dict[str, Any], *, reports_dir: Path) -> Dict[str, Any]:
+    def execute(
+        cls,
+        payload: Dict[str, Any],
+        *,
+        reports_dir: Path,
+        expected_plan_hash: Optional[str] = None,
+    ) -> Dict[str, Any]:
         plan = ExperimentConfig.plan_from_payload(payload)
-        records, report_dir, artifacts = cls._run_experiment(payload, reports_dir=reports_dir)
+        plan_hash = plan.stable_hash()
+        if expected_plan_hash is not None and expected_plan_hash != plan_hash:
+            raise ValueError(
+                f"Plan hash mismatch: expected '{expected_plan_hash}', got '{plan_hash}'."
+            )
+
+        records, report_dir, artifacts = cls._run_experiment(
+            payload,
+            plan=plan,
+            reports_dir=reports_dir,
+        )
         run_id = report_dir.name
         run_metadata = {
-            "plan_hash": plan.stable_hash(),
+            "plan_hash": plan_hash,
             "record_schema_version": plan.record_schema_version,
             "template_version_used": 1,
         }

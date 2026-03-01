@@ -70,6 +70,44 @@ def test_plan_service_returns_stable_hash_parity():
     assert resolved["stable_hash"] == rebuilt.stable_hash()
 
 
+def test_run_service_rejects_expected_plan_hash_mismatch(tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    with pytest.raises(ValueError, match="Plan hash mismatch"):
+        api_services.RunService.execute(
+            payload,
+            reports_dir=tmp_path,
+            expected_plan_hash="deadbeef",
+        )
+
+
+def test_run_service_executes_from_resolved_plan(monkeypatch, tmp_path):
+    from experiment import assemble as assemble_mod
+    from experiment.domain.types import ExperimentPlan
+
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    calls = {"saw_plan": False}
+
+    def _assemble_assert_plan(config):
+        assert isinstance(config, ExperimentPlan)
+        calls["saw_plan"] = True
+        return assemble_mod.assemble_experiment(config)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(tmp_path),
+        )
+
+    monkeypatch.setattr(api_services, "assemble_experiment", _assemble_assert_plan)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    result = api_services.RunService.execute(payload, reports_dir=tmp_path)
+
+    assert calls["saw_plan"] is True
+    assert result["state"] == "completed"
+
+
 @pytest.mark.parametrize(
     "fixture_name",
     ["classical_preset", "operant_preset", "multi_phase_builder"],
