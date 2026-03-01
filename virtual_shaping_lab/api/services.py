@@ -2,16 +2,53 @@ from pathlib import Path
 import json
 from typing import Any, Dict, Optional
 
+from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
+from analysis.report.catalog import get_default_template_for_protocol
 from analysis.report.report import run_report
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
+from experiment.domain.types import ExperimentPlan
 from experiment.runner import Runner
+from api.lifecycle import (
+    LIFECYCLE_RUN_COMPLETE,
+    validate_lifecycle_transition,
+)
+
+
+_DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
+
+
+def _set_status_with_lifecycle(
+    store: RunStatusStoreProtocol,
+    run_id: str,
+    *,
+    state: str,
+    artifacts: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    error: Optional[Dict[str, Any]] = None,
+) -> None:
+    previous = store.get(run_id) or {}
+    prev_meta = dict(previous.get("metadata", {}))
+    previous_lifecycle_state = previous.get("lifecycle_state") or prev_meta.get("lifecycle_state")
+    lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else state
+    validate_lifecycle_transition(previous_lifecycle_state, lifecycle_state)
+    merged_meta = dict(metadata or {})
+    merged_meta["lifecycle_state"] = lifecycle_state
+    store.set(
+        run_id,
+        state=state,
+        artifacts=artifacts or {},
+        metadata=merged_meta,
+        error=error,
+    )
 
 
 class RunStatusStore:
-    """In-process run status registry."""
+    """
+    Backward-compatible facade over the default run status store.
 
-    _runs: Dict[str, Dict[str, Any]] = {}
+    New code should inject RunStatusStoreProtocol into services.
+    """
 
     @classmethod
     def set(
@@ -20,17 +57,34 @@ class RunStatusStore:
         *,
         state: str,
         artifacts: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         error: Optional[Dict[str, Any]] = None,
     ) -> None:
-        cls._runs[run_id] = {
-            "state": state,
-            "artifacts": artifacts or {},
-            "error": error,
-        }
+        _set_status_with_lifecycle(
+            _DEFAULT_RUN_STATUS_STORE,
+            run_id,
+            state=state,
+            artifacts=artifacts,
+            metadata=metadata,
+            error=error,
+        )
 
     @classmethod
     def get(cls, run_id: str) -> Optional[Dict[str, Any]]:
-        return cls._runs.get(run_id)
+        data = _DEFAULT_RUN_STATUS_STORE.get(run_id)
+        if data is None:
+            return None
+        out = dict(data)
+        metadata = dict(out.get("metadata", {}))
+        lifecycle_state = metadata.pop("lifecycle_state", None)
+        if lifecycle_state is not None:
+            out["lifecycle_state"] = lifecycle_state
+        out["metadata"] = metadata
+        return out
+
+    @classmethod
+    def clear(cls, run_id: Optional[str] = None) -> None:
+        _DEFAULT_RUN_STATUS_STORE.clear(run_id)
 
 
 class PlanService:
@@ -49,14 +103,20 @@ class RunService:
     """Application-layer facade for plan execution and run-status tracking."""
 
     @staticmethod
-    def _run_experiment(raw_payload: dict, *, reports_dir: Path):
-        config = ExperimentConfig.from_payload(raw_payload)
-        protocols, _agent, _representation = assemble_experiment(config)
+    def _run_experiment(raw_payload: dict, *, plan: ExperimentPlan, reports_dir: Path):
+        protocols, _agent, _representation = assemble_experiment(plan)
 
         records = []
+        units = list(plan.units or [])
         for phase_index, protocol in enumerate(protocols):
             runner = Runner(protocol)
             phase_records = runner.run()
+
+            phase_name = f"Phase {phase_index}"
+            if phase_index < len(units):
+                unit = units[phase_index]
+                if isinstance(unit, dict):
+                    phase_name = str(unit.get("name", phase_name))
 
             for record in phase_records:
                 record["phase"] = phase_index
@@ -64,14 +124,15 @@ class RunService:
 
                 finalize_record(
                     record,
-                    phase_name=config.phases[phase_index].name,
+                    phase_name=phase_name,
                 )
 
             records.extend(phase_records)
 
+        report_preset = str((plan.settings or {}).get("report_preset", "verification_report"))
         report_dir = run_report(
             records=records,
-            preset=config.report_preset,
+            preset=report_preset,
             payload=raw_payload,
             output_dir=str(reports_dir),
         )
@@ -84,25 +145,62 @@ class RunService:
         return records, report_dir, artifacts
 
     @classmethod
-    def execute(cls, payload: Dict[str, Any], *, reports_dir: Path) -> Dict[str, Any]:
-        records, report_dir, artifacts = cls._run_experiment(payload, reports_dir=reports_dir)
+    def execute(
+        cls,
+        payload: Dict[str, Any],
+        *,
+        reports_dir: Path,
+        expected_plan_hash: Optional[str] = None,
+        status_store: Optional[RunStatusStoreProtocol] = None,
+    ) -> Dict[str, Any]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
+        plan = ExperimentConfig.plan_from_payload(payload)
+        plan_hash = plan.stable_hash()
+        if expected_plan_hash is not None and expected_plan_hash != plan_hash:
+            raise ValueError(
+                f"Plan hash mismatch: expected '{expected_plan_hash}', got '{plan_hash}'."
+            )
+
+        records, report_dir, artifacts = cls._run_experiment(
+            payload,
+            plan=plan,
+            reports_dir=reports_dir,
+        )
         run_id = report_dir.name
-        RunStatusStore.set(
+        run_metadata = {
+            "plan_hash": plan_hash,
+            "record_schema_version": plan.record_schema_version,
+            "template_version_used": 1,
+        }
+        _set_status_with_lifecycle(
+            store,
             run_id,
             state="completed",
             artifacts=artifacts,
+            metadata=run_metadata,
             error=None,
         )
         return {
             "run_id": run_id,
             "artifacts": artifacts,
+            "metadata": run_metadata,
             "state": "completed",
             "record_count": len(records),
         }
 
     @staticmethod
-    def status(run_id: str) -> Optional[Dict[str, Any]]:
-        return RunStatusStore.get(run_id)
+    def status(run_id: str, *, status_store: Optional[RunStatusStoreProtocol] = None) -> Optional[Dict[str, Any]]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
+        data = store.get(run_id)
+        if data is None:
+            return None
+        out = dict(data)
+        metadata = dict(out.get("metadata", {}))
+        lifecycle_state = metadata.pop("lifecycle_state", None)
+        if lifecycle_state is not None:
+            out["lifecycle_state"] = lifecycle_state
+        out["metadata"] = metadata
+        return out
 
 
 class ReportService:
@@ -115,7 +213,9 @@ class ReportService:
         *,
         reports_dir: Path,
         preset_override: Optional[str] = None,
+        status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
+        store = status_store or _DEFAULT_RUN_STATUS_STORE
         run_dir = Path(reports_dir) / run_id
         records_path = run_dir / "records.json"
         payload_path = run_dir / "payload.json"
@@ -132,6 +232,16 @@ class ReportService:
         if not preset:
             preset = "acquisition"
 
+        resolved_plan = ExperimentConfig.plan_from_payload(payload)
+        protocol_name = ""
+        if isinstance(payload.get("experiment"), dict):
+            exp = payload["experiment"]
+            if isinstance(exp.get("phases"), list) and exp["phases"]:
+                protocol_name = str(exp["phases"][0].get("protocol", "") or "")
+            else:
+                protocol_name = str(exp.get("protocol", "") or "")
+        template_version = get_default_template_for_protocol(protocol_name).template_version if protocol_name else 1
+
         regen_root = Path(reports_dir) / "regenerated"
         regen_root.mkdir(parents=True, exist_ok=True)
         report_dir = run_report(
@@ -145,11 +255,27 @@ class ReportService:
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
         }
+        source_status = store.get(run_id) or {}
+        source_metadata = dict(source_status.get("metadata", {}))
+        required_source_keys = {"plan_hash", "record_schema_version", "template_version_used"}
+        missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
+        source_metadata_complete = len(missing_source_keys) == 0
+
         new_run_id = report_dir.name
-        RunStatusStore.set(
+        _set_status_with_lifecycle(
+            store,
             new_run_id,
             state="completed",
             artifacts=artifacts,
+            metadata={
+                "plan_hash": resolved_plan.stable_hash(),
+                "record_schema_version": resolved_plan.record_schema_version,
+                "template_version_used": template_version,
+                "source_run_id": run_id,
+                "source_metadata_complete": source_metadata_complete,
+                "missing_source_metadata": missing_source_keys,
+                "regeneration_mode": "from_artifacts",
+            },
             error=None,
         )
         return {
@@ -159,5 +285,11 @@ class ReportService:
                 "source_run_id": run_id,
                 "preset": preset,
                 "regenerated": True,
+                "plan_hash": resolved_plan.stable_hash(),
+                "record_schema_version": resolved_plan.record_schema_version,
+                "template_version_used": template_version,
+                "source_metadata_complete": source_metadata_complete,
+                "missing_source_metadata": missing_source_keys,
+                "regeneration_mode": "from_artifacts",
             },
         }

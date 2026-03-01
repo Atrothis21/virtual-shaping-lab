@@ -97,6 +97,7 @@ def run_api(payload: dict):
             run_id=result["run_id"],
             artifacts=result["artifacts"],
             state=result["state"],
+            metadata=result["metadata"],
         )
 
     except Exception as exc:
@@ -120,6 +121,7 @@ def run_status_api(run_id: str):
         run_id=run_id,
         state=status["state"],
         artifacts=status.get("artifacts", {}),
+        metadata=status.get("metadata", {}),
         error=status.get("error"),
     )
 
