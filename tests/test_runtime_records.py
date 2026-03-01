@@ -1,4 +1,12 @@
-from experiment.runtime_records import finalize_record
+from experiment.runtime_records import (
+    FinalizationContext,
+    ProtocolMetadataNormalizer,
+    RecordFinalizationPipeline,
+    SchemaDefaultsNormalizer,
+    StrictModeValidator,
+    VersionMigrator,
+    finalize_record,
+)
 
 
 def test_finalize_record_sets_fields():
@@ -45,3 +53,74 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
     ):
         assert key in out
     assert out["metadata"] == {}
+
+
+def test_record_finalization_pipeline_matches_finalize_record_contract():
+    pipeline = RecordFinalizationPipeline(
+        normalizers=[
+            VersionMigrator(),
+            SchemaDefaultsNormalizer(),
+            ProtocolMetadataNormalizer(),
+            StrictModeValidator(),
+        ]
+    )
+    rec = {"phase": "acquisition", "trial": 1}
+    out = pipeline.finalize(
+        rec,
+        FinalizationContext(
+            phase_name="acquisition",
+            protocol_phase_index=0,
+            protocol_phase_name="acquisition",
+        ),
+    )
+    assert out["phase_name"] == "acquisition"
+    assert out["subphase"] == 0
+    assert out["subphase_name"] == "acquisition"
+    assert "metadata" in out
+
+
+def test_finalize_record_strict_mode_rejects_incomplete_tick_record():
+    record = {"phase": "timed", "trial": 0, "tick": 0}
+    try:
+        finalize_record(record, strict_mode=True)
+        assert False, "Expected strict mode to reject missing tick timing fields."
+    except ValueError as exc:
+        assert "requires t_s" in str(exc)
+
+
+def test_finalize_record_strict_mode_rejects_non_monotonic_tick():
+    record = {
+        "phase": "timed",
+        "trial": 0,
+        "tick": 0,
+        "t_s": 0.0,
+        "dt_s": 0.1,
+        "trial_step": 0,
+        "metadata": {"prev_tick": 1, "prev_t_s": 0.2},
+    }
+    try:
+        finalize_record(record, strict_mode=True)
+        assert False, "Expected strict mode to reject non-monotonic tick metadata."
+    except ValueError as exc:
+        assert "tick must be monotonic" in str(exc)
+
+
+def test_finalize_record_default_mode_keeps_backward_compatibility():
+    record = {"phase": "timed", "trial": 0, "tick": 0}
+    out = finalize_record(record)
+    assert out["tick"] == 0
+
+
+def test_finalize_record_version_migration_noop_for_v1_to_v1():
+    record = {"phase": "acquisition", "trial": 1}
+    out = finalize_record(record, from_version="v1", to_version="v1")
+    assert out["phase"] == "acquisition"
+
+
+def test_finalize_record_version_migration_rejects_unsupported_paths():
+    record = {"phase": "acquisition", "trial": 1}
+    try:
+        finalize_record(record, from_version="v1", to_version="v2")
+        assert False, "Expected unsupported migration path to raise."
+    except ValueError as exc:
+        assert "Unsupported record schema migration" in str(exc)
