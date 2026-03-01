@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 from typing import Any, Dict, Optional
 
+from analysis.report.catalog import get_default_template_for_protocol
 from analysis.report.report import run_report
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
@@ -20,11 +21,13 @@ class RunStatusStore:
         *,
         state: str,
         artifacts: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
         error: Optional[Dict[str, Any]] = None,
     ) -> None:
         cls._runs[run_id] = {
             "state": state,
             "artifacts": artifacts or {},
+            "metadata": metadata or {},
             "error": error,
         }
 
@@ -85,17 +88,25 @@ class RunService:
 
     @classmethod
     def execute(cls, payload: Dict[str, Any], *, reports_dir: Path) -> Dict[str, Any]:
+        plan = ExperimentConfig.plan_from_payload(payload)
         records, report_dir, artifacts = cls._run_experiment(payload, reports_dir=reports_dir)
         run_id = report_dir.name
+        run_metadata = {
+            "plan_hash": plan.stable_hash(),
+            "record_schema_version": plan.record_schema_version,
+            "template_version_used": 1,
+        }
         RunStatusStore.set(
             run_id,
             state="completed",
             artifacts=artifacts,
+            metadata=run_metadata,
             error=None,
         )
         return {
             "run_id": run_id,
             "artifacts": artifacts,
+            "metadata": run_metadata,
             "state": "completed",
             "record_count": len(records),
         }
@@ -132,6 +143,16 @@ class ReportService:
         if not preset:
             preset = "acquisition"
 
+        resolved_plan = ExperimentConfig.plan_from_payload(payload)
+        protocol_name = ""
+        if isinstance(payload.get("experiment"), dict):
+            exp = payload["experiment"]
+            if isinstance(exp.get("phases"), list) and exp["phases"]:
+                protocol_name = str(exp["phases"][0].get("protocol", "") or "")
+            else:
+                protocol_name = str(exp.get("protocol", "") or "")
+        template_version = get_default_template_for_protocol(protocol_name).template_version if protocol_name else 1
+
         regen_root = Path(reports_dir) / "regenerated"
         regen_root.mkdir(parents=True, exist_ok=True)
         report_dir = run_report(
@@ -150,6 +171,11 @@ class ReportService:
             new_run_id,
             state="completed",
             artifacts=artifacts,
+            metadata={
+                "plan_hash": resolved_plan.stable_hash(),
+                "record_schema_version": resolved_plan.record_schema_version,
+                "template_version_used": template_version,
+            },
             error=None,
         )
         return {
@@ -159,5 +185,8 @@ class ReportService:
                 "source_run_id": run_id,
                 "preset": preset,
                 "regenerated": True,
+                "plan_hash": resolved_plan.stable_hash(),
+                "record_schema_version": resolved_plan.record_schema_version,
+                "template_version_used": template_version,
             },
         }

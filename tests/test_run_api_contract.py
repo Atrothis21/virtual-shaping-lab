@@ -23,11 +23,12 @@ def test_api_response_dto_required_fields_smoke():
         run_id="r1",
         state="completed",
         artifacts={"pdf": "p"},
+        metadata={"plan_hash": "abc", "record_schema_version": "v1", "template_version_used": 1},
     ).to_dict()
-    assert set(("status", "run_id", "state", "artifacts", "lifecycle")).issubset(run_create.keys())
+    assert set(("status", "run_id", "state", "artifacts", "metadata", "lifecycle")).issubset(run_create.keys())
 
     run_status = RunStatusResponse(status="success", run_id="r1", state="completed").to_dict()
-    assert set(("status", "run_id", "state", "artifacts", "error", "lifecycle")).issubset(run_status.keys())
+    assert set(("status", "run_id", "state", "artifacts", "metadata", "error", "lifecycle")).issubset(run_status.keys())
 
     plan_resolve = PlanResolveResponse(status="success", plan={"units": []}, stable_hash="abc").to_dict()
     assert set(("status", "plan", "stable_hash", "lifecycle")).issubset(plan_resolve.keys())
@@ -94,6 +95,10 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(run_id, str) and run_id
     assert body.get("state") == "completed"
     assert "artifacts" in body and isinstance(body["artifacts"], dict)
+    assert "metadata" in body and isinstance(body["metadata"], dict)
+    assert isinstance(body["metadata"].get("plan_hash"), str) and body["metadata"]["plan_hash"]
+    assert body["metadata"].get("record_schema_version") == "v1"
+    assert isinstance(body["metadata"].get("template_version_used"), int)
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
 
@@ -124,6 +129,9 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert status["status"] == "success"
     assert status["run_id"] == run_id
     assert status["state"] == "completed"
+    assert isinstance(status["metadata"].get("plan_hash"), str) and status["metadata"]["plan_hash"]
+    assert status["metadata"].get("record_schema_version") == "v1"
+    assert isinstance(status["metadata"].get("template_version_used"), int)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
 
@@ -162,6 +170,9 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["artifacts"], dict)
     assert report_body["metadata"]["source_run_id"] == source_run_id
     assert report_body["metadata"]["regenerated"] is True
+    assert isinstance(report_body["metadata"].get("plan_hash"), str) and report_body["metadata"]["plan_hash"]
+    assert report_body["metadata"].get("record_schema_version") == "v1"
+    assert isinstance(report_body["metadata"].get("template_version_used"), int)
     assert report_body["lifecycle"]["state"] == "ReportComplete"
     assert "view_report" in report_body["lifecycle"]["next_actions"]
 
