@@ -189,3 +189,21 @@ def test_plan_api_internal_error_envelope(monkeypatch):
     assert exc.value.detail["code"] == "internal_error"
     assert "message" in exc.value.detail
     assert "details" in exc.value.detail
+
+
+def test_extensions_api_contract_shape():
+    body = api_run.extensions_api()
+    assert body["status"] == "success"
+    ext = body["extensions"]
+    assert set(ext.keys()) == {
+        "protocols",
+        "learners",
+        "policies",
+        "representations",
+        "report_templates",
+    }
+    assert isinstance(ext["protocols"], list)
+    assert isinstance(ext["learners"], list)
+    assert isinstance(ext["policies"], list)
+    assert isinstance(ext["representations"], list)
+    assert isinstance(ext["report_templates"], dict)

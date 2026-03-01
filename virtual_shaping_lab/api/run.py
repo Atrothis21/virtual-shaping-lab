@@ -14,6 +14,7 @@ from api.contracts import (
     build_run_status_response,
 )
 from api.errors import raise_internal_error, raise_not_found, raise_validation_error
+from api.extensions import ExtensionCatalog
 from api.services import PlanService, ReportService, RunService
 from paths import REPORTS_DIR, UI_DIR
 from ui.validate_payload import validate_payload
@@ -31,6 +32,20 @@ app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
 @app.get("/")
 def root():
     return FileResponse(str(UI_DIR / "index.html"))
+
+
+@app.get("/catalog/extensions")
+def extensions_api():
+    try:
+        return {
+            "status": "success",
+            "extensions": ExtensionCatalog.snapshot(),
+        }
+    except Exception as exc:
+        raise_internal_error(
+            "Extension catalog discovery failed.",
+            details={"reason": str(exc)},
+        )
 
 
 @app.post("/plan")
