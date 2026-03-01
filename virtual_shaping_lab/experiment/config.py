@@ -11,6 +11,46 @@ OPERANT_PROTOCOLS = {
 }
 
 
+class PayloadNormalizer:
+    """Config normalization pipeline (defaults/coercions only)."""
+
+    @staticmethod
+    def normalize_experiment(
+        exp: Dict[str, Any],
+        *,
+        parse_representation,
+        parse_policy,
+        parse_experiment_fields,
+        parse_phases,
+    ) -> Dict[str, Any]:
+        representation = parse_representation(exp)
+        policy = parse_policy(exp)
+        exp_stimuli, exp_salience, exp_attention, exp_context_inference = parse_experiment_fields(exp)
+        phases = parse_phases(exp)
+        return {
+            "representation": representation,
+            "policy": policy,
+            "stimuli": exp_stimuli,
+            "salience": exp_salience,
+            "attention": exp_attention,
+            "context_inference": exp_context_inference,
+            "phases": phases,
+        }
+
+
+class PayloadValidator:
+    """Semantic/runtime constraint validation pipeline."""
+
+    @staticmethod
+    def validate_required_fields(require_fields, exp: Dict[str, Any], rep: Dict[str, Any]) -> None:
+        require_fields(exp, ["learner", "agent", "representation"], "experiment")
+        require_fields(rep, ["preset"], "report")
+
+    @staticmethod
+    def validate_runtime(validate_runtime_constraints, phases: List["PhaseConfig"]) -> None:
+        validate_runtime_constraints(phases)
+
+
 @dataclass
 class PhaseConfig:
     """
@@ -327,40 +367,29 @@ class ExperimentConfig:
         exp = payload["experiment"]
         rep = payload["report"]
 
-        # ---- required experiment-level fields ----
-        cls._require_fields(exp, ["learner", "agent", "representation"], "experiment")
+        PayloadValidator.validate_required_fields(cls._require_fields, exp, rep)
 
-        # ---- representation normalization ----
-        representation = cls._parse_representation(exp)
-
-        # ---- policy normalization (optional) ----
-        policy = cls._parse_policy(exp)
-
-        # ---- required report fields ----
-        cls._require_fields(rep, ["preset"], "report")
-
-        # ---- experiment-level stimuli normalization ----
-        exp_stimuli, exp_salience, exp_attention, exp_context_inference = (
-            cls._parse_experiment_fields(exp)
+        normalized = PayloadNormalizer.normalize_experiment(
+            exp,
+            parse_representation=cls._parse_representation,
+            parse_policy=cls._parse_policy,
+            parse_experiment_fields=cls._parse_experiment_fields,
+            parse_phases=cls._parse_phases,
         )
-
-        # ---- phase normalization ----
-        phases = cls._parse_phases(exp)
-
 
         config = cls(
             learner=exp["learner"],
             agent=exp["agent"],
-            representation=representation,
-            policy=policy,
-            stimuli=exp_stimuli,
-            salience=exp_salience,
-            attention=exp_attention,
-            context_inference=exp_context_inference,
-            phases=phases,
+            representation=normalized["representation"],
+            policy=normalized["policy"],
+            stimuli=normalized["stimuli"],
+            salience=normalized["salience"],
+            attention=normalized["attention"],
+            context_inference=normalized["context_inference"],
+            phases=normalized["phases"],
             report_preset=rep["preset"],
         )
-        cls.validate_runtime_constraints(phases)
+        PayloadValidator.validate_runtime(cls.validate_runtime_constraints, normalized["phases"])
         return config
 
     @staticmethod

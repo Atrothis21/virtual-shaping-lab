@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from experiment import assemble as assemble_mod
-from experiment.config import ExperimentConfig, PhaseConfig
+from experiment.config import ExperimentConfig, PhaseConfig, PayloadNormalizer, PayloadValidator
 from experiment.domain.types import ExperimentPlan
 
 
@@ -315,6 +315,25 @@ def test_experiment_plan_round_trip_and_stable_hash():
 
     assert rebuilt.to_dict() == blob
     assert rebuilt.stable_hash() == plan.stable_hash()
+
+
+def test_payload_normalizer_and_validator_pipeline_smoke():
+    payload = _base_payload()
+    exp = payload["experiment"]
+    rep = payload["report"]
+
+    PayloadValidator.validate_required_fields(ExperimentConfig._require_fields, exp, rep)
+    normalized = PayloadNormalizer.normalize_experiment(
+        exp,
+        parse_representation=ExperimentConfig._parse_representation,
+        parse_policy=ExperimentConfig._parse_policy,
+        parse_experiment_fields=ExperimentConfig._parse_experiment_fields,
+        parse_phases=ExperimentConfig._parse_phases,
+    )
+
+    assert "representation" in normalized
+    assert "phases" in normalized
+    PayloadValidator.validate_runtime(ExperimentConfig.validate_runtime_constraints, normalized["phases"])
 
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
