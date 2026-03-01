@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from virtual_shaping_lab.domain.naming import normalize_protocol_key
+
 from protocols.aab_renewal import AABRenewalProtocol
 from protocols.aba_renewal import ABARenewalProtocol
 from protocols.abc_renewal import ABCRenewalProtocol
@@ -46,9 +48,10 @@ def available_protocols() -> list[str]:
 
 
 def validate_protocol_name(name: str) -> None:
-    if name not in PROTOCOL_BUILDERS:
+    normalized = normalize_protocol_key(name)
+    if normalized not in PROTOCOL_BUILDERS:
         available = ", ".join(available_protocols())
-        raise KeyError(f"Unknown protocol '{name}'. Available protocols: {available}")
+        raise KeyError(f"Unknown protocol '{name}' (normalized='{normalized}'). Available protocols: {available}")
 
 
 def build_protocol(
@@ -58,7 +61,7 @@ def build_protocol(
     stimuli: Any = None,
     params: dict[str, Any] | None = None,
 ) -> Any:
-    validate_protocol_name(name)
-    protocol_cls = PROTOCOL_BUILDERS[name]
+    normalized = normalize_protocol_key(name)
+    validate_protocol_name(normalized)
+    protocol_cls = PROTOCOL_BUILDERS[normalized]
     return protocol_cls(agent=agent, stimuli=stimuli, params=params or {})
-

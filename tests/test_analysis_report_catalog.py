@@ -32,8 +32,14 @@ def test_report_catalog_returns_compositional_template():
 
 
 def test_report_template_fallback_is_stable():
-    with pytest.warns(UserWarning, match="No default report template mapping"):
+    with pytest.warns(UserWarning, match="Available mappings:"):
         template = get_default_template_for_protocol("missing_protocol")
     assert template.report_name == "verification_report"
     assert template.template_version == 1
     assert "trial_curve" in template.figure_names
+
+
+def test_report_catalog_normalizes_protocol_keys():
+    assert get_default_report_for_protocol("Operant-Conditioning") == "verification_report"
+    template = get_default_template_for_protocol("OPERANT-CONDITIONING")
+    assert template.report_name == "verification_report"

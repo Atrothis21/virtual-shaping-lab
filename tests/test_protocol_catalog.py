@@ -34,3 +34,6 @@ def test_protocol_catalog_build_constructs_protocol(monkeypatch):
     assert proto.kwargs["stimuli"] == {"cs_plus": ["tone"]}
     assert proto.kwargs["params"] == {"n_trials": 5}
 
+
+def test_protocol_catalog_normalizes_protocol_keys():
+    catalog.validate_protocol_name("Operant-Conditioning")
