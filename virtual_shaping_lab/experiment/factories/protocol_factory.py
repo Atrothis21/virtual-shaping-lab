@@ -12,16 +12,18 @@ Protocols must read all settings from `params`.
 from typing import Any
 
 from protocols.catalog import PROTOCOL_BUILDERS
+from virtual_shaping_lab.domain.naming import normalize_protocol_key
 
 
 PROTOCOL_REGISTRY = dict(PROTOCOL_BUILDERS)
 
 
 def validate_protocol(name: str) -> None:
-    if name not in PROTOCOL_REGISTRY:
+    normalized = normalize_protocol_key(name)
+    if normalized not in PROTOCOL_REGISTRY:
         available = ", ".join(sorted(PROTOCOL_REGISTRY.keys()))
         raise KeyError(
-            f"Unknown protocol '{name}'. "
+            f"Unknown protocol '{name}' (normalized='{normalized}'). "
             f"Available protocols: {available}"
         )
 
@@ -40,9 +42,10 @@ def build_protocol(name: str, *, agent: Any, stimuli: Any = None, params: dict[s
     Any protocol-specific validation is the responsibility
     of the protocol class itself.
     """
-    validate_protocol(name)
+    normalized = normalize_protocol_key(name)
+    validate_protocol(normalized)
 
-    protocol_cls = PROTOCOL_REGISTRY[name]
+    protocol_cls = PROTOCOL_REGISTRY[normalized]
 
     return protocol_cls(
         agent=agent,
