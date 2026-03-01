@@ -33,6 +33,13 @@ class PayloadNormalizer:
             "phases": phases,
         }
 
+    @staticmethod
+    def normalize_report(report: Dict[str, Any]) -> Dict[str, Any]:
+        preset = report.get("preset")
+        if not isinstance(preset, str) or not preset.strip():
+            raise ValueError("report.preset must be a non-empty string")
+        return {"preset": preset.strip()}
+
 
 class PayloadValidator:
     """Semantic/runtime constraint validation pipeline."""
@@ -59,6 +66,13 @@ class PayloadValidator:
     def validate_required_fields(require_fields, exp: Dict[str, Any], rep: Dict[str, Any]) -> None:
         require_fields(exp, ["learner", "agent", "representation"], "experiment")
         require_fields(rep, ["preset"], "report")
+
+    @staticmethod
+    def validate_experiment_identity_fields(exp: Dict[str, Any]) -> None:
+        if not isinstance(exp.get("learner"), str) or not exp["learner"].strip():
+            raise ValueError("experiment.learner must be a non-empty string")
+        if not isinstance(exp.get("agent"), str) or not exp["agent"].strip():
+            raise ValueError("experiment.agent must be a non-empty string")
 
     @staticmethod
     def validate_runtime(validate_runtime_constraints, phases: List["PhaseConfig"]) -> None:
@@ -110,11 +124,13 @@ class ConfigPipeline:
 
         PayloadValidator.validate_phase_shape(exp)
         PayloadValidator.validate_required_fields(self._config_cls._require_fields, exp, rep)
+        PayloadValidator.validate_experiment_identity_fields(exp)
 
         normalized = PayloadNormalizer.normalize_experiment(
             exp,
             parser=self._parser,
         )
+        normalized_report = PayloadNormalizer.normalize_report(rep)
         PayloadValidator.validate_runtime(
             self._config_cls.validate_runtime_constraints,
             normalized["phases"],
@@ -130,7 +146,7 @@ class ConfigPipeline:
             attention=normalized["attention"],
             context_inference=normalized["context_inference"],
             phases=normalized["phases"],
-            report_preset=rep["preset"],
+            report_preset=normalized_report["preset"],
         )
 
 

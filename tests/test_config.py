@@ -212,6 +212,25 @@ def test_from_payload_rejects_non_list_phases():
         ExperimentConfig.from_payload(payload)
 
 
+def test_from_payload_rejects_invalid_report_preset():
+    payload = _base_payload()
+    payload["report"]["preset"] = "   "
+    with pytest.raises(ValueError, match="report.preset must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+
+def test_from_payload_rejects_invalid_experiment_identity_fields():
+    payload = _base_payload()
+    payload["experiment"]["learner"] = "  "
+    with pytest.raises(ValueError, match="experiment.learner must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["agent"] = 123
+    with pytest.raises(ValueError, match="experiment.agent must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_infer_contexts_from_protocol_params():
     rep_params = {}
     config = SimpleNamespace(
