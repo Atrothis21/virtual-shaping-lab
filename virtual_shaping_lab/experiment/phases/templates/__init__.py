@@ -6,6 +6,17 @@ from experiment.phases.templates.interfaces import (
     ITrialSampler,
     ITrialScheduleBuilder,
 )
+from experiment.phases.templates.mechanics import (
+    AlwaysLearn,
+    BlockedSampler,
+    DefaultRecordBuilder,
+    FixedSequenceSampler,
+    NeverLearn,
+    OperantScheduleBuilder,
+    PavlovianScheduleBuilder,
+    SpecLearningGate,
+    WeightedRandomSampler,
+)
 from experiment.phases.templates.phase_template import PhaseTemplate
 
 __all__ = [
@@ -13,5 +24,14 @@ __all__ = [
     "IRecordBuilder",
     "ITrialSampler",
     "ITrialScheduleBuilder",
+    "AlwaysLearn",
+    "BlockedSampler",
+    "DefaultRecordBuilder",
+    "FixedSequenceSampler",
+    "NeverLearn",
+    "OperantScheduleBuilder",
+    "PavlovianScheduleBuilder",
+    "SpecLearningGate",
+    "WeightedRandomSampler",
     "PhaseTemplate",
 ]
