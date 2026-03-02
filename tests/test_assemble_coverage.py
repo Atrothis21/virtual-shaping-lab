@@ -9,6 +9,7 @@ from experiment.assemble import (
     assemble_experiment,
 )
 from experiment.config import ExperimentConfig, PhaseConfig
+from experiment.domain.types import ExperimentPlan
 
 
 class DummyConfig:
@@ -267,3 +268,81 @@ def test_assemble_does_not_override_explicit_phase_context():
     assert not hasattr(runtime_units[0], "context_source")
     assert runtime_units[1].context == "B"
     assert runtime_units[1].context_source == "inferred"
+
+
+def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Operant",
+                "protocol": "operant_conditioning",
+                "stimuli": {"cs_plus": ["lever"]},
+                "params": {
+                    "n_trials": 1,
+                    "reward_schedule": {"type": "fixed_ratio", "value": 1},
+                },
+            }
+        ],
+        settings={
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["lever"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "policy": {
+                    "name": "epsilon_greedy",
+                    "epsilon": 0.1,
+                    "actions": ["left", "right"],
+                },
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+
+
+def test_assemble_plan_uses_composed_attention_when_settings_attention_missing():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "attention": {
+                        "mode": "static",
+                        "default": 1.0,
+                        "overrides": {"tone": 0.7},
+                    }
+                }
+            },
+        },
+    )
+
+    runtime_units, agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    assert agent.learner.attention_map == {"tone": 0.7}

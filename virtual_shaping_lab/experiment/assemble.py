@@ -17,6 +17,13 @@ from experiment.domain.types import ExperimentPlan
 OPERANT_AGENT_NAME = "operant_agent"
 
 
+def _get_composed_parameters(config) -> dict[str, Any]:
+    composed = getattr(config, "composed_parameters", None)
+    if isinstance(composed, dict):
+        return composed
+    return {}
+
+
 # Context inference: consolidates any context_* params across phases/protocols.
 # Keeps representation assembly independent of protocol structure.
 def _infer_contexts(rep_params, config):
@@ -86,6 +93,9 @@ def _infer_phase_contexts(config) -> list[str | None]:
 # Salience is representation-owned and applied during encoding.
 def _extract_learner_params(config, representation, policy_actions):
     learner_params = {}
+    composed = _get_composed_parameters(config)
+    composed_learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
+    composed_policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
 
     if config.phases:
         first_params = config.phases[0].params
@@ -93,23 +103,56 @@ def _extract_learner_params(config, representation, policy_actions):
             learner_params["alpha"] = first_params["alpha"]
         if "gamma" in first_params:
             learner_params["gamma"] = first_params["gamma"]
+    if "alpha" not in learner_params and "alpha" in composed_learner:
+        learner_params["alpha"] = composed_learner["alpha"]
+    if (
+        "gamma" not in learner_params
+        and "gamma" in composed_learner
+        and composed_learner.get("gamma") is not None
+    ):
+        learner_params["gamma"] = composed_learner["gamma"]
 
     if policy_actions:
         learner_params.setdefault("actions", policy_actions)
+    elif isinstance(composed_policy.get("actions"), list):
+        learner_params.setdefault("actions", composed_policy["actions"])
 
     return learner_params
 
 
 def _assign_attention_map(config, learner):
-    if getattr(config, "attention", None):
+    attention_map = dict(getattr(config, "attention", None) or {})
+    if not attention_map:
+        composed = _get_composed_parameters(config)
+        composed_learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
+        composed_attention = composed_learner.get("attention", {}) if isinstance(composed_learner.get("attention"), dict) else {}
+        overrides = composed_attention.get("overrides", {})
+        if isinstance(overrides, dict):
+            attention_map = dict(overrides)
+
+    if attention_map:
         if hasattr(learner, "set_attention_map"):
-            learner.set_attention_map(config.attention)
+            learner.set_attention_map(attention_map)
         else:
-            learner.attention_map = dict(config.attention)
+            learner.attention_map = dict(attention_map)
 
 
 def _build_policy_from_config(config):
     if not (hasattr(config, "policy") and config.policy):
+        composed = _get_composed_parameters(config)
+        composed_policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
+        policy_name = composed_policy.get("name")
+        if isinstance(policy_name, str) and policy_name and policy_name != "null":
+            policy_params = {
+                k: v
+                for k, v in composed_policy.items()
+                if k != "name"
+            }
+            policy = build_policy(policy_name, **policy_params)
+            policy_actions = policy_params.get("actions")
+            if policy_actions is None and "action" in policy_params:
+                policy_actions = [policy_params.get("action")]
+            return policy, policy_actions
         return None, None
 
     if isinstance(config.policy, dict):
@@ -216,6 +259,7 @@ def _plan_to_config(plan: ExperimentPlan):
         attention=settings.get("attention", {}),
         context_inference=settings.get("context_inference", {}),
         phases=phases,
+        composed_parameters=settings.get("composed_parameters", {}),
         resolved_plan=bool(settings.get("resolved_plan", False)),
         resolved_phase_contexts=list(settings.get("resolved_phase_contexts", [])),
     )
@@ -226,6 +270,11 @@ class AgentAssembler:
     config: Any
 
     def build_representation_and_contexts(self):
+        composed = _get_composed_parameters(self.config)
+        composed_rep = composed.get("representation", {}) if isinstance(composed.get("representation"), dict) else {}
+        composed_context = composed_rep.get("context", {}) if isinstance(composed_rep.get("context"), dict) else {}
+        composed_salience = composed_rep.get("salience", {}) if isinstance(composed_rep.get("salience"), dict) else {}
+
         rep = self.config.representation
         if isinstance(rep, dict):
             rep_name = rep.get("name")
@@ -239,6 +288,10 @@ class AgentAssembler:
 
         if getattr(self.config, "salience", None):
             rep_params.setdefault("salience", self.config.salience)
+        if "salience" not in rep_params and isinstance(composed_salience.get("overrides"), dict):
+            rep_params["salience"] = dict(composed_salience.get("overrides", {}))
+        if "contexts" not in rep_params and isinstance(composed_context.get("contexts"), list):
+            rep_params["contexts"] = list(composed_context.get("contexts", []))
 
         resolved_plan = bool(getattr(self.config, "resolved_plan", False))
         if resolved_plan:
