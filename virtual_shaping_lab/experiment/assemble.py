@@ -42,6 +42,14 @@ def _get_composed_policy(config) -> dict[str, Any]:
     return policy if isinstance(policy, dict) else {}
 
 
+def _get_composed_units(config) -> list[dict[str, Any]]:
+    composed = _get_composed_parameters(config)
+    units = composed.get("units", [])
+    if isinstance(units, list):
+        return [u for u in units if isinstance(u, dict)]
+    return []
+
+
 def _resolve_learner_name(config) -> str:
     composed_learner = _get_composed_learner(config)
     algorithm = composed_learner.get("algorithm")
@@ -116,6 +124,14 @@ def _infer_contexts(rep_params, config):
 def _has_explicit_phase_context(phase) -> bool:
     params = getattr(phase, "params", {}) or {}
     return bool(params.get("context"))
+
+
+def _has_explicit_unit_context(phase, typed_unit: dict[str, Any] | None) -> bool:
+    if _has_explicit_phase_context(phase):
+        return True
+    if isinstance(typed_unit, dict) and typed_unit.get("context_id"):
+        return True
+    return False
 
 
 def _infer_phase_contexts(config) -> list[str | None]:
@@ -385,10 +401,56 @@ class AgentAssembler:
 class UnitAssembler:
     config: Any
 
+    @staticmethod
+    def _apply_typed_unit_defaults(params: dict[str, Any], typed_unit: dict[str, Any] | None) -> dict[str, Any]:
+        if not isinstance(typed_unit, dict):
+            return params
+
+        typed_context = typed_unit.get("context_id")
+        if typed_context and not params.get("context"):
+            params["context"] = typed_context
+
+        typed_trials = typed_unit.get("n_trials")
+        if "n_trials" not in params and typed_trials is not None:
+            params["n_trials"] = typed_trials
+
+        typed_time = typed_unit.get("time")
+        if isinstance(typed_time, dict):
+            if "duration_s" not in params and typed_time.get("duration_s") is not None:
+                params["duration_s"] = typed_time["duration_s"]
+            if "dt_s" not in params and typed_time.get("dt_s") is not None:
+                params["dt_s"] = typed_time["dt_s"]
+            if "iti_s" not in params and typed_time.get("iti_s") is not None:
+                params["iti_s"] = typed_time["iti_s"]
+            if (
+                "allow_partial_last_step" not in params
+                and typed_time.get("allow_partial_last_step") is not None
+            ):
+                params["allow_partial_last_step"] = typed_time["allow_partial_last_step"]
+
+        typed_contingency = typed_unit.get("contingency")
+        if isinstance(typed_contingency, dict):
+            for key, value in typed_contingency.items():
+                params.setdefault(key, value)
+
+        typed_schedule = typed_unit.get("schedule_runtime")
+        if isinstance(typed_schedule, dict) and "schedule_runtime" not in params:
+            params["schedule_runtime"] = typed_schedule
+
+        typed_learning = typed_unit.get("learning_gate")
+        if isinstance(typed_learning, dict) and "learning_enabled" not in params:
+            if "enabled" in typed_learning:
+                params["learning_enabled"] = bool(typed_learning["enabled"])
+
+        return params
+
     def build_units(self, *, agent, inferred_contexts):
         runtime_units = []
+        typed_units = _get_composed_units(self.config)
         for i, phase in enumerate(self.config.phases):
             params = phase.params.copy()
+            typed_unit = typed_units[i] if i < len(typed_units) else None
+            params = self._apply_typed_unit_defaults(params, typed_unit)
 
             if "reward_schedule" in params:
                 params["reward_schedule"] = build_reward_schedule(params["reward_schedule"])
@@ -409,7 +471,7 @@ class UnitAssembler:
                 )
 
             inferred_context = inferred_contexts[i] if i < len(inferred_contexts) else None
-            if inferred_context and not _has_explicit_phase_context(phase):
+            if inferred_context and not _has_explicit_unit_context(phase, typed_unit):
                 if hasattr(unit, "context"):
                     unit.context = inferred_context
                 unit.context_source = "inferred"

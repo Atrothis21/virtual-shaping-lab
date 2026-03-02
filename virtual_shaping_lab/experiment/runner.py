@@ -46,8 +46,14 @@ class Runner:
         self.sink = sink if sink is not None else InMemorySink()
         self._owns_sink = sink is None
         self.hooks = hooks or RunnerHooks()
-        self.update_mode = self.settings.get("update_mode", "trial")
-        self.record_mode = self.settings.get("record_mode", "trial")
+        runtime_settings = {}
+        composed = self.settings.get("composed_parameters")
+        if isinstance(composed, dict):
+            runtime = composed.get("runtime")
+            if isinstance(runtime, dict):
+                runtime_settings = runtime
+        self.update_mode = self.settings.get("update_mode", runtime_settings.get("update_mode", "trial"))
+        self.record_mode = self.settings.get("record_mode", runtime_settings.get("record_mode", "trial"))
         self._trial_executor = TrialExecutor(
             update_mode=self.update_mode,
             record_mode=self.record_mode,

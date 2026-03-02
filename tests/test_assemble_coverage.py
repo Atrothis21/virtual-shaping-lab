@@ -445,3 +445,66 @@ def test_assemble_plan_injects_typed_similarity_into_representation_params(monke
     similarity = captured["params"]["similarity"]
     assert similarity["type"] == "matrix"
     assert similarity["stimuli"] == ["tone", "noise"]
+
+
+def test_assemble_respects_typed_unit_context_over_inferred_context():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            },
+            {
+                "name": "Ext",
+                "protocol": "nonreinforcement",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            },
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition",
+                        "name": "Acq",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    },
+                    {
+                        "unit_key": "nonreinforcement",
+                        "name": "Ext",
+                        "context_id": None,
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 1},
+                    },
+                ],
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units[0].context == "C"
+    assert not hasattr(runtime_units[0], "context_source")
+    assert runtime_units[1].context == "B"
+    assert runtime_units[1].context_source == "inferred"

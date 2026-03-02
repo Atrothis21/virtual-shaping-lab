@@ -108,8 +108,9 @@ class RunService:
 
         records = []
         units = list(plan.units or [])
+        runner_settings = dict(plan.settings or {})
         for phase_index, protocol in enumerate(protocols):
-            runner = Runner(protocol)
+            runner = Runner(protocol, settings=runner_settings)
             phase_records = runner.run()
 
             phase_name = f"Phase {phase_index}"
