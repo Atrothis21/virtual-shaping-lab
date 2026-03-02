@@ -346,3 +346,102 @@ def test_assemble_plan_uses_composed_attention_when_settings_attention_missing()
     runtime_units, agent, _rep = assemble_experiment(plan)
     assert runtime_units
     assert agent.learner.attention_map == {"tone": 0.7}
+
+
+def test_assemble_plan_prefers_typed_learner_algorithm_for_agent_stack():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.5},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "td_value",
+                    "alpha": 0.2,
+                    "gamma": 0.5,
+                    "attention": {"mode": "none", "default": 1.0, "overrides": {}},
+                },
+                "policy": {"name": "null"},
+            },
+        },
+    )
+
+    runtime_units, agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    assert agent.learner.__class__.__name__ == "TDValueLearner"
+
+
+def test_assemble_plan_injects_typed_similarity_into_representation_params(monkeypatch):
+    captured = {}
+
+    class DummyRep:
+        dimension = 2
+
+    def fake_build_rep(name, **params):
+        captured["name"] = name
+        captured["params"] = params
+        return DummyRep()
+
+    monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
+    monkeypatch.setattr("experiment.assemble.build_learner", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr("experiment.assemble.build_agent", lambda *_args, **_kwargs: object())
+
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone", "noise"]},
+            },
+            "policy": None,
+            "stimuli": ["tone", "noise"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "representation": {
+                    "context": {"mode": "gated", "contexts": ["A"], "inference_enabled": False},
+                    "salience": {"default": 1.0, "overrides": {}},
+                    "similarity": {
+                        "enabled": True,
+                        "matrix": {
+                            "tone": {"tone": 1.0, "noise": 0.4},
+                            "noise": {"tone": 0.4, "noise": 1.0},
+                        },
+                    },
+                },
+                "policy": {"name": "null"},
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    similarity = captured["params"]["similarity"]
+    assert similarity["type"] == "matrix"
+    assert similarity["stimuli"] == ["tone", "noise"]

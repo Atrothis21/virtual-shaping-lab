@@ -24,6 +24,68 @@ def _get_composed_parameters(config) -> dict[str, Any]:
     return {}
 
 
+def _get_composed_representation(config) -> dict[str, Any]:
+    composed = _get_composed_parameters(config)
+    rep = composed.get("representation", {})
+    return rep if isinstance(rep, dict) else {}
+
+
+def _get_composed_learner(config) -> dict[str, Any]:
+    composed = _get_composed_parameters(config)
+    learner = composed.get("learner", {})
+    return learner if isinstance(learner, dict) else {}
+
+
+def _get_composed_policy(config) -> dict[str, Any]:
+    composed = _get_composed_parameters(config)
+    policy = composed.get("policy", {})
+    return policy if isinstance(policy, dict) else {}
+
+
+def _resolve_learner_name(config) -> str:
+    composed_learner = _get_composed_learner(config)
+    algorithm = composed_learner.get("algorithm")
+    if isinstance(algorithm, str) and algorithm:
+        return algorithm
+    return config.learner
+
+
+def _typed_similarity_to_matrix(similarity_map: dict[str, Any], stimuli: list[str]) -> dict[str, Any]:
+    if not isinstance(similarity_map, dict) or not similarity_map:
+        return {}
+
+    labels = list(stimuli)
+    if not labels:
+        keys = set()
+        for key, row in similarity_map.items():
+            keys.add(str(key))
+            if isinstance(row, dict):
+                for inner in row.keys():
+                    keys.add(str(inner))
+        labels = sorted(keys)
+    if not labels:
+        return {}
+
+    values = []
+    for i, a in enumerate(labels):
+        row = []
+        typed_row = similarity_map.get(a, {})
+        typed_row = typed_row if isinstance(typed_row, dict) else {}
+        for j, b in enumerate(labels):
+            if a == b:
+                v = typed_row.get(b, 1.0)
+            else:
+                v = typed_row.get(b, 0.0)
+            row.append(float(v))
+        values.append(row)
+
+    return {
+        "type": "matrix",
+        "stimuli": labels,
+        "values": values,
+    }
+
+
 # Context inference: consolidates any context_* params across phases/protocols.
 # Keeps representation assembly independent of protocol structure.
 def _infer_contexts(rep_params, config):
@@ -93,9 +155,8 @@ def _infer_phase_contexts(config) -> list[str | None]:
 # Salience is representation-owned and applied during encoding.
 def _extract_learner_params(config, representation, policy_actions):
     learner_params = {}
-    composed = _get_composed_parameters(config)
-    composed_learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
-    composed_policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
+    composed_learner = _get_composed_learner(config)
+    composed_policy = _get_composed_policy(config)
 
     if config.phases:
         first_params = config.phases[0].params
@@ -123,8 +184,7 @@ def _extract_learner_params(config, representation, policy_actions):
 def _assign_attention_map(config, learner):
     attention_map = dict(getattr(config, "attention", None) or {})
     if not attention_map:
-        composed = _get_composed_parameters(config)
-        composed_learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
+        composed_learner = _get_composed_learner(config)
         composed_attention = composed_learner.get("attention", {}) if isinstance(composed_learner.get("attention"), dict) else {}
         overrides = composed_attention.get("overrides", {})
         if isinstance(overrides, dict):
@@ -139,8 +199,7 @@ def _assign_attention_map(config, learner):
 
 def _build_policy_from_config(config):
     if not (hasattr(config, "policy") and config.policy):
-        composed = _get_composed_parameters(config)
-        composed_policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
+        composed_policy = _get_composed_policy(config)
         policy_name = composed_policy.get("name")
         if isinstance(policy_name, str) and policy_name and policy_name != "null":
             policy_params = {
@@ -171,12 +230,15 @@ def _build_policy_from_config(config):
 
 
 def _build_classical_stack(config, representation):
+    composed_policy = _get_composed_policy(config)
     if getattr(config, "policy", None):
+        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
+    if isinstance(composed_policy.get("name"), str) and composed_policy.get("name") not in {"", "null"}:
         raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
 
     learner_params = _extract_learner_params(config, representation, policy_actions=None)
     learner = build_learner(
-        config.learner,
+        _resolve_learner_name(config),
         state_dim=representation.dimension,
         **learner_params,
     )
@@ -198,7 +260,7 @@ def _build_operant_stack(config, representation):
 
     learner_params = _extract_learner_params(config, representation, policy_actions)
     learner = build_learner(
-        config.learner,
+        _resolve_learner_name(config),
         state_dim=representation.dimension,
         **learner_params,
     )
@@ -270,10 +332,10 @@ class AgentAssembler:
     config: Any
 
     def build_representation_and_contexts(self):
-        composed = _get_composed_parameters(self.config)
-        composed_rep = composed.get("representation", {}) if isinstance(composed.get("representation"), dict) else {}
+        composed_rep = _get_composed_representation(self.config)
         composed_context = composed_rep.get("context", {}) if isinstance(composed_rep.get("context"), dict) else {}
         composed_salience = composed_rep.get("salience", {}) if isinstance(composed_rep.get("salience"), dict) else {}
+        composed_similarity = composed_rep.get("similarity", {}) if isinstance(composed_rep.get("similarity"), dict) else {}
 
         rep = self.config.representation
         if isinstance(rep, dict):
@@ -292,6 +354,12 @@ class AgentAssembler:
             rep_params["salience"] = dict(composed_salience.get("overrides", {}))
         if "contexts" not in rep_params and isinstance(composed_context.get("contexts"), list):
             rep_params["contexts"] = list(composed_context.get("contexts", []))
+        if "similarity" not in rep_params and composed_similarity.get("enabled") and isinstance(composed_similarity.get("matrix"), dict):
+            rep_stimuli = rep_params.get("stimuli", [])
+            rep_stimuli = [str(s) for s in rep_stimuli] if isinstance(rep_stimuli, list) else []
+            typed_similarity = _typed_similarity_to_matrix(composed_similarity["matrix"], rep_stimuli)
+            if typed_similarity:
+                rep_params["similarity"] = typed_similarity
 
         resolved_plan = bool(getattr(self.config, "resolved_plan", False))
         if resolved_plan:
