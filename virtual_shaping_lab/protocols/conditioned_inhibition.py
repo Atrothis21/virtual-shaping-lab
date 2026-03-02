@@ -3,9 +3,7 @@
 from typing import Any, Dict, List
 
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.compound_nonreinforcement import CompoundNonReinforcementPhase
-from experiment.phases.probe import ProbePhase
+from experiment.factories.phase_factory import build_phase
 
 
 class ConditionedInhibitionProtocol(BaseProtocol):
@@ -96,25 +94,29 @@ class ConditionedInhibitionProtocol(BaseProtocol):
         acq_params["outcome"] = acquisition_outcome
 
         phases = [
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": list(excitor_stimuli), "cs_minus": []},
                 n_trials=n_acq,
-                params=acq_params,
+                **acq_params,
             ),
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": [summation_excitor], "cs_minus": []},
                 n_trials=n_summation_acquisition_trials,
-                params=acq_params,
+                **acq_params,
             ),
-            CompoundNonReinforcementPhase(
+            build_phase(
+                "compound_nonreinforcement_template",
                 agent=self.agent,
                 stimuli={"compound": [excitor_stimuli[0], inhibitor_stimuli[0]]},
                 n_trials=n_inhib,
-                params=self.params,
+                **self.params,
             ),
-            ProbePhase(
+            build_phase(
+                "probe_template",
                 agent=self.agent,
                 stimuli={
                     "cs_plus": [
@@ -127,20 +129,23 @@ class ConditionedInhibitionProtocol(BaseProtocol):
                     "cs_minus": []
                 },
                 n_trials=summation_probe_count,
-                params={**self.params, "deliver_reward": False},
+                **{**self.params, "deliver_reward": False},
             ),
         ]
 
+        phases[0].name = "acquisition"
         phases[1].name = "summation_acquisition"
+        phases[2].name = "compound_nonreinforcement"
         phases[3].name = "summation_probe"
 
         # Retardation (optional)
         if n_retard is not None:
-            retardation = AcquisitionPhase(
+            retardation = build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": list(inhibitor_stimuli), "cs_minus": []},
                 n_trials=n_retard,
-                params=acq_params,
+                **acq_params,
             )
             retardation.name = "retardation"
             phases.append(retardation)

@@ -23,6 +23,7 @@ from protocols.reward_schedules import (
     VariableIntervalSchedule,
 )
 from experiment.phases.base import PhaseBase
+from experiment.phases.templates import PhaseTemplate
 from domain.types import Observation
 
 
@@ -177,6 +178,32 @@ def test_renewal_and_reacquisition_errors():
         proto = cls(agent=DummyAgent(), stimuli={})
         with pytest.raises(ValueError):
             proto.build_phases()
+
+
+def test_blocking_protocol_uses_template_phases():
+    proto = BlockingProtocol(agent=DummyAgent(), stimuli={"cs_plus": ["tone", "noise"]})
+    phases = proto.build_phases()
+    assert phases
+    assert all(isinstance(phase, PhaseTemplate) for phase in phases)
+
+
+def test_conditioned_inhibition_protocol_uses_template_phases():
+    proto = ConditionedInhibitionProtocol(
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+    )
+    phases = proto.build_phases()
+    assert phases
+    assert all(isinstance(phase, PhaseTemplate) for phase in phases)
+
+
+def test_renewal_protocols_use_template_phases():
+    stimuli = {"cs_plus": ["tone"]}
+    for cls in (AABRenewalProtocol, ABARenewalProtocol, ABCRenewalProtocol):
+        proto = cls(agent=DummyAgent(), stimuli=stimuli)
+        phases = proto.build_phases()
+        assert phases
+        assert all(isinstance(phase, PhaseTemplate) for phase in phases)
 
 
 def test_new_operant_protocols_build_phases():

@@ -1,6 +1,5 @@
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.compound_acquisition import CompoundAcquisitionPhase
+from experiment.factories.phase_factory import build_phase
 
 
 class BlockingProtocol(BaseProtocol):
@@ -29,20 +28,25 @@ class BlockingProtocol(BaseProtocol):
 
         phases = [
             # Phase 1: A+ acquisition
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": [A], "cs_minus": []},
                 n_trials=n_acq,
-                params={"n_trials": n_acq, "alpha": alpha},
+                alpha=alpha,
             ),
             # Phase 2: AX+ compound acquisition
-            CompoundAcquisitionPhase(
+            build_phase(
+                "compound_acquisition_template",
                 agent=self.agent,
                 stimuli={"compound": [A, X]},
                 n_trials=n_compound,
-                params={"n_trials": n_compound, "alpha": alpha},
+                alpha=alpha,
             ),
         ]
+
+        phases[0].name = "acquisition"
+        phases[1].name = "compound_acquisition"
 
         self.n_trials = sum(getattr(p, "n_trials", 0) for p in phases)
         return phases

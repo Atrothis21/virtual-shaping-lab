@@ -14,6 +14,7 @@ from experiment.phases.probe import ProbePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.templates import (
+    BlockedSampler,
     DefaultRecordBuilder,
     NeverLearn,
     OperantScheduleBuilder,
@@ -36,14 +37,31 @@ def _coerce_trial_types(stimuli: Any) -> list[TrialTypeSpec]:
     if isinstance(stimuli, dict):
         out: list[TrialTypeSpec] = []
         for label, values in stimuli.items():
-            if isinstance(values, (list, tuple)):
-                vals = [str(v) for v in values if isinstance(v, str) and v]
-            elif isinstance(values, str) and values:
-                vals = [values]
-            else:
-                vals = []
-            if vals:
-                out.append(TrialTypeSpec(label=str(label), stimuli=vals))
+            key = str(label)
+            if key == "compound":
+                if isinstance(values, (list, tuple)):
+                    vals = [str(v) for v in values if isinstance(v, str) and v]
+                elif isinstance(values, str) and values:
+                    vals = [values]
+                else:
+                    vals = []
+                if vals:
+                    out.append(TrialTypeSpec(label=key, stimuli=vals))
+                continue
+
+            entries = list(values) if isinstance(values, (list, tuple)) else [values]
+            valid_entries: list[list[str]] = []
+            for entry in entries:
+                if isinstance(entry, str) and entry:
+                    valid_entries.append([entry])
+                elif isinstance(entry, (list, tuple)):
+                    compound_vals = [str(v) for v in entry if isinstance(v, str) and v]
+                    if compound_vals:
+                        valid_entries.append(compound_vals)
+
+            for idx, entry_vals in enumerate(valid_entries):
+                trial_label = key if len(valid_entries) == 1 and idx == 0 else f"{key}:{idx}"
+                out.append(TrialTypeSpec(label=trial_label, stimuli=entry_vals))
         if out:
             return out
     if isinstance(stimuli, (list, tuple)):
@@ -287,6 +305,7 @@ def _build_probe_template(
             "learning_enabled": False,
         },
     )
+    template.trial_sampler = BlockedSampler()
     template.learning_gate = NeverLearn()
     return template
 

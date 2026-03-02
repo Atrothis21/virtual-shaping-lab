@@ -57,6 +57,9 @@ class PhaseTemplate:
     def has_next_trial(self) -> bool:
         return self.trial_index < self.n_trials
 
+    def validate(self, history: list[Any] | None = None) -> None:
+        return None
+
     def _resolve_reward(self, contingency: Any, trial_type: Any) -> float:
         if isinstance(contingency, PavlovianContingencySpec):
             rewards_by_label = contingency.metadata.get("rewards_by_label", {})
@@ -70,6 +73,16 @@ class PhaseTemplate:
             # Keep base trial reward neutral unless explicitly modeled elsewhere.
             return 0.0
         return 0.0
+
+    def _prediction_by_stimulus(self, stimuli: list[str]) -> dict[str, float]:
+        by_stimulus: dict[str, float] = {}
+        if self.agent is None or not hasattr(self.agent, "representation") or not hasattr(self.agent, "value"):
+            return by_stimulus
+        for stim in stimuli:
+            obs = Observation(stimuli=[stim], context=self.context)
+            state = self.agent.representation.encode(obs)
+            by_stimulus[stim] = float(self.agent.value(state))
+        return by_stimulus
 
     def iter_steps(self, ctx: ExperimentContext):
         if self._rng is None:
@@ -96,12 +109,15 @@ class PhaseTemplate:
             reward = self._resolve_reward(self.spec.contingency, trial_type)
             action = None
             state = None
+            prediction = 0.0
             available_actions: list[Any] = []
             if isinstance(self.spec.contingency, OperantContingencySpec):
                 available_actions = list(self.spec.contingency.action_labels)
 
             if self.agent is not None and hasattr(self.agent, "observe"):
                 state = self.agent.observe(observation)
+                if hasattr(self.agent, "value"):
+                    prediction = float(self.agent.value(state))
                 if available_actions and hasattr(self.agent, "act"):
                     action = self.agent.act(state, actions=available_actions, rng=self._rng)
 
@@ -135,6 +151,13 @@ class PhaseTemplate:
                 action=action,
                 context=self.context,
             )
+            record["prediction"] = prediction
+            record["response"] = action if action is not None else prediction
+            by_stimulus = self._prediction_by_stimulus(list(trial_type.stimuli))
+            if by_stimulus:
+                if len(trial_type.stimuli) > 1:
+                    by_stimulus["compound"] = prediction
+                record["prediction_by_stimulus"] = by_stimulus
             self.records.append(record)
 
             metadata = {"record": record}

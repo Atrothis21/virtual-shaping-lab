@@ -1,8 +1,5 @@
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
-from experiment.phases.context_shift import ContextShiftPhase
-from experiment.phases.probe import ProbePhase
+from experiment.factories.phase_factory import build_phase
 
 
 class ABCRenewalProtocol(BaseProtocol):
@@ -34,39 +31,34 @@ class ABCRenewalProtocol(BaseProtocol):
         context_c = params.get("context_c", "C")
 
         phases = [
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_acq,
-                params={"n_trials": n_acq, "alpha": alpha, "context": context_a},
+                alpha=alpha,
+                context=context_a,
             ),
-            ContextShiftPhase(
-                agent=self.agent,
-                context=context_b,
-                stimuli=cs_plus,
-                n_trials=0,
-                params={"context": context_b},
-            ),
-            NonReinforcementPhase(
+            build_phase(
+                "nonreinforcement_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_ext,
-                params={"n_trials": n_ext, "alpha": alpha, "context": context_b},
+                alpha=alpha,
+                context=context_b,
             ),
-            ContextShiftPhase(
-                agent=self.agent,
-                context=context_c,
-                stimuli=cs_plus,
-                n_trials=0,
-                params={"context": context_c},
-            ),
-            ProbePhase(
+            build_phase(
+                "probe_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_probe,
-                params={"n_trials": n_probe, "context": context_c},
+                context=context_c,
             ),
         ]
+
+        phases[0].name = "acquisition"
+        phases[1].name = "nonreinforcement"
+        phases[2].name = "probe"
 
         self.n_trials = sum(getattr(p, "n_trials", 0) for p in phases)
         return phases
