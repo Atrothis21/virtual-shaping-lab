@@ -13,6 +13,7 @@ from experiment.config import (
     PlanBuilder,
 )
 from experiment.domain.types import ExperimentPlan
+from experiment.parameters import ParameterComposer, parameters_to_dict
 
 
 def _base_payload():
@@ -346,6 +347,9 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
     assert plan.settings["resolved_plan"] is True
+    assert "composed_parameters" in plan.settings
+    assert plan.settings["composed_parameters"]["learner"]["algorithm"] == "rescorla_wagner"
+    assert plan.settings["composed_parameters"]["units"][0]["unit_key"] == "acquisition"
 
 
 def test_plan_from_payload_contains_units_and_settings():
@@ -355,6 +359,8 @@ def test_plan_from_payload_contains_units_and_settings():
     assert len(plan.units) == 1
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
+    expected = parameters_to_dict(ParameterComposer.compose(payload))
+    assert plan.settings["composed_parameters"] == expected
 
 
 def test_plan_from_payload_matches_from_payload_error_behavior():

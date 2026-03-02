@@ -9,6 +9,7 @@ from experiment.assemble import (
     assemble_experiment,
 )
 from experiment.config import ExperimentConfig, PhaseConfig
+from experiment.domain.types import ExperimentPlan
 
 
 class DummyConfig:
@@ -263,6 +264,246 @@ def test_assemble_does_not_override_explicit_phase_context():
     }
     config = ExperimentConfig.from_payload(payload)
     runtime_units, _agent, _rep = assemble_experiment(config)
+    assert runtime_units[0].context == "C"
+    assert not hasattr(runtime_units[0], "context_source")
+    assert runtime_units[1].context == "B"
+    assert runtime_units[1].context_source == "inferred"
+
+
+def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Operant",
+                "protocol": "operant_conditioning",
+                "stimuli": {"cs_plus": ["lever"]},
+                "params": {
+                    "n_trials": 1,
+                    "reward_schedule": {"type": "fixed_ratio", "value": 1},
+                },
+            }
+        ],
+        settings={
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["lever"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "policy": {
+                    "name": "epsilon_greedy",
+                    "epsilon": 0.1,
+                    "actions": ["left", "right"],
+                },
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+
+
+def test_assemble_plan_uses_composed_attention_when_settings_attention_missing():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "attention": {
+                        "mode": "static",
+                        "default": 1.0,
+                        "overrides": {"tone": 0.7},
+                    }
+                }
+            },
+        },
+    )
+
+    runtime_units, agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    assert agent.learner.attention_map == {"tone": 0.7}
+
+
+def test_assemble_plan_prefers_typed_learner_algorithm_for_agent_stack():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.5},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "td_value",
+                    "alpha": 0.2,
+                    "gamma": 0.5,
+                    "attention": {"mode": "none", "default": 1.0, "overrides": {}},
+                },
+                "policy": {"name": "null"},
+            },
+        },
+    )
+
+    runtime_units, agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    assert agent.learner.__class__.__name__ == "TDValueLearner"
+
+
+def test_assemble_plan_injects_typed_similarity_into_representation_params(monkeypatch):
+    captured = {}
+
+    class DummyRep:
+        dimension = 2
+
+    def fake_build_rep(name, **params):
+        captured["name"] = name
+        captured["params"] = params
+        return DummyRep()
+
+    monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
+    monkeypatch.setattr("experiment.assemble.build_learner", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr("experiment.assemble.build_agent", lambda *_args, **_kwargs: object())
+
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone", "noise"]},
+            },
+            "policy": None,
+            "stimuli": ["tone", "noise"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "composed_parameters": {
+                "representation": {
+                    "context": {"mode": "gated", "contexts": ["A"], "inference_enabled": False},
+                    "salience": {"default": 1.0, "overrides": {}},
+                    "similarity": {
+                        "enabled": True,
+                        "matrix": {
+                            "tone": {"tone": 1.0, "noise": 0.4},
+                            "noise": {"tone": 0.4, "noise": 1.0},
+                        },
+                    },
+                },
+                "policy": {"name": "null"},
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    similarity = captured["params"]["similarity"]
+    assert similarity["type"] == "matrix"
+    assert similarity["stimuli"] == ["tone", "noise"]
+
+
+def test_assemble_respects_typed_unit_context_over_inferred_context():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            },
+            {
+                "name": "Ext",
+                "protocol": "nonreinforcement",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            },
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition",
+                        "name": "Acq",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    },
+                    {
+                        "unit_key": "nonreinforcement",
+                        "name": "Ext",
+                        "context_id": None,
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 1},
+                    },
+                ],
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
     assert runtime_units[0].context == "C"
     assert not hasattr(runtime_units[0], "context_source")
     assert runtime_units[1].context == "B"

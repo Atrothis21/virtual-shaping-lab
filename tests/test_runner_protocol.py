@@ -257,6 +257,22 @@ def test_runner_record_mode_tick_emits_tick_records_for_timed_schedule():
     assert records[1]["reward"] == 1.0
 
 
+def test_runner_uses_composed_runtime_settings_when_direct_modes_absent():
+    records = Runner(
+        TimedRunnableUnit(),
+        settings={
+            "composed_parameters": {
+                "runtime": {
+                    "update_mode": "trial",
+                    "record_mode": "tick",
+                }
+            }
+        },
+    ).run()
+    assert len(records) == 2
+    assert records[0]["tick"] == 0
+
+
 def test_runner_rejects_legacy_phase_without_iter_steps():
     agent = DummyAgent()
     phase = LegacyOnlyPhase(agent, n_trials=1)

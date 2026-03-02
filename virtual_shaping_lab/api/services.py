@@ -103,13 +103,53 @@ class RunService:
     """Application-layer facade for plan execution and run-status tracking."""
 
     @staticmethod
-    def _run_experiment(raw_payload: dict, *, plan: ExperimentPlan, reports_dir: Path):
+    @staticmethod
+    def _build_report_payload_from_plan(plan: ExperimentPlan) -> Dict[str, Any]:
+        settings = dict(plan.settings or {})
+        units = list(plan.units or [])
+        phases: list[Dict[str, Any]] = []
+        for i, unit in enumerate(units):
+            if isinstance(unit, dict):
+                phases.append(
+                    {
+                        "name": unit.get("name", f"Phase {i}"),
+                        "protocol": unit.get("protocol"),
+                        "stimuli": unit.get("stimuli"),
+                        "params": unit.get("params") or {},
+                    }
+                )
+        return {
+            "experiment": {
+                "learner": settings.get("learner"),
+                "agent": settings.get("agent"),
+                "representation": settings.get("representation"),
+                "policy": settings.get("policy"),
+                "stimuli": settings.get("stimuli", []),
+                "salience": settings.get("salience", {}),
+                "attention": settings.get("attention", {}),
+                "context_inference": settings.get("context_inference", {}),
+                "phases": phases,
+                "runtime": (
+                    ((settings.get("composed_parameters") or {}).get("runtime") or {})
+                    if isinstance(settings.get("composed_parameters"), dict)
+                    else {}
+                ),
+            },
+            "report": {
+                "preset": settings.get("report_preset", "verification_report"),
+            },
+            "plan": plan.to_dict(),
+        }
+
+    @staticmethod
+    def _run_experiment(*, plan: ExperimentPlan, reports_dir: Path):
         protocols, _agent, _representation = assemble_experiment(plan)
 
         records = []
         units = list(plan.units or [])
+        runner_settings = dict(plan.settings or {})
         for phase_index, protocol in enumerate(protocols):
-            runner = Runner(protocol)
+            runner = Runner(protocol, settings=runner_settings)
             phase_records = runner.run()
 
             phase_name = f"Phase {phase_index}"
@@ -130,10 +170,11 @@ class RunService:
             records.extend(phase_records)
 
         report_preset = str((plan.settings or {}).get("report_preset", "verification_report"))
+        report_payload = RunService._build_report_payload_from_plan(plan)
         report_dir = run_report(
             records=records,
             preset=report_preset,
-            payload=raw_payload,
+            payload=report_payload,
             output_dir=str(reports_dir),
         )
 
@@ -161,11 +202,7 @@ class RunService:
                 f"Plan hash mismatch: expected '{expected_plan_hash}', got '{plan_hash}'."
             )
 
-        records, report_dir, artifacts = cls._run_experiment(
-            payload,
-            plan=plan,
-            reports_dir=reports_dir,
-        )
+        records, report_dir, artifacts = cls._run_experiment(plan=plan, reports_dir=reports_dir)
         run_id = report_dir.name
         run_metadata = {
             "plan_hash": plan_hash,
