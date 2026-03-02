@@ -40,6 +40,14 @@ PHASE_CATALOG = {
     "criterion_shift": {
         "display": "Criterion Shift",
         "requires_prior_learning": True
+    },
+    "pavlovian_phase_template": {
+        "display": "Pavlovian Template",
+        "requires_prior_learning": False
+    },
+    "operant_phase_template": {
+        "display": "Operant Template",
+        "requires_prior_learning": False
     }
 }
 

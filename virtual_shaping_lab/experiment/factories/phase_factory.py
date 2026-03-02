@@ -1,13 +1,8 @@
 # experiment/factories/phase_factory.py
 
-"""
-Phase factory.
+"""Phase factory."""
 
-Thin construction layer for atomic phases.
-All phase-specific validation lives in the phase class itself.
-"""
-
-from typing import Dict, Type, Any
+from typing import Any, Callable, Dict
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.acquisition import AcquisitionPhase
@@ -18,9 +13,130 @@ from experiment.phases.differential_acquisition import DifferentialAcquisitionPh
 from experiment.phases.probe import ProbePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
+from experiment.phases.templates import (
+    DefaultRecordBuilder,
+    OperantScheduleBuilder,
+    PavlovianScheduleBuilder,
+    PhaseTemplate,
+    SpecLearningGate,
+    WeightedRandomSampler,
+)
+from experiment.domain.types import (
+    LearningGateSpec,
+    OperantContingencySpec,
+    PavlovianContingencySpec,
+    PhaseSpec,
+    TrialTimeSpec,
+    TrialTypeSpec,
+)
 
 
-PHASE_REGISTRY: Dict[str, Type[PhaseBase]] = {
+def _coerce_trial_types(stimuli: Any) -> list[TrialTypeSpec]:
+    if isinstance(stimuli, dict):
+        out: list[TrialTypeSpec] = []
+        for label, values in stimuli.items():
+            if isinstance(values, (list, tuple)):
+                vals = [str(v) for v in values if isinstance(v, str) and v]
+            elif isinstance(values, str) and values:
+                vals = [values]
+            else:
+                vals = []
+            if vals:
+                out.append(TrialTypeSpec(label=str(label), stimuli=vals))
+        if out:
+            return out
+    if isinstance(stimuli, (list, tuple)):
+        vals = [str(v) for v in stimuli if isinstance(v, str) and v]
+        if vals:
+            return [TrialTypeSpec(label="default", stimuli=vals)]
+    raise ValueError("Template phases require non-empty stimuli to derive trial types.")
+
+
+def _coerce_time_spec(params: dict[str, Any]) -> TrialTimeSpec:
+    explicit = params.get("trial_time_spec")
+    if isinstance(explicit, TrialTimeSpec):
+        return explicit
+    return TrialTimeSpec(
+        duration_s=float(params.get("duration_s", 1.0)),
+        dt_s=float(params.get("dt_s", 1.0)),
+        iti_s=float(params.get("iti_s", 0.0)),
+        allow_partial_last_step=bool(params.get("allow_partial_last_step", False)),
+    )
+
+
+def _build_pavlovian_phase_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    spec = PhaseSpec(
+        key="pavlovian_phase_template",
+        name=str(params.get("phase_name", "Pavlovian Template")),
+        context_id=(str(params["context"]) if params.get("context") else "A"),
+        n_trials=int(n_trials or params.get("n_trials", 1)),
+        time=_coerce_time_spec(params),
+        trial_types=_coerce_trial_types(stimuli),
+        contingency=PavlovianContingencySpec(
+            us_magnitude=float(params.get("outcome", params.get("reward_value", 1.0))),
+            us_event_type=str(params.get("us_event_type", "reward")),
+        ),
+        learning=LearningGateSpec(enabled=bool(params.get("learning_enabled", True))),
+        metadata={"factory_phase_key": "pavlovian_phase_template"},
+    )
+    return PhaseTemplate(
+        agent=agent,
+        spec=spec,
+        trial_sampler=WeightedRandomSampler(),
+        trial_schedule_builder=PavlovianScheduleBuilder(),
+        learning_gate=SpecLearningGate(),
+        record_builder=DefaultRecordBuilder(),
+    )
+
+
+def _build_operant_phase_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    actions = params.get("available_actions")
+    if actions is None:
+        actions = getattr(getattr(agent, "policy", None), "actions", None)
+    action_labels = [str(a) for a in (actions or [])]
+    schedule_runtime = params.get("schedule_runtime")
+    if schedule_runtime is not None and not isinstance(schedule_runtime, dict):
+        schedule_runtime = None
+    spec = PhaseSpec(
+        key="operant_phase_template",
+        name=str(params.get("phase_name", "Operant Template")),
+        context_id=(str(params["context"]) if params.get("context") else "A"),
+        n_trials=int(n_trials or params.get("n_trials", 1)),
+        time=_coerce_time_spec(params),
+        trial_types=_coerce_trial_types(stimuli),
+        contingency=OperantContingencySpec(
+            task_key=str(params.get("task_key", "operant")),
+            action_labels=action_labels,
+            schedule_runtime=schedule_runtime,
+        ),
+        learning=LearningGateSpec(enabled=bool(params.get("learning_enabled", True))),
+        metadata={"factory_phase_key": "operant_phase_template"},
+    )
+    return PhaseTemplate(
+        agent=agent,
+        spec=spec,
+        trial_sampler=WeightedRandomSampler(),
+        trial_schedule_builder=OperantScheduleBuilder(),
+        learning_gate=SpecLearningGate(),
+        record_builder=DefaultRecordBuilder(),
+    )
+
+
+PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
     "acquisition": AcquisitionPhase,
     "nonreinforcement": NonReinforcementPhase,
     "compound_acquisition": CompoundAcquisitionPhase,
@@ -29,6 +145,8 @@ PHASE_REGISTRY: Dict[str, Type[PhaseBase]] = {
     "probe": ProbePhase,
     "context_shift": ContextShiftPhase,
     "criterion_shift": CriterionShiftPhase,
+    "pavlovian_phase_template": _build_pavlovian_phase_template,
+    "operant_phase_template": _build_operant_phase_template,
 }
 
 

@@ -508,3 +508,29 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
     assert not hasattr(runtime_units[0], "context_source")
     assert runtime_units[1].context == "B"
     assert runtime_units[1].context_source == "inferred"
+
+
+def test_assemble_experiment_supports_template_phase_key():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Template Acquisition",
+                    "protocol": "pavlovian_phase_template",
+                    "stimuli": {"A": ["tone"]},
+                    "params": {"n_trials": 2, "context": "A", "outcome": 1.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    runtime_units, _agent, _rep = assemble_experiment(cfg)
+    assert runtime_units
+    assert runtime_units[0].spec.key == "pavlovian_phase_template"
