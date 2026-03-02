@@ -14,6 +14,7 @@ from experiment.parameters.types import (
     SoftmaxPolicyParams,
     UnitParams,
 )
+from experiment.parameters.pipeline import ParameterNormalizerPipeline, ParameterValidatorPipeline
 
 __all__ = [
     "AttentionParams",
@@ -28,5 +29,6 @@ __all__ = [
     "SimilarityParams",
     "SoftmaxPolicyParams",
     "UnitParams",
+    "ParameterNormalizerPipeline",
+    "ParameterValidatorPipeline",
 ]
-
