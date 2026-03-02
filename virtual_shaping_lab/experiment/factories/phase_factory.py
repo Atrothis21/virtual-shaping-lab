@@ -15,6 +15,7 @@ from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.templates import (
     DefaultRecordBuilder,
+    NeverLearn,
     OperantScheduleBuilder,
     PavlovianScheduleBuilder,
     PhaseTemplate,
@@ -136,6 +137,160 @@ def _build_operant_phase_template(
     )
 
 
+def _build_acquisition_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    return _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Acquisition"),
+            "outcome": float(params.get("outcome", 1.0)),
+        },
+    )
+
+
+def _build_nonreinforcement_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    return _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Nonreinforcement"),
+            "outcome": 0.0,
+        },
+    )
+
+
+def _build_compound_acquisition_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    if isinstance(stimuli, dict) and "compound" in stimuli:
+        stimuli = {"compound": stimuli.get("compound", [])}
+    return _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Compound Acquisition"),
+            "outcome": float(params.get("outcome", 1.0)),
+        },
+    )
+
+
+def _build_compound_nonreinforcement_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    if isinstance(stimuli, dict) and "compound" in stimuli:
+        stimuli = {"compound": stimuli.get("compound", [])}
+    return _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Compound Nonreinforcement"),
+            "outcome": 0.0,
+        },
+    )
+
+
+def _build_differential_acquisition_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    rewards_by_label = {}
+    if isinstance(stimuli, dict):
+        # Keep deterministic label mapping to existing cs_plus/cs_minus usage.
+        rewards_by_label = {
+            "cs_plus": float(params.get("reinforced_outcome", 1.0)),
+            "cs_minus": float(params.get("nonreinforced_outcome", 0.0)),
+        }
+    template = _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Differential Acquisition"),
+            "outcome": float(params.get("reinforced_outcome", 1.0)),
+        },
+    )
+    if isinstance(template.spec.contingency, PavlovianContingencySpec):
+        c = template.spec.contingency
+        template.spec = PhaseSpec(
+            key=template.spec.key,
+            name=template.spec.name,
+            context_id=template.spec.context_id,
+            n_trials=template.spec.n_trials,
+            time=template.spec.time,
+            trial_types=template.spec.trial_types,
+            contingency=PavlovianContingencySpec(
+                us_magnitude=c.us_magnitude,
+                us_event_type=c.us_event_type,
+                metadata={**c.metadata, "rewards_by_label": rewards_by_label},
+            ),
+            learning=template.spec.learning,
+            metadata=dict(template.spec.metadata),
+        )
+    return template
+
+
+def _build_probe_template(
+    *,
+    agent: Any,
+    stimuli: Any = None,
+    n_trials: int | None = None,
+    params: dict[str, Any] | None = None,
+):
+    params = dict(params or {})
+    deliver_reward = bool(params.get("deliver_reward", False))
+    reward_value = float(params.get("reward_value", 1.0 if deliver_reward else 0.0))
+    template = _build_pavlovian_phase_template(
+        agent=agent,
+        stimuli=stimuli,
+        n_trials=n_trials,
+        params={
+            **params,
+            "phase_name": params.get("phase_name", "Probe"),
+            "outcome": reward_value,
+            "learning_enabled": False,
+        },
+    )
+    template.learning_gate = NeverLearn()
+    return template
+
+
 PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
     "acquisition": AcquisitionPhase,
     "nonreinforcement": NonReinforcementPhase,
@@ -145,6 +300,13 @@ PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
     "probe": ProbePhase,
     "context_shift": ContextShiftPhase,
     "criterion_shift": CriterionShiftPhase,
+    # Canonical template-backed phase variants (opt-in migration path).
+    "acquisition_template": _build_acquisition_template,
+    "nonreinforcement_template": _build_nonreinforcement_template,
+    "compound_acquisition_template": _build_compound_acquisition_template,
+    "compound_nonreinforcement_template": _build_compound_nonreinforcement_template,
+    "differential_acquisition_template": _build_differential_acquisition_template,
+    "probe_template": _build_probe_template,
     "pavlovian_phase_template": _build_pavlovian_phase_template,
     "operant_phase_template": _build_operant_phase_template,
 }

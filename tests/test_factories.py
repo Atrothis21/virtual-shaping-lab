@@ -127,6 +127,58 @@ def test_phase_factory_builds_template_phase_variants():
     assert op.spec.key == "operant_phase_template"
 
 
+def test_phase_factory_builds_canonical_template_variants():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    agent = DummyAgent()
+
+    acq = phase_factory.build_phase(
+        "acquisition_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+    )
+    assert isinstance(acq, PhaseTemplate)
+    assert acq.spec.name == "Acquisition"
+
+    ext = phase_factory.build_phase(
+        "nonreinforcement_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+    )
+    assert isinstance(ext, PhaseTemplate)
+    assert ext.spec.name == "Nonreinforcement"
+
+    diff = phase_factory.build_phase(
+        "differential_acquisition_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+        n_trials=2,
+    )
+    assert isinstance(diff, PhaseTemplate)
+    assert diff.spec.name == "Differential Acquisition"
+
+    probe = phase_factory.build_phase(
+        "probe_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+    )
+    assert isinstance(probe, PhaseTemplate)
+    assert probe.spec.name == "Probe"
+
+
 def test_policy_factory_unknown_and_build(monkeypatch):
     monkeypatch.setattr(policy_factory, "POLICY_REGISTRY", {"dummy": lambda **params: params})
     with pytest.raises(KeyError):

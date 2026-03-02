@@ -57,8 +57,13 @@ class PhaseTemplate:
     def has_next_trial(self) -> bool:
         return self.trial_index < self.n_trials
 
-    def _resolve_reward(self, contingency: Any) -> float:
+    def _resolve_reward(self, contingency: Any, trial_type: Any) -> float:
         if isinstance(contingency, PavlovianContingencySpec):
+            rewards_by_label = contingency.metadata.get("rewards_by_label", {})
+            if isinstance(rewards_by_label, dict):
+                label = getattr(trial_type, "label", None)
+                if label in rewards_by_label:
+                    return float(rewards_by_label[label])
             return float(contingency.us_magnitude)
         if isinstance(contingency, OperantContingencySpec):
             # Operant reward typically comes from schedule/task runtime.
@@ -88,7 +93,7 @@ class PhaseTemplate:
                 trial_step=self.trial_index,
                 trial_id=self.trial_index,
             )
-            reward = self._resolve_reward(self.spec.contingency)
+            reward = self._resolve_reward(self.spec.contingency, trial_type)
             action = None
             state = None
             available_actions: list[Any] = []
