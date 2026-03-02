@@ -15,6 +15,7 @@ from experiment.parameters.types import (
     UnitParams,
 )
 from experiment.parameters.pipeline import ParameterNormalizerPipeline, ParameterValidatorPipeline
+from experiment.parameters.composer import ParameterComposer, parameters_to_dict
 
 __all__ = [
     "AttentionParams",
@@ -31,4 +32,6 @@ __all__ = [
     "UnitParams",
     "ParameterNormalizerPipeline",
     "ParameterValidatorPipeline",
+    "ParameterComposer",
+    "parameters_to_dict",
 ]
