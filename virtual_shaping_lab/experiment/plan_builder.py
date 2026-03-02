@@ -7,6 +7,7 @@ from typing import Any
 
 from experiment.config import ExperimentConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.parameters import ParameterComposer, parameters_to_dict
 
 
 def _infer_phase_contexts(config: ExperimentConfig) -> list[str | None]:
@@ -98,6 +99,7 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "report_preset": config.report_preset,
         "resolved_plan": True,
         "resolved_phase_contexts": inferred_phase_contexts,
+        "composed_parameters": _compose_parameter_settings(config),
     }
 
     return ExperimentPlan(
@@ -106,4 +108,30 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         record_schema_version="v1",
         settings=settings,
     )
+
+
+def _compose_parameter_settings(config: ExperimentConfig) -> dict[str, Any]:
+    payload = {
+        "experiment": {
+            "learner": config.learner,
+            "agent": config.agent,
+            "representation": deepcopy(config.representation),
+            "policy": deepcopy(config.policy),
+            "stimuli": list(config.stimuli),
+            "salience": dict(config.salience),
+            "attention": dict(config.attention),
+            "context_inference": dict(config.context_inference),
+            "phases": [
+                {
+                    "name": phase.name,
+                    "protocol": phase.protocol,
+                    "stimuli": deepcopy(phase.stimuli),
+                    "params": deepcopy(phase.params or {}),
+                }
+                for phase in config.phases
+            ],
+        }
+    }
+    composed = ParameterComposer.compose(payload, normalize_and_validate=False)
+    return parameters_to_dict(composed)
 
