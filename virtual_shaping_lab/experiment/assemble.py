@@ -13,6 +13,7 @@ from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.factories.policy_factory import build_policy
 from experiment.config import PhaseConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.parameters import validate_composed_parameter_ownership
 
 OPERANT_AGENT_NAME = "operant_agent"
 
@@ -510,4 +511,7 @@ def assemble_experiment(config):
     """
     if isinstance(config, ExperimentPlan):
         config = _plan_to_config(config)
+    composed = _get_composed_parameters(config)
+    if composed:
+        validate_composed_parameter_ownership(composed)
     return _assemble_from_config(config)

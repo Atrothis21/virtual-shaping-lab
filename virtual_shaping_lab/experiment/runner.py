@@ -6,6 +6,7 @@ import numpy as np
 
 from experiment.domain.types import ExperimentContext
 from experiment.hooks import RunnerHooks
+from experiment.parameters import validate_composed_parameter_ownership
 from experiment.sinks import InMemorySink
 from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
@@ -43,11 +44,13 @@ class Runner:
         self.seed = seed
         self.context = context
         self.settings = settings or {}
+        composed = self.settings.get("composed_parameters")
+        if composed:
+            validate_composed_parameter_ownership(composed)
         self.sink = sink if sink is not None else InMemorySink()
         self._owns_sink = sink is None
         self.hooks = hooks or RunnerHooks()
         runtime_settings = {}
-        composed = self.settings.get("composed_parameters")
         if isinstance(composed, dict):
             runtime = composed.get("runtime")
             if isinstance(runtime, dict):
