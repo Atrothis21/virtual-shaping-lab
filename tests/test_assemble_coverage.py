@@ -10,6 +10,7 @@ from experiment.assemble import (
 )
 from experiment.config import ExperimentConfig, PhaseConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.phases.catalog import CUSTOM_PHASE_CLASS_ALLOWLIST
 
 
 class DummyConfig:
@@ -508,3 +509,78 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
     assert not hasattr(runtime_units[0], "context_source")
     assert runtime_units[1].context == "B"
     assert runtime_units[1].context_source == "inferred"
+
+
+def test_assemble_experiment_supports_template_phase_key():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Template Acquisition",
+                    "protocol": "pavlovian_phase_template",
+                    "stimuli": {"A": ["tone"]},
+                    "params": {"n_trials": 2, "context": "A", "outcome": 1.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    runtime_units, _agent, _rep = assemble_experiment(cfg)
+    assert runtime_units
+    assert runtime_units[0].spec.key == "pavlovian_phase_template"
+
+
+def test_assemble_respects_typed_unit_context_over_inferred_for_template_phase():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Template Acquisition",
+                "protocol": "acquisition_template",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition_template",
+                        "name": "Template Acquisition",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    }
+                ]
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units[0].context == "C"
+    assert not hasattr(runtime_units[0], "context_source")
+
+
+def test_custom_phase_policy_allowlist_contains_control_flow_phases():
+    assert {"context_shift", "criterion_shift"}.issubset(CUSTOM_PHASE_CLASS_ALLOWLIST)

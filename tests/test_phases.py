@@ -13,7 +13,30 @@ from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
 from experiment.phases.series_helpers import attach_reference_stimuli
+from experiment.phases.templates import (
+    AlwaysLearn,
+    BlockedSampler,
+    DefaultRecordBuilder,
+    FixedSequenceSampler,
+    ILearningGate,
+    NeverLearn,
+    OperantScheduleBuilder,
+    PavlovianScheduleBuilder,
+    IRecordBuilder,
+    SpecLearningGate,
+    ITrialSampler,
+    ITrialScheduleBuilder,
+    PhaseTemplate,
+    WeightedRandomSampler,
+)
 from experiment.domain.types import EventSpec, ExperimentContext, TrialTimeSpec
+from experiment.domain.types import (
+    LearningGateSpec,
+    OperantContingencySpec,
+    PavlovianContingencySpec,
+    PhaseSpec,
+    TrialTypeSpec,
+)
 
 
 class DummyPhase(PhaseBase):
@@ -508,4 +531,189 @@ def test_context_shift_phase_supports_iter_steps_contract(dummy_agent):
     ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(29))
     steps = list(phase.iter_steps(ctx))
     assert steps == []
+
+
+class _TemplateSampler(ITrialSampler):
+    def reset(self):
+        return None
+
+    def select_trial_type(self, *, spec, trial_index, rng):
+        return spec.trial_types[trial_index % len(spec.trial_types)]
+
+
+class _TemplateScheduleBuilder(ITrialScheduleBuilder):
+    def build_schedule(self, *, spec, trial_type, trial_index):
+        return None
+
+
+class _TemplateGate(ILearningGate):
+    def allows_learning(self, *, spec, trial_index):
+        return bool(spec.learning.enabled)
+
+
+class _TemplateRecordBuilder(IRecordBuilder):
+    def build_record(self, *, spec, trial_type, trial_index, reward, action, context):
+        return {
+            "phase": spec.key,
+            "trial": trial_index,
+            "context": context,
+            "stimulus": trial_type.stimuli[0],
+            "reward": reward,
+            "action": action,
+        }
+
+
+def test_phase_template_iter_steps_contract_pavlovian(dummy_agent):
+    spec = PhaseSpec(
+        key="pavlovian_template",
+        name="Template Pav",
+        context_id="A",
+        n_trials=2,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[TrialTypeSpec(label="A", stimuli=["tone"])],
+        contingency=PavlovianContingencySpec(us_magnitude=1.0),
+        learning=LearningGateSpec(enabled=True),
+    )
+    phase = PhaseTemplate(
+        agent=dummy_agent,
+        spec=spec,
+        trial_sampler=_TemplateSampler(),
+        trial_schedule_builder=_TemplateScheduleBuilder(),
+        learning_gate=_TemplateGate(),
+        record_builder=_TemplateRecordBuilder(),
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(31))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 2
+    assert steps[0].learning_enabled is True
+    assert steps[-1].done is True
+    assert steps[0].metadata.get("record", {}).get("phase") == "pavlovian_template"
+
+
+def test_phase_template_iter_steps_contract_operant_with_actions(dummy_agent):
+    spec = PhaseSpec(
+        key="operant_template",
+        name="Template Operant",
+        context_id="A",
+        n_trials=1,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[TrialTypeSpec(label="lever", stimuli=["lever"])],
+        contingency=OperantContingencySpec(task_key="operant", action_labels=["left", "right"]),
+        learning=LearningGateSpec(enabled=False),
+    )
+    phase = PhaseTemplate(
+        agent=dummy_agent,
+        spec=spec,
+        trial_sampler=_TemplateSampler(),
+        trial_schedule_builder=_TemplateScheduleBuilder(),
+        learning_gate=_TemplateGate(),
+        record_builder=_TemplateRecordBuilder(),
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(33))
+    steps = list(phase.iter_steps(ctx))
+    assert len(steps) == 1
+    assert steps[0].available_actions == ["left", "right"]
+    assert steps[0].learning_enabled is False
+
+
+def test_template_mechanics_samplers_and_learning_gates():
+    weighted_spec = PhaseSpec(
+        key="sampler_test",
+        name="Sampler Test",
+        context_id="A",
+        n_trials=3,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[TrialTypeSpec(label="A", stimuli=["tone"], weight=1.0)],
+        contingency=PavlovianContingencySpec(us_magnitude=1.0),
+        learning=LearningGateSpec(enabled=True),
+    )
+    rng = np.random.default_rng(123)
+    weighted = WeightedRandomSampler()
+    weighted.reset()
+    selected = [weighted.select_trial_type(spec=weighted_spec, trial_index=i, rng=rng).label for i in range(3)]
+    assert selected == ["A", "A", "A"]
+
+    spec = PhaseSpec(
+        key="sampler_test_multi",
+        name="Sampler Test Multi",
+        context_id="A",
+        n_trials=3,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[
+            TrialTypeSpec(label="A", stimuli=["tone"], weight=1.0),
+            TrialTypeSpec(label="B", stimuli=["noise"], weight=1.0),
+        ],
+        contingency=PavlovianContingencySpec(us_magnitude=1.0),
+        learning=LearningGateSpec(enabled=True),
+    )
+
+    blocked = BlockedSampler()
+    assert blocked.select_trial_type(spec=spec, trial_index=0, rng=rng).label == "A"
+    assert blocked.select_trial_type(spec=spec, trial_index=1, rng=rng).label == "B"
+
+    fixed = FixedSequenceSampler(["B", "A"])
+    assert fixed.select_trial_type(spec=spec, trial_index=0, rng=rng).label == "B"
+    assert fixed.select_trial_type(spec=spec, trial_index=1, rng=rng).label == "A"
+
+    assert AlwaysLearn().allows_learning(spec=weighted_spec, trial_index=0) is True
+    assert NeverLearn().allows_learning(spec=weighted_spec, trial_index=0) is False
+    assert SpecLearningGate().allows_learning(spec=weighted_spec, trial_index=0) is True
+
+
+def test_template_schedule_builders_and_default_record_builder(dummy_agent):
+    pav_spec = PhaseSpec(
+        key="pav_sched",
+        name="Pav Sched",
+        context_id="A",
+        n_trials=1,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[TrialTypeSpec(label="A", stimuli=["tone"])],
+        contingency=PavlovianContingencySpec(us_magnitude=1.0),
+        learning=LearningGateSpec(enabled=True),
+    )
+    pav_schedule = PavlovianScheduleBuilder().build_schedule(
+        spec=pav_spec,
+        trial_type=pav_spec.trial_types[0],
+        trial_index=0,
+    )
+    assert pav_schedule is not None
+    assert pav_schedule.available_actions == []
+
+    operant_spec = PhaseSpec(
+        key="op_sched",
+        name="Operant Sched",
+        context_id="A",
+        n_trials=1,
+        time=TrialTimeSpec(duration_s=1.0, dt_s=0.5),
+        trial_types=[TrialTypeSpec(label="Lever", stimuli=["lever"])],
+        contingency=OperantContingencySpec(
+            task_key="operant",
+            action_labels=["left", "right"],
+            schedule_runtime={"type": "fixed_ratio", "value": 1},
+        ),
+        learning=LearningGateSpec(enabled=True),
+    )
+    op_schedule = OperantScheduleBuilder().build_schedule(
+        spec=operant_spec,
+        trial_type=operant_spec.trial_types[0],
+        trial_index=0,
+    )
+    assert op_schedule is not None
+    assert op_schedule.available_actions == ["left", "right"]
+    assert op_schedule.metadata.get("schedule_runtime") == {"type": "fixed_ratio", "value": 1}
+
+    template = PhaseTemplate(
+        agent=dummy_agent,
+        spec=operant_spec,
+        trial_sampler=BlockedSampler(),
+        trial_schedule_builder=OperantScheduleBuilder(),
+        learning_gate=SpecLearningGate(),
+        record_builder=DefaultRecordBuilder(),
+    )
+    ctx = ExperimentContext(agent=dummy_agent, rng=np.random.default_rng(37))
+    step = list(template.iter_steps(ctx))[0]
+    assert step.metadata.get("record", {}).get("phase") == "op_sched"
+    trial_schedule = step.metadata.get("trial_schedule")
+    assert trial_schedule is not None
+    assert trial_schedule.metadata.get("schedule_runtime") == {"type": "fixed_ratio", "value": 1}
 

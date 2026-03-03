@@ -11,6 +11,7 @@ from experiment.factories import protocol_factory
 from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
 from experiment.domain.types import TrialTimeSpec
+from experiment.phases.templates import PhaseTemplate
 
 
 def test_validate_agent_rejects_unknown():
@@ -87,6 +88,95 @@ def test_phase_factory_branches(monkeypatch):
 
     inst = phase_factory.build_phase("dummy", agent="agent", stimuli=["tone"], n_trials=3)
     assert inst.kwargs == {"agent": "agent", "stimuli": ["tone"], "n_trials": 3, "params": {}}
+
+
+def test_phase_factory_builds_template_phase_variants():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    agent = DummyAgent()
+
+    pav = phase_factory.build_phase(
+        "pavlovian_phase_template",
+        agent=agent,
+        stimuli={"A": ["tone"]},
+        n_trials=2,
+        context="A",
+    )
+    assert isinstance(pav, PhaseTemplate)
+    assert pav.spec.key == "pavlovian_phase_template"
+
+    op = phase_factory.build_phase(
+        "operant_phase_template",
+        agent=agent,
+        stimuli={"Lever": ["lever"]},
+        n_trials=2,
+        context="A",
+        schedule_runtime={"type": "fixed_ratio", "value": 1},
+    )
+    assert isinstance(op, PhaseTemplate)
+    assert op.spec.key == "operant_phase_template"
+
+
+def test_phase_factory_builds_canonical_template_variants():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    agent = DummyAgent()
+
+    acq = phase_factory.build_phase(
+        "acquisition_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+    )
+    assert isinstance(acq, PhaseTemplate)
+    assert acq.spec.name == "Acquisition"
+
+    ext = phase_factory.build_phase(
+        "nonreinforcement_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=2,
+    )
+    assert isinstance(ext, PhaseTemplate)
+    assert ext.spec.name == "Nonreinforcement"
+
+    diff = phase_factory.build_phase(
+        "differential_acquisition_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+        n_trials=2,
+    )
+    assert isinstance(diff, PhaseTemplate)
+    assert diff.spec.name == "Differential Acquisition"
+
+    probe = phase_factory.build_phase(
+        "probe_template",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+    )
+    assert isinstance(probe, PhaseTemplate)
+    assert probe.spec.name == "Probe"
 
 
 def test_policy_factory_unknown_and_build(monkeypatch):

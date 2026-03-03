@@ -190,6 +190,21 @@ def test_parse_phases_errors_and_legacy():
         ExperimentConfig._parse_phases(exp)
 
 
+def test_parse_phases_rejects_template_param_ownership_leaks():
+    exp = {
+        "phases": [
+            {
+                "name": "Template Acquisition",
+                "protocol": "acquisition_template",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "attention": {"tone": 0.8}},
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="template params must not include"):
+        ExperimentConfig._parse_phases(exp)
+
+
 def test_from_payload_missing_sections():
     with pytest.raises(ValueError):
         ExperimentConfig.from_payload({"report": {}})

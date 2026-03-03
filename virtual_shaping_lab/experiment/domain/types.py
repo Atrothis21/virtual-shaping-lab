@@ -52,6 +52,70 @@ class TrialRecord(TypedDict, total=False):
     metadata: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class TrialTypeSpec:
+    """Declarative trial-type definition for phase templates."""
+
+    label: str
+    stimuli: list[str]
+    weight: float = 1.0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("TrialTypeSpec.label must be a non-empty string.")
+        if not isinstance(self.stimuli, list) or not self.stimuli:
+            raise ValueError("TrialTypeSpec.stimuli must be a non-empty list.")
+        for stimulus in self.stimuli:
+            if not isinstance(stimulus, str) or not stimulus.strip():
+                raise ValueError("TrialTypeSpec.stimuli values must be non-empty strings.")
+        if float(self.weight) <= 0.0:
+            raise ValueError("TrialTypeSpec.weight must be > 0.")
+
+
+@dataclass(frozen=True)
+class LearningGateSpec:
+    """Declarative learning toggle for a phase template."""
+
+    enabled: bool = True
+    mode: str = "always"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PavlovianContingencySpec:
+    """Declarative Pavlovian contingency contract."""
+
+    us_magnitude: float = 1.0
+    us_event_type: str = "reward"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.us_event_type, str) or not self.us_event_type.strip():
+            raise ValueError("PavlovianContingencySpec.us_event_type must be a non-empty string.")
+
+
+@dataclass(frozen=True)
+class OperantContingencySpec:
+    """Declarative operant contingency contract."""
+
+    task_key: str = "operant"
+    schedule_runtime: dict[str, Any] | None = None
+    action_labels: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.task_key, str) or not self.task_key.strip():
+            raise ValueError("OperantContingencySpec.task_key must be a non-empty string.")
+        if self.schedule_runtime is not None and not isinstance(self.schedule_runtime, dict):
+            raise ValueError("OperantContingencySpec.schedule_runtime must be an object when provided.")
+        for action in self.action_labels:
+            if not isinstance(action, str) or not action.strip():
+                raise ValueError("OperantContingencySpec.action_labels values must be non-empty strings.")
+
+
+ContingencySpec = PavlovianContingencySpec | OperantContingencySpec
+
+
 def _is_time_grid_aligned(duration_s: float, dt_s: float, tol: float = 1e-9) -> bool:
     steps = duration_s / dt_s
     return abs(steps - round(steps)) <= tol
@@ -137,6 +201,47 @@ class TrialSchedule:
     base_stimuli: list[Any] = field(default_factory=list)
     available_actions: list[Any] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class PhaseSpec:
+    """
+    Declarative phase-spec contract intended for plan-time serialization.
+
+    This enables template-driven phases where behavior differences are
+    represented by data, not class proliferation.
+    """
+
+    key: str
+    name: str
+    context_id: str | None
+    n_trials: int
+    time: TrialTimeSpec
+    trial_types: list[TrialTypeSpec]
+    contingency: ContingencySpec
+    learning: LearningGateSpec = field(default_factory=LearningGateSpec)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.key, str) or not self.key.strip():
+            raise ValueError("PhaseSpec.key must be a non-empty string.")
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("PhaseSpec.name must be a non-empty string.")
+        if self.context_id is not None and (not isinstance(self.context_id, str) or not self.context_id.strip()):
+            raise ValueError("PhaseSpec.context_id must be a non-empty string when provided.")
+        if int(self.n_trials) <= 0:
+            raise ValueError("PhaseSpec.n_trials must be > 0.")
+        if not isinstance(self.time, TrialTimeSpec):
+            raise ValueError("PhaseSpec.time must be a TrialTimeSpec.")
+        if not isinstance(self.trial_types, list) or not self.trial_types:
+            raise ValueError("PhaseSpec.trial_types must be a non-empty list.")
+        for tt in self.trial_types:
+            if not isinstance(tt, TrialTypeSpec):
+                raise ValueError("PhaseSpec.trial_types must contain TrialTypeSpec values.")
+        if not isinstance(self.contingency, (PavlovianContingencySpec, OperantContingencySpec)):
+            raise ValueError("PhaseSpec.contingency must be a supported contingency spec.")
+        if not isinstance(self.learning, LearningGateSpec):
+            raise ValueError("PhaseSpec.learning must be a LearningGateSpec.")
 
 
 @dataclass(frozen=True)
