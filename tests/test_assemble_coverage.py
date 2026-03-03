@@ -10,6 +10,7 @@ from experiment.assemble import (
 )
 from experiment.config import ExperimentConfig, PhaseConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.public import assemble_from_plan, build_plan, validate_plan
 from experiment.phases.catalog import CUSTOM_PHASE_CLASS_ALLOWLIST
 
 
@@ -584,3 +585,54 @@ def test_assemble_respects_typed_unit_context_over_inferred_for_template_phase()
 
 def test_custom_phase_policy_allowlist_contains_control_flow_phases():
     assert {"context_shift", "criterion_shift"}.issubset(CUSTOM_PHASE_CLASS_ALLOWLIST)
+
+
+def test_experiment_public_facade_builds_and_validates_plan():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acq",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    plan = build_plan(payload)
+    assert validate_plan(plan) is plan
+
+
+def test_experiment_public_facade_assembles_from_plan():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acq",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    plan = build_plan(payload)
+    runtime_units, agent, representation = assemble_from_plan(plan)
+    assert runtime_units
+    assert agent is not None
+    assert representation is not None

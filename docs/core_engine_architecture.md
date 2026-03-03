@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.8)
+# Core Engine Architecture (V2.9)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.8), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.9), including runtime control flow, object boundaries, extension points, and known gaps.
 
 ---
 
@@ -138,6 +138,7 @@ World schedule runtime contracts consumed by trial execution:
 Primary files:
 - `virtual_shaping_lab/protocols/base.py`
 - `virtual_shaping_lab/experiment/phases/base.py`
+- `virtual_shaping_lab/experiment/phases/templates/*`
 - `virtual_shaping_lab/protocols/*.py`
 - `virtual_shaping_lab/experiment/phases/*.py`
 
@@ -156,6 +157,15 @@ Design intent:
 - protocol handles composition
 - phase handles local trial mechanics
 - no learning math in protocol classes
+
+V2.9 policy:
+- canonical classical phase authoring is template-first in factory defaults
+- explicit class-based legacy aliases are available via `*_legacy` phase keys
+- approved class-based custom/control-flow exceptions remain:
+  - `context_shift`
+  - `criterion_shift`
+- temporary parity exception remains class-based:
+  - `differential_acquisition`
 
 ---
 
@@ -256,6 +266,14 @@ Supported extension seams:
   - add protocol mapping/template in analysis report catalog
   - add metrics/figures if needed
 
+Public facade entrypoints (preferred for cross-layer integration):
+- experiment:
+  - `virtual_shaping_lab/experiment/public.py`
+  - `build_plan(...)`, `validate_plan(...)`, `assemble_from_plan(...)`, `run_from_plan(...)`
+- analysis:
+  - `virtual_shaping_lab/analysis/public.py`
+  - `run_preset_report(...)`, `run_default_protocol_report(...)`, `get_protocol_default_template(...)`
+
 Template phase authoring reference:
 - `docs/phase_template_authoring.md`
 
@@ -314,3 +332,4 @@ Recommendation:
 3. Promote composed parameter envelope to first-class typed plan field
 4. Strict analysis-template mode for CI
 5. Record schema migration framework (`v1 -> v2`)
+6. Remove temporary `differential_acquisition` class exception after template parity

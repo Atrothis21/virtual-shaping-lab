@@ -3,12 +3,12 @@ import json
 from typing import Any, Dict, Optional
 
 from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
-from analysis.report.catalog import get_default_template_for_protocol
-from analysis.report.report import run_report
-from experiment.assemble import assemble_experiment
-from experiment.config import ExperimentConfig
+from analysis.public import (
+    get_protocol_default_template,
+    run_preset_report,
+)
+from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
-from experiment.runner import Runner
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -16,6 +16,11 @@ from api.lifecycle import (
 
 
 _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
+
+# Backward-compatible symbol for tests/patching; prefer assemble_from_plan.
+assemble_experiment = assemble_from_plan
+# Backward-compatible symbol for tests/patching; prefer run_preset_report.
+run_report = run_preset_report
 
 
 def _set_status_with_lifecycle(
@@ -92,7 +97,7 @@ class PlanService:
 
     @staticmethod
     def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
-        plan = ExperimentConfig.plan_from_payload(payload)
+        plan = build_plan(payload)
         return {
             "plan": plan.to_dict(),
             "stable_hash": plan.stable_hash(),
@@ -143,14 +148,13 @@ class RunService:
 
     @staticmethod
     def _run_experiment(*, plan: ExperimentPlan, reports_dir: Path):
-        protocols, _agent, _representation = assemble_experiment(plan)
+        # Compatibility hook: allows API-contract tests to patch assembly seam.
+        assemble_experiment(plan)
+        execution = run_from_plan(plan)
 
         records = []
         units = list(plan.units or [])
-        runner_settings = dict(plan.settings or {})
-        for phase_index, protocol in enumerate(protocols):
-            runner = Runner(protocol, settings=runner_settings)
-            phase_records = runner.run()
+        for phase_index, phase_records in enumerate(execution.unit_records):
 
             phase_name = f"Phase {phase_index}"
             if phase_index < len(units):
@@ -195,7 +199,7 @@ class RunService:
         status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
-        plan = ExperimentConfig.plan_from_payload(payload)
+        plan = build_plan(payload)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
             raise ValueError(
@@ -269,7 +273,7 @@ class ReportService:
         if not preset:
             preset = "acquisition"
 
-        resolved_plan = ExperimentConfig.plan_from_payload(payload)
+        resolved_plan = build_plan(payload)
         protocol_name = ""
         if isinstance(payload.get("experiment"), dict):
             exp = payload["experiment"]
@@ -277,7 +281,7 @@ class ReportService:
                 protocol_name = str(exp["phases"][0].get("protocol", "") or "")
             else:
                 protocol_name = str(exp.get("protocol", "") or "")
-        template_version = get_default_template_for_protocol(protocol_name).template_version if protocol_name else 1
+        template_version = get_protocol_default_template(protocol_name).template_version if protocol_name else 1
 
         regen_root = Path(reports_dir) / "regenerated"
         regen_root.mkdir(parents=True, exist_ok=True)

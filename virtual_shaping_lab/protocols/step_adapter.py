@@ -27,7 +27,9 @@ class ProtocolStepAdapter:
         record = metadata.get("record")
 
         if isinstance(record, dict):
-            record.setdefault("phase", phase_name)
+            # Normalize protocol-facing phase naming for stable report/test semantics.
+            record["phase"] = phase_name
+            record["phase_name"] = phase_name
             record.setdefault("protocol_name", self.protocol_name)
             record.setdefault("subphase", phase_index)
             record.setdefault("subphase_name", phase_name)

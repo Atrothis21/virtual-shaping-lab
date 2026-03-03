@@ -1,6 +1,5 @@
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
+from experiment.factories.phase_factory import build_phase
 from experiment.phases.context_shift import ContextShiftPhase
 
 
@@ -31,11 +30,13 @@ class RapidReacquisitionProtocol(BaseProtocol):
         context_b = params.get("context_b", "B")
 
         phases = [
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_acq,
-                params={"n_trials": n_acq, "alpha": alpha, "context": context_a},
+                alpha=alpha,
+                context=context_a,
             ),
             ContextShiftPhase(
                 agent=self.agent,
@@ -44,11 +45,13 @@ class RapidReacquisitionProtocol(BaseProtocol):
                 n_trials=0,
                 params={"context": context_b},
             ),
-            NonReinforcementPhase(
+            build_phase(
+                "nonreinforcement_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_ext,
-                params={"n_trials": n_ext, "alpha": alpha, "context": context_b},
+                alpha=alpha,
+                context=context_b,
             ),
             ContextShiftPhase(
                 agent=self.agent,
@@ -57,13 +60,18 @@ class RapidReacquisitionProtocol(BaseProtocol):
                 n_trials=0,
                 params={"context": context_a},
             ),
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": cs_plus, "cs_minus": []},
                 n_trials=n_reacq,
-                params={"n_trials": n_reacq, "alpha": alpha, "context": context_a},
+                alpha=alpha,
+                context=context_a,
             ),
         ]
+        phases[0].name = "acquisition"
+        phases[2].name = "nonreinforcement"
+        phases[4].name = "acquisition"
 
         self.n_trials = sum(getattr(p, "n_trials", 0) for p in phases)
         return phases

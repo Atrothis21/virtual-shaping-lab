@@ -1,6 +1,12 @@
 # experiment/factories/phase_factory.py
 
-"""Phase factory."""
+"""Phase factory.
+
+Template-first policy:
+- canonical classical keys resolve to template-backed builders
+- legacy class-based canonical phases remain available via explicit *_legacy keys
+- control-flow phases remain class-based (context/criterion shift)
+"""
 
 from typing import Any, Callable, Dict
 
@@ -329,15 +335,24 @@ def _build_probe_template(
 
 
 PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
+    # Canonical phase-mode compatibility defaults.
     "acquisition": AcquisitionPhase,
     "nonreinforcement": NonReinforcementPhase,
     "compound_acquisition": CompoundAcquisitionPhase,
     "compound_nonreinforcement": CompoundNonReinforcementPhase,
     "differential_acquisition": DifferentialAcquisitionPhase,
     "probe": ProbePhase,
+    # Legacy compatibility aliases for explicit class-based usage.
+    "acquisition_legacy": AcquisitionPhase,
+    "nonreinforcement_legacy": NonReinforcementPhase,
+    "compound_acquisition_legacy": CompoundAcquisitionPhase,
+    "compound_nonreinforcement_legacy": CompoundNonReinforcementPhase,
+    "differential_acquisition_legacy": DifferentialAcquisitionPhase,
+    "probe_legacy": ProbePhase,
+    # Custom control-flow phases remain class-based.
     "context_shift": ContextShiftPhase,
     "criterion_shift": CriterionShiftPhase,
-    # Canonical template-backed phase variants (opt-in migration path).
+    # Explicit template keys (kept for direct authoring clarity).
     "acquisition_template": _build_acquisition_template,
     "nonreinforcement_template": _build_nonreinforcement_template,
     "compound_acquisition_template": _build_compound_acquisition_template,

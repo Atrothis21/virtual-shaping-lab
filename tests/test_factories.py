@@ -12,6 +12,8 @@ from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
 from experiment.domain.types import TrialTimeSpec
 from experiment.phases.templates import PhaseTemplate
+from experiment.phases.acquisition import AcquisitionPhase
+from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
 
 
 def test_validate_agent_rejects_unknown():
@@ -177,6 +179,60 @@ def test_phase_factory_builds_canonical_template_variants():
     )
     assert isinstance(probe, PhaseTemplate)
     assert probe.spec.name == "Probe"
+
+
+def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    agent = DummyAgent()
+
+    canonical = phase_factory.build_phase(
+        "acquisition",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+    )
+    assert isinstance(canonical, AcquisitionPhase)
+
+    legacy = phase_factory.build_phase(
+        "acquisition_legacy",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+    )
+    assert isinstance(legacy, AcquisitionPhase)
+
+
+def test_phase_factory_keeps_differential_acquisition_as_class_exception():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    phase = phase_factory.build_phase(
+        "differential_acquisition",
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+        n_trials=1,
+    )
+    assert isinstance(phase, DifferentialAcquisitionPhase)
 
 
 def test_policy_factory_unknown_and_build(monkeypatch):
