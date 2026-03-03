@@ -5,8 +5,7 @@ from typing import Any, Dict, Optional
 from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
 from analysis.report.catalog import get_default_template_for_protocol
 from analysis.report.report import run_report
-from experiment.assemble import assemble_experiment
-from experiment.config import ExperimentConfig
+from experiment.public import assemble_from_plan, build_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.runner import Runner
 from api.lifecycle import (
@@ -16,6 +15,9 @@ from api.lifecycle import (
 
 
 _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
+
+# Backward-compatible symbol for tests/patching; prefer assemble_from_plan.
+assemble_experiment = assemble_from_plan
 
 
 def _set_status_with_lifecycle(
@@ -92,7 +94,7 @@ class PlanService:
 
     @staticmethod
     def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
-        plan = ExperimentConfig.plan_from_payload(payload)
+        plan = build_plan(payload)
         return {
             "plan": plan.to_dict(),
             "stable_hash": plan.stable_hash(),
@@ -195,7 +197,7 @@ class RunService:
         status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
-        plan = ExperimentConfig.plan_from_payload(payload)
+        plan = build_plan(payload)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
             raise ValueError(
@@ -269,7 +271,7 @@ class ReportService:
         if not preset:
             preset = "acquisition"
 
-        resolved_plan = ExperimentConfig.plan_from_payload(payload)
+        resolved_plan = build_plan(payload)
         protocol_name = ""
         if isinstance(payload.get("experiment"), dict):
             exp = payload["experiment"]
