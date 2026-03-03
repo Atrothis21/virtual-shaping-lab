@@ -3,8 +3,11 @@ import json
 from typing import Any, Dict, Optional
 
 from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
-from analysis.report.catalog import get_default_template_for_protocol
-from analysis.report.report import run_report
+from analysis.public import (
+    get_protocol_default_template,
+    run_default_protocol_report,
+    run_preset_report,
+)
 from experiment.public import assemble_from_plan, build_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.runner import Runner
@@ -18,6 +21,8 @@ _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
 
 # Backward-compatible symbol for tests/patching; prefer assemble_from_plan.
 assemble_experiment = assemble_from_plan
+# Backward-compatible symbol for tests/patching; prefer run_preset_report.
+run_report = run_preset_report
 
 
 def _set_status_with_lifecycle(
@@ -279,7 +284,7 @@ class ReportService:
                 protocol_name = str(exp["phases"][0].get("protocol", "") or "")
             else:
                 protocol_name = str(exp.get("protocol", "") or "")
-        template_version = get_default_template_for_protocol(protocol_name).template_version if protocol_name else 1
+        template_version = get_protocol_default_template(protocol_name).template_version if protocol_name else 1
 
         regen_root = Path(reports_dir) / "regenerated"
         regen_root.mkdir(parents=True, exist_ok=True)
