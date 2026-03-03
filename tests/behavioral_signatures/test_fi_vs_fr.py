@@ -7,7 +7,7 @@ from experiment.runtime_records import finalize_record
 import numpy as np
 from ui.validate_payload import validate_payload
 
-from protocols.schedule_runtime import (
+from virtual_shaping_lab.experiment.world.schedules import (
     AlwaysAvailable,
     ConstantConsequenceMapper,
     FixedIntervalAvailability,

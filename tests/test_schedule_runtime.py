@@ -1,6 +1,6 @@
 import numpy as np
 
-from protocols.schedule_runtime import (
+from virtual_shaping_lab.experiment.world.schedules import (
     AlwaysAvailable,
     ConstantConsequenceMapper,
     FirstResponseGate,
