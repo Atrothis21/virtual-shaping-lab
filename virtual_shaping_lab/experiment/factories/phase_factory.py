@@ -335,14 +335,13 @@ def _build_probe_template(
 
 
 PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
-    # Canonical template-first defaults.
-    "acquisition": _build_acquisition_template,
-    "nonreinforcement": _build_nonreinforcement_template,
-    "compound_acquisition": _build_compound_acquisition_template,
-    "compound_nonreinforcement": _build_compound_nonreinforcement_template,
-    # Keep class-based until template record semantics reach parity.
+    # Canonical phase-mode compatibility defaults.
+    "acquisition": AcquisitionPhase,
+    "nonreinforcement": NonReinforcementPhase,
+    "compound_acquisition": CompoundAcquisitionPhase,
+    "compound_nonreinforcement": CompoundNonReinforcementPhase,
     "differential_acquisition": DifferentialAcquisitionPhase,
-    "probe": _build_probe_template,
+    "probe": ProbePhase,
     # Legacy compatibility aliases for explicit class-based usage.
     "acquisition_legacy": AcquisitionPhase,
     "nonreinforcement_legacy": NonReinforcementPhase,

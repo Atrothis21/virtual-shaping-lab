@@ -19,7 +19,7 @@ from experiment.phases.templates.interfaces import (
     ITrialSampler,
     ITrialScheduleBuilder,
 )
-from virtual_shaping_lab.domain.types import Observation, Transition
+from virtual_shaping_lab.domain.types import META_CUE_LABELS, Observation, Transition
 
 
 class PhaseTemplate:
@@ -140,6 +140,7 @@ class PhaseTemplate:
                         done=False,
                         trial_step=self.trial_index,
                         trial_id=self.trial_index,
+                        metadata={META_CUE_LABELS: list(trial_type.stimuli)},
                     )
                 )
 
@@ -153,6 +154,15 @@ class PhaseTemplate:
             )
             record["prediction"] = prediction
             record["response"] = action if action is not None else prediction
+            # Preserve legacy classification field expected by behavioral/analysis tests.
+            record["stimulus_type"] = (
+                str(trial_type.label).split(":", 1)[0] if trial_type.label else None
+            )
+            # Preserve legacy inferred-context metadata behavior.
+            if hasattr(self, "context_source"):
+                record["context_source"] = self.context_source
+                if self.context_source == "inferred":
+                    record["inferred_context"] = self.context
             by_stimulus = self._prediction_by_stimulus(list(trial_type.stimuli))
             if by_stimulus:
                 if len(trial_type.stimuli) > 1:

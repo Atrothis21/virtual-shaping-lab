@@ -202,8 +202,7 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
         stimuli={"cs_plus": ["tone"]},
         n_trials=1,
     )
-    assert isinstance(canonical, PhaseTemplate)
-    assert canonical.spec.name == "Acquisition"
+    assert isinstance(canonical, AcquisitionPhase)
 
     legacy = phase_factory.build_phase(
         "acquisition_legacy",
