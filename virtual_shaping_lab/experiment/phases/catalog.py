@@ -103,6 +103,9 @@ PHASE_CONSTRAINTS = {
 
 # Template-first policy:
 # - Canonical parameter-only phases should be authored as template-backed variants.
+# - Legacy class-based canonical variants are factory-only via explicit *_legacy keys.
+# - Temporary canonical exception: differential_acquisition remains class-based
+#   until template record semantics are fully parity-safe for analysis metrics.
 # - Custom phase classes are still allowed only for true control-flow/runtime phases.
 CUSTOM_PHASE_CLASS_ALLOWLIST = {
     "context_shift",

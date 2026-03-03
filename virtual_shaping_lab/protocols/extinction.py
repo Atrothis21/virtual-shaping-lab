@@ -49,6 +49,7 @@ class ExtinctionProtocol(BaseProtocol):
         acquisition_outcome = self.params.get("acquisition_outcome", 1.0)
 
         acq_params = dict(self.params)
+        acq_params.pop("n_trials", None)
         acq_params["outcome"] = acquisition_outcome
         acquisition = build_phase(
             "acquisition_template",
@@ -59,12 +60,14 @@ class ExtinctionProtocol(BaseProtocol):
         )
         acquisition.name = "acquisition"
 
+        ext_params = dict(self.params)
+        ext_params.pop("n_trials", None)
         extinction = build_phase(
             "nonreinforcement_template",
             agent=self.agent,
             stimuli=stimuli,
             n_trials=n_ext,
-            **self.params,
+            **ext_params,
         )
         extinction.name = "nonreinforcement"
 
