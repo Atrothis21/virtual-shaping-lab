@@ -7,7 +7,7 @@ from typing import Any
 
 from virtual_shaping_lab.domain.types import Observation, Transition
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
-from virtual_shaping_lab.protocols.schedule_runtime import ScheduleTickInput
+from virtual_shaping_lab.experiment.world.schedules import ScheduleTickInput
 
 
 _STIMULUS_EVENT_TYPES = {"stimulus", "cs", "cue"}

@@ -1,24 +1,26 @@
-"""Compatibility shim for schedule runtime imports.
+"""World schedule runtime public exports."""
 
-Canonical schedule runtime implementations now live under:
-`virtual_shaping_lab.experiment.world.schedules`.
-"""
-
-from virtual_shaping_lab.experiment.world.schedules import (
+from virtual_shaping_lab.experiment.world.schedules.availability import (
     AlwaysAvailable,
     AvailabilityProcess,
-    ConstantConsequenceMapper,
+    FixedIntervalAvailability,
+    VariableIntervalAvailability,
+)
+from virtual_shaping_lab.experiment.world.schedules.consequence import (
     Consequence,
     ConsequenceMapper,
+    ConstantConsequenceMapper,
+)
+from virtual_shaping_lab.experiment.world.schedules.gate import (
     FirstResponseGate,
-    FixedIntervalAvailability,
     FixedRatioGate,
     ReinforcementGate,
+    VariableRatioGate,
+)
+from virtual_shaping_lab.experiment.world.schedules.runtime import (
     ScheduleTickInput,
     ScheduleTickResult,
     TickScheduleRuntime,
-    VariableIntervalAvailability,
-    VariableRatioGate,
 )
 
 __all__ = [
