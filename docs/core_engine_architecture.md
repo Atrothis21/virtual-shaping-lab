@@ -253,6 +253,9 @@ Supported extension seams:
   - add protocol mapping/template in analysis report catalog
   - add metrics/figures if needed
 
+Template phase authoring reference:
+- `docs/phase_template_authoring.md`
+
 ---
 
 ## Known Gaps / Risks
