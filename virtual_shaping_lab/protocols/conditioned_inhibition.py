@@ -92,6 +92,11 @@ class ConditionedInhibitionProtocol(BaseProtocol):
 
         acq_params = dict(self.params)
         acq_params["outcome"] = acquisition_outcome
+        acq_params.pop("n_trials", None)
+        inhib_params = dict(self.params)
+        inhib_params.pop("n_trials", None)
+        probe_params = {**self.params, "deliver_reward": False}
+        probe_params.pop("n_trials", None)
 
         phases = [
             build_phase(
@@ -113,7 +118,7 @@ class ConditionedInhibitionProtocol(BaseProtocol):
                 agent=self.agent,
                 stimuli={"compound": [excitor_stimuli[0], inhibitor_stimuli[0]]},
                 n_trials=n_inhib,
-                **self.params,
+                **inhib_params,
             ),
             build_phase(
                 "probe_template",
@@ -129,7 +134,7 @@ class ConditionedInhibitionProtocol(BaseProtocol):
                     "cs_minus": []
                 },
                 n_trials=summation_probe_count,
-                **{**self.params, "deliver_reward": False},
+                **probe_params,
             ),
         ]
 

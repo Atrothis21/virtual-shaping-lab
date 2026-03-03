@@ -158,6 +158,20 @@ class PhaseTemplate:
                 if len(trial_type.stimuli) > 1:
                     by_stimulus["compound"] = prediction
                 record["prediction_by_stimulus"] = by_stimulus
+            if trial_type.stimuli:
+                record["a_stimulus"] = trial_type.stimuli[0]
+                record["b_stimulus"] = trial_type.stimuli[1] if len(trial_type.stimuli) > 1 else None
+            if len(trial_type.stimuli) > 1:
+                a = trial_type.stimuli[0]
+                b = trial_type.stimuli[1]
+                record["series_labels"] = {"label_1": "CS1", "label_2": "CS2"}
+                record["series_values"] = {
+                    "CS1": by_stimulus.get(a, prediction),
+                    "CS2": by_stimulus.get(b, prediction),
+                }
+            else:
+                record["series_labels"] = {"label_1": "CS1", "label_2": "CS2"}
+                record["series_values"] = {"CS1": prediction, "CS2": None}
             self.records.append(record)
 
             metadata = {"record": record}
