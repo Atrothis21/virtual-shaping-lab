@@ -1,7 +1,5 @@
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
-from experiment.phases.probe import ProbePhase
+from experiment.factories.phase_factory import build_phase
 
 
 class OccasionSettingProtocol(BaseProtocol):
@@ -33,25 +31,30 @@ class OccasionSettingProtocol(BaseProtocol):
         #   S+X -> US
         #   X alone -> no US
         phases = [
-            AcquisitionPhase(
+            build_phase(
+                "acquisition_template",
                 agent=self.agent,
                 stimuli={"cs_plus": [(S, X)], "cs_minus": []},
                 n_trials=n_train,
-                params={"n_trials": n_train, "alpha": alpha},
+                alpha=alpha,
             ),
-            NonReinforcementPhase(
+            build_phase(
+                "nonreinforcement_template",
                 agent=self.agent,
                 stimuli={"cs_plus": [X], "cs_minus": []},
                 n_trials=n_train,
-                params={"n_trials": n_train, "alpha": alpha},
+                alpha=alpha,
             ),
-            ProbePhase(
+            build_phase(
+                "probe_template",
                 agent=self.agent,
                 stimuli={"cs_plus": [X, (S, X)], "cs_minus": []},
                 n_trials=n_probe,
-                params={"n_trials": n_probe},
             ),
         ]
+        phases[0].name = "acquisition"
+        phases[1].name = "nonreinforcement"
+        phases[2].name = "probe"
 
         self.n_trials = sum(getattr(p, "n_trials", 0) for p in phases)
         return phases

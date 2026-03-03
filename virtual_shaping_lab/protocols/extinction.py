@@ -3,8 +3,7 @@
 from typing import Any, Dict, List, Optional
 
 from protocols.base import BaseProtocol
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
+from experiment.factories.phase_factory import build_phase
 
 
 class ExtinctionProtocol(BaseProtocol):
@@ -51,19 +50,23 @@ class ExtinctionProtocol(BaseProtocol):
 
         acq_params = dict(self.params)
         acq_params["outcome"] = acquisition_outcome
-        acquisition = AcquisitionPhase(
+        acquisition = build_phase(
+            "acquisition_template",
             agent=self.agent,
             stimuli=stimuli,
             n_trials=n_acq,
-            params=acq_params,
+            **acq_params,
         )
+        acquisition.name = "acquisition"
 
-        extinction = NonReinforcementPhase(
+        extinction = build_phase(
+            "nonreinforcement_template",
             agent=self.agent,
             stimuli=stimuli,
             n_trials=n_ext,
-            params=self.params,
+            **self.params,
         )
+        extinction.name = "nonreinforcement"
 
         phases = [acquisition, extinction]
 
