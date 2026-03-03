@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from jsonschema import ValidationError
 
 from agents.composed_agent import ComposedAgent
 from agents.learners.q_learner import QLearner
@@ -148,15 +147,19 @@ def test_operant_payload_policy_guard_accepts_operant_and_rejects_classical():
         "name": "epsilon_greedy",
         "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
     }
-    with pytest.raises(ValidationError):
-        validate_payload(classical_payload)
+    validate_payload(classical_payload)
+    cfg = ExperimentConfig.from_payload(classical_payload)
+    with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
+        assemble_experiment(cfg)
 
 
 def test_operant_payload_requires_policy_at_validation():
     payload = operant_conditioning_payload()
     payload["experiment"].pop("policy", None)
-    with pytest.raises(ValidationError, match="operant experiments require a policy object"):
-        validate_payload(payload)
+    validate_payload(payload)
+    cfg = ExperimentConfig.from_payload(payload)
+    with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
+        assemble_experiment(cfg)
 
 
 def test_operant_fixture_assembles_composed_agent_and_action_learner():

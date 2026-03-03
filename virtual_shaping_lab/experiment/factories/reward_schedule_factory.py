@@ -1,30 +1,15 @@
-# experiment/factories/reward_schedule_factory.py
+"""Compatibility factory for reward schedule construction.
 
-from typing import Dict, Type
+Canonical registry and implementations are world-owned:
+`virtual_shaping_lab.experiment.world.schedules.reward_schedules`.
+"""
 
-from protocols.reward_schedules import (
-    FixedRatioSchedule,
-    VariableRatioSchedule,
-    FixedIntervalSchedule,
-    VariableIntervalSchedule,
-)
+from virtual_shaping_lab.experiment.world.schedules import reward_schedules as world_reward_schedules
 
 
-# -------------------------------------------------
-# Registry
-# -------------------------------------------------
+# Alias to canonical world registry object.
+REWARD_SCHEDULE_REGISTRY = world_reward_schedules.REWARD_SCHEDULE_REGISTRY
 
-REWARD_SCHEDULE_REGISTRY: Dict[str, Type] = {
-    "fixed_ratio": FixedRatioSchedule,
-    "variable_ratio": VariableRatioSchedule,
-    "fixed_interval": FixedIntervalSchedule,
-    "variable_interval": VariableIntervalSchedule,
-}
-
-
-# -------------------------------------------------
-# Validation
-# -------------------------------------------------
 
 def validate_reward_schedule(name: str) -> None:
     if name not in REWARD_SCHEDULE_REGISTRY:
@@ -34,10 +19,6 @@ def validate_reward_schedule(name: str) -> None:
             f"Available schedules: {available}"
         )
 
-
-# -------------------------------------------------
-# Construction
-# -------------------------------------------------
 
 def build_reward_schedule(config: dict):
     """
@@ -49,7 +30,6 @@ def build_reward_schedule(config: dict):
           "value": int | float
         }
     """
-
     if not isinstance(config, dict):
         raise TypeError(
             "Reward schedule config must be a dict with keys "
@@ -70,7 +50,6 @@ def build_reward_schedule(config: dict):
 
     schedule_cls = REWARD_SCHEDULE_REGISTRY[schedule_type]
 
-    # Map semantic value → constructor argument
     if schedule_type == "fixed_ratio":
         return schedule_cls(n=value, reward=reward)
 
@@ -83,7 +62,5 @@ def build_reward_schedule(config: dict):
     if schedule_type == "variable_interval":
         return schedule_cls(mean_interval=value, reward=reward)
 
-    # Defensive fallback (should never happen)
-    raise RuntimeError(
-        f"Unhandled reward schedule type '{schedule_type}'"
-    )
+    raise RuntimeError(f"Unhandled reward schedule type '{schedule_type}'")
+

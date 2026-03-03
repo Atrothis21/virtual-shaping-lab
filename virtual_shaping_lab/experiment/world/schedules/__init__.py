@@ -22,6 +22,16 @@ from virtual_shaping_lab.experiment.world.schedules.runtime import (
     ScheduleTickResult,
     TickScheduleRuntime,
 )
+from virtual_shaping_lab.experiment.world.schedules.reward_schedules import (
+    FixedIntervalSchedule,
+    FixedRatioSchedule,
+    RewardSchedule,
+    VariableIntervalSchedule,
+    VariableRatioSchedule,
+    REWARD_SCHEDULE_REGISTRY,
+    build_reward_schedule,
+    validate_reward_schedule,
+)
 
 __all__ = [
     "AlwaysAvailable",
@@ -38,5 +48,12 @@ __all__ = [
     "TickScheduleRuntime",
     "VariableIntervalAvailability",
     "VariableRatioGate",
+    "FixedRatioSchedule",
+    "VariableRatioSchedule",
+    "FixedIntervalSchedule",
+    "VariableIntervalSchedule",
+    "RewardSchedule",
+    "REWARD_SCHEDULE_REGISTRY",
+    "build_reward_schedule",
+    "validate_reward_schedule",
 ]
-
