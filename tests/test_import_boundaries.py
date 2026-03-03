@@ -119,3 +119,23 @@ def test_config_layer_does_not_import_runtime_behavior_or_analysis():
     )
     bad = _violations(paths, forbidden)
     assert not bad, f"Config import boundary violations: {bad}"
+
+
+def test_api_layer_uses_public_facades_not_deep_experiment_analysis_internals():
+    paths = list(_iter_python_files(ROOT / "api"))
+    forbidden = (
+        "experiment.assemble",
+        "experiment.config",
+        "experiment.runner",
+        "analysis.registry",
+        "analysis.report.catalog",
+        "analysis.report.report",
+        "virtual_shaping_lab.experiment.assemble",
+        "virtual_shaping_lab.experiment.config",
+        "virtual_shaping_lab.experiment.runner",
+        "virtual_shaping_lab.analysis.registry",
+        "virtual_shaping_lab.analysis.report.catalog",
+        "virtual_shaping_lab.analysis.report.report",
+    )
+    bad = _violations(paths, forbidden)
+    assert not bad, f"API facade import boundary violations: {bad}"

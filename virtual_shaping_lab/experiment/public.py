@@ -38,6 +38,7 @@ def assemble_from_plan(plan: ExperimentPlan):
 @dataclass
 class ExecutionResult:
     records: list[dict[str, Any]]
+    unit_records: list[list[dict[str, Any]]]
     runtime_units: list[Any]
     agent: Any
     representation: Any
@@ -59,8 +60,9 @@ def run_from_plan(
         runner_settings.update(settings)
 
     all_records: list[dict[str, Any]] = []
+    unit_records: list[list[dict[str, Any]]] = []
     for unit in runtime_units:
-        unit_records = Runner(
+        records_for_unit = Runner(
             unit,
             seed=seed,
             context=context,
@@ -68,10 +70,12 @@ def run_from_plan(
             sink=sink,
             hooks=hooks,
         ).run()
-        all_records.extend(unit_records)
+        unit_records.append(records_for_unit)
+        all_records.extend(records_for_unit)
 
     return ExecutionResult(
         records=all_records,
+        unit_records=unit_records,
         runtime_units=runtime_units,
         agent=agent,
         representation=representation,

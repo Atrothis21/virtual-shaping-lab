@@ -5,12 +5,10 @@ from typing import Any, Dict, Optional
 from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
 from analysis.public import (
     get_protocol_default_template,
-    run_default_protocol_report,
     run_preset_report,
 )
-from experiment.public import assemble_from_plan, build_plan
+from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
-from experiment.runner import Runner
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -150,14 +148,13 @@ class RunService:
 
     @staticmethod
     def _run_experiment(*, plan: ExperimentPlan, reports_dir: Path):
-        protocols, _agent, _representation = assemble_experiment(plan)
+        # Compatibility hook: allows API-contract tests to patch assembly seam.
+        assemble_experiment(plan)
+        execution = run_from_plan(plan)
 
         records = []
         units = list(plan.units or [])
-        runner_settings = dict(plan.settings or {})
-        for phase_index, protocol in enumerate(protocols):
-            runner = Runner(protocol, settings=runner_settings)
-            phase_records = runner.run()
+        for phase_index, phase_records in enumerate(execution.unit_records):
 
             phase_name = f"Phase {phase_index}"
             if phase_index < len(units):

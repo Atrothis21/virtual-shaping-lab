@@ -8,8 +8,9 @@ from __future__ import annotations
 from typing import Any
 
 from analysis.registry import run_protocol_default_report
-from analysis.report.catalog import get_default_template_for_protocol
+from analysis.report.catalog import DEFAULT_TEMPLATE_BY_PROTOCOL, get_default_template_for_protocol
 from analysis.report.report import run_report
+from virtual_shaping_lab.domain.naming import normalize_protocol_key
 
 
 def run_preset_report(
@@ -37,3 +38,17 @@ def run_default_protocol_report(
 def get_protocol_default_template(protocol_name: str):
     """Resolve protocol -> default report template specification."""
     return get_default_template_for_protocol(protocol_name)
+
+
+def list_protocol_default_templates() -> dict[str, dict[str, Any]]:
+    """Return protocol -> default template metadata mapping."""
+    templates: dict[str, dict[str, Any]] = {}
+    for protocol_name, spec in DEFAULT_TEMPLATE_BY_PROTOCOL.items():
+        normalized = normalize_protocol_key(protocol_name)
+        templates[normalized] = {
+            "report_name": spec.report_name,
+            "template_version": spec.template_version,
+            "metric_names": list(spec.metric_names),
+            "figure_names": list(spec.figure_names),
+        }
+    return {k: templates[k] for k in sorted(templates.keys())}
