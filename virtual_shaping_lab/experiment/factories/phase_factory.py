@@ -32,6 +32,22 @@ from experiment.domain.types import (
     TrialTypeSpec,
 )
 
+_FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS = {
+    "attention",
+    "attention_compound",
+    "salience",
+    "similarity",
+}
+
+
+def _validate_template_behavior_params(params: dict[str, Any]) -> None:
+    leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS if k in params)
+    if leaked:
+        raise ValueError(
+            "Template phase params must not include representation/learner-owned keys: "
+            + ", ".join(leaked)
+        )
+
 
 def _coerce_trial_types(stimuli: Any) -> list[TrialTypeSpec]:
     if isinstance(stimuli, dict):
@@ -91,6 +107,7 @@ def _build_pavlovian_phase_template(
     params: dict[str, Any] | None = None,
 ):
     params = dict(params or {})
+    _validate_template_behavior_params(params)
     spec = PhaseSpec(
         key="pavlovian_phase_template",
         name=str(params.get("phase_name", "Pavlovian Template")),
@@ -123,6 +140,7 @@ def _build_operant_phase_template(
     params: dict[str, Any] | None = None,
 ):
     params = dict(params or {})
+    _validate_template_behavior_params(params)
     actions = params.get("available_actions")
     if actions is None:
         actions = getattr(getattr(agent, "policy", None), "actions", None)

@@ -9,6 +9,13 @@ OPERANT_PROTOCOLS = {
     "superextinction",
     "spontaneous_recovery",
 }
+_TEMPLATE_PHASE_KEY_SUFFIX = "_template"
+_FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS = {
+    "attention",
+    "attention_compound",
+    "salience",
+    "similarity",
+}
 
 
 class PayloadNormalizer:
@@ -445,12 +452,19 @@ class ExperimentConfig:
                     raise ValueError(
                         f"Phase {i} params must be an object"
                     )
+                protocol_name = phase["protocol"]
+                if isinstance(protocol_name, str) and protocol_name.endswith(_TEMPLATE_PHASE_KEY_SUFFIX):
+                    leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
+                    if leaked:
+                        raise ValueError(
+                            f"Phase {i} template params must not include representation/learner-owned keys: {', '.join(leaked)}"
+                        )
                 stimuli = phase.get("stimuli")
 
                 phases.append(
                     PhaseConfig(
                         name=phase.get("name", f"Phase {i}"),
-                        protocol=phase["protocol"],
+                        protocol=protocol_name,
                         stimuli=cls._normalize_phase_stimuli(stimuli) if stimuli is not None else None,
                         params=params,
                     )

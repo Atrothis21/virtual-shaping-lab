@@ -111,3 +111,31 @@ def test_runner_fails_fast_on_invalid_composed_runtime_object():
                 }
             },
         )
+
+
+def test_assemble_experiment_rejects_template_phase_param_ownership_leaks():
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Template Acquisition",
+                "protocol": "acquisition_template",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "salience": {"tone": 0.4}},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+        },
+    )
+    with pytest.raises(ValueError, match="must not include representation/learner-owned keys"):
+        assemble_experiment(plan)

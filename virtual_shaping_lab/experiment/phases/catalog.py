@@ -100,3 +100,11 @@ PHASE_CONSTRAINTS = {
         "context_shift"
     }
 }
+
+# Template-first policy:
+# - Canonical parameter-only phases should be authored as template-backed variants.
+# - Custom phase classes are still allowed only for true control-flow/runtime phases.
+CUSTOM_PHASE_CLASS_ALLOWLIST = {
+    "context_shift",
+    "criterion_shift",
+}
