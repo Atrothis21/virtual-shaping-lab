@@ -1,8 +1,11 @@
-# protocols/reward_schedules.py
+"""Canonical reward schedule implementations and registry."""
+
+from __future__ import annotations
 
 import random
+from typing import Dict, Type
 
-from .schedule_runtime import (
+from virtual_shaping_lab.experiment.world.schedules import (
     AlwaysAvailable,
     ConstantConsequenceMapper,
     FixedIntervalAvailability,
@@ -15,56 +18,21 @@ from .schedule_runtime import (
 
 
 class RewardSchedule:
-    """
-    Base class for operant reward schedules.
-
-    A reward schedule determines whether reinforcement
-    is delivered given an action and time.
-
-    Assumes that each call to `step()` corresponds to
-    a response opportunity.
-    """
+    """Base class for operant reward schedules."""
 
     name = "base"
 
     def reset(self):
-        """Reset internal state at experiment start."""
-        pass
+        return None
 
     def step(self, action, t) -> float:
-        """
-        Determine reward delivery.
-
-        Parameters
-        ----------
-        action : Any
-            Action emitted by the agent. None indicates no response.
-        t : int
-            Current trial index.
-
-        Returns
-        -------
-        reward : float
-            Reward magnitude (typically 0 or 1).
-        """
         raise NotImplementedError
 
     def build_tick_runtime(self, time_spec):
-        """Optional tick-native schedule runtime adapter."""
         return None
 
 
-# -------------------------------------------------
-# Ratio schedules
-# -------------------------------------------------
-
 class FixedRatioSchedule(RewardSchedule):
-    """
-    Fixed Ratio (FR-n)
-
-    Reinforce every n responses.
-    """
-
     name = "fixed_ratio"
 
     def __init__(self, n: int, reward: float = 1.0):
@@ -76,16 +44,12 @@ class FixedRatioSchedule(RewardSchedule):
         self._count = 0
 
     def step(self, action, t):
-        # Only count actual responses
         if action is None:
             return 0.0
-
         self._count += 1
-
         if self._count >= self.n:
             self._count = 0
             return self.reward
-
         return 0.0
 
     def build_tick_runtime(self, time_spec):
@@ -97,26 +61,15 @@ class FixedRatioSchedule(RewardSchedule):
 
 
 class VariableRatioSchedule(RewardSchedule):
-    """
-    Variable Ratio (VR-n)
-
-    Reinforce responses with probability 1/n.
-    """
-
     name = "variable_ratio"
 
     def __init__(self, mean_n: int, reward: float = 1.0):
         self.mean_n = mean_n
         self.reward = reward
 
-    def reset(self):
-        # Stateless schedule
-        pass
-
     def step(self, action, t):
         if action is None:
             return 0.0
-
         if random.random() < (1.0 / self.mean_n):
             return self.reward
         return 0.0
@@ -129,17 +82,7 @@ class VariableRatioSchedule(RewardSchedule):
         )
 
 
-# -------------------------------------------------
-# Interval schedules
-# -------------------------------------------------
-
 class FixedIntervalSchedule(RewardSchedule):
-    """
-    Fixed Interval (FI-t)
-
-    Reinforce the first response after t trials.
-    """
-
     name = "fixed_interval"
 
     def __init__(self, interval: int, reward: float = 1.0):
@@ -153,7 +96,6 @@ class FixedIntervalSchedule(RewardSchedule):
     def step(self, action, t):
         if action is None:
             return 0.0
-
         if (t - self._last_reinforcement) >= self.interval:
             self._last_reinforcement = t
             return self.reward
@@ -170,13 +112,6 @@ class FixedIntervalSchedule(RewardSchedule):
 
 
 class VariableIntervalSchedule(RewardSchedule):
-    """
-    Variable Interval (VI-t)
-
-    Reinforce the first response after a variable interval
-    with mean t (measured in trials).
-    """
-
     name = "variable_interval"
 
     def __init__(self, mean_interval: int, reward: float = 1.0):
@@ -188,13 +123,11 @@ class VariableIntervalSchedule(RewardSchedule):
         self._next_available = self._sample_interval()
 
     def _sample_interval(self):
-        # Exponential distribution with mean = mean_interval
         return random.expovariate(1.0 / self.mean_interval)
 
     def step(self, action, t):
         if action is None:
             return 0.0
-
         if t >= self._next_available:
             self._next_available = t + self._sample_interval()
             return self.reward
@@ -208,3 +141,49 @@ class VariableIntervalSchedule(RewardSchedule):
             gate=FirstResponseGate(),
             consequence_mapper=ConstantConsequenceMapper(reward=self.reward),
         )
+
+
+REWARD_SCHEDULE_REGISTRY: Dict[str, Type] = {
+    "fixed_ratio": FixedRatioSchedule,
+    "variable_ratio": VariableRatioSchedule,
+    "fixed_interval": FixedIntervalSchedule,
+    "variable_interval": VariableIntervalSchedule,
+}
+
+
+def validate_reward_schedule(name: str) -> None:
+    if name not in REWARD_SCHEDULE_REGISTRY:
+        available = ", ".join(sorted(REWARD_SCHEDULE_REGISTRY.keys()))
+        raise KeyError(
+            f"Unknown reward schedule '{name}'. "
+            f"Available schedules: {available}"
+        )
+
+
+def build_reward_schedule(config: dict):
+    if not isinstance(config, dict):
+        raise TypeError(
+            "Reward schedule config must be a dict with keys "
+            "'type' and 'value'."
+        )
+    if "type" not in config:
+        raise KeyError("Reward schedule config missing required key: 'type'")
+    if "value" not in config:
+        raise KeyError("Reward schedule config missing required key: 'value'")
+
+    schedule_type = config["type"]
+    value = config["value"]
+    reward = config.get("reward", 1.0)
+    validate_reward_schedule(schedule_type)
+    schedule_cls = REWARD_SCHEDULE_REGISTRY[schedule_type]
+
+    if schedule_type == "fixed_ratio":
+        return schedule_cls(n=value, reward=reward)
+    if schedule_type == "variable_ratio":
+        return schedule_cls(mean_n=value, reward=reward)
+    if schedule_type == "fixed_interval":
+        return schedule_cls(interval=value, reward=reward)
+    if schedule_type == "variable_interval":
+        return schedule_cls(mean_interval=value, reward=reward)
+    raise RuntimeError(f"Unhandled reward schedule type '{schedule_type}'")
+

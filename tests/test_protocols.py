@@ -16,7 +16,7 @@ from protocols.aab_renewal import AABRenewalProtocol
 from protocols.aba_renewal import ABARenewalProtocol
 from protocols.abc_renewal import ABCRenewalProtocol
 from protocols.rapid_reacquisition import RapidReacquisitionProtocol
-from protocols.reward_schedules import (
+from virtual_shaping_lab.experiment.world.schedules import (
     FixedRatioSchedule,
     VariableRatioSchedule,
     FixedIntervalSchedule,

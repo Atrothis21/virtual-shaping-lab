@@ -2,7 +2,7 @@ import numpy as np
 
 from experiment.domain.types import EventSpec, ExperimentContext, StepResult, TrialSchedule, TrialTimeSpec, WindowSpec
 from experiment.trial_executor import TrialExecutor
-from protocols.schedule_runtime import (
+from virtual_shaping_lab.experiment.world.schedules import (
     AlwaysAvailable,
     ConstantConsequenceMapper,
     FixedRatioGate,

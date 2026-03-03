@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.6)
+# Core Engine Architecture (V2.8)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.6), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.8), including runtime control flow, object boundaries, extension points, and known gaps.
 
 ---
 
@@ -127,6 +127,9 @@ Control flow:
 Design intent:
 - keep runner thin and protocol/phase-agnostic
 - isolate intra-trial timing logic in `TrialExecutor`
+
+World schedule runtime contracts consumed by trial execution:
+- `virtual_shaping_lab/experiment/world/schedules/*`
 
 ---
 

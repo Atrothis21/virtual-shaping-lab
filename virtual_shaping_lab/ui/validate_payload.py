@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
-from experiment.phases.catalog import PHASE_CONSTRAINTS
 
 
 SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -94,24 +93,16 @@ def _validate_top_level(payload: dict) -> dict:
     return exp
 
 
-# Semantic guard: policies are only valid for operant protocols.
+# Shallow policy shape guard only.
 def _validate_policy_guard(exp: dict) -> None:
     policy = exp.get("policy")
     if not policy:
         return
 
-    if "protocol" in exp and exp.get("protocol"):
-        is_operant = exp.get("protocol") in OPERANT_PROTOCOLS
-    else:
-        is_operant = any(
-            p.get("protocol") in OPERANT_PROTOCOLS
-            for p in exp.get("phases", [])
-        )
-
-    if not is_operant:
-        raise ValidationError("policy is only allowed for operant_conditioning protocols")
-
-    _validate_schema(policy, POLICY_SCHEMA_PATH, "policy")
+    if not isinstance(policy, (dict, str)):
+        raise ValidationError("policy must be an object or string")
+    if isinstance(policy, dict):
+        _validate_schema(policy, POLICY_SCHEMA_PATH, "policy")
 
 
 def _uses_operant_path(exp: dict) -> bool:
@@ -138,86 +129,16 @@ def _iter_operant_entries(exp: dict):
 
 
 def _validate_operant_payload_semantics(exp: dict) -> None:
-    if not _uses_operant_path(exp):
-        return
-
-    policy = exp.get("policy")
-    if not isinstance(policy, dict):
-        raise ValidationError("operant experiments require a policy object")
-
-    policy_name = policy.get("name")
-    params = policy.get("params") if isinstance(policy.get("params"), dict) else {}
-    actions = params.get("actions")
-
-    operant_entries = list(_iter_operant_entries(exp))
-
-    if policy_name in {"epsilon_greedy", "softmax"}:
-        if not isinstance(actions, list) or len(actions) < 1:
-            raise ValidationError(
-                "operant policy requires params.actions with at least one action"
-            )
-        if len(set(actions)) != len(actions):
-            raise ValidationError("operant policy params.actions must be unique")
-
-    if policy_name == "fixed":
-        fixed_action = params.get("action")
-        if fixed_action is None:
-            raise ValidationError("fixed policy requires params.action")
-
-    for protocol_name, proto_params in operant_entries:
-        if protocol_name == "matching_law":
-            action_labels = proto_params.get("action_labels")
-            if action_labels is not None:
-                if not isinstance(action_labels, list) or len(action_labels) != 2:
-                    raise ValidationError(
-                        "matching_law params.action_labels must contain exactly two labels"
-                    )
-                if len(set(action_labels)) != 2:
-                    raise ValidationError(
-                        "matching_law params.action_labels must be two distinct labels"
-                    )
-
-        required_actions = OPERANT_PROTOCOL_ACTION_COUNTS.get(protocol_name)
-        if required_actions is None:
-            continue
-
-        if policy_name in {"epsilon_greedy", "softmax"}:
-            if isinstance(actions, list) and len(actions) != required_actions:
-                raise ValidationError(
-                    f"{protocol_name} requires exactly {required_actions} policy action(s)"
-                )
-        elif policy_name == "fixed":
-            if required_actions != 1:
-                raise ValidationError(
-                    f"{protocol_name} requires exactly {required_actions} policy action(s); fixed policy provides one"
-                )
-
-        if protocol_name == "matching_law":
-            action_labels = proto_params.get("action_labels")
-            if isinstance(actions, list) and len(actions) != 2:
-                raise ValidationError(
-                    "matching_law operant policy must provide exactly two actions"
-                )
-            if action_labels is not None and isinstance(actions, list) and action_labels != actions:
-                raise ValidationError(
-                    "matching_law params.action_labels must match policy params.actions order"
-                )
+    # Semantic validation is engine-owned (ExperimentConfig/parameter pipeline).
+    return None
 
 
 def _validate_representation_mechanism_split(exp: dict) -> None:
-    rep = exp.get("representation")
-    if not isinstance(rep, dict):
-        return
-    params = rep.get("params")
-    if not isinstance(params, dict):
-        return
-    if "attention" in params or "attention_compound" in params:
-        raise ValidationError(
-            "representation.params must not include attention fields; use experiment.attention."
-        )
+    # Semantic ownership validation is engine-owned.
+    return None
 
 
-# Schema validation: enforce protocol-mode XOR phase-mode and validate schemas.
+# Shallow mode validation: enforce protocol-mode XOR phase-mode and basic shape checks.
 def _validate_protocol_or_phases(exp: dict) -> None:
     has_protocol = "protocol" in exp and exp.get("protocol")
     has_phases = "phases" in exp and isinstance(exp.get("phases"), list) and len(exp["phases"]) > 0
@@ -228,23 +149,12 @@ def _validate_protocol_or_phases(exp: dict) -> None:
         raise ValidationError("experiment must provide either 'protocol' or 'phases'")
 
     if has_protocol:
-        protocol = exp.get("protocol")
-        schema_path = PROTOCOL_SCHEMA_MAP.get(protocol)
-        if not schema_path:
-            raise ValidationError(
-                f"experiment.protocol uses unknown protocol '{protocol}' "
-                f"(no protocol schema registered)"
-            )
-
-        protocol_payload = {
-            "name": exp.get("name", protocol),
-            "protocol": protocol,
-            "params": exp.get("params", {}),
-        }
-        if "stimuli" in exp:
-            protocol_payload["stimuli"] = exp.get("stimuli")
-
-        _validate_schema(protocol_payload, schema_path, f"protocol[{protocol}]")
+        if not isinstance(exp.get("protocol"), str):
+            raise ValidationError("experiment.protocol must be a string")
+        if "params" in exp and not isinstance(exp.get("params"), dict):
+            raise ValidationError("experiment.params must be an object")
+        if "stimuli" in exp and not isinstance(exp.get("stimuli"), dict):
+            raise ValidationError("experiment.stimuli must be an object")
         return
 
     phases = exp.get("phases", [])
@@ -253,44 +163,19 @@ def _validate_protocol_or_phases(exp: dict) -> None:
             raise ValidationError(f"phase[{idx}] must be an object")
 
         phase_name = phase.get("protocol")
-        if not phase_name:
+        if not isinstance(phase_name, str) or not phase_name:
             raise ValidationError(f"phase[{idx}].protocol is required")
-
-        schema_path = PHASE_SCHEMA_MAP.get(phase_name)
-        if not schema_path:
-            raise ValidationError(
-                f"phase[{idx}] uses unknown phase '{phase_name}' "
-                f"(no phase schema registered)"
-            )
-
-        _validate_schema(phase, schema_path, f"phase[{idx}] ({phase_name})")
-
-    validate_phase_order(phases)
+        if "params" in phase and not isinstance(phase.get("params"), dict):
+            raise ValidationError(f"phase[{idx}].params must be an object")
+        if "stimuli" in phase and not isinstance(phase.get("stimuli"), dict):
+            raise ValidationError(f"phase[{idx}].stimuli must be an object")
 
 
 def validate_phase_order(phases):
     """
-    Validate phase ordering using PHASE_CONSTRAINTS.
+    Deprecated UI hook; phase ordering semantics are engine-owned.
     """
-    seen_learning = False
-    seen_acquisition = False
-
-    for idx, phase in enumerate(phases):
-        protocol = phase.get("protocol")
-
-        if protocol in {"acquisition", "compound_acquisition", "differential_acquisition"}:
-            seen_learning = True
-            seen_acquisition = True
-
-        if protocol in PHASE_CONSTRAINTS["requires_prior_learning"] and not seen_learning:
-            raise ValueError(
-                f"Phase '{protocol}' at position {idx} requires a prior learning phase."
-            )
-
-        if protocol in PHASE_CONSTRAINTS["requires_prior_acquisition"] and not seen_acquisition:
-            raise ValueError(
-                f"Phase '{protocol}' at position {idx} requires a prior acquisition phase."
-            )
+    return None
 
 
 # Public entry point: thin wrapper that composes all validation steps.
@@ -302,6 +187,4 @@ def validate_payload(payload: dict) -> None:
     """
     exp = _validate_top_level(payload)
     _validate_policy_guard(exp)
-    _validate_operant_payload_semantics(exp)
-    _validate_representation_mechanism_split(exp)
     _validate_protocol_or_phases(exp)
