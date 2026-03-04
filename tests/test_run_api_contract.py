@@ -80,6 +80,17 @@ def test_run_service_rejects_expected_plan_hash_mismatch(tmp_path):
         )
 
 
+def test_run_api_forwards_expected_plan_hash_and_rejects_mismatch():
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    payload["expected_plan_hash"] = "deadbeef"
+    with pytest.raises(HTTPException) as exc:
+        api_run.run_api(payload)
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert "Plan hash mismatch" in str(exc.value.detail.get("message", ""))
+    assert "Plan hash mismatch" in str(exc.value.detail.get("details", {}).get("reason", ""))
+
+
 def test_run_service_executes_from_resolved_plan(monkeypatch, tmp_path):
     from experiment import assemble as assemble_mod
     from experiment.domain.types import ExperimentPlan

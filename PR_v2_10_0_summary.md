@@ -45,7 +45,7 @@ This release prioritizes functional parity and contract safety over visual polis
   - `Resolve + Run Preset`
   - `Resolve + Run + Report Preset`
 
-### 6) Minimal Builder Bridge
+### 6) Draft Payload Helper Controls
 - Phase card editor (add/remove/reorder, name/protocol/n_trials).
 - Typed bridge controls for key fields:
   - runtime mode (`update_mode`, `record_mode`)
@@ -63,6 +63,11 @@ This release prioritizes functional parity and contract safety over visual polis
 ---
 
 ## API Contract Usage
+
+### Contract Ownership
+- The UI is a payload editor/orchestrator only; it does not own experiment semantics.
+- All semantic normalization, validation, and parameter composition remain backend-owned (`/plan` and runtime services).
+- Helper controls mutate draft payload JSON and then rely on backend contract responses; there is no parallel UI-side semantic override channel.
 
 ### Plan
 - `POST /plan`
@@ -90,7 +95,7 @@ This release prioritizes functional parity and contract safety over visual polis
 - Draft editor + resolve action
 - Catalog-backed quick selectors
 - Preset quick start actions
-- Minimal phase builder + typed bridge controls
+- Draft payload helper controls (phase cards + typed field editors)
 
 ### Run Screen
 - Run creation from resolved draft

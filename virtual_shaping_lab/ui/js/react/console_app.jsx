@@ -398,28 +398,44 @@ function PlanPane({
     }));
   }
 
-  function setRewardScheduleStub(value) {
+  function setRewardScheduleName(value) {
     if (!phaseRows.length) return;
     patchPhase(0, (p) => {
       const params = { ...(p.params || {}) };
-      if (!value || value === "none") {
+      const clean = String(value || "").trim();
+      if (!clean) {
         delete params.reward_schedule;
-        delete params.reward_schedule_params;
-      } else if (value === "fr_1") {
-        params.reward_schedule = "fixed_ratio";
-        params.reward_schedule_params = { ratio: 1 };
-      } else if (value === "vr_2") {
-        params.reward_schedule = "variable_ratio";
-        params.reward_schedule_params = { mean_ratio: 2 };
-      } else if (value === "fi_10") {
-        params.reward_schedule = "fixed_interval";
-        params.reward_schedule_params = { interval_s: 10.0 };
-      } else if (value === "vi_10") {
-        params.reward_schedule = "variable_interval";
-        params.reward_schedule_params = { mean_interval_s: 10.0 };
+      } else {
+        params.reward_schedule = clean;
       }
       return { ...p, params };
     });
+  }
+
+  function setRewardScheduleParamsJson(rawText) {
+    if (!phaseRows.length) return;
+    const clean = String(rawText || "").trim();
+    if (!clean) {
+      patchPhase(0, (p) => {
+        const params = { ...(p.params || {}) };
+        delete params.reward_schedule_params;
+        return { ...p, params };
+      });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(clean);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+      patchPhase(0, (p) => ({
+        ...p,
+        params: {
+          ...(p.params || {}),
+          reward_schedule_params: parsed,
+        },
+      }));
+    } catch (_err) {
+      // Keep draft unchanged while JSON is invalid; user can continue editing.
+    }
   }
 
   return (
@@ -631,6 +647,9 @@ function PlanPane({
           <p style={{ marginTop: "0.45rem" }}>
             Basic typed editors for context/timing/runtime and operant schedule stubs.
           </p>
+          <p style={{ marginTop: "0.35rem", color: "#475569" }}>
+            These controls only edit draft payload fields. Schedule semantics and validation are backend-owned.
+          </p>
           <div
             style={{
               display: "grid",
@@ -696,31 +715,38 @@ function PlanPane({
               />
             </label>
             <label>
-              <div><strong>phases[0] reward schedule (stub)</strong></div>
-              <select
-                value={
-                  firstPhaseParams.reward_schedule === "fixed_ratio" &&
-                  firstPhaseParams.reward_schedule_params &&
-                  Number(firstPhaseParams.reward_schedule_params.ratio) === 1
-                    ? "fr_1"
-                    : firstPhaseParams.reward_schedule === "variable_ratio"
-                    ? "vr_2"
-                    : firstPhaseParams.reward_schedule === "fixed_interval"
-                    ? "fi_10"
-                    : firstPhaseParams.reward_schedule === "variable_interval"
-                    ? "vi_10"
-                    : "none"
-                }
-                onChange={(e) => setRewardScheduleStub(e.target.value)}
+              <div><strong>phases[0].params.reward_schedule</strong></div>
+              <input
+                type="text"
+                value={firstPhaseParams.reward_schedule ? String(firstPhaseParams.reward_schedule) : ""}
+                onChange={(e) => setRewardScheduleName(e.target.value)}
                 style={{ width: "100%", marginTop: "0.25rem" }}
                 disabled={!phaseRows.length}
-              >
-                <option value="none">none</option>
-                <option value="fr_1">fixed_ratio (1)</option>
-                <option value="vr_2">variable_ratio (~2)</option>
-                <option value="fi_10">fixed_interval (10s)</option>
-                <option value="vi_10">variable_interval (~10s)</option>
-              </select>
+                placeholder="opaque schedule key"
+              />
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>
+              <div><strong>phases[0].params.reward_schedule_params (JSON object)</strong></div>
+              <textarea
+                value={
+                  firstPhaseParams.reward_schedule_params &&
+                  typeof firstPhaseParams.reward_schedule_params === "object" &&
+                  !Array.isArray(firstPhaseParams.reward_schedule_params)
+                    ? JSON.stringify(firstPhaseParams.reward_schedule_params, null, 2)
+                    : ""
+                }
+                onChange={(e) => setRewardScheduleParamsJson(e.target.value)}
+                style={{
+                  width: "100%",
+                  minHeight: "88px",
+                  marginTop: "0.25rem",
+                  fontFamily: "Consolas, 'Courier New', monospace",
+                  fontSize: "0.85rem",
+                  boxSizing: "border-box",
+                }}
+                disabled={!phaseRows.length}
+                placeholder='{"key": "value"}'
+              />
             </label>
           </div>
         </div>
@@ -786,12 +812,36 @@ function RunPane({ lifecycle, runState, onRun }) {
   const runLifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
   const metadata = runData && runData.metadata ? runData.metadata : null;
   const artifacts = runData && runData.artifacts ? runData.artifacts : null;
+  const runError = runState.error || null;
+  const mismatchReason =
+    runError &&
+    runError.envelope &&
+    runError.envelope.details &&
+    typeof runError.envelope.details.reason === "string"
+      ? runError.envelope.details.reason
+      : "";
+  const isPlanHashMismatch =
+    (runError &&
+      runError.envelope &&
+      runError.envelope.code === "validation_error" &&
+      /plan hash mismatch/i.test(String(runError.envelope.message || ""))) ||
+    /plan hash mismatch/i.test(mismatchReason);
   const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
   const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
   const templateVersionUsed =
     metadata && Number.isFinite(Number(metadata.template_version_used))
       ? Number(metadata.template_version_used)
       : null;
+  const regenerationMode = metadata && metadata.regeneration_mode ? String(metadata.regeneration_mode) : "";
+  const sourceRunId = metadata && metadata.source_run_id ? String(metadata.source_run_id) : "";
+  const sourceMetadataComplete =
+    metadata && Object.prototype.hasOwnProperty.call(metadata, "source_metadata_complete")
+      ? Boolean(metadata.source_metadata_complete)
+      : null;
+  const missingSourceMetadata =
+    metadata && Array.isArray(metadata.missing_source_metadata)
+      ? metadata.missing_source_metadata
+      : [];
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -810,6 +860,11 @@ function RunPane({ lifecycle, runState, onRun }) {
           ) : null}
         </div>
         <ErrorEnvelopePanel error={runState.error} />
+        {isPlanHashMismatch ? (
+          <div style={{ marginTop: "0.5rem", color: "#b45309" }}>
+            Run was blocked by plan drift guard. Resolve the plan again and rerun to refresh `stable_hash`.
+          </div>
+        ) : null}
       </div>
 
       {runData ? (
@@ -864,12 +919,28 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
   const artifacts = reportData && reportData.artifacts ? reportData.artifacts : null;
   const figureList = artifacts && Array.isArray(artifacts.figures) ? artifacts.figures : [];
   const pdfPath = artifacts && artifacts.pdf ? String(artifacts.pdf) : "";
-  const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
-  const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
-  const templateVersionUsed =
-    metadata && Number.isFinite(Number(metadata.template_version_used))
-      ? Number(metadata.template_version_used)
-      : null;
+  const metaView = React.useMemo(() => {
+    const raw = metadata && typeof metadata === "object" ? metadata : null;
+    return {
+      raw,
+      planHash: raw && raw.plan_hash ? String(raw.plan_hash) : "",
+      recordSchemaVersion: raw && raw.record_schema_version ? String(raw.record_schema_version) : "",
+      templateVersionUsed:
+        raw && Number.isFinite(Number(raw.template_version_used))
+          ? Number(raw.template_version_used)
+          : null,
+      regenerationMode: raw && raw.regeneration_mode ? String(raw.regeneration_mode) : "",
+      sourceRunId: raw && raw.source_run_id ? String(raw.source_run_id) : "",
+      sourceMetadataComplete:
+        raw && Object.prototype.hasOwnProperty.call(raw, "source_metadata_complete")
+          ? Boolean(raw.source_metadata_complete)
+          : null,
+      missingSourceMetadata:
+        raw && Array.isArray(raw.missing_source_metadata)
+          ? raw.missing_source_metadata
+          : [],
+    };
+  }, [metadata]);
 
   function renderPath(pathValue) {
     const raw = String(pathValue || "");
@@ -959,18 +1030,35 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
           <div className="api-card" style={{ marginTop: "0.75rem" }}>
             <div><strong>Provenance</strong></div>
             <div style={{ marginTop: "0.5rem" }}>
-              <div><strong>plan_hash:</strong> <code>{planHash || "n/a"}</code></div>
-              <div><strong>record_schema_version:</strong> <code>{recordSchemaVersion || "n/a"}</code></div>
+              <div><strong>plan_hash:</strong> <code>{metaView.planHash || "n/a"}</code></div>
+              <div><strong>record_schema_version:</strong> <code>{metaView.recordSchemaVersion || "n/a"}</code></div>
               <div>
                 <strong>template_version_used:</strong>{" "}
-                <code>{templateVersionUsed === null ? "n/a" : String(templateVersionUsed)}</code>
+                <code>{metaView.templateVersionUsed === null ? "n/a" : String(metaView.templateVersionUsed)}</code>
               </div>
             </div>
           </div>
-          {metadata ? (
+          <div className="api-card" style={{ marginTop: "0.75rem" }}>
+            <div><strong>Regeneration Metadata</strong></div>
+            <div style={{ marginTop: "0.5rem" }}>
+              <div><strong>regeneration_mode:</strong> <code>{metaView.regenerationMode || "n/a"}</code></div>
+              <div><strong>source_run_id:</strong> <code>{metaView.sourceRunId || "n/a"}</code></div>
+              <div>
+                <strong>source_metadata_complete:</strong>{" "}
+                <code>
+                  {metaView.sourceMetadataComplete === null ? "n/a" : metaView.sourceMetadataComplete ? "true" : "false"}
+                </code>
+              </div>
+              <div>
+                <strong>missing_source_metadata:</strong>{" "}
+                <code>{metaView.missingSourceMetadata.length ? metaView.missingSourceMetadata.join(", ") : "none"}</code>
+              </div>
+            </div>
+          </div>
+          {metaView.raw ? (
             <div className="api-card" style={{ marginTop: "0.75rem" }}>
               <div><strong>Metadata</strong></div>
-              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metaView.raw, null, 2)}</pre>
             </div>
           ) : null}
         </div>
@@ -1243,7 +1331,17 @@ function ConsoleApp() {
     setRunCreateState((prev) => requestLoading(prev.data));
     lifecycle.markRunStarted();
     try {
-      const data = await client.postJson("run", payload);
+      const resolvedStableHash =
+        planResolveState.data &&
+        typeof planResolveState.data.stable_hash === "string" &&
+        planResolveState.data.stable_hash
+          ? planResolveState.data.stable_hash
+          : null;
+      const runPayload = resolvedStableHash
+        ? { ...payload, expected_plan_hash: resolvedStableHash }
+        : payload;
+
+      const data = await client.postJson("run", runPayload);
       setRunCreateState(requestSuccess(data));
       setRunStatusState(requestSuccess(data));
       const nextRunId = data && data.run_id ? String(data.run_id) : "";

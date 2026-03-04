@@ -78,6 +78,7 @@ def run_api(payload: dict):
 
     try:
         raw_payload = copy.deepcopy(payload)
+        expected_plan_hash = raw_payload.pop("expected_plan_hash", None)
         validate_payload(raw_payload)
         print("Payload validated", flush=True)
     except Exception as exc:
@@ -88,7 +89,11 @@ def run_api(payload: dict):
 
     try:
         print("Executing RunService", flush=True)
-        result = RunService.execute(raw_payload, reports_dir=reports_dir)
+        result = RunService.execute(
+            raw_payload,
+            reports_dir=reports_dir,
+            expected_plan_hash=expected_plan_hash,
+        )
 
         print(f"Run complete ({result['record_count']} records)", flush=True)
         print("=== /run completed successfully ===", flush=True)
@@ -100,6 +105,22 @@ def run_api(payload: dict):
             metadata=result["metadata"],
         )
 
+    except ValueError as exc:
+        reason = str(exc)
+        if "Plan hash mismatch" in reason:
+            raise_validation_error(
+                "Plan hash mismatch.",
+                details={
+                    "reason": reason,
+                    "hint": "Re-resolve the plan and run again.",
+                },
+            )
+        print("=== /run ERROR ===", flush=True)
+        traceback.print_exc()
+        raise_internal_error(
+            "Run execution failed.",
+            details={"reason": reason},
+        )
     except Exception as exc:
         print("=== /run ERROR ===", flush=True)
         traceback.print_exc()
