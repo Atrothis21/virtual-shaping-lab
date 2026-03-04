@@ -284,6 +284,79 @@ function PlanPane({
     if (updated.ok) setDraft(updated.value);
   }
 
+  const parsedDraft = React.useMemo(() => {
+    try {
+      return JSON.parse(draft);
+    } catch (_err) {
+      return null;
+    }
+  }, [draft]);
+  const phaseRows =
+    parsedDraft &&
+    parsedDraft.experiment &&
+    Array.isArray(parsedDraft.experiment.phases)
+      ? parsedDraft.experiment.phases
+      : [];
+
+  function mutatePhases(mutator) {
+    const updated = updateDraftField(draft, (payload) => {
+      const next = { ...payload };
+      const experiment = { ...(next.experiment || {}) };
+      const phases = Array.isArray(experiment.phases) ? [...experiment.phases] : [];
+      const nextPhases = mutator(phases).map((phase, idx) => {
+        const base = phase && typeof phase === "object" ? { ...phase } : {};
+        const params = base.params && typeof base.params === "object" ? { ...base.params } : {};
+        if (!Number.isFinite(Number(params.n_trials))) {
+          params.n_trials = 20;
+        }
+        return {
+          name: base.name || `Phase ${idx + 1}`,
+          protocol: base.protocol || "acquisition",
+          stimuli: base.stimuli && typeof base.stimuli === "object" ? base.stimuli : {},
+          params,
+        };
+      });
+      experiment.phases = nextPhases;
+      next.experiment = experiment;
+      return next;
+    });
+    if (updated.ok) setDraft(updated.value);
+  }
+
+  function addPhase() {
+    mutatePhases((phases) => [
+      ...phases,
+      {
+        name: `Phase ${phases.length + 1}`,
+        protocol: "acquisition",
+        stimuli: {},
+        params: { n_trials: 20 },
+      },
+    ]);
+  }
+
+  function removePhase(index) {
+    mutatePhases((phases) => phases.filter((_, idx) => idx !== index));
+  }
+
+  function movePhase(index, direction) {
+    mutatePhases((phases) => {
+      const target = index + direction;
+      if (target < 0 || target >= phases.length) return phases;
+      const next = [...phases];
+      const tmp = next[index];
+      next[index] = next[target];
+      next[target] = tmp;
+      return next;
+    });
+  }
+
+  function patchPhase(index, patcher) {
+    mutatePhases((phases) =>
+      phases.map((phase, idx) => (idx === index ? patcher(phase || {}) : phase))
+    );
+  }
+
   return (
     <div style={{ marginTop: "1rem" }}>
       <div className="panel">
@@ -396,6 +469,97 @@ function PlanPane({
               </select>
             </label>
           </div>
+        </div>
+        <div className="api-card" style={{ marginTop: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", flexWrap: "wrap" }}>
+            <strong>Minimal Phase Builder</strong>
+            <button className="tab" onClick={addPhase}>Add Phase</button>
+          </div>
+          {!parsedDraft ? (
+            <p style={{ marginTop: "0.55rem", color: "#b45309" }}>
+              Fix JSON syntax to use the phase builder.
+            </p>
+          ) : null}
+          {parsedDraft && !phaseRows.length ? (
+            <p style={{ marginTop: "0.55rem" }}><code>No phases configured.</code></p>
+          ) : null}
+          {phaseRows.length ? (
+            <div style={{ marginTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+              {phaseRows.map((phase, idx) => (
+                <div key={`phase-builder-${idx}`} style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.6rem" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <strong>{`Phase ${idx + 1}`}</strong>
+                    <button className="tab" onClick={() => movePhase(idx, -1)} disabled={idx === 0}>Up</button>
+                    <button className="tab" onClick={() => movePhase(idx, 1)} disabled={idx === phaseRows.length - 1}>Down</button>
+                    <button className="tab" onClick={() => removePhase(idx)}>Remove</button>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "0.55rem",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                      gap: "0.55rem",
+                    }}
+                  >
+                    <label>
+                      <div><strong>Name</strong></div>
+                      <input
+                        type="text"
+                        value={phase && phase.name ? String(phase.name) : ""}
+                        onChange={(e) =>
+                          patchPhase(idx, (p) => ({ ...p, name: e.target.value }))
+                        }
+                        style={{ width: "100%", marginTop: "0.25rem" }}
+                      />
+                    </label>
+                    <label>
+                      <div><strong>Protocol</strong></div>
+                      <select
+                        value={phase && phase.protocol ? String(phase.protocol) : "acquisition"}
+                        onChange={(e) =>
+                          patchPhase(idx, (p) => ({ ...p, protocol: e.target.value }))
+                        }
+                        style={{ width: "100%", marginTop: "0.25rem" }}
+                      >
+                        {protocols.length ? (
+                          protocols.map((name) => (
+                            <option key={`phase-${idx}-${name}`} value={name}>{name}</option>
+                          ))
+                        ) : (
+                          <option value="acquisition">acquisition</option>
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      <div><strong>n_trials</strong></div>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={
+                          phase &&
+                          phase.params &&
+                          Number.isFinite(Number(phase.params.n_trials))
+                            ? Number(phase.params.n_trials)
+                            : 20
+                        }
+                        onChange={(e) =>
+                          patchPhase(idx, (p) => ({
+                            ...p,
+                            params: {
+                              ...(p.params || {}),
+                              n_trials: Math.max(1, Number(e.target.value || 1)),
+                            },
+                          }))
+                        }
+                        style={{ width: "100%", marginTop: "0.25rem" }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <textarea
           value={draft}
