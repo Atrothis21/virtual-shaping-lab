@@ -398,28 +398,44 @@ function PlanPane({
     }));
   }
 
-  function setRewardScheduleStub(value) {
+  function setRewardScheduleName(value) {
     if (!phaseRows.length) return;
     patchPhase(0, (p) => {
       const params = { ...(p.params || {}) };
-      if (!value || value === "none") {
+      const clean = String(value || "").trim();
+      if (!clean) {
         delete params.reward_schedule;
-        delete params.reward_schedule_params;
-      } else if (value === "fr_1") {
-        params.reward_schedule = "fixed_ratio";
-        params.reward_schedule_params = { ratio: 1 };
-      } else if (value === "vr_2") {
-        params.reward_schedule = "variable_ratio";
-        params.reward_schedule_params = { mean_ratio: 2 };
-      } else if (value === "fi_10") {
-        params.reward_schedule = "fixed_interval";
-        params.reward_schedule_params = { interval_s: 10.0 };
-      } else if (value === "vi_10") {
-        params.reward_schedule = "variable_interval";
-        params.reward_schedule_params = { mean_interval_s: 10.0 };
+      } else {
+        params.reward_schedule = clean;
       }
       return { ...p, params };
     });
+  }
+
+  function setRewardScheduleParamsJson(rawText) {
+    if (!phaseRows.length) return;
+    const clean = String(rawText || "").trim();
+    if (!clean) {
+      patchPhase(0, (p) => {
+        const params = { ...(p.params || {}) };
+        delete params.reward_schedule_params;
+        return { ...p, params };
+      });
+      return;
+    }
+    try {
+      const parsed = JSON.parse(clean);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return;
+      patchPhase(0, (p) => ({
+        ...p,
+        params: {
+          ...(p.params || {}),
+          reward_schedule_params: parsed,
+        },
+      }));
+    } catch (_err) {
+      // Keep draft unchanged while JSON is invalid; user can continue editing.
+    }
   }
 
   return (
@@ -696,31 +712,38 @@ function PlanPane({
               />
             </label>
             <label>
-              <div><strong>phases[0] reward schedule (stub)</strong></div>
-              <select
-                value={
-                  firstPhaseParams.reward_schedule === "fixed_ratio" &&
-                  firstPhaseParams.reward_schedule_params &&
-                  Number(firstPhaseParams.reward_schedule_params.ratio) === 1
-                    ? "fr_1"
-                    : firstPhaseParams.reward_schedule === "variable_ratio"
-                    ? "vr_2"
-                    : firstPhaseParams.reward_schedule === "fixed_interval"
-                    ? "fi_10"
-                    : firstPhaseParams.reward_schedule === "variable_interval"
-                    ? "vi_10"
-                    : "none"
-                }
-                onChange={(e) => setRewardScheduleStub(e.target.value)}
+              <div><strong>phases[0].params.reward_schedule</strong></div>
+              <input
+                type="text"
+                value={firstPhaseParams.reward_schedule ? String(firstPhaseParams.reward_schedule) : ""}
+                onChange={(e) => setRewardScheduleName(e.target.value)}
                 style={{ width: "100%", marginTop: "0.25rem" }}
                 disabled={!phaseRows.length}
-              >
-                <option value="none">none</option>
-                <option value="fr_1">fixed_ratio (1)</option>
-                <option value="vr_2">variable_ratio (~2)</option>
-                <option value="fi_10">fixed_interval (10s)</option>
-                <option value="vi_10">variable_interval (~10s)</option>
-              </select>
+                placeholder="opaque schedule key"
+              />
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>
+              <div><strong>phases[0].params.reward_schedule_params (JSON object)</strong></div>
+              <textarea
+                value={
+                  firstPhaseParams.reward_schedule_params &&
+                  typeof firstPhaseParams.reward_schedule_params === "object" &&
+                  !Array.isArray(firstPhaseParams.reward_schedule_params)
+                    ? JSON.stringify(firstPhaseParams.reward_schedule_params, null, 2)
+                    : ""
+                }
+                onChange={(e) => setRewardScheduleParamsJson(e.target.value)}
+                style={{
+                  width: "100%",
+                  minHeight: "88px",
+                  marginTop: "0.25rem",
+                  fontFamily: "Consolas, 'Courier New', monospace",
+                  fontSize: "0.85rem",
+                  boxSizing: "border-box",
+                }}
+                disabled={!phaseRows.length}
+                placeholder='{"key": "value"}'
+              />
             </label>
           </div>
         </div>
