@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VSL Lifecycle Console</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --ink: #1e293b;
+      --muted: #475569;
+      --line: #cbd5e1;
+      --card: #fffdf8;
+      --accent: #0f766e;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at 20% 0%, #fef3c7 0%, transparent 45%),
+        radial-gradient(circle at 80% 100%, #dbeafe 0%, transparent 35%),
+        var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .shell {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .top a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--ink);
+      padding: 0.45rem 0.85rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      padding: 1rem;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    }
+    .panel h2 {
+      margin-top: 0;
+      margin-bottom: 0.35rem;
+      font-size: 1.1rem;
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .api-card {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px dashed var(--line);
+      background: #ffffff;
+    }
+    .api-card code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="/ui/js/react/api_client.js"></script>
+<script type="text/babel" src="/ui/js/react/lifecycle_ui_helpers.jsx"></script>
+<script type="text/babel" src="/ui/js/react/console_app.jsx"></script>
+</body>
+</html>

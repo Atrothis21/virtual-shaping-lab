@@ -17,6 +17,13 @@ function IndexApp() {
       <p>How would you like to design your experiment?</p>
 
       <HomeCard
+        title="Lifecycle Console"
+        description="Use the V2 lifecycle flow (Plan -> Run -> Report) with a thin API-first console."
+        cta="Open Console"
+        href="/ui/console.html"
+      />
+
+      <HomeCard
         title="Predefined Experiments"
         description="Choose from canonical behavioral experiments (Pavlovian conditioning, extinction, operant schedules)."
         cta="Browse Presets"
