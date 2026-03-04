@@ -1243,7 +1243,17 @@ function ConsoleApp() {
     setRunCreateState((prev) => requestLoading(prev.data));
     lifecycle.markRunStarted();
     try {
-      const data = await client.postJson("run", payload);
+      const resolvedStableHash =
+        planResolveState.data &&
+        typeof planResolveState.data.stable_hash === "string" &&
+        planResolveState.data.stable_hash
+          ? planResolveState.data.stable_hash
+          : null;
+      const runPayload = resolvedStableHash
+        ? { ...payload, expected_plan_hash: resolvedStableHash }
+        : payload;
+
+      const data = await client.postJson("run", runPayload);
       setRunCreateState(requestSuccess(data));
       setRunStatusState(requestSuccess(data));
       const nextRunId = data && data.run_id ? String(data.run_id) : "";
