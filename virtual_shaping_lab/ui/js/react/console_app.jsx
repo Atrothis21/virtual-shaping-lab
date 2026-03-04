@@ -832,6 +832,16 @@ function RunPane({ lifecycle, runState, onRun }) {
     metadata && Number.isFinite(Number(metadata.template_version_used))
       ? Number(metadata.template_version_used)
       : null;
+  const regenerationMode = metadata && metadata.regeneration_mode ? String(metadata.regeneration_mode) : "";
+  const sourceRunId = metadata && metadata.source_run_id ? String(metadata.source_run_id) : "";
+  const sourceMetadataComplete =
+    metadata && Object.prototype.hasOwnProperty.call(metadata, "source_metadata_complete")
+      ? Boolean(metadata.source_metadata_complete)
+      : null;
+  const missingSourceMetadata =
+    metadata && Array.isArray(metadata.missing_source_metadata)
+      ? metadata.missing_source_metadata
+      : [];
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -1009,6 +1019,23 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
               <div>
                 <strong>template_version_used:</strong>{" "}
                 <code>{templateVersionUsed === null ? "n/a" : String(templateVersionUsed)}</code>
+              </div>
+            </div>
+          </div>
+          <div className="api-card" style={{ marginTop: "0.75rem" }}>
+            <div><strong>Regeneration Metadata</strong></div>
+            <div style={{ marginTop: "0.5rem" }}>
+              <div><strong>regeneration_mode:</strong> <code>{regenerationMode || "n/a"}</code></div>
+              <div><strong>source_run_id:</strong> <code>{sourceRunId || "n/a"}</code></div>
+              <div>
+                <strong>source_metadata_complete:</strong>{" "}
+                <code>
+                  {sourceMetadataComplete === null ? "n/a" : sourceMetadataComplete ? "true" : "false"}
+                </code>
+              </div>
+              <div>
+                <strong>missing_source_metadata:</strong>{" "}
+                <code>{missingSourceMetadata.length ? missingSourceMetadata.join(", ") : "none"}</code>
               </div>
             </div>
           </div>
