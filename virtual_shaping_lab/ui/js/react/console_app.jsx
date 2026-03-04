@@ -1,4 +1,12 @@
 const TAB_KEYS = ["plan", "run", "report"];
+const {
+  REQUEST_STATUS,
+  makeRequestState,
+  requestLoading,
+  requestSuccess,
+  requestError,
+  ErrorEnvelopePanel,
+} = window.VSLReact;
 
 function normalizeTab(tab) {
   const key = String(tab || "").toLowerCase().trim();
@@ -44,6 +52,7 @@ function ConsoleApp() {
   const [tab, setTab] = React.useState(getTabFromHash);
   const [apiBase] = React.useState("");
   const [client] = React.useState(() => window.VSLApi.createApiClient({ baseUrl: apiBase }));
+  const [catalogState, setCatalogState] = React.useState(() => makeRequestState());
 
   React.useEffect(() => {
     function onHashChange() {
@@ -57,6 +66,16 @@ function ConsoleApp() {
     const clean = normalizeTab(nextTab);
     window.location.hash = clean;
     setTab(clean);
+  }
+
+  async function loadCatalog() {
+    setCatalogState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.getJson("catalog/extensions");
+      setCatalogState(requestSuccess(data));
+    } catch (err) {
+      setCatalogState((prev) => requestError(err, prev.data));
+    }
   }
 
   return (
@@ -88,6 +107,17 @@ function ConsoleApp() {
       <div className="api-card" style={{ marginTop: "1rem" }}>
         <div><strong>API Client:</strong> initialized</div>
         <code>{client.buildUrl("plan")}</code>
+        <div style={{ marginTop: "0.65rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button className="tab" onClick={loadCatalog}>Test API: /catalog/extensions</button>
+          <span>
+            <strong>Status:</strong>{" "}
+            <code>{catalogState.status}</code>
+          </span>
+          {catalogState.status === REQUEST_STATUS.SUCCESS && catalogState.data ? (
+            <span style={{ color: "#0f766e" }}>Catalog loaded</span>
+          ) : null}
+        </div>
+        <ErrorEnvelopePanel error={catalogState.error} />
       </div>
     </div>
   );
