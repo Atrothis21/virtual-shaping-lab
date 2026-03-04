@@ -1,4 +1,5 @@
 const TAB_KEYS = ["plan", "run", "report"];
+const RUN_POLL_INTERVAL_MS = 1500;
 const {
   REQUEST_STATUS,
   makeRequestState,
@@ -7,6 +8,16 @@ const {
   requestError,
   ErrorEnvelopePanel,
 } = window.VSLReact;
+
+const TERMINAL_RUN_STATES = new Set([
+  "completed",
+  "complete",
+  "failed",
+  "error",
+  "cancelled",
+  "canceled",
+  "report_complete",
+]);
 
 const DEFAULT_PLAN_DRAFT = JSON.stringify(
   {
@@ -192,6 +203,28 @@ function RunPane({ canRun, runState, onRun }) {
   );
 }
 
+function getRunStateValue(runData) {
+  if (!runData || typeof runData !== "object") return "";
+  const lifecycle = runData.lifecycle;
+  if (lifecycle && typeof lifecycle === "object" && lifecycle.state) {
+    return String(lifecycle.state).toLowerCase();
+  }
+  if (runData.state) {
+    return String(runData.state).toLowerCase();
+  }
+  return "";
+}
+
+function isRunTerminal(runData) {
+  if (!runData || typeof runData !== "object") return false;
+  if (runData.done === true) return true;
+  const lifecycle = runData.lifecycle;
+  if (lifecycle && typeof lifecycle === "object" && lifecycle.done === true) {
+    return true;
+  }
+  return TERMINAL_RUN_STATES.has(getRunStateValue(runData));
+}
+
 function summarizePlan(plan) {
   if (!plan || typeof plan !== "object") {
     return {
@@ -252,6 +285,8 @@ function ConsoleApp() {
   const [planDraft, setPlanDraft] = React.useState(DEFAULT_PLAN_DRAFT);
   const [planResolveState, setPlanResolveState] = React.useState(() => makeRequestState());
   const [runCreateState, setRunCreateState] = React.useState(() => makeRequestState());
+  const [runStatusState, setRunStatusState] = React.useState(() => makeRequestState());
+  const [activeRunId, setActiveRunId] = React.useState("");
 
   React.useEffect(() => {
     function onHashChange() {
@@ -349,10 +384,39 @@ function ConsoleApp() {
     try {
       const data = await client.postJson("run", parsed.value);
       setRunCreateState(requestSuccess(data));
+      setRunStatusState(requestSuccess(data));
+      setActiveRunId(data && data.run_id ? String(data.run_id) : "");
     } catch (err) {
       setRunCreateState((prev) => requestError(err, prev.data));
     }
   }
+
+  React.useEffect(() => {
+    if (!activeRunId) return undefined;
+
+    const current = runStatusState.data || runCreateState.data;
+    if (isRunTerminal(current)) return undefined;
+
+    let cancelled = false;
+
+    async function pollRunStatus() {
+      setRunStatusState((prev) => requestLoading(prev.data));
+      try {
+        const data = await client.getJson(`runs/${encodeURIComponent(activeRunId)}`);
+        if (cancelled) return;
+        setRunStatusState(requestSuccess(data));
+      } catch (err) {
+        if (cancelled) return;
+        setRunStatusState((prev) => requestError(err, prev.data));
+      }
+    }
+
+    const intervalId = window.setInterval(pollRunStatus, RUN_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [activeRunId, client, runCreateState.data, runStatusState.data]);
 
   return (
     <div className="shell">
@@ -390,7 +454,15 @@ function ConsoleApp() {
       {tab === "run" ? (
         <RunPane
           canRun={planResolveState.status === REQUEST_STATUS.SUCCESS}
-          runState={runCreateState}
+          runState={
+            runStatusState.data
+              ? {
+                  status: runStatusState.status,
+                  data: runStatusState.data,
+                  error: runStatusState.error,
+                }
+              : runCreateState
+          }
           onRun={createRun}
         />
       ) : null}
