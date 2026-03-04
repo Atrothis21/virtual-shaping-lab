@@ -76,6 +76,7 @@ function PlanPane({ draft, setDraft, resolveState, onResolve }) {
   const resolveData = resolveState.data || null;
   const stableHash = resolveData && resolveData.stable_hash ? resolveData.stable_hash : "";
   const resolvedPlan = resolveData && resolveData.plan ? resolveData.plan : null;
+  const summary = React.useMemo(() => summarizePlan(resolvedPlan), [resolvedPlan]);
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -112,6 +113,16 @@ function PlanPane({ draft, setDraft, resolveState, onResolve }) {
         <div className="panel" style={{ marginTop: "1rem" }}>
           <h2>Resolved Plan</h2>
           <p><strong>Stable Hash:</strong> <code>{stableHash}</code></p>
+          <div className="api-card" style={{ marginTop: "0.75rem" }}>
+            <div><strong>Plan Summary</strong></div>
+            <div style={{ marginTop: "0.4rem" }}>
+              <div><strong>Unit Count:</strong> {summary.unitCount}</div>
+              <div><strong>Protocol/Phase Flow:</strong> {summary.flow || "n/a"}</div>
+              <div><strong>Total Trials:</strong> {summary.totalTrials}</div>
+              <div><strong>Timing Mode:</strong> {summary.timingMode}</div>
+              <div><strong>Update/Record Mode:</strong> {summary.runtimeMode}</div>
+            </div>
+          </div>
           <details style={{ marginTop: "0.6rem" }}>
             <summary>View resolved plan JSON</summary>
             <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.6rem" }}>
@@ -122,6 +133,58 @@ function PlanPane({ draft, setDraft, resolveState, onResolve }) {
       ) : null}
     </div>
   );
+}
+
+function summarizePlan(plan) {
+  if (!plan || typeof plan !== "object") {
+    return {
+      unitCount: 0,
+      flow: "",
+      totalTrials: 0,
+      timingMode: "n/a",
+      runtimeMode: "n/a",
+    };
+  }
+
+  const units = Array.isArray(plan.units) ? plan.units : [];
+  const settings = plan.settings && typeof plan.settings === "object" ? plan.settings : {};
+
+  const flowParts = [];
+  let totalTrials = 0;
+  let sawTickTiming = false;
+
+  for (const unit of units) {
+    if (!unit || typeof unit !== "object") continue;
+    const key = unit.protocol || unit.unit_key || unit.name || "unit";
+    flowParts.push(String(key));
+
+    const params = unit.params && typeof unit.params === "object" ? unit.params : {};
+    const unitTrials = Number.isFinite(Number(params.n_trials)) ? Number(params.n_trials) : 0;
+    totalTrials += unitTrials;
+
+    const dt = params.dt_s;
+    if (Number.isFinite(Number(dt)) && Number(dt) > 0 && Number(dt) < 1) {
+      sawTickTiming = true;
+    }
+  }
+
+  let runtimeMode = "trial/trial";
+  if (settings && typeof settings === "object") {
+    const updateMode = settings.update_mode || "trial";
+    const recordMode = settings.record_mode || "trial";
+    runtimeMode = `${updateMode}/${recordMode}`;
+    if (updateMode === "tick" || recordMode === "tick") {
+      sawTickTiming = true;
+    }
+  }
+
+  return {
+    unitCount: units.length,
+    flow: flowParts.join(" -> "),
+    totalTrials,
+    timingMode: sawTickTiming ? "tick-capable" : "trial",
+    runtimeMode,
+  };
 }
 
 function ConsoleApp() {
