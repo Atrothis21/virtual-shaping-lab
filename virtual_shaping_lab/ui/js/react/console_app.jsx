@@ -8,6 +8,30 @@ const {
   ErrorEnvelopePanel,
 } = window.VSLReact;
 
+const DEFAULT_PLAN_DRAFT = JSON.stringify(
+  {
+    experiment: {
+      learner: "rescorla_wagner",
+      agent: "classical_agent",
+      representation: {
+        name: "vector_elemental",
+        params: { stimuli: ["tone"], max_compound_size: 2 },
+      },
+      phases: [
+        {
+          name: "Acquisition",
+          protocol: "acquisition",
+          stimuli: { cs_plus: ["tone"] },
+          params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+        },
+      ],
+    },
+    report: { preset: "acquisition" },
+  },
+  null,
+  2
+);
+
 function normalizeTab(tab) {
   const key = String(tab || "").toLowerCase().trim();
   return TAB_KEYS.includes(key) ? key : "plan";
@@ -48,11 +72,65 @@ function Panel({ tab }) {
   );
 }
 
+function PlanPane({ draft, setDraft, resolveState, onResolve }) {
+  const resolveData = resolveState.data || null;
+  const stableHash = resolveData && resolveData.stable_hash ? resolveData.stable_hash : "";
+  const resolvedPlan = resolveData && resolveData.plan ? resolveData.plan : null;
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <div className="panel">
+        <h2>Plan Draft</h2>
+        <p>Edit payload JSON and resolve through <code>POST /plan</code>.</p>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          style={{
+            width: "100%",
+            minHeight: "260px",
+            marginTop: "0.75rem",
+            padding: "0.65rem",
+            borderRadius: "8px",
+            border: "1px solid #cbd5e1",
+            fontFamily: "Consolas, 'Courier New', monospace",
+            fontSize: "0.87rem",
+            boxSizing: "border-box",
+          }}
+        />
+        <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button className="tab" onClick={onResolve} disabled={resolveState.status === REQUEST_STATUS.LOADING}>
+            {resolveState.status === REQUEST_STATUS.LOADING ? "Resolving..." : "Resolve Plan"}
+          </button>
+          <span>
+            <strong>Status:</strong> <code>{resolveState.status}</code>
+          </span>
+        </div>
+        <ErrorEnvelopePanel error={resolveState.error} />
+      </div>
+
+      {stableHash ? (
+        <div className="panel" style={{ marginTop: "1rem" }}>
+          <h2>Resolved Plan</h2>
+          <p><strong>Stable Hash:</strong> <code>{stableHash}</code></p>
+          <details style={{ marginTop: "0.6rem" }}>
+            <summary>View resolved plan JSON</summary>
+            <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.6rem" }}>
+              {JSON.stringify(resolvedPlan, null, 2)}
+            </pre>
+          </details>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ConsoleApp() {
   const [tab, setTab] = React.useState(getTabFromHash);
   const [apiBase] = React.useState("");
   const [client] = React.useState(() => window.VSLApi.createApiClient({ baseUrl: apiBase }));
   const [catalogState, setCatalogState] = React.useState(() => makeRequestState());
+  const [planDraft, setPlanDraft] = React.useState(DEFAULT_PLAN_DRAFT);
+  const [planResolveState, setPlanResolveState] = React.useState(() => makeRequestState());
 
   React.useEffect(() => {
     function onHashChange() {
@@ -75,6 +153,34 @@ function ConsoleApp() {
       setCatalogState(requestSuccess(data));
     } catch (err) {
       setCatalogState((prev) => requestError(err, prev.data));
+    }
+  }
+
+  async function resolvePlan() {
+    let payload;
+    try {
+      payload = JSON.parse(planDraft);
+    } catch (err) {
+      setPlanResolveState(
+        requestError({
+          status: 0,
+          message: "Invalid JSON in draft payload.",
+          envelope: {
+            code: "ui_invalid_json",
+            message: "Payload is not valid JSON.",
+            details: { reason: String(err && err.message ? err.message : err) },
+          },
+        })
+      );
+      return;
+    }
+
+    setPlanResolveState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.postJson("plan", payload);
+      setPlanResolveState(requestSuccess(data));
+    } catch (err) {
+      setPlanResolveState((prev) => requestError(err, prev.data));
     }
   }
 
@@ -103,6 +209,14 @@ function ConsoleApp() {
       </div>
 
       <Panel tab={tab} />
+      {tab === "plan" ? (
+        <PlanPane
+          draft={planDraft}
+          setDraft={setPlanDraft}
+          resolveState={planResolveState}
+          onResolve={resolvePlan}
+        />
+      ) : null}
 
       <div className="api-card" style={{ marginTop: "1rem" }}>
         <div><strong>API Client:</strong> initialized</div>
