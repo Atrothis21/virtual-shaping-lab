@@ -643,6 +643,11 @@ function getRunStateValue(runData) {
   return "";
 }
 
+function getRunIdValue(runData) {
+  if (!runData || typeof runData !== "object" || !runData.run_id) return "";
+  return String(runData.run_id);
+}
+
 function isRunTerminal(runData) {
   if (!runData || typeof runData !== "object") return false;
   if (runData.done === true) return true;
@@ -870,6 +875,32 @@ function ConsoleApp() {
     }
   }
 
+  async function loadRunDetail(runId) {
+    const cleanRunId = String(runId || "").trim();
+    if (!cleanRunId) return;
+
+    setRunStatusState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.getJson(`runs/${encodeURIComponent(cleanRunId)}`);
+      setRunStatusState(requestSuccess(data));
+      const nextState = getRunStateValue(data) || "unknown";
+      setSessionRuns((prev) => {
+        const existing = prev.find((item) => item.runId === cleanRunId);
+        if (existing) {
+          return prev.map((item) =>
+            item.runId === cleanRunId ? { ...item, state: nextState } : item
+          );
+        }
+        return [{ runId: cleanRunId, state: nextState }, ...prev];
+      });
+      if (isRunTerminal(data)) {
+        lifecycle.markRunCompleted();
+      }
+    } catch (err) {
+      setRunStatusState((prev) => requestError(err, prev.data));
+    }
+  }
+
   async function createReport() {
     const runId = String(reportRunId || "").trim();
     if (!runId) {
@@ -914,7 +945,14 @@ function ConsoleApp() {
   React.useEffect(() => {
     if (!activeRunId) return undefined;
 
-    const current = runStatusState.data || runCreateState.data;
+    const runStatusId = getRunIdValue(runStatusState.data);
+    const runCreateId = getRunIdValue(runCreateState.data);
+    const current =
+      runStatusId === activeRunId
+        ? runStatusState.data
+        : runCreateId === activeRunId
+        ? runCreateState.data
+        : null;
     if (isRunTerminal(current)) return undefined;
 
     let cancelled = false;
@@ -992,7 +1030,7 @@ function ConsoleApp() {
         <RunPane
           lifecycle={lifecycle}
           runState={
-            runStatusState.data
+            getRunIdValue(runStatusState.data) === activeRunId
               ? {
                   status: runStatusState.status,
                   data: runStatusState.data,
@@ -1024,6 +1062,7 @@ function ConsoleApp() {
         onSelect={(runId) => {
           setActiveRunId(runId);
           setReportRunId(runId);
+          loadRunDetail(runId);
         }}
       />
     </div>
