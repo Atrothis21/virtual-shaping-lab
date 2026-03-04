@@ -919,12 +919,28 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
   const artifacts = reportData && reportData.artifacts ? reportData.artifacts : null;
   const figureList = artifacts && Array.isArray(artifacts.figures) ? artifacts.figures : [];
   const pdfPath = artifacts && artifacts.pdf ? String(artifacts.pdf) : "";
-  const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
-  const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
-  const templateVersionUsed =
-    metadata && Number.isFinite(Number(metadata.template_version_used))
-      ? Number(metadata.template_version_used)
-      : null;
+  const metaView = React.useMemo(() => {
+    const raw = metadata && typeof metadata === "object" ? metadata : null;
+    return {
+      raw,
+      planHash: raw && raw.plan_hash ? String(raw.plan_hash) : "",
+      recordSchemaVersion: raw && raw.record_schema_version ? String(raw.record_schema_version) : "",
+      templateVersionUsed:
+        raw && Number.isFinite(Number(raw.template_version_used))
+          ? Number(raw.template_version_used)
+          : null,
+      regenerationMode: raw && raw.regeneration_mode ? String(raw.regeneration_mode) : "",
+      sourceRunId: raw && raw.source_run_id ? String(raw.source_run_id) : "",
+      sourceMetadataComplete:
+        raw && Object.prototype.hasOwnProperty.call(raw, "source_metadata_complete")
+          ? Boolean(raw.source_metadata_complete)
+          : null,
+      missingSourceMetadata:
+        raw && Array.isArray(raw.missing_source_metadata)
+          ? raw.missing_source_metadata
+          : [],
+    };
+  }, [metadata]);
 
   function renderPath(pathValue) {
     const raw = String(pathValue || "");
@@ -1014,35 +1030,35 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
           <div className="api-card" style={{ marginTop: "0.75rem" }}>
             <div><strong>Provenance</strong></div>
             <div style={{ marginTop: "0.5rem" }}>
-              <div><strong>plan_hash:</strong> <code>{planHash || "n/a"}</code></div>
-              <div><strong>record_schema_version:</strong> <code>{recordSchemaVersion || "n/a"}</code></div>
+              <div><strong>plan_hash:</strong> <code>{metaView.planHash || "n/a"}</code></div>
+              <div><strong>record_schema_version:</strong> <code>{metaView.recordSchemaVersion || "n/a"}</code></div>
               <div>
                 <strong>template_version_used:</strong>{" "}
-                <code>{templateVersionUsed === null ? "n/a" : String(templateVersionUsed)}</code>
+                <code>{metaView.templateVersionUsed === null ? "n/a" : String(metaView.templateVersionUsed)}</code>
               </div>
             </div>
           </div>
           <div className="api-card" style={{ marginTop: "0.75rem" }}>
             <div><strong>Regeneration Metadata</strong></div>
             <div style={{ marginTop: "0.5rem" }}>
-              <div><strong>regeneration_mode:</strong> <code>{regenerationMode || "n/a"}</code></div>
-              <div><strong>source_run_id:</strong> <code>{sourceRunId || "n/a"}</code></div>
+              <div><strong>regeneration_mode:</strong> <code>{metaView.regenerationMode || "n/a"}</code></div>
+              <div><strong>source_run_id:</strong> <code>{metaView.sourceRunId || "n/a"}</code></div>
               <div>
                 <strong>source_metadata_complete:</strong>{" "}
                 <code>
-                  {sourceMetadataComplete === null ? "n/a" : sourceMetadataComplete ? "true" : "false"}
+                  {metaView.sourceMetadataComplete === null ? "n/a" : metaView.sourceMetadataComplete ? "true" : "false"}
                 </code>
               </div>
               <div>
                 <strong>missing_source_metadata:</strong>{" "}
-                <code>{missingSourceMetadata.length ? missingSourceMetadata.join(", ") : "none"}</code>
+                <code>{metaView.missingSourceMetadata.length ? metaView.missingSourceMetadata.join(", ") : "none"}</code>
               </div>
             </div>
           </div>
-          {metadata ? (
+          {metaView.raw ? (
             <div className="api-card" style={{ marginTop: "0.75rem" }}>
               <div><strong>Metadata</strong></div>
-              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metaView.raw, null, 2)}</pre>
             </div>
           ) : null}
         </div>
