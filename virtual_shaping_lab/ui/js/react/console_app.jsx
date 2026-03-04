@@ -116,6 +116,41 @@ const DEFAULT_PLAN_DRAFT = JSON.stringify(
   2
 );
 
+const LIFECYCLE_PRESETS = {
+  acquisition_demo: {
+    label: "Acquisition Demo",
+    payload: JSON.parse(DEFAULT_PLAN_DRAFT),
+  },
+  extinction_demo: {
+    label: "Extinction Demo",
+    payload: {
+      experiment: {
+        learner: "rescorla_wagner",
+        agent: "classical_agent",
+        representation: {
+          name: "vector_elemental",
+          params: { stimuli: ["tone"], max_compound_size: 2 },
+        },
+        phases: [
+          {
+            name: "Acquisition",
+            protocol: "acquisition",
+            stimuli: { cs_plus: ["tone"] },
+            params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+          },
+          {
+            name: "Extinction",
+            protocol: "extinction",
+            stimuli: { cs_plus: ["tone"] },
+            params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+          },
+        ],
+      },
+      report: { preset: "extinction" },
+    },
+  },
+};
+
 function normalizeTab(tab) {
   const key = String(tab || "").toLowerCase().trim();
   return TAB_KEYS.includes(key) ? key : "plan";
@@ -169,7 +204,23 @@ function updateDraftField(draft, updater) {
   }
 }
 
-function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions, lifecycle }) {
+function clonePayload(payload) {
+  return JSON.parse(JSON.stringify(payload));
+}
+
+function PlanPane({
+  draft,
+  setDraft,
+  resolveState,
+  onResolve,
+  onPresetSelect,
+  onPresetResolveRun,
+  presetKey,
+  setPresetKey,
+  presetFlowState,
+  catalogExtensions,
+  lifecycle,
+}) {
   const resolveData = resolveState.data || null;
   const stableHash = resolveData && resolveData.stable_hash ? resolveData.stable_hash : "";
   const resolvedPlan = resolveData && resolveData.plan ? resolveData.plan : null;
@@ -181,6 +232,7 @@ function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions,
     catalogExtensions && Array.isArray(catalogExtensions.representations)
       ? catalogExtensions.representations
       : [];
+  const presetEntries = Object.entries(LIFECYCLE_PRESETS);
 
   function setProtocol(protocolName) {
     const updated = updateDraftField(draft, (payload) => {
@@ -236,6 +288,35 @@ function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions,
       <div className="panel">
         <h2>Plan Draft</h2>
         <p>Edit payload JSON and resolve through <code>POST /plan</code>.</p>
+        <div className="api-card" style={{ marginTop: "0.75rem" }}>
+          <div><strong>Preset Quick Start</strong></div>
+          <p style={{ marginTop: "0.45rem" }}>
+            Execute lifecycle in one action: load preset, resolve plan, and run.
+          </p>
+          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
+            <select
+              value={presetKey}
+              onChange={(e) => setPresetKey(e.target.value)}
+              style={{ minWidth: "220px" }}
+            >
+              {presetEntries.map(([key, preset]) => (
+                <option key={key} value={key}>{preset.label}</option>
+              ))}
+            </select>
+            <button className="tab" onClick={onPresetSelect}>Load Preset</button>
+            <button
+              className="tab"
+              onClick={onPresetResolveRun}
+              disabled={presetFlowState.status === REQUEST_STATUS.LOADING}
+            >
+              {presetFlowState.status === REQUEST_STATUS.LOADING ? "Running Preset..." : "Resolve + Run Preset"}
+            </button>
+            <span>
+              <strong>Preset Status:</strong> <code>{presetFlowState.status}</code>
+            </span>
+          </div>
+          <ErrorEnvelopePanel error={presetFlowState.error} />
+        </div>
         <div className="api-card" style={{ marginTop: "0.75rem" }}>
           <div><strong>Catalog-backed quick selectors</strong></div>
           <div
@@ -367,7 +448,7 @@ function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions,
 
 function RunPane({ lifecycle, runState, onRun }) {
   const runData = runState.data || null;
-  const lifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
+  const runLifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
   const metadata = runData && runData.metadata ? runData.metadata : null;
   const artifacts = runData && runData.artifacts ? runData.artifacts : null;
   const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
@@ -401,12 +482,12 @@ function RunPane({ lifecycle, runState, onRun }) {
           <h2>Run Result</h2>
           <div><strong>Run ID:</strong> <code>{runData.run_id || "n/a"}</code></div>
           <div><strong>State:</strong> <code>{runData.state || "n/a"}</code></div>
-          {lifecycle ? (
+          {runLifecycle ? (
             <>
-              <div><strong>Lifecycle:</strong> <code>{lifecycle.state || "n/a"}</code></div>
+              <div><strong>Lifecycle:</strong> <code>{runLifecycle.state || "n/a"}</code></div>
               <div>
                 <strong>Next Actions:</strong>{" "}
-                <code>{Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions.join(", ") : "n/a"}</code>
+                <code>{Array.isArray(runLifecycle.next_actions) ? runLifecycle.next_actions.join(", ") : "n/a"}</code>
               </div>
             </>
           ) : null}
@@ -443,7 +524,7 @@ function RunPane({ lifecycle, runState, onRun }) {
 
 function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle }) {
   const reportData = reportState.data || null;
-  const lifecycle = reportData && reportData.lifecycle ? reportData.lifecycle : null;
+  const reportLifecycle = reportData && reportData.lifecycle ? reportData.lifecycle : null;
   const metadata = reportData && reportData.metadata ? reportData.metadata : null;
   const artifacts = reportData && reportData.artifacts ? reportData.artifacts : null;
   const figureList = artifacts && Array.isArray(artifacts.figures) ? artifacts.figures : [];
@@ -515,12 +596,12 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
           <h2>Report Result</h2>
           <div><strong>Status:</strong> <code>{reportData.status || "n/a"}</code></div>
           <div><strong>Report Run ID:</strong> <code>{reportData.run_id || "n/a"}</code></div>
-          {lifecycle ? (
+          {reportLifecycle ? (
             <>
-              <div><strong>Lifecycle:</strong> <code>{lifecycle.state || "n/a"}</code></div>
+              <div><strong>Lifecycle:</strong> <code>{reportLifecycle.state || "n/a"}</code></div>
               <div>
                 <strong>Next Actions:</strong>{" "}
-                <code>{Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions.join(", ") : "n/a"}</code>
+                <code>{Array.isArray(reportLifecycle.next_actions) ? reportLifecycle.next_actions.join(", ") : "n/a"}</code>
               </div>
             </>
           ) : null}
@@ -724,6 +805,8 @@ function ConsoleApp() {
   const [reportCreateState, setReportCreateState] = React.useState(() => makeRequestState());
   const [lifecycleState, setLifecycleState] = React.useState(UI_LIFECYCLE.PLAN_DRAFT);
   const [sessionRuns, setSessionRuns] = React.useState([]);
+  const [presetKey, setPresetKey] = React.useState("acquisition_demo");
+  const [presetFlowState, setPresetFlowState] = React.useState(() => makeRequestState());
   const catalogExtensions =
     catalogState.data && catalogState.data.extensions && typeof catalogState.data.extensions === "object"
       ? catalogState.data.extensions
@@ -799,14 +882,7 @@ function ConsoleApp() {
       return;
     }
 
-    setPlanResolveState((prev) => requestLoading(prev.data));
-    try {
-      const data = await client.postJson("plan", payload);
-      setPlanResolveState(requestSuccess(data));
-      lifecycle.markPlanResolved();
-    } catch (err) {
-      setPlanResolveState((prev) => requestError(err, prev.data));
-    }
+    await resolvePlanWithPayload(payload);
   }
 
   function parseDraftPayload() {
@@ -825,6 +901,47 @@ function ConsoleApp() {
           },
         },
       };
+    }
+  }
+
+  async function executeRunWithPayload(payload) {
+    setRunCreateState((prev) => requestLoading(prev.data));
+    lifecycle.markRunStarted();
+    try {
+      const data = await client.postJson("run", payload);
+      setRunCreateState(requestSuccess(data));
+      setRunStatusState(requestSuccess(data));
+      const nextRunId = data && data.run_id ? String(data.run_id) : "";
+      setActiveRunId(nextRunId);
+      setReportRunId(nextRunId);
+      if (nextRunId) {
+        const nextState = getRunStateValue(data) || "created";
+        setSessionRuns((prev) => {
+          const existing = prev.find((item) => item.runId === nextRunId);
+          if (existing) {
+            return prev.map((item) =>
+              item.runId === nextRunId ? { ...item, state: nextState } : item
+            );
+          }
+          return [{ runId: nextRunId, state: nextState }, ...prev];
+        });
+      }
+    } catch (err) {
+      setRunCreateState((prev) => requestError(err, prev.data));
+      throw err;
+    }
+  }
+
+  async function resolvePlanWithPayload(payload) {
+    setPlanResolveState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.postJson("plan", payload);
+      setPlanResolveState(requestSuccess(data));
+      lifecycle.markPlanResolved();
+      return { ok: true, data };
+    } catch (err) {
+      setPlanResolveState((prev) => requestError(err, prev.data));
+      return { ok: false, error: err };
     }
   }
 
@@ -848,30 +965,37 @@ function ConsoleApp() {
       );
       return;
     }
+    await executeRunWithPayload(parsed.value);
+  }
 
-    setRunCreateState((prev) => requestLoading(prev.data));
-    lifecycle.markRunStarted();
+  function loadSelectedPreset() {
+    const preset = LIFECYCLE_PRESETS[presetKey];
+    if (!preset) return;
+    const payload = clonePayload(preset.payload);
+    setPlanDraft(JSON.stringify(payload, null, 2));
+    lifecycle.markPlanEdited();
+  }
+
+  async function resolveAndRunSelectedPreset() {
+    const preset = LIFECYCLE_PRESETS[presetKey];
+    if (!preset) return;
+
+    const payload = clonePayload(preset.payload);
+    setPresetFlowState((prev) => requestLoading(prev.data));
+    setPlanDraft(JSON.stringify(payload, null, 2));
+    lifecycle.markPlanEdited();
+
+    const resolved = await resolvePlanWithPayload(payload);
+    if (!resolved.ok) {
+      setPresetFlowState((prev) => requestError(resolved.error, prev.data));
+      return;
+    }
+
     try {
-      const data = await client.postJson("run", parsed.value);
-      setRunCreateState(requestSuccess(data));
-      setRunStatusState(requestSuccess(data));
-      const nextRunId = data && data.run_id ? String(data.run_id) : "";
-      setActiveRunId(nextRunId);
-      setReportRunId(nextRunId);
-      if (nextRunId) {
-        const nextState = getRunStateValue(data) || "created";
-        setSessionRuns((prev) => {
-          const existing = prev.find((item) => item.runId === nextRunId);
-          if (existing) {
-            return prev.map((item) =>
-              item.runId === nextRunId ? { ...item, state: nextState } : item
-            );
-          }
-          return [{ runId: nextRunId, state: nextState }, ...prev];
-        });
-      }
+      await executeRunWithPayload(payload);
+      setPresetFlowState(requestSuccess({ preset: presetKey }));
     } catch (err) {
-      setRunCreateState((prev) => requestError(err, prev.data));
+      setPresetFlowState((prev) => requestError(err, prev.data));
     }
   }
 
@@ -1022,6 +1146,11 @@ function ConsoleApp() {
           }}
           resolveState={planResolveState}
           onResolve={resolvePlan}
+          onPresetSelect={loadSelectedPreset}
+          onPresetResolveRun={resolveAndRunSelectedPreset}
+          presetKey={presetKey}
+          setPresetKey={setPresetKey}
+          presetFlowState={presetFlowState}
           catalogExtensions={catalogExtensions}
           lifecycle={lifecycle}
         />
