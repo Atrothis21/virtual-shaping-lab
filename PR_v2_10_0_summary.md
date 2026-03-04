@@ -64,6 +64,11 @@ This release prioritizes functional parity and contract safety over visual polis
 
 ## API Contract Usage
 
+### Contract Ownership
+- The UI is a payload editor/orchestrator only; it does not own experiment semantics.
+- All semantic normalization, validation, and parameter composition remain backend-owned (`/plan` and runtime services).
+- Helper controls mutate draft payload JSON and then rely on backend contract responses; there is no parallel UI-side semantic override channel.
+
 ### Plan
 - `POST /plan`
 - Stores resolved `plan` + `stable_hash`
