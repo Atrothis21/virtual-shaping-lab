@@ -563,6 +563,37 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport, lifecycle })
   );
 }
 
+function SessionRunHistory({ runs, selectedRunId, onSelect }) {
+  return (
+    <div className="panel" style={{ marginTop: "1rem" }}>
+      <h2>Session Runs</h2>
+      <p>Runs created in this browser session.</p>
+      {!runs.length ? (
+        <div><code>No runs yet.</code></div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem", marginTop: "0.6rem" }}>
+          {runs.map((run) => {
+            const isSelected = selectedRunId === run.runId;
+            return (
+              <button
+                key={run.runId}
+                className={`tab ${isSelected ? "active" : ""}`}
+                onClick={() => onSelect(run.runId)}
+                style={{ textAlign: "left" }}
+              >
+                <div><strong>{run.runId}</strong></div>
+                <div style={{ fontSize: "0.82rem", color: "#475569" }}>
+                  state: <code>{run.state || "n/a"}</code>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CatalogSummary({ catalogState, onRefresh }) {
   const ext = catalogState.data && catalogState.data.extensions ? catalogState.data.extensions : null;
   const protocols = ext && Array.isArray(ext.protocols) ? ext.protocols.length : 0;
@@ -687,6 +718,7 @@ function ConsoleApp() {
   const [reportRunId, setReportRunId] = React.useState("");
   const [reportCreateState, setReportCreateState] = React.useState(() => makeRequestState());
   const [lifecycleState, setLifecycleState] = React.useState(UI_LIFECYCLE.PLAN_DRAFT);
+  const [sessionRuns, setSessionRuns] = React.useState([]);
   const catalogExtensions =
     catalogState.data && catalogState.data.extensions && typeof catalogState.data.extensions === "object"
       ? catalogState.data.extensions
@@ -821,6 +853,18 @@ function ConsoleApp() {
       const nextRunId = data && data.run_id ? String(data.run_id) : "";
       setActiveRunId(nextRunId);
       setReportRunId(nextRunId);
+      if (nextRunId) {
+        const nextState = getRunStateValue(data) || "created";
+        setSessionRuns((prev) => {
+          const existing = prev.find((item) => item.runId === nextRunId);
+          if (existing) {
+            return prev.map((item) =>
+              item.runId === nextRunId ? { ...item, state: nextState } : item
+            );
+          }
+          return [{ runId: nextRunId, state: nextState }, ...prev];
+        });
+      }
     } catch (err) {
       setRunCreateState((prev) => requestError(err, prev.data));
     }
@@ -881,6 +925,12 @@ function ConsoleApp() {
         const data = await client.getJson(`runs/${encodeURIComponent(activeRunId)}`);
         if (cancelled) return;
         setRunStatusState(requestSuccess(data));
+        const nextState = getRunStateValue(data) || "unknown";
+        setSessionRuns((prev) =>
+          prev.map((item) =>
+            item.runId === activeRunId ? { ...item, state: nextState } : item
+          )
+        );
         if (isRunTerminal(data)) {
           lifecycle.markRunCompleted();
         }
@@ -968,6 +1018,14 @@ function ConsoleApp() {
         <code>{client.buildUrl("catalog/extensions")}</code>
       </div>
       <CatalogSummary catalogState={catalogState} onRefresh={loadCatalog} />
+      <SessionRunHistory
+        runs={sessionRuns}
+        selectedRunId={activeRunId}
+        onSelect={(runId) => {
+          setActiveRunId(runId);
+          setReportRunId(runId);
+        }}
+      />
     </div>
   );
 }
