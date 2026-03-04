@@ -203,6 +203,79 @@ function RunPane({ canRun, runState, onRun }) {
   );
 }
 
+function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
+  const reportData = reportState.data || null;
+  const lifecycle = reportData && reportData.lifecycle ? reportData.lifecycle : null;
+  const metadata = reportData && reportData.metadata ? reportData.metadata : null;
+  const artifacts = reportData && reportData.artifacts ? reportData.artifacts : null;
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <div className="panel">
+        <h2>Report Console</h2>
+        <p>Create a report via <code>POST /runs/{`{run_id}`}/report</code>.</p>
+        <div style={{ marginTop: "0.75rem" }}>
+          <label htmlFor="report-run-id"><strong>Run ID</strong></label>
+          <input
+            id="report-run-id"
+            type="text"
+            value={runId}
+            onChange={(e) => setRunId(e.target.value)}
+            placeholder="Enter run id"
+            style={{
+              display: "block",
+              width: "100%",
+              marginTop: "0.4rem",
+              padding: "0.55rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+        <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button className="tab" onClick={onCreateReport} disabled={reportState.status === REQUEST_STATUS.LOADING}>
+            {reportState.status === REQUEST_STATUS.LOADING ? "Creating..." : "Create Report"}
+          </button>
+          <span>
+            <strong>Status:</strong> <code>{reportState.status}</code>
+          </span>
+        </div>
+        <ErrorEnvelopePanel error={reportState.error} />
+      </div>
+
+      {reportData ? (
+        <div className="panel" style={{ marginTop: "1rem" }}>
+          <h2>Report Result</h2>
+          <div><strong>Status:</strong> <code>{reportData.status || "n/a"}</code></div>
+          <div><strong>Report Run ID:</strong> <code>{reportData.run_id || "n/a"}</code></div>
+          {lifecycle ? (
+            <>
+              <div><strong>Lifecycle:</strong> <code>{lifecycle.state || "n/a"}</code></div>
+              <div>
+                <strong>Next Actions:</strong>{" "}
+                <code>{Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions.join(", ") : "n/a"}</code>
+              </div>
+            </>
+          ) : null}
+          {metadata ? (
+            <div className="api-card" style={{ marginTop: "0.75rem" }}>
+              <div><strong>Metadata</strong></div>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
+            </div>
+          ) : null}
+          {artifacts ? (
+            <div className="api-card" style={{ marginTop: "0.75rem" }}>
+              <div><strong>Artifacts</strong></div>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(artifacts, null, 2)}</pre>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function getRunStateValue(runData) {
   if (!runData || typeof runData !== "object") return "";
   const lifecycle = runData.lifecycle;
@@ -287,6 +360,8 @@ function ConsoleApp() {
   const [runCreateState, setRunCreateState] = React.useState(() => makeRequestState());
   const [runStatusState, setRunStatusState] = React.useState(() => makeRequestState());
   const [activeRunId, setActiveRunId] = React.useState("");
+  const [reportRunId, setReportRunId] = React.useState("");
+  const [reportCreateState, setReportCreateState] = React.useState(() => makeRequestState());
 
   React.useEffect(() => {
     function onHashChange() {
@@ -385,9 +460,37 @@ function ConsoleApp() {
       const data = await client.postJson("run", parsed.value);
       setRunCreateState(requestSuccess(data));
       setRunStatusState(requestSuccess(data));
-      setActiveRunId(data && data.run_id ? String(data.run_id) : "");
+      const nextRunId = data && data.run_id ? String(data.run_id) : "";
+      setActiveRunId(nextRunId);
+      setReportRunId(nextRunId);
     } catch (err) {
       setRunCreateState((prev) => requestError(err, prev.data));
+    }
+  }
+
+  async function createReport() {
+    const runId = String(reportRunId || "").trim();
+    if (!runId) {
+      setReportCreateState(
+        requestError({
+          status: 0,
+          message: "Run ID is required.",
+          envelope: {
+            code: "ui_missing_run_id",
+            message: "Provide a run ID before creating a report.",
+            details: {},
+          },
+        })
+      );
+      return;
+    }
+
+    setReportCreateState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
+      setReportCreateState(requestSuccess(data));
+    } catch (err) {
+      setReportCreateState((prev) => requestError(err, prev.data));
     }
   }
 
@@ -464,6 +567,14 @@ function ConsoleApp() {
               : runCreateState
           }
           onRun={createRun}
+        />
+      ) : null}
+      {tab === "report" ? (
+        <ReportPane
+          runId={reportRunId}
+          setRunId={setReportRunId}
+          reportState={reportCreateState}
+          onCreateReport={createReport}
         />
       ) : null}
 
