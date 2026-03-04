@@ -135,6 +135,63 @@ function PlanPane({ draft, setDraft, resolveState, onResolve }) {
   );
 }
 
+function RunPane({ canRun, runState, onRun }) {
+  const runData = runState.data || null;
+  const lifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
+  const metadata = runData && runData.metadata ? runData.metadata : null;
+  const artifacts = runData && runData.artifacts ? runData.artifacts : null;
+
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <div className="panel">
+        <h2>Run Console</h2>
+        <p>Create a run via <code>POST /run</code>. A resolved plan is required.</p>
+        <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button className="tab" onClick={onRun} disabled={!canRun || runState.status === REQUEST_STATUS.LOADING}>
+            {runState.status === REQUEST_STATUS.LOADING ? "Running..." : "Run"}
+          </button>
+          <span>
+            <strong>Status:</strong> <code>{runState.status}</code>
+          </span>
+          {!canRun ? (
+            <span style={{ color: "#b45309" }}>Resolve a plan first.</span>
+          ) : null}
+        </div>
+        <ErrorEnvelopePanel error={runState.error} />
+      </div>
+
+      {runData ? (
+        <div className="panel" style={{ marginTop: "1rem" }}>
+          <h2>Run Result</h2>
+          <div><strong>Run ID:</strong> <code>{runData.run_id || "n/a"}</code></div>
+          <div><strong>State:</strong> <code>{runData.state || "n/a"}</code></div>
+          {lifecycle ? (
+            <>
+              <div><strong>Lifecycle:</strong> <code>{lifecycle.state || "n/a"}</code></div>
+              <div>
+                <strong>Next Actions:</strong>{" "}
+                <code>{Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions.join(", ") : "n/a"}</code>
+              </div>
+            </>
+          ) : null}
+          {metadata ? (
+            <div className="api-card" style={{ marginTop: "0.75rem" }}>
+              <div><strong>Metadata</strong></div>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
+            </div>
+          ) : null}
+          {artifacts ? (
+            <div className="api-card" style={{ marginTop: "0.75rem" }}>
+              <div><strong>Artifacts</strong></div>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(artifacts, null, 2)}</pre>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function summarizePlan(plan) {
   if (!plan || typeof plan !== "object") {
     return {
@@ -194,6 +251,7 @@ function ConsoleApp() {
   const [catalogState, setCatalogState] = React.useState(() => makeRequestState());
   const [planDraft, setPlanDraft] = React.useState(DEFAULT_PLAN_DRAFT);
   const [planResolveState, setPlanResolveState] = React.useState(() => makeRequestState());
+  const [runCreateState, setRunCreateState] = React.useState(() => makeRequestState());
 
   React.useEffect(() => {
     function onHashChange() {
@@ -247,6 +305,55 @@ function ConsoleApp() {
     }
   }
 
+  function parseDraftPayload() {
+    try {
+      return { ok: true, value: JSON.parse(planDraft) };
+    } catch (err) {
+      return {
+        ok: false,
+        error: {
+          status: 0,
+          message: "Invalid JSON in draft payload.",
+          envelope: {
+            code: "ui_invalid_json",
+            message: "Payload is not valid JSON.",
+            details: { reason: String(err && err.message ? err.message : err) },
+          },
+        },
+      };
+    }
+  }
+
+  async function createRun() {
+    const parsed = parseDraftPayload();
+    if (!parsed.ok) {
+      setRunCreateState(requestError(parsed.error));
+      return;
+    }
+    if (planResolveState.status !== REQUEST_STATUS.SUCCESS) {
+      setRunCreateState(
+        requestError({
+          status: 0,
+          message: "Resolve plan before running.",
+          envelope: {
+            code: "ui_plan_not_resolved",
+            message: "Plan must be resolved before creating a run.",
+            details: {},
+          },
+        })
+      );
+      return;
+    }
+
+    setRunCreateState((prev) => requestLoading(prev.data));
+    try {
+      const data = await client.postJson("run", parsed.value);
+      setRunCreateState(requestSuccess(data));
+    } catch (err) {
+      setRunCreateState((prev) => requestError(err, prev.data));
+    }
+  }
+
   return (
     <div className="shell">
       <div className="top">
@@ -278,6 +385,13 @@ function ConsoleApp() {
           setDraft={setPlanDraft}
           resolveState={planResolveState}
           onResolve={resolvePlan}
+        />
+      ) : null}
+      {tab === "run" ? (
+        <RunPane
+          canRun={planResolveState.status === REQUEST_STATUS.SUCCESS}
+          runState={runCreateState}
+          onRun={createRun}
         />
       ) : null}
 
