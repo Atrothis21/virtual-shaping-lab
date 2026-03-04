@@ -647,6 +647,9 @@ function PlanPane({
           <p style={{ marginTop: "0.45rem" }}>
             Basic typed editors for context/timing/runtime and operant schedule stubs.
           </p>
+          <p style={{ marginTop: "0.35rem", color: "#475569" }}>
+            These controls only edit draft payload fields. Schedule semantics and validation are backend-owned.
+          </p>
           <div
             style={{
               display: "grid",
