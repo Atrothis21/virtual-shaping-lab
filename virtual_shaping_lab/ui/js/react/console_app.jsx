@@ -215,6 +215,7 @@ function PlanPane({
   onResolve,
   onPresetSelect,
   onPresetResolveRun,
+  onPresetResolveRunReport,
   presetKey,
   setPresetKey,
   presetFlowState,
@@ -310,6 +311,13 @@ function PlanPane({
               disabled={presetFlowState.status === REQUEST_STATUS.LOADING}
             >
               {presetFlowState.status === REQUEST_STATUS.LOADING ? "Running Preset..." : "Resolve + Run Preset"}
+            </button>
+            <button
+              className="tab"
+              onClick={onPresetResolveRunReport}
+              disabled={presetFlowState.status === REQUEST_STATUS.LOADING}
+            >
+              {presetFlowState.status === REQUEST_STATUS.LOADING ? "Generating..." : "Resolve + Run + Report Preset"}
             </button>
             <span>
               <strong>Preset Status:</strong> <code>{presetFlowState.status}</code>
@@ -926,6 +934,7 @@ function ConsoleApp() {
           return [{ runId: nextRunId, state: nextState }, ...prev];
         });
       }
+      return data;
     } catch (err) {
       setRunCreateState((prev) => requestError(err, prev.data));
       throw err;
@@ -999,6 +1008,42 @@ function ConsoleApp() {
     }
   }
 
+  async function resolveRunAndReportSelectedPreset() {
+    const preset = LIFECYCLE_PRESETS[presetKey];
+    if (!preset) return;
+
+    const payload = clonePayload(preset.payload);
+    setPresetFlowState((prev) => requestLoading(prev.data));
+    setPlanDraft(JSON.stringify(payload, null, 2));
+    lifecycle.markPlanEdited();
+
+    const resolved = await resolvePlanWithPayload(payload);
+    if (!resolved.ok) {
+      setPresetFlowState((prev) => requestError(resolved.error, prev.data));
+      return;
+    }
+
+    try {
+      const runData = await executeRunWithPayload(payload);
+      const runId = runData && runData.run_id ? String(runData.run_id) : "";
+      const reportResult = await createReportForRunId(runId, false);
+      if (!reportResult.ok) {
+        setPresetFlowState((prev) => requestError(reportResult.error, prev.data));
+        return;
+      }
+      setPresetFlowState(
+        requestSuccess({
+          preset: presetKey,
+          run_id: runId,
+          report_run_id: reportResult.data && reportResult.data.run_id ? reportResult.data.run_id : "",
+        })
+      );
+      selectTab("report");
+    } catch (err) {
+      setPresetFlowState((prev) => requestError(err, prev.data));
+    }
+  }
+
   async function loadRunDetail(runId) {
     const cleanRunId = String(runId || "").trim();
     if (!cleanRunId) return;
@@ -1025,45 +1070,51 @@ function ConsoleApp() {
     }
   }
 
-  async function createReport() {
-    const runId = String(reportRunId || "").trim();
-    if (!runId) {
-      setReportCreateState(
-        requestError({
-          status: 0,
-          message: "Run ID is required.",
-          envelope: {
-            code: "ui_missing_run_id",
-            message: "Provide a run ID before creating a report.",
-            details: {},
-          },
-        })
-      );
-      return;
+  async function createReportForRunId(runId, enforceLifecycle) {
+    const cleanRunId = String(runId || "").trim();
+    const mustEnforce = enforceLifecycle !== false;
+    if (!cleanRunId) {
+      const err = {
+        status: 0,
+        message: "Run ID is required.",
+        envelope: {
+          code: "ui_missing_run_id",
+          message: "Provide a run ID before creating a report.",
+          details: {},
+        },
+      };
+      setReportCreateState(requestError(err));
+      return { ok: false, error: err };
     }
-    if (!lifecycle.canCreateReport) {
-      setReportCreateState(
-        requestError({
-          status: 0,
-          message: "Run must complete before report creation.",
-          envelope: {
-            code: "ui_run_not_complete",
-            message: "Report generation is only enabled after run completion.",
-            details: {},
-          },
-        })
-      );
-      return;
+    if (mustEnforce && !lifecycle.canCreateReport) {
+      const err = {
+        status: 0,
+        message: "Run must complete before report creation.",
+        envelope: {
+          code: "ui_run_not_complete",
+          message: "Report generation is only enabled after run completion.",
+          details: {},
+        },
+      };
+      setReportCreateState(requestError(err));
+      return { ok: false, error: err };
     }
 
     setReportCreateState((prev) => requestLoading(prev.data));
     try {
-      const data = await client.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
+      const data = await client.postJson(`runs/${encodeURIComponent(cleanRunId)}/report`, {});
       setReportCreateState(requestSuccess(data));
       lifecycle.markReportCompleted();
+      return { ok: true, data };
     } catch (err) {
       setReportCreateState((prev) => requestError(err, prev.data));
+      return { ok: false, error: err };
     }
+  }
+
+  async function createReport() {
+    const runId = String(reportRunId || "").trim();
+    await createReportForRunId(runId, true);
   }
 
   React.useEffect(() => {
@@ -1148,6 +1199,7 @@ function ConsoleApp() {
           onResolve={resolvePlan}
           onPresetSelect={loadSelectedPreset}
           onPresetResolveRun={resolveAndRunSelectedPreset}
+          onPresetResolveRunReport={resolveRunAndReportSelectedPreset}
           presetKey={presetKey}
           setPresetKey={setPresetKey}
           presetFlowState={presetFlowState}
