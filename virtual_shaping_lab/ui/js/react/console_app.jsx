@@ -83,17 +83,158 @@ function Panel({ tab }) {
   );
 }
 
-function PlanPane({ draft, setDraft, resolveState, onResolve }) {
+function updateDraftField(draft, updater) {
+  try {
+    const payload = JSON.parse(draft);
+    const nextPayload = updater(payload);
+    return {
+      ok: true,
+      value: JSON.stringify(nextPayload, null, 2),
+    };
+  } catch (_err) {
+    return { ok: false };
+  }
+}
+
+function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions }) {
   const resolveData = resolveState.data || null;
   const stableHash = resolveData && resolveData.stable_hash ? resolveData.stable_hash : "";
   const resolvedPlan = resolveData && resolveData.plan ? resolveData.plan : null;
   const summary = React.useMemo(() => summarizePlan(resolvedPlan), [resolvedPlan]);
+  const protocols = catalogExtensions && Array.isArray(catalogExtensions.protocols) ? catalogExtensions.protocols : [];
+  const learners = catalogExtensions && Array.isArray(catalogExtensions.learners) ? catalogExtensions.learners : [];
+  const policies = catalogExtensions && Array.isArray(catalogExtensions.policies) ? catalogExtensions.policies : [];
+  const representations =
+    catalogExtensions && Array.isArray(catalogExtensions.representations)
+      ? catalogExtensions.representations
+      : [];
+
+  function setProtocol(protocolName) {
+    const updated = updateDraftField(draft, (payload) => {
+      const next = { ...payload };
+      const experiment = { ...(next.experiment || {}) };
+      const phases = Array.isArray(experiment.phases) ? [...experiment.phases] : [];
+      if (phases.length === 0) {
+        phases.push({ name: "Phase 1", protocol: protocolName, params: {}, stimuli: {} });
+      } else {
+        phases[0] = { ...(phases[0] || {}), protocol: protocolName };
+      }
+      experiment.phases = phases;
+      next.experiment = experiment;
+      return next;
+    });
+    if (updated.ok) setDraft(updated.value);
+  }
+
+  function setLearner(learnerName) {
+    const updated = updateDraftField(draft, (payload) => {
+      const next = { ...payload };
+      const experiment = { ...(next.experiment || {}), learner: learnerName };
+      next.experiment = experiment;
+      return next;
+    });
+    if (updated.ok) setDraft(updated.value);
+  }
+
+  function setPolicy(policyName) {
+    const updated = updateDraftField(draft, (payload) => {
+      const next = { ...payload };
+      const experiment = { ...(next.experiment || {}), policy: policyName };
+      next.experiment = experiment;
+      return next;
+    });
+    if (updated.ok) setDraft(updated.value);
+  }
+
+  function setRepresentation(reprName) {
+    const updated = updateDraftField(draft, (payload) => {
+      const next = { ...payload };
+      const experiment = { ...(next.experiment || {}) };
+      const representation = { ...(experiment.representation || {}), name: reprName };
+      experiment.representation = representation;
+      next.experiment = experiment;
+      return next;
+    });
+    if (updated.ok) setDraft(updated.value);
+  }
 
   return (
     <div style={{ marginTop: "1rem" }}>
       <div className="panel">
         <h2>Plan Draft</h2>
         <p>Edit payload JSON and resolve through <code>POST /plan</code>.</p>
+        <div className="api-card" style={{ marginTop: "0.75rem" }}>
+          <div><strong>Catalog-backed quick selectors</strong></div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.6rem",
+              marginTop: "0.6rem",
+            }}
+          >
+            <label>
+              <div><strong>Protocol (phase 1)</strong></div>
+              <select
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) setProtocol(e.target.value);
+                }}
+              >
+                <option value="">Select protocol</option>
+                {protocols.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <div><strong>Learner</strong></div>
+              <select
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) setLearner(e.target.value);
+                }}
+              >
+                <option value="">Select learner</option>
+                {learners.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <div><strong>Policy</strong></div>
+              <select
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) setPolicy(e.target.value);
+                }}
+              >
+                <option value="">Select policy</option>
+                {policies.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <div><strong>Representation</strong></div>
+              <select
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) setRepresentation(e.target.value);
+                }}
+              >
+                <option value="">Select representation</option>
+                {representations.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -462,6 +603,10 @@ function ConsoleApp() {
   const [activeRunId, setActiveRunId] = React.useState("");
   const [reportRunId, setReportRunId] = React.useState("");
   const [reportCreateState, setReportCreateState] = React.useState(() => makeRequestState());
+  const catalogExtensions =
+    catalogState.data && catalogState.data.extensions && typeof catalogState.data.extensions === "object"
+      ? catalogState.data.extensions
+      : null;
 
   React.useEffect(() => {
     function onHashChange() {
@@ -657,6 +802,7 @@ function ConsoleApp() {
           setDraft={setPlanDraft}
           resolveState={planResolveState}
           onResolve={resolvePlan}
+          catalogExtensions={catalogExtensions}
         />
       ) : null}
       {tab === "run" ? (
