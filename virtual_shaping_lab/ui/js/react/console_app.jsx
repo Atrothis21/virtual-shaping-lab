@@ -151,6 +151,12 @@ function RunPane({ canRun, runState, onRun }) {
   const lifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
   const metadata = runData && runData.metadata ? runData.metadata : null;
   const artifacts = runData && runData.artifacts ? runData.artifacts : null;
+  const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
+  const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
+  const templateVersionUsed =
+    metadata && Number.isFinite(Number(metadata.template_version_used))
+      ? Number(metadata.template_version_used)
+      : null;
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -187,6 +193,19 @@ function RunPane({ canRun, runState, onRun }) {
           ) : null}
           {metadata ? (
             <div className="api-card" style={{ marginTop: "0.75rem" }}>
+              <div><strong>Provenance</strong></div>
+              <div style={{ marginTop: "0.5rem" }}>
+                <div><strong>plan_hash:</strong> <code>{planHash || "n/a"}</code></div>
+                <div><strong>record_schema_version:</strong> <code>{recordSchemaVersion || "n/a"}</code></div>
+                <div>
+                  <strong>template_version_used:</strong>{" "}
+                  <code>{templateVersionUsed === null ? "n/a" : String(templateVersionUsed)}</code>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {metadata ? (
+            <div className="api-card" style={{ marginTop: "0.75rem" }}>
               <div><strong>Metadata</strong></div>
               <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
             </div>
@@ -208,6 +227,29 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
   const lifecycle = reportData && reportData.lifecycle ? reportData.lifecycle : null;
   const metadata = reportData && reportData.metadata ? reportData.metadata : null;
   const artifacts = reportData && reportData.artifacts ? reportData.artifacts : null;
+  const figureList = artifacts && Array.isArray(artifacts.figures) ? artifacts.figures : [];
+  const pdfPath = artifacts && artifacts.pdf ? String(artifacts.pdf) : "";
+  const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
+  const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
+  const templateVersionUsed =
+    metadata && Number.isFinite(Number(metadata.template_version_used))
+      ? Number(metadata.template_version_used)
+      : null;
+
+  function renderPath(pathValue) {
+    const raw = String(pathValue || "");
+    if (!raw) return <code>n/a</code>;
+    const isHttp = /^https?:\/\//i.test(raw);
+    const isRoot = raw.startsWith("/");
+    if (isHttp || isRoot) {
+      return (
+        <a href={raw} target="_blank" rel="noreferrer">
+          {raw}
+        </a>
+      );
+    }
+    return <code>{raw}</code>;
+  }
 
   return (
     <div style={{ marginTop: "1rem" }}>
@@ -258,16 +300,37 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
               </div>
             </>
           ) : null}
+          <div className="api-card" style={{ marginTop: "0.75rem" }}>
+            <div><strong>Artifacts</strong></div>
+            <div style={{ marginTop: "0.5rem" }}>
+              <div><strong>PDF:</strong> {renderPath(pdfPath)}</div>
+              <div style={{ marginTop: "0.45rem" }}><strong>Figures:</strong></div>
+              {figureList.length ? (
+                <ul style={{ margin: "0.35rem 0 0.2rem 1.2rem", padding: 0 }}>
+                  {figureList.map((pathValue, idx) => (
+                    <li key={`${pathValue}-${idx}`}>{renderPath(pathValue)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div><code>none</code></div>
+              )}
+            </div>
+          </div>
+          <div className="api-card" style={{ marginTop: "0.75rem" }}>
+            <div><strong>Provenance</strong></div>
+            <div style={{ marginTop: "0.5rem" }}>
+              <div><strong>plan_hash:</strong> <code>{planHash || "n/a"}</code></div>
+              <div><strong>record_schema_version:</strong> <code>{recordSchemaVersion || "n/a"}</code></div>
+              <div>
+                <strong>template_version_used:</strong>{" "}
+                <code>{templateVersionUsed === null ? "n/a" : String(templateVersionUsed)}</code>
+              </div>
+            </div>
+          </div>
           {metadata ? (
             <div className="api-card" style={{ marginTop: "0.75rem" }}>
               <div><strong>Metadata</strong></div>
               <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(metadata, null, 2)}</pre>
-            </div>
-          ) : null}
-          {artifacts ? (
-            <div className="api-card" style={{ marginTop: "0.75rem" }}>
-              <div><strong>Artifacts</strong></div>
-              <pre style={{ whiteSpace: "pre-wrap", marginTop: "0.5rem" }}>{JSON.stringify(artifacts, null, 2)}</pre>
             </div>
           ) : null}
         </div>
