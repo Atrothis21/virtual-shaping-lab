@@ -786,6 +786,20 @@ function RunPane({ lifecycle, runState, onRun }) {
   const runLifecycle = runData && runData.lifecycle ? runData.lifecycle : null;
   const metadata = runData && runData.metadata ? runData.metadata : null;
   const artifacts = runData && runData.artifacts ? runData.artifacts : null;
+  const runError = runState.error || null;
+  const mismatchReason =
+    runError &&
+    runError.envelope &&
+    runError.envelope.details &&
+    typeof runError.envelope.details.reason === "string"
+      ? runError.envelope.details.reason
+      : "";
+  const isPlanHashMismatch =
+    (runError &&
+      runError.envelope &&
+      runError.envelope.code === "validation_error" &&
+      /plan hash mismatch/i.test(String(runError.envelope.message || ""))) ||
+    /plan hash mismatch/i.test(mismatchReason);
   const planHash = metadata && metadata.plan_hash ? String(metadata.plan_hash) : "";
   const recordSchemaVersion = metadata && metadata.record_schema_version ? String(metadata.record_schema_version) : "";
   const templateVersionUsed =
@@ -810,6 +824,11 @@ function RunPane({ lifecycle, runState, onRun }) {
           ) : null}
         </div>
         <ErrorEnvelopePanel error={runState.error} />
+        {isPlanHashMismatch ? (
+          <div style={{ marginTop: "0.5rem", color: "#b45309" }}>
+            Run was blocked by plan drift guard. Resolve the plan again and rerun to refresh `stable_hash`.
+          </div>
+        ) : null}
       </div>
 
       {runData ? (

@@ -85,8 +85,9 @@ def test_run_api_forwards_expected_plan_hash_and_rejects_mismatch():
     payload["expected_plan_hash"] = "deadbeef"
     with pytest.raises(HTTPException) as exc:
         api_run.run_api(payload)
-    assert exc.value.status_code == 500
-    assert exc.value.detail["code"] == "internal_error"
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert "Plan hash mismatch" in str(exc.value.detail.get("message", ""))
     assert "Plan hash mismatch" in str(exc.value.detail.get("details", {}).get("reason", ""))
 
 

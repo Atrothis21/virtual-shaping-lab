@@ -105,6 +105,22 @@ def run_api(payload: dict):
             metadata=result["metadata"],
         )
 
+    except ValueError as exc:
+        reason = str(exc)
+        if "Plan hash mismatch" in reason:
+            raise_validation_error(
+                "Plan hash mismatch.",
+                details={
+                    "reason": reason,
+                    "hint": "Re-resolve the plan and run again.",
+                },
+            )
+        print("=== /run ERROR ===", flush=True)
+        traceback.print_exc()
+        raise_internal_error(
+            "Run execution failed.",
+            details={"reason": reason},
+        )
     except Exception as exc:
         print("=== /run ERROR ===", flush=True)
         traceback.print_exc()
