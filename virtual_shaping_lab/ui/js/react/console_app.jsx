@@ -339,6 +339,43 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
   );
 }
 
+function CatalogSummary({ catalogState, onRefresh }) {
+  const ext = catalogState.data && catalogState.data.extensions ? catalogState.data.extensions : null;
+  const protocols = ext && Array.isArray(ext.protocols) ? ext.protocols.length : 0;
+  const learners = ext && Array.isArray(ext.learners) ? ext.learners.length : 0;
+  const policies = ext && Array.isArray(ext.policies) ? ext.policies.length : 0;
+  const representations = ext && Array.isArray(ext.representations) ? ext.representations.length : 0;
+  const reportTemplates =
+    ext && ext.report_templates && typeof ext.report_templates === "object"
+      ? Object.keys(ext.report_templates).length
+      : 0;
+
+  return (
+    <div className="api-card" style={{ marginTop: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+        <strong>Extension Catalog</strong>
+        <button className="tab" onClick={onRefresh} disabled={catalogState.status === REQUEST_STATUS.LOADING}>
+          {catalogState.status === REQUEST_STATUS.LOADING ? "Refreshing..." : "Refresh"}
+        </button>
+        <span>
+          <strong>Status:</strong> <code>{catalogState.status}</code>
+        </span>
+      </div>
+
+      {ext ? (
+        <div style={{ marginTop: "0.55rem" }}>
+          <div><strong>protocols:</strong> {protocols}</div>
+          <div><strong>learners:</strong> {learners}</div>
+          <div><strong>policies:</strong> {policies}</div>
+          <div><strong>representations:</strong> {representations}</div>
+          <div><strong>report_templates:</strong> {reportTemplates}</div>
+        </div>
+      ) : null}
+      <ErrorEnvelopePanel error={catalogState.error} />
+    </div>
+  );
+}
+
 function getRunStateValue(runData) {
   if (!runData || typeof runData !== "object") return "";
   const lifecycle = runData.lifecycle;
@@ -440,7 +477,7 @@ function ConsoleApp() {
     setTab(clean);
   }
 
-  async function loadCatalog() {
+  const loadCatalog = React.useCallback(async function loadCatalog() {
     setCatalogState((prev) => requestLoading(prev.data));
     try {
       const data = await client.getJson("catalog/extensions");
@@ -448,7 +485,12 @@ function ConsoleApp() {
     } catch (err) {
       setCatalogState((prev) => requestError(err, prev.data));
     }
-  }
+  }, [client]);
+
+  React.useEffect(() => {
+    if (catalogState.status !== REQUEST_STATUS.IDLE) return;
+    loadCatalog();
+  }, [catalogState.status, loadCatalog]);
 
   async function resolvePlan() {
     let payload;
@@ -643,19 +685,9 @@ function ConsoleApp() {
 
       <div className="api-card" style={{ marginTop: "1rem" }}>
         <div><strong>API Client:</strong> initialized</div>
-        <code>{client.buildUrl("plan")}</code>
-        <div style={{ marginTop: "0.65rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          <button className="tab" onClick={loadCatalog}>Test API: /catalog/extensions</button>
-          <span>
-            <strong>Status:</strong>{" "}
-            <code>{catalogState.status}</code>
-          </span>
-          {catalogState.status === REQUEST_STATUS.SUCCESS && catalogState.data ? (
-            <span style={{ color: "#0f766e" }}>Catalog loaded</span>
-          ) : null}
-        </div>
-        <ErrorEnvelopePanel error={catalogState.error} />
+        <code>{client.buildUrl("catalog/extensions")}</code>
       </div>
+      <CatalogSummary catalogState={catalogState} onRefresh={loadCatalog} />
     </div>
   );
 }
