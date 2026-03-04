@@ -9,6 +9,48 @@ const {
   ErrorEnvelopePanel,
 } = window.VSLReact;
 
+const UI_LIFECYCLE = {
+  PLAN_DRAFT: "PlanDraft",
+  PLAN_RESOLVED: "PlanResolved",
+  RUN_IN_PROGRESS: "RunInProgress",
+  RUN_COMPLETE: "RunComplete",
+  REPORT_COMPLETE: "ReportComplete",
+};
+
+const UI_LIFECYCLE_EVENT = {
+  PLAN_EDITED: "PLAN_EDITED",
+  PLAN_RESOLVED: "PLAN_RESOLVED",
+  RUN_STARTED: "RUN_STARTED",
+  RUN_COMPLETED: "RUN_COMPLETED",
+  REPORT_COMPLETED: "REPORT_COMPLETED",
+};
+
+const UI_LIFECYCLE_TRANSITIONS = {
+  [UI_LIFECYCLE.PLAN_DRAFT]: {
+    [UI_LIFECYCLE_EVENT.PLAN_EDITED]: UI_LIFECYCLE.PLAN_DRAFT,
+    [UI_LIFECYCLE_EVENT.PLAN_RESOLVED]: UI_LIFECYCLE.PLAN_RESOLVED,
+  },
+  [UI_LIFECYCLE.PLAN_RESOLVED]: {
+    [UI_LIFECYCLE_EVENT.PLAN_EDITED]: UI_LIFECYCLE.PLAN_DRAFT,
+    [UI_LIFECYCLE_EVENT.PLAN_RESOLVED]: UI_LIFECYCLE.PLAN_RESOLVED,
+    [UI_LIFECYCLE_EVENT.RUN_STARTED]: UI_LIFECYCLE.RUN_IN_PROGRESS,
+  },
+  [UI_LIFECYCLE.RUN_IN_PROGRESS]: {
+    [UI_LIFECYCLE_EVENT.PLAN_EDITED]: UI_LIFECYCLE.PLAN_DRAFT,
+    [UI_LIFECYCLE_EVENT.RUN_COMPLETED]: UI_LIFECYCLE.RUN_COMPLETE,
+  },
+  [UI_LIFECYCLE.RUN_COMPLETE]: {
+    [UI_LIFECYCLE_EVENT.PLAN_EDITED]: UI_LIFECYCLE.PLAN_DRAFT,
+    [UI_LIFECYCLE_EVENT.RUN_STARTED]: UI_LIFECYCLE.RUN_IN_PROGRESS,
+    [UI_LIFECYCLE_EVENT.REPORT_COMPLETED]: UI_LIFECYCLE.REPORT_COMPLETE,
+  },
+  [UI_LIFECYCLE.REPORT_COMPLETE]: {
+    [UI_LIFECYCLE_EVENT.PLAN_EDITED]: UI_LIFECYCLE.PLAN_DRAFT,
+    [UI_LIFECYCLE_EVENT.RUN_STARTED]: UI_LIFECYCLE.RUN_IN_PROGRESS,
+    [UI_LIFECYCLE_EVENT.REPORT_COMPLETED]: UI_LIFECYCLE.REPORT_COMPLETE,
+  },
+};
+
 const TERMINAL_RUN_STATES = new Set([
   "completed",
   "complete",
@@ -18,6 +60,23 @@ const TERMINAL_RUN_STATES = new Set([
   "canceled",
   "report_complete",
 ]);
+
+function transitionLifecycle(currentState, eventName) {
+  const from = UI_LIFECYCLE_TRANSITIONS[currentState] || {};
+  return from[eventName] || currentState;
+}
+
+function canResolvePlan(lifecycleState) {
+  return lifecycleState !== UI_LIFECYCLE.RUN_IN_PROGRESS;
+}
+
+function canRunLifecycle(lifecycleState) {
+  return lifecycleState === UI_LIFECYCLE.PLAN_RESOLVED || lifecycleState === UI_LIFECYCLE.RUN_COMPLETE || lifecycleState === UI_LIFECYCLE.REPORT_COMPLETE;
+}
+
+function canCreateReportLifecycle(lifecycleState) {
+  return lifecycleState === UI_LIFECYCLE.RUN_COMPLETE || lifecycleState === UI_LIFECYCLE.REPORT_COMPLETE;
+}
 
 const DEFAULT_PLAN_DRAFT = JSON.stringify(
   {
@@ -96,7 +155,7 @@ function updateDraftField(draft, updater) {
   }
 }
 
-function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions }) {
+function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions, canResolve }) {
   const resolveData = resolveState.data || null;
   const stableHash = resolveData && resolveData.stable_hash ? resolveData.stable_hash : "";
   const resolvedPlan = resolveData && resolveData.plan ? resolveData.plan : null;
@@ -251,13 +310,18 @@ function PlanPane({ draft, setDraft, resolveState, onResolve, catalogExtensions 
           }}
         />
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          <button className="tab" onClick={onResolve} disabled={resolveState.status === REQUEST_STATUS.LOADING}>
+          <button className="tab" onClick={onResolve} disabled={!canResolve || resolveState.status === REQUEST_STATUS.LOADING}>
             {resolveState.status === REQUEST_STATUS.LOADING ? "Resolving..." : "Resolve Plan"}
           </button>
           <span>
             <strong>Status:</strong> <code>{resolveState.status}</code>
           </span>
         </div>
+        {!canResolve ? (
+          <div style={{ marginTop: "0.5rem", color: "#b45309" }}>
+            Plan resolve is disabled while a run is in progress.
+          </div>
+        ) : null}
         <ErrorEnvelopePanel error={resolveState.error} />
       </div>
 
@@ -363,7 +427,7 @@ function RunPane({ canRun, runState, onRun }) {
   );
 }
 
-function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
+function ReportPane({ runId, setRunId, reportState, onCreateReport, canCreateReport }) {
   const reportData = reportState.data || null;
   const lifecycle = reportData && reportData.lifecycle ? reportData.lifecycle : null;
   const metadata = reportData && reportData.metadata ? reportData.metadata : null;
@@ -417,13 +481,18 @@ function ReportPane({ runId, setRunId, reportState, onCreateReport }) {
           />
         </div>
         <div style={{ marginTop: "0.75rem", display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          <button className="tab" onClick={onCreateReport} disabled={reportState.status === REQUEST_STATUS.LOADING}>
+          <button className="tab" onClick={onCreateReport} disabled={!canCreateReport || reportState.status === REQUEST_STATUS.LOADING}>
             {reportState.status === REQUEST_STATUS.LOADING ? "Creating..." : "Create Report"}
           </button>
           <span>
             <strong>Status:</strong> <code>{reportState.status}</code>
           </span>
         </div>
+        {!canCreateReport ? (
+          <div style={{ marginTop: "0.5rem", color: "#b45309" }}>
+            Report creation is enabled after a completed run.
+          </div>
+        ) : null}
         <ErrorEnvelopePanel error={reportState.error} />
       </div>
 
@@ -603,6 +672,7 @@ function ConsoleApp() {
   const [activeRunId, setActiveRunId] = React.useState("");
   const [reportRunId, setReportRunId] = React.useState("");
   const [reportCreateState, setReportCreateState] = React.useState(() => makeRequestState());
+  const [lifecycleState, setLifecycleState] = React.useState(UI_LIFECYCLE.PLAN_DRAFT);
   const catalogExtensions =
     catalogState.data && catalogState.data.extensions && typeof catalogState.data.extensions === "object"
       ? catalogState.data.extensions
@@ -638,6 +708,21 @@ function ConsoleApp() {
   }, [catalogState.status, loadCatalog]);
 
   async function resolvePlan() {
+    if (!canResolvePlan(lifecycleState)) {
+      setPlanResolveState(
+        requestError({
+          status: 0,
+          message: "Plan resolve unavailable while run is in progress.",
+          envelope: {
+            code: "ui_plan_resolve_blocked",
+            message: "Wait for run completion before resolving another plan.",
+            details: {},
+          },
+        })
+      );
+      return;
+    }
+
     let payload;
     try {
       payload = JSON.parse(planDraft);
@@ -660,6 +745,7 @@ function ConsoleApp() {
     try {
       const data = await client.postJson("plan", payload);
       setPlanResolveState(requestSuccess(data));
+      setLifecycleState((prev) => transitionLifecycle(prev, UI_LIFECYCLE_EVENT.PLAN_RESOLVED));
     } catch (err) {
       setPlanResolveState((prev) => requestError(err, prev.data));
     }
@@ -690,7 +776,7 @@ function ConsoleApp() {
       setRunCreateState(requestError(parsed.error));
       return;
     }
-    if (planResolveState.status !== REQUEST_STATUS.SUCCESS) {
+    if (!canRunLifecycle(lifecycleState)) {
       setRunCreateState(
         requestError({
           status: 0,
@@ -706,6 +792,7 @@ function ConsoleApp() {
     }
 
     setRunCreateState((prev) => requestLoading(prev.data));
+    setLifecycleState((prev) => transitionLifecycle(prev, UI_LIFECYCLE_EVENT.RUN_STARTED));
     try {
       const data = await client.postJson("run", parsed.value);
       setRunCreateState(requestSuccess(data));
@@ -734,11 +821,26 @@ function ConsoleApp() {
       );
       return;
     }
+    if (!canCreateReportLifecycle(lifecycleState)) {
+      setReportCreateState(
+        requestError({
+          status: 0,
+          message: "Run must complete before report creation.",
+          envelope: {
+            code: "ui_run_not_complete",
+            message: "Report generation is only enabled after run completion.",
+            details: {},
+          },
+        })
+      );
+      return;
+    }
 
     setReportCreateState((prev) => requestLoading(prev.data));
     try {
       const data = await client.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
       setReportCreateState(requestSuccess(data));
+      setLifecycleState((prev) => transitionLifecycle(prev, UI_LIFECYCLE_EVENT.REPORT_COMPLETED));
     } catch (err) {
       setReportCreateState((prev) => requestError(err, prev.data));
     }
@@ -758,6 +860,9 @@ function ConsoleApp() {
         const data = await client.getJson(`runs/${encodeURIComponent(activeRunId)}`);
         if (cancelled) return;
         setRunStatusState(requestSuccess(data));
+        if (isRunTerminal(data)) {
+          setLifecycleState((prev) => transitionLifecycle(prev, UI_LIFECYCLE_EVENT.RUN_COMPLETED));
+        }
       } catch (err) {
         if (cancelled) return;
         setRunStatusState((prev) => requestError(err, prev.data));
@@ -796,18 +901,25 @@ function ConsoleApp() {
       </div>
 
       <Panel tab={tab} />
+      <div className="api-card" style={{ marginTop: "1rem" }}>
+        <div><strong>Lifecycle State:</strong> <code>{lifecycleState}</code></div>
+      </div>
       {tab === "plan" ? (
         <PlanPane
           draft={planDraft}
-          setDraft={setPlanDraft}
+          setDraft={(next) => {
+            setPlanDraft(next);
+            setLifecycleState((prev) => transitionLifecycle(prev, UI_LIFECYCLE_EVENT.PLAN_EDITED));
+          }}
           resolveState={planResolveState}
           onResolve={resolvePlan}
           catalogExtensions={catalogExtensions}
+          canResolve={canResolvePlan(lifecycleState)}
         />
       ) : null}
       {tab === "run" ? (
         <RunPane
-          canRun={planResolveState.status === REQUEST_STATUS.SUCCESS}
+          canRun={canRunLifecycle(lifecycleState)}
           runState={
             runStatusState.data
               ? {
@@ -826,6 +938,7 @@ function ConsoleApp() {
           setRunId={setReportRunId}
           reportState={reportCreateState}
           onCreateReport={createReport}
+          canCreateReport={canCreateReportLifecycle(lifecycleState)}
         />
       ) : null}
 
