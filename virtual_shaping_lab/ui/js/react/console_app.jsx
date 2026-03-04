@@ -357,6 +357,71 @@ function PlanPane({
     );
   }
 
+  function patchPayload(patcher) {
+    const updated = updateDraftField(draft, patcher);
+    if (updated.ok) setDraft(updated.value);
+  }
+
+  const runtimeSettings =
+    parsedDraft && parsedDraft.settings && typeof parsedDraft.settings === "object"
+      ? parsedDraft.settings
+      : {};
+  const firstPhase = phaseRows.length ? phaseRows[0] : null;
+  const firstPhaseParams =
+    firstPhase && firstPhase.params && typeof firstPhase.params === "object"
+      ? firstPhase.params
+      : {};
+
+  function setRuntimeMode(key, value) {
+    patchPayload((payload) => {
+      const next = { ...payload };
+      const settings = { ...(next.settings || {}) };
+      settings[key] = value;
+      next.settings = settings;
+      return next;
+    });
+  }
+
+  function setFirstPhaseContext(value) {
+    if (!phaseRows.length) return;
+    patchPhase(0, (p) => ({ ...p, context: value }));
+  }
+
+  function setFirstPhaseNumericParam(key, value) {
+    if (!phaseRows.length) return;
+    patchPhase(0, (p) => ({
+      ...p,
+      params: {
+        ...(p.params || {}),
+        [key]: Number(value),
+      },
+    }));
+  }
+
+  function setRewardScheduleStub(value) {
+    if (!phaseRows.length) return;
+    patchPhase(0, (p) => {
+      const params = { ...(p.params || {}) };
+      if (!value || value === "none") {
+        delete params.reward_schedule;
+        delete params.reward_schedule_params;
+      } else if (value === "fr_1") {
+        params.reward_schedule = "fixed_ratio";
+        params.reward_schedule_params = { ratio: 1 };
+      } else if (value === "vr_2") {
+        params.reward_schedule = "variable_ratio";
+        params.reward_schedule_params = { mean_ratio: 2 };
+      } else if (value === "fi_10") {
+        params.reward_schedule = "fixed_interval";
+        params.reward_schedule_params = { interval_s: 10.0 };
+      } else if (value === "vi_10") {
+        params.reward_schedule = "variable_interval";
+        params.reward_schedule_params = { mean_interval_s: 10.0 };
+      }
+      return { ...p, params };
+    });
+  }
+
   return (
     <div style={{ marginTop: "1rem" }}>
       <div className="panel">
@@ -560,6 +625,104 @@ function PlanPane({
               ))}
             </div>
           ) : null}
+        </div>
+        <div className="api-card" style={{ marginTop: "0.75rem" }}>
+          <div><strong>Typed Parameter Bridge</strong></div>
+          <p style={{ marginTop: "0.45rem" }}>
+            Basic typed editors for context/timing/runtime and operant schedule stubs.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "0.6rem",
+              marginTop: "0.6rem",
+            }}
+          >
+            <label>
+              <div><strong>settings.update_mode</strong></div>
+              <select
+                value={runtimeSettings.update_mode || "trial"}
+                onChange={(e) => setRuntimeMode("update_mode", e.target.value)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+              >
+                <option value="trial">trial</option>
+                <option value="tick">tick</option>
+              </select>
+            </label>
+            <label>
+              <div><strong>settings.record_mode</strong></div>
+              <select
+                value={runtimeSettings.record_mode || "trial"}
+                onChange={(e) => setRuntimeMode("record_mode", e.target.value)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+              >
+                <option value="trial">trial</option>
+                <option value="tick">tick</option>
+              </select>
+            </label>
+            <label>
+              <div><strong>phases[0].context</strong></div>
+              <input
+                type="text"
+                value={firstPhase && firstPhase.context ? String(firstPhase.context) : ""}
+                onChange={(e) => setFirstPhaseContext(e.target.value)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                disabled={!phaseRows.length}
+              />
+            </label>
+            <label>
+              <div><strong>phases[0].params.dt_s</strong></div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={Number.isFinite(Number(firstPhaseParams.dt_s)) ? Number(firstPhaseParams.dt_s) : ""}
+                onChange={(e) => setFirstPhaseNumericParam("dt_s", e.target.value || 0)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                disabled={!phaseRows.length}
+              />
+            </label>
+            <label>
+              <div><strong>phases[0].params.duration_s</strong></div>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={Number.isFinite(Number(firstPhaseParams.duration_s)) ? Number(firstPhaseParams.duration_s) : ""}
+                onChange={(e) => setFirstPhaseNumericParam("duration_s", e.target.value || 0)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                disabled={!phaseRows.length}
+              />
+            </label>
+            <label>
+              <div><strong>phases[0] reward schedule (stub)</strong></div>
+              <select
+                value={
+                  firstPhaseParams.reward_schedule === "fixed_ratio" &&
+                  firstPhaseParams.reward_schedule_params &&
+                  Number(firstPhaseParams.reward_schedule_params.ratio) === 1
+                    ? "fr_1"
+                    : firstPhaseParams.reward_schedule === "variable_ratio"
+                    ? "vr_2"
+                    : firstPhaseParams.reward_schedule === "fixed_interval"
+                    ? "fi_10"
+                    : firstPhaseParams.reward_schedule === "variable_interval"
+                    ? "vi_10"
+                    : "none"
+                }
+                onChange={(e) => setRewardScheduleStub(e.target.value)}
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                disabled={!phaseRows.length}
+              >
+                <option value="none">none</option>
+                <option value="fr_1">fixed_ratio (1)</option>
+                <option value="vr_2">variable_ratio (~2)</option>
+                <option value="fi_10">fixed_interval (10s)</option>
+                <option value="vi_10">variable_interval (~10s)</option>
+              </select>
+            </label>
+          </div>
         </div>
         <textarea
           value={draft}
