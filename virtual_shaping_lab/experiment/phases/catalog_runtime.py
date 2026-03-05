@@ -29,6 +29,11 @@ from experiment.phases.templates import (
     SpecLearningGate,
     WeightedRandomSampler,
 )
+from virtual_shaping_lab.domain.catalog_metadata import (
+    UICatalogMetadata,
+    make_default_ui_metadata,
+    validate_ui_metadata_map,
+)
 
 _FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS = {
     "attention",
@@ -402,9 +407,24 @@ PHASE_BUILDERS: dict[str, Callable[..., Any]] = {
     "operant_phase_template": _build_operant_phase_template,
 }
 
+PHASE_METADATA: dict[str, UICatalogMetadata] = {
+    key: make_default_ui_metadata(key, description_prefix="Phase")
+    for key in PHASE_BUILDERS.keys()
+}
+validate_ui_metadata_map(
+    keys=set(PHASE_BUILDERS.keys()),
+    metadata_map=PHASE_METADATA,
+    namespace="experiment.phases.catalog_runtime",
+)
+
 
 def available_phases() -> list[str]:
     return sorted(PHASE_BUILDERS.keys())
+
+
+def get_phase_metadata(name: str) -> UICatalogMetadata:
+    validate_phase_key(name)
+    return PHASE_METADATA[name]
 
 
 def validate_phase_key(name: str) -> None:

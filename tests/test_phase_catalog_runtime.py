@@ -6,9 +6,11 @@ from experiment.phases.catalog import PHASE_CATALOG
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.catalog_runtime import (
+    PHASE_METADATA,
     PHASE_BUILDERS,
     available_phases,
     build_phase,
+    get_phase_metadata,
     validate_phase_key,
 )
 
@@ -58,3 +60,12 @@ def test_control_flow_phase_keys_remain_class_based():
     )
     assert isinstance(context_shift, ContextShiftPhase)
     assert isinstance(criterion_shift, CriterionShiftPhase)
+
+
+def test_phase_catalog_has_ui_metadata_for_all_keys():
+    assert set(PHASE_METADATA.keys()) == set(PHASE_BUILDERS.keys())
+    meta = get_phase_metadata("acquisition")
+    assert meta.label
+    assert meta.description
+    assert isinstance(meta.params_schema, dict)
+    assert isinstance(meta.defaults, dict)

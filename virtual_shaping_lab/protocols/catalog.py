@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
+from virtual_shaping_lab.domain.catalog_metadata import (
+    UICatalogMetadata,
+    make_default_ui_metadata,
+    validate_ui_metadata_map,
+)
 
 from protocols.aab_renewal import AABRenewalProtocol
 from protocols.aba_renewal import ABARenewalProtocol
@@ -42,9 +47,25 @@ PROTOCOL_BUILDERS: dict[str, ProtocolBuilder] = {
     "spontaneous_recovery": SpontaneousRecoveryProtocol,
 }
 
+PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
+    key: make_default_ui_metadata(key, description_prefix="Protocol")
+    for key in PROTOCOL_BUILDERS.keys()
+}
+validate_ui_metadata_map(
+    keys=set(PROTOCOL_BUILDERS.keys()),
+    metadata_map=PROTOCOL_METADATA,
+    namespace="protocols.catalog",
+)
+
 
 def available_protocols() -> list[str]:
     return sorted(PROTOCOL_BUILDERS.keys())
+
+
+def get_protocol_metadata(name: str) -> UICatalogMetadata:
+    normalized = normalize_protocol_key(name)
+    validate_protocol_name(normalized)
+    return PROTOCOL_METADATA[normalized]
 
 
 def validate_protocol_name(name: str) -> None:
