@@ -40,10 +40,119 @@ FALLBACK_TEMPLATE = ReportTemplateSpec(
     figure_names=("trial_curve", "tick_response_curve", "probe_bar"),
 )
 
+_DEFAULT_TEMPLATE_METADATA = UICatalogMetadata(
+    label="Verification Report Template",
+    description="Default verification report bundle for protocol-level analysis.",
+    params_schema={
+        "report_name": {"type": "str"},
+        "metric_names": {"type": "list[str]"},
+        "figure_names": {"type": "list[str]"},
+    },
+    defaults={
+        "report_name": "verification_report",
+        "metric_names": ["mean_reward"],
+        "figure_names": ["trial_curve", "tick_response_curve", "probe_bar"],
+    },
+    constraints=("analysis_default_template",),
+    examples=(
+        {
+            "report_name": "verification_report",
+            "metric_names": ["mean_reward"],
+            "figure_names": ["trial_curve", "tick_response_curve", "probe_bar"],
+        },
+    ),
+)
+
 REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
-    key: make_default_ui_metadata(key, description_prefix="Default report template")
-    for key in DEFAULT_TEMPLATE_BY_PROTOCOL.keys()
+    "acquisition": UICatalogMetadata(
+        label="Acquisition Report Template",
+        description="Default analysis template for acquisition-style protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("acquisition_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "extinction": UICatalogMetadata(
+        label="Extinction Report Template",
+        description="Default analysis template for extinction and reacquisition protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("extinction_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "rapid_reacquisition": UICatalogMetadata(
+        label="Rapid Reacquisition Report Template",
+        description="Default template for rapid-reacquisition outcome verification.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("extinction_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "blocking": UICatalogMetadata(
+        label="Blocking Report Template",
+        description="Default template for cue-competition phenomena such as blocking.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("cue_competition_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "overshadowing": UICatalogMetadata(
+        label="Overshadowing Report Template",
+        description="Default template for cue-competition phenomena such as overshadowing.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("cue_competition_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "conditioned_inhibition": UICatalogMetadata(
+        label="Conditioned Inhibition Report Template",
+        description="Default template for conditioned inhibition protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("inhibition_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "aba_renewal": UICatalogMetadata(
+        label="ABA Renewal Report Template",
+        description="Default template for ABA renewal context-shift protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "abc_renewal": UICatalogMetadata(
+        label="ABC Renewal Report Template",
+        description="Default template for ABC renewal context-shift protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "aab_renewal": UICatalogMetadata(
+        label="AAB Renewal Report Template",
+        description="Default template for AAB renewal context-shift protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
+    "operant_conditioning": UICatalogMetadata(
+        label="Operant Conditioning Report Template",
+        description="Default template for operant schedule protocols.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("operant_compatible",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    ),
 }
+
+for key in DEFAULT_TEMPLATE_BY_PROTOCOL.keys():
+    if key not in REPORT_TEMPLATE_METADATA:
+        REPORT_TEMPLATE_METADATA[key] = make_default_ui_metadata(
+            key,
+            description_prefix="Default report template",
+        )
+
 validate_ui_metadata_map(
     keys=set(DEFAULT_TEMPLATE_BY_PROTOCOL.keys()),
     metadata_map=REPORT_TEMPLATE_METADATA,
@@ -60,7 +169,14 @@ def get_report_template_metadata(protocol_name: str) -> UICatalogMetadata:
     normalized = normalize_protocol_key(protocol_name)
     if normalized in REPORT_TEMPLATE_METADATA:
         return REPORT_TEMPLATE_METADATA[normalized]
-    return make_default_ui_metadata("verification_report", description_prefix="Fallback report template")
+    return UICatalogMetadata(
+        label="Fallback Verification Report Template",
+        description="Fallback template used when no protocol-specific template metadata mapping exists.",
+        params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
+        defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("fallback_template",),
+        examples=_DEFAULT_TEMPLATE_METADATA.examples,
+    )
 
 
 def get_default_template_for_protocol(protocol_name: str) -> ReportTemplateSpec:

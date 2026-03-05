@@ -46,3 +46,11 @@ def test_protocol_catalog_has_ui_metadata_for_all_keys():
     assert meta.description
     assert isinstance(meta.params_schema, dict)
     assert isinstance(meta.defaults, dict)
+    assert "operant_only" in meta.constraints
+    assert "schedule_type" in meta.params_schema
+    assert meta.examples
+
+
+def test_protocol_catalog_extinction_metadata_has_pavlovian_constraint():
+    extinction_meta = catalog.get_protocol_metadata("extinction")
+    assert "pavlovian_only" in extinction_meta.constraints

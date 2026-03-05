@@ -65,3 +65,12 @@ def test_report_catalog_has_ui_metadata_for_all_template_mappings():
     assert meta.description
     assert isinstance(meta.params_schema, dict)
     assert isinstance(meta.defaults, dict)
+    assert "analysis_default_template" in meta.constraints
+    assert "extinction_compatible" in meta.constraints
+    assert meta.examples
+
+
+def test_report_catalog_fallback_metadata_is_explicit():
+    meta = get_report_template_metadata("missing_protocol")
+    assert "fallback_template" in meta.constraints
+    assert meta.defaults["report_name"] == "verification_report"
