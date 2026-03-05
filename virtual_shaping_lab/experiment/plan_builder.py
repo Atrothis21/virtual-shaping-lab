@@ -96,6 +96,7 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "salience": dict(config.salience),
         "attention": dict(config.attention),
         "context_inference": dict(config.context_inference),
+        "runtime": dict(config.runtime),
         "report_preset": config.report_preset,
         "resolved_plan": True,
         "resolved_phase_contexts": inferred_phase_contexts,
@@ -121,6 +122,7 @@ def _compose_parameter_settings(config: ExperimentConfig) -> dict[str, Any]:
             "salience": dict(config.salience),
             "attention": dict(config.attention),
             "context_inference": dict(config.context_inference),
+            "runtime": dict(config.runtime),
             "phases": [
                 {
                     "name": phase.name,

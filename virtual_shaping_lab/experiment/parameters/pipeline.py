@@ -61,6 +61,7 @@ class ParameterNormalizerPipeline:
         runtime.setdefault("update_mode", "trial")
         runtime.setdefault("record_mode", "trial")
         runtime.setdefault("strict_records", False)
+        runtime.setdefault("debug", False)
 
         return out
 
@@ -84,8 +85,26 @@ class ParameterValidatorPipeline:
 
         cls._validate_representation(rep, exp)
         cls._validate_attention_keys(exp, rep)
+        cls._validate_runtime(exp)
         cls._validate_phases(exp)
         cls._validate_contexts(exp, rep)
+
+    @staticmethod
+    def _validate_runtime(exp: Mapping[str, Any]) -> None:
+        runtime = exp.get("runtime", {})
+        if not isinstance(runtime, Mapping):
+            raise ValueError("experiment.runtime must be an object")
+
+        update_mode = runtime.get("update_mode", "trial")
+        record_mode = runtime.get("record_mode", "trial")
+        if str(update_mode) not in {"trial", "tick"}:
+            raise ValueError("runtime.update_mode must be 'trial' or 'tick'")
+        if str(record_mode) not in {"trial", "tick"}:
+            raise ValueError("runtime.record_mode must be 'trial' or 'tick'")
+        if not isinstance(runtime.get("strict_records", False), bool):
+            raise ValueError("runtime.strict_records must be boolean")
+        if not isinstance(runtime.get("debug", False), bool):
+            raise ValueError("runtime.debug must be boolean")
 
     @classmethod
     def _validate_representation(cls, rep: Any, exp: Mapping[str, Any]) -> None:

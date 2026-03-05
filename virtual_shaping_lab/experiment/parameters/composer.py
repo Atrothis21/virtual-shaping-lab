@@ -210,6 +210,7 @@ class ParameterComposer:
             update_mode=str(runtime.get("update_mode", "trial")),
             record_mode=str(runtime.get("record_mode", "trial")),
             strict_records=bool(runtime.get("strict_records", False)),
+            debug=bool(runtime.get("debug", False)),
         )
 
     @staticmethod

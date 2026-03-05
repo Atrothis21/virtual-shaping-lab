@@ -271,6 +271,26 @@ def test_from_payload_rejects_invalid_report_preset():
         ExperimentConfig.from_payload(payload)
 
 
+def test_from_payload_runtime_debug_defaults_and_validation():
+    payload = _base_payload()
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.runtime["debug"] is False
+    assert cfg.runtime["update_mode"] == "trial"
+    assert cfg.runtime["record_mode"] == "trial"
+
+    payload = _base_payload()
+    payload["experiment"]["runtime"] = {"debug": True, "update_mode": "tick", "record_mode": "tick"}
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.runtime["debug"] is True
+    assert cfg.runtime["update_mode"] == "tick"
+    assert cfg.runtime["record_mode"] == "tick"
+
+    payload = _base_payload()
+    payload["experiment"]["runtime"] = {"update_mode": "invalid"}
+    with pytest.raises(ValueError, match="experiment.runtime.update_mode"):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_from_payload_rejects_invalid_experiment_identity_fields():
     payload = _base_payload()
     payload["experiment"]["learner"] = "  "
@@ -397,6 +417,7 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert plan.units[0]["protocol"] == "acquisition"
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
+    assert plan.settings["runtime"]["debug"] is False
     assert plan.settings["resolved_plan"] is True
     assert "composed_parameters" in plan.settings
     assert plan.settings["composed_parameters"]["learner"]["algorithm"] == "rescorla_wagner"

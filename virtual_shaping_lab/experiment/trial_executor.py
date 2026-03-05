@@ -17,13 +17,14 @@ _REINFORCEMENT_EVENT_TYPES = {"reward", "reinforcement", "us"}
 class TrialExecutor:
     """Execute one trial schedule at tick resolution."""
 
-    def __init__(self, *, update_mode: str = "trial", record_mode: str = "trial"):
+    def __init__(self, *, update_mode: str = "trial", record_mode: str = "trial", debug: bool = False):
         if update_mode not in {"trial", "tick"}:
             raise ValueError("update_mode must be one of {'trial', 'tick'}.")
         if record_mode not in {"trial", "tick"}:
             raise ValueError("record_mode must be one of {'trial', 'tick'}.")
         self.update_mode = update_mode
         self.record_mode = record_mode
+        self.debug = bool(debug)
 
     @staticmethod
     def _event_active(start_s: float, end_s: float, t_s: float, t_next_s: float) -> bool:

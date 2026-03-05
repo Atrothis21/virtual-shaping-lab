@@ -108,3 +108,27 @@ def test_trial_executor_uses_schedule_runtime_when_provided():
     assert records[0]["reward"] == 0.0
     assert records[1]["reward"] == 1.0
     assert records[1]["metadata"]["schedule_runtime_event_type"] == "reinforcement"
+
+
+def test_trial_executor_debug_flag_defaults_to_false():
+    executor = TrialExecutor()
+    assert executor.debug is False
+
+
+def test_trial_executor_accepts_debug_flag_without_behavior_change():
+    agent = DummyAgent()
+    ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(5))
+    spec = TrialTimeSpec(duration_s=1.0, dt_s=0.5)
+    step = StepResult(observation=Observation(stimuli=[], context="A"), reward=0.0)
+    schedule = TrialSchedule(time=spec)
+
+    records = TrialExecutor(update_mode="trial", record_mode="tick", debug=True).execute(
+        ctx=ctx,
+        step=step,
+        schedule=schedule,
+        base_record={"phase": "timed", "trial": 9},
+        trial_id=9,
+    )
+
+    assert len(records) == 2
+    assert all("debug" not in rec for rec in records)

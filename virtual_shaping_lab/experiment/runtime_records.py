@@ -35,6 +35,14 @@ _TRIAL_RECORD_DEFAULTS: dict[str, Any] = {
     "metadata": {},
 }
 
+_DEBUG_TELEMETRY_FIELD_TYPES: dict[str, tuple[type, ...]] = {
+    "value": (int, float),
+    "prediction_error": (int, float),
+    "active_features": (list, tuple),
+    "attention_effective": (dict,),
+    "salience_effective": (dict,),
+}
+
 
 @dataclass(frozen=True)
 class FinalizationContext:
@@ -125,6 +133,32 @@ class VersionMigrator:
         )
 
 
+class DebugTelemetrySchemaValidator:
+    """
+    Validate opt-in runtime debug telemetry block shape when present.
+    """
+
+    def apply(self, record: Dict[str, Any], ctx: FinalizationContext) -> None:
+        debug = record.get("debug")
+        if debug is None:
+            return
+        if not isinstance(debug, dict):
+            raise ValueError("Record debug telemetry must be an object when provided.")
+        for key, value in debug.items():
+            if key not in _DEBUG_TELEMETRY_FIELD_TYPES:
+                raise ValueError(f"Unknown debug telemetry field: {key}")
+            if value is None:
+                continue
+            allowed = _DEBUG_TELEMETRY_FIELD_TYPES[key]
+            if not isinstance(value, allowed):
+                names = ", ".join(t.__name__ for t in allowed)
+                raise ValueError(f"Debug telemetry field '{key}' must be of type: {names}")
+            if key == "active_features":
+                for feature in value:
+                    if not isinstance(feature, str):
+                        raise ValueError("Debug telemetry field 'active_features' must contain strings.")
+
+
 class RecordFinalizationPipeline:
     def __init__(self, normalizers: list[RecordNormalizer]):
         self.normalizers = list(normalizers)
@@ -140,6 +174,7 @@ DEFAULT_FINALIZATION_PIPELINE = RecordFinalizationPipeline(
         VersionMigrator(),
         SchemaDefaultsNormalizer(),
         ProtocolMetadataNormalizer(),
+        DebugTelemetrySchemaValidator(),
         StrictModeValidator(),
     ]
 )

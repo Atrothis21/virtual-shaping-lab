@@ -47,11 +47,13 @@ class PayloadNormalizer:
     ) -> Dict[str, Any]:
         representation = parser.parse_representation(exp)
         policy = parser.parse_policy(exp)
+        runtime = parser.parse_runtime(exp)
         exp_stimuli, exp_salience, exp_attention, exp_context_inference = parser.parse_experiment_fields(exp)
         phases = parser.parse_phases(exp)
         return {
             "representation": representation,
             "policy": policy,
+            "runtime": runtime,
             "stimuli": exp_stimuli,
             "salience": exp_salience,
             "attention": exp_attention,
@@ -131,6 +133,9 @@ class ConfigParser:
 
     def parse_policy(self, exp: Dict[str, Any]) -> Optional[Union[str, Dict[str, Any]]]:
         return self._config_cls._parse_policy(exp)
+
+    def parse_runtime(self, exp: Dict[str, Any]) -> Dict[str, Any]:
+        return self._config_cls._parse_runtime(exp)
 
     def parse_experiment_fields(
         self,
@@ -233,6 +238,7 @@ class ConfigPipeline:
             agent=normalized_identity["agent"],
             representation=normalized["representation"],
             policy=normalized["policy"],
+            runtime=normalized["runtime"],
             stimuli=normalized["stimuli"],
             salience=normalized["salience"],
             attention=normalized["attention"],
@@ -275,6 +281,7 @@ class ExperimentConfig:
     agent: str
     representation: Union[str, Dict[str, Any]]
     policy: Optional[Union[str, Dict[str, Any]]]
+    runtime: Dict[str, Any]
 
     stimuli: List[str]
     salience: Dict[str, float]
@@ -454,6 +461,27 @@ class ExperimentConfig:
         if not isinstance(policy, str):
             raise ValueError("policy must be a string or object")
         return policy
+
+    @staticmethod
+    def _parse_runtime(exp: Dict[str, Any]) -> Dict[str, Any]:
+        runtime = exp.get("runtime", {})
+        if runtime is None:
+            runtime = {}
+        if not isinstance(runtime, dict):
+            raise ValueError("experiment.runtime must be an object")
+
+        normalized = {
+            "seed": runtime.get("seed"),
+            "update_mode": str(runtime.get("update_mode", "trial")),
+            "record_mode": str(runtime.get("record_mode", "trial")),
+            "strict_records": bool(runtime.get("strict_records", False)),
+            "debug": bool(runtime.get("debug", False)),
+        }
+        if normalized["update_mode"] not in {"trial", "tick"}:
+            raise ValueError("experiment.runtime.update_mode must be 'trial' or 'tick'")
+        if normalized["record_mode"] not in {"trial", "tick"}:
+            raise ValueError("experiment.runtime.record_mode must be 'trial' or 'tick'")
+        return normalized
 
     @classmethod
     def _parse_phases(cls, exp: Dict[str, Any]) -> List[PhaseConfig]:
