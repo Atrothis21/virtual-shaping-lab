@@ -139,3 +139,45 @@ def test_assemble_experiment_rejects_template_phase_param_ownership_leaks():
     )
     with pytest.raises(ValueError, match="must not include representation/learner-owned keys"):
         assemble_experiment(plan)
+
+
+@pytest.mark.parametrize(
+    "protocol_name,stimuli",
+    [
+        ("acquisition", {"cs_plus": ["tone"]}),
+        ("nonreinforcement", {"cs_plus": ["tone"]}),
+        ("compound_acquisition", {"compound": ["tone", "noise"]}),
+        ("compound_nonreinforcement", {"compound": ["tone", "noise"]}),
+        ("differential_acquisition", {"cs_plus": ["tone"], "cs_minus": ["noise"]}),
+        ("probe", {"cs_plus": ["tone"]}),
+    ],
+)
+def test_assemble_experiment_rejects_canonical_template_backed_phase_param_ownership_leaks(
+    protocol_name,
+    stimuli,
+):
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Canonical Template-Backed Phase",
+                "protocol": protocol_name,
+                "stimuli": stimuli,
+                "params": {"n_trials": 1, "attention": {"tone": 0.8}},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone", "noise"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone", "noise"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+        },
+    )
+    with pytest.raises(ValueError, match="must not include representation/learner-owned keys"):
+        assemble_experiment(plan)

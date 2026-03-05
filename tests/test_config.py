@@ -205,6 +205,42 @@ def test_parse_phases_rejects_template_param_ownership_leaks():
         ExperimentConfig._parse_phases(exp)
 
 
+@pytest.mark.parametrize(
+    "protocol_name,stimuli",
+    [
+        ("acquisition", {"cs_plus": ["tone"]}),
+        ("nonreinforcement", {"cs_plus": ["tone"]}),
+        ("compound_acquisition", {"compound": ["tone", "noise"]}),
+        ("compound_nonreinforcement", {"compound": ["tone", "noise"]}),
+        ("differential_acquisition", {"cs_plus": ["tone"], "cs_minus": ["noise"]}),
+        ("probe", {"cs_plus": ["tone"]}),
+    ],
+)
+def test_parse_phases_rejects_canonical_template_backed_param_ownership_leaks(protocol_name, stimuli):
+    exp = {
+        "phases": [
+            {
+                "name": "Canonical Template-Backed Phase",
+                "protocol": protocol_name,
+                "stimuli": stimuli,
+                "params": {"n_trials": 1, "salience": {"tone": 0.5}},
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="template params must not include"):
+        ExperimentConfig._parse_phases(exp)
+
+
+def test_parse_single_protocol_rejects_template_backed_param_ownership_leaks():
+    exp = {
+        "protocol": "acquisition",
+        "stimuli": {"cs_plus": ["tone"]},
+        "params": {"n_trials": 1, "attention": {"tone": 0.7}},
+    }
+    with pytest.raises(ValueError, match="Experiment template params must not include"):
+        ExperimentConfig._parse_phases(exp)
+
+
 def test_from_payload_missing_sections():
     with pytest.raises(ValueError):
         ExperimentConfig.from_payload({"report": {}})
