@@ -6,6 +6,7 @@ import pytest
 
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
+from experiment.phenomena.catalog import PHENOMENA_REGISTRY, validate_phenomena_registry
 from experiment.runner import Runner
 from experiment.runtime_records import finalize_record
 from ui.validate_payload import validate_payload
@@ -68,6 +69,11 @@ def _first_last_n(records: list[dict], n: int = 10) -> tuple[list[dict], list[di
         raise ValueError("Cannot split empty records.")
     window = max(1, min(n, len(records)))
     return records[:window], records[-window:]
+
+
+def test_phenomena_catalog_validates_against_protocol_registry():
+    validate_phenomena_registry()
+    assert PHENOMENA_REGISTRY
 
 
 def test_acquisition_shows_learning_gain_default_payload():
