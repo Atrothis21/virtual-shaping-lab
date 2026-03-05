@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.12)
+# Core Engine Architecture (V2.13)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.12), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.13), including runtime control flow, object boundaries, extension points, and known gaps.
 
 ---
 
@@ -173,6 +173,16 @@ V2.12 policy:
   - `experiment.phases.public`
 - `experiment.factories.phase_factory` is compatibility-only shim (deprecation path)
 
+V2.13 template governance additions:
+- `PhaseSpec` is versioned (`spec_version`)
+- unsupported template spec versions fail fast at contract boundary
+- template mechanics strategy keys are explicit and validated:
+  - `trial_sampler_strategy`
+  - `schedule_builder_strategy`
+  - `learning_gate_strategy`
+  - `record_builder_strategy`
+- canonical template-backed phase params now enforce ownership leakage guards, not just explicit `*_template` keys
+
 ---
 
 ## 6) Agent Cognition Layer
@@ -335,6 +345,13 @@ Impact:
 
 Recommendation:
 - remove the shim in the next hard-cut cycle after import migration window closes.
+
+### Gap 8: Template strategy governance is key-based and local
+Impact:
+- strategy-key validation now prevents silent drift, but strategy registration remains in module-local maps.
+
+Recommendation:
+- promote strategy registries to explicit extension seams with facade-level discovery/introspection.
 
 ---
 

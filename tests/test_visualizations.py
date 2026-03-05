@@ -2,6 +2,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import pytest
+import warnings
 
 from analysis.visualizations.base import Visualization
 from analysis.visualizations.time_series import LinePlot
@@ -22,6 +23,8 @@ from analysis.visualizations.summation import SummationPlot
 from analysis.visualizations.stimulus import StimulusBarPlot
 from analysis.visualizations.retardation import RetardationCurvePlot
 from analysis.visualizations import registry as viz_registry
+
+_TICKLABEL_WARNING_FRAGMENT = "set_ticklabels() should only be used with a fixed number of ticks"
 
 
 class DummyViz(Visualization):
@@ -226,6 +229,24 @@ def test_probe_and_summation_plots(tmp_path):
         {},
     )
     summation.save(tmp_path / "summation.png")
+
+
+def test_probe_and_summation_plots_emit_no_ticklabel_warnings():
+    probe = ProbeBarPlot()
+    summation = SummationPlot()
+
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        probe.render([{"subphase_name": "probe", "stimulus": "tone", "prediction": 0.5}], {})
+        summation.render(
+            [{"subphase_name": "summation_probe", "stimulus": ("tone", "noise"), "prediction": 0.4}],
+            {},
+        )
+
+    ticklabel_warnings = [
+        w for w in captured if _TICKLABEL_WARNING_FRAGMENT in str(w.message)
+    ]
+    assert ticklabel_warnings == []
 
 
 def test_stimulus_bar_plot(tmp_path):

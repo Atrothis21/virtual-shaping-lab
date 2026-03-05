@@ -53,12 +53,14 @@ class SummationPlot(Visualization):
 
         labels = [fmt(k) for k in values.keys()]
         means = [sum(v) / len(v) for v in values.values()]
+        x_positions = list(range(len(labels)))
 
         self.fig, ax = plt.subplots()
-        ax.bar(labels, means)
+        ax.bar(x_positions, means)
         ax.set_ylabel("Prediction")
         ax.set_title("Conditioned Inhibition: Summation Test", pad=18)
         ax.grid(axis="y", linestyle="--", alpha=0.6)
+        ax.set_xticks(x_positions)
         ax.set_xticklabels(labels, rotation=20, ha="right")
 
     def save(self, path) -> None:

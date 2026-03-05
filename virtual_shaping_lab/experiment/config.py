@@ -16,6 +16,25 @@ _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS = {
     "salience",
     "similarity",
 }
+_CANONICAL_TEMPLATE_BACKED_PHASE_KEYS = {
+    "acquisition",
+    "nonreinforcement",
+    "compound_acquisition",
+    "compound_nonreinforcement",
+    "differential_acquisition",
+    "probe",
+    "pavlovian_phase_template",
+    "operant_phase_template",
+}
+
+
+def _is_template_param_guard_protocol(protocol_name: Any) -> bool:
+    if not isinstance(protocol_name, str):
+        return False
+    return (
+        protocol_name.endswith(_TEMPLATE_PHASE_KEY_SUFFIX)
+        or protocol_name in _CANONICAL_TEMPLATE_BACKED_PHASE_KEYS
+    )
 
 
 class PayloadNormalizer:
@@ -453,7 +472,7 @@ class ExperimentConfig:
                         f"Phase {i} params must be an object"
                     )
                 protocol_name = phase["protocol"]
-                if isinstance(protocol_name, str) and protocol_name.endswith(_TEMPLATE_PHASE_KEY_SUFFIX):
+                if _is_template_param_guard_protocol(protocol_name):
                     leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
                     if leaked:
                         raise ValueError(
@@ -485,6 +504,13 @@ class ExperimentConfig:
         params = exp.get("params") or {}
         if not isinstance(params, dict):
             raise ValueError("experiment.params must be an object")
+        if _is_template_param_guard_protocol(protocol_name):
+            leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
+            if leaked:
+                raise ValueError(
+                    "Experiment template params must not include representation/learner-owned keys: "
+                    + ", ".join(leaked)
+                )
         phases.append(
             PhaseConfig(
                 name="Phase 0",
