@@ -77,6 +77,7 @@ class RuntimeParams:
     update_mode: str = "trial"
     record_mode: str = "trial"
     strict_records: bool = False
+    debug: bool = False
 
 
 @dataclass(frozen=True)

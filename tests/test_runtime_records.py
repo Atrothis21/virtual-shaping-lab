@@ -1,4 +1,5 @@
 from experiment.runtime_records import (
+    DebugTelemetrySchemaValidator,
     FinalizationContext,
     ProtocolMetadataNormalizer,
     RecordFinalizationPipeline,
@@ -124,3 +125,44 @@ def test_finalize_record_version_migration_rejects_unsupported_paths():
         assert False, "Expected unsupported migration path to raise."
     except ValueError as exc:
         assert "Unsupported record schema migration" in str(exc)
+
+
+def test_finalize_record_accepts_valid_debug_telemetry_schema():
+    rec = {
+        "phase": "timed",
+        "trial": 1,
+        "debug": {
+            "value": 0.25,
+            "prediction_error": -0.1,
+            "active_features": ["tone", "context:A"],
+            "attention_effective": {"tone": 0.8},
+            "salience_effective": {"tone": 0.5},
+        },
+    }
+    out = finalize_record(rec)
+    assert out["debug"]["active_features"] == ["tone", "context:A"]
+
+
+def test_finalize_record_rejects_invalid_debug_telemetry_schema():
+    rec = {
+        "phase": "timed",
+        "trial": 1,
+        "debug": {
+            "active_features": ["tone", 42],
+        },
+    }
+    try:
+        finalize_record(rec)
+        assert False, "Expected debug telemetry schema validation failure."
+    except ValueError as exc:
+        assert "active_features" in str(exc)
+
+
+def test_debug_telemetry_schema_validator_rejects_unknown_fields():
+    validator = DebugTelemetrySchemaValidator()
+    rec = {"debug": {"unknown_field": 1}}
+    try:
+        validator.apply(rec, FinalizationContext())
+        assert False, "Expected unknown debug telemetry field to fail."
+    except ValueError as exc:
+        assert "Unknown debug telemetry field" in str(exc)

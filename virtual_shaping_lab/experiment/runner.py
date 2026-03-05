@@ -57,9 +57,11 @@ class Runner:
                 runtime_settings = runtime
         self.update_mode = self.settings.get("update_mode", runtime_settings.get("update_mode", "trial"))
         self.record_mode = self.settings.get("record_mode", runtime_settings.get("record_mode", "trial"))
+        self.debug_mode = bool(self.settings.get("debug", runtime_settings.get("debug", False)))
         self._trial_executor = TrialExecutor(
             update_mode=self.update_mode,
             record_mode=self.record_mode,
+            debug=self.debug_mode,
         )
 
     def _emit_record(self, record: Dict[str, Any]) -> None:

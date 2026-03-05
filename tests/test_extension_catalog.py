@@ -5,6 +5,7 @@ def test_extension_catalog_snapshot_has_expected_keys():
     snap = ExtensionCatalog.snapshot()
     assert set(snap.keys()) == {
         "protocols",
+        "phenomena",
         "learners",
         "policies",
         "representations",
@@ -23,6 +24,8 @@ def test_extension_catalog_lists_are_sorted():
 def test_extension_catalog_contains_known_entries():
     snap = ExtensionCatalog.snapshot()
     assert "operant_conditioning" in snap["protocols"]
+    assert "blocking" in snap["phenomena"]
+    assert snap["phenomena"]["blocking"]["protocol_key"] == "blocking"
     assert "rescorla_wagner" in snap["learners"]
     assert "epsilon_greedy" in snap["policies"]
     assert "vector_elemental" in snap["representations"]

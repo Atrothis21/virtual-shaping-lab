@@ -11,6 +11,7 @@ from typing import Any, Optional
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.phenomena.catalog import available_phenomena, get_phenomenon
 from experiment.parameters import validate_composed_parameter_ownership
 from experiment.runner import Runner
 
@@ -80,3 +81,19 @@ def run_from_plan(
         agent=agent,
         representation=representation,
     )
+
+
+def list_phenomena() -> dict[str, dict[str, Any]]:
+    """Return typed phenomena discovery payload for UI/API callers."""
+    result: dict[str, dict[str, Any]] = {}
+    for key in available_phenomena():
+        spec = get_phenomenon(key)
+        result[key] = {
+            "name": spec.name,
+            "description": spec.description,
+            "protocol_key": spec.protocol_key,
+            "expected_signatures": list(spec.expected_signatures),
+            "default_template_key": spec.default_template_key,
+            "recommended_presets": [dict(p) for p in spec.recommended_presets],
+        }
+    return result

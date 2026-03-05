@@ -3,7 +3,10 @@ import warnings
 
 from analysis.report.catalog import (
     DEFAULT_REPORT_BY_PROTOCOL,
+    DEFAULT_TEMPLATE_BY_PROTOCOL,
+    REPORT_TEMPLATE_METADATA,
     get_default_report_for_protocol,
+    get_report_template_metadata,
     get_default_template_for_protocol,
 )
 
@@ -53,3 +56,21 @@ def test_report_catalog_has_explicit_acquisition_template_mapping_without_warnin
         template = get_default_template_for_protocol("acquisition")
     assert template.report_name == "verification_report"
     assert len(captured) == 0
+
+
+def test_report_catalog_has_ui_metadata_for_all_template_mappings():
+    assert set(REPORT_TEMPLATE_METADATA.keys()) == set(DEFAULT_TEMPLATE_BY_PROTOCOL.keys())
+    meta = get_report_template_metadata("EXTINCTION")
+    assert meta.label
+    assert meta.description
+    assert isinstance(meta.params_schema, dict)
+    assert isinstance(meta.defaults, dict)
+    assert "analysis_default_template" in meta.constraints
+    assert "extinction_compatible" in meta.constraints
+    assert meta.examples
+
+
+def test_report_catalog_fallback_metadata_is_explicit():
+    meta = get_report_template_metadata("missing_protocol")
+    assert "fallback_template" in meta.constraints
+    assert meta.defaults["report_name"] == "verification_report"

@@ -273,6 +273,25 @@ def test_runner_uses_composed_runtime_settings_when_direct_modes_absent():
     assert records[0]["tick"] == 0
 
 
+def test_runner_emits_debug_payload_when_runtime_debug_enabled():
+    records = Runner(
+        TimedRunnableUnit(),
+        settings={
+            "composed_parameters": {
+                "runtime": {
+                    "update_mode": "trial",
+                    "record_mode": "tick",
+                    "debug": True,
+                }
+            }
+        },
+    ).run()
+    assert len(records) == 2
+    assert "debug" in records[0]
+    assert isinstance(records[0]["debug"].get("active_features"), list)
+    assert "prediction_error" in records[0]["debug"]
+
+
 def test_runner_rejects_legacy_phase_without_iter_steps():
     agent = DummyAgent()
     phase = LegacyOnlyPhase(agent, n_trials=1)

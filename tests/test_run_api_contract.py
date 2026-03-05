@@ -348,12 +348,14 @@ def test_extensions_api_contract_shape():
     ext = body["extensions"]
     assert set(ext.keys()) == {
         "protocols",
+        "phenomena",
         "learners",
         "policies",
         "representations",
         "report_templates",
     }
     assert isinstance(ext["protocols"], list)
+    assert isinstance(ext["phenomena"], dict)
     assert isinstance(ext["learners"], list)
     assert isinstance(ext["policies"], list)
     assert isinstance(ext["representations"], list)

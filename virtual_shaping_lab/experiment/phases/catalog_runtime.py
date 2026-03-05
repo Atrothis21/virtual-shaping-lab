@@ -29,6 +29,11 @@ from experiment.phases.templates import (
     SpecLearningGate,
     WeightedRandomSampler,
 )
+from virtual_shaping_lab.domain.catalog_metadata import (
+    UICatalogMetadata,
+    make_default_ui_metadata,
+    validate_ui_metadata_map,
+)
 
 _FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS = {
     "attention",
@@ -402,9 +407,186 @@ PHASE_BUILDERS: dict[str, Callable[..., Any]] = {
     "operant_phase_template": _build_operant_phase_template,
 }
 
+_COMMON_PAVLOVIAN_SCHEMA = {
+    "n_trials": {"type": "int", "min": 1},
+    "context": {"type": "str"},
+    "outcome": {"type": "float"},
+    "learning_enabled": {"type": "bool"},
+}
+
+_COMMON_PAVLOVIAN_DEFAULTS = {
+    "n_trials": 1,
+    "context": "A",
+    "outcome": 1.0,
+    "learning_enabled": True,
+}
+
+_COMMON_TEMPLATE_STRATEGY_SCHEMA = {
+    "trial_sampler_strategy": {"type": "enum", "values": sorted(_ALLOWED_TRIAL_SAMPLER_STRATEGIES)},
+    "schedule_builder_strategy": {"type": "enum", "values": sorted(_ALLOWED_SCHEDULE_BUILDER_STRATEGIES)},
+    "learning_gate_strategy": {"type": "enum", "values": sorted(_ALLOWED_LEARNING_GATE_STRATEGIES)},
+    "record_builder_strategy": {"type": "enum", "values": sorted(_ALLOWED_RECORD_BUILDER_STRATEGIES)},
+}
+
+_COMMON_TEMPLATE_STRATEGY_DEFAULTS = {
+    "trial_sampler_strategy": "weighted_random",
+    "schedule_builder_strategy": "pavlovian",
+    "learning_gate_strategy": "spec",
+    "record_builder_strategy": "default",
+}
+
+_PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
+    "acquisition": UICatalogMetadata(
+        label="Acquisition",
+        description="Single-cue reinforced pavlovian phase.",
+        params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
+        defaults={**_COMMON_PAVLOVIAN_DEFAULTS},
+        constraints=("pavlovian_only",),
+        examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 20, "outcome": 1.0},),
+    ),
+    "nonreinforcement": UICatalogMetadata(
+        label="Nonreinforcement",
+        description="Single-cue nonreinforced pavlovian phase (extinction-like).",
+        params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
+        defaults={**_COMMON_PAVLOVIAN_DEFAULTS, "outcome": 0.0},
+        constraints=("pavlovian_only",),
+        examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 20, "outcome": 0.0},),
+    ),
+    "compound_acquisition": UICatalogMetadata(
+        label="Compound Acquisition",
+        description="Compound-cue reinforced pavlovian phase.",
+        params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
+        defaults={**_COMMON_PAVLOVIAN_DEFAULTS},
+        constraints=("requires_compound_stimuli", "pavlovian_only"),
+        examples=({"stimuli": {"compound": ["tone", "light"]}, "n_trials": 20, "outcome": 1.0},),
+    ),
+    "compound_nonreinforcement": UICatalogMetadata(
+        label="Compound Nonreinforcement",
+        description="Compound-cue nonreinforced pavlovian phase.",
+        params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
+        defaults={**_COMMON_PAVLOVIAN_DEFAULTS, "outcome": 0.0},
+        constraints=("requires_compound_stimuli", "pavlovian_only"),
+        examples=({"stimuli": {"compound": ["tone", "light"]}, "n_trials": 20, "outcome": 0.0},),
+    ),
+    "differential_acquisition": UICatalogMetadata(
+        label="Differential Acquisition",
+        description="Pavlovian phase with reinforced CS+ and nonreinforced CS- trial types.",
+        params_schema={
+            "n_trials": {"type": "int", "min": 1},
+            "context": {"type": "str"},
+            "reinforced_outcome": {"type": "float"},
+            "nonreinforced_outcome": {"type": "float"},
+        },
+        defaults={"n_trials": 1, "context": "A", "reinforced_outcome": 1.0, "nonreinforced_outcome": 0.0},
+        constraints=("requires_cs_plus_cs_minus_stimuli", "pavlovian_only"),
+        examples=(
+            {
+                "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
+                "n_trials": 40,
+                "reinforced_outcome": 1.0,
+                "nonreinforced_outcome": 0.0,
+            },
+        ),
+    ),
+    "probe": UICatalogMetadata(
+        label="Probe",
+        description="Pavlovian probe/testing phase with learning disabled by default.",
+        params_schema={
+            "n_trials": {"type": "int", "min": 1},
+            "context": {"type": "str"},
+            "deliver_reward": {"type": "bool"},
+            "reward_value": {"type": "float"},
+        },
+        defaults={"n_trials": 1, "context": "A", "deliver_reward": False, "reward_value": 1.0},
+        constraints=("learning_disabled_default", "pavlovian_only"),
+        examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 10, "deliver_reward": False},),
+    ),
+    "context_shift": UICatalogMetadata(
+        label="Context Shift",
+        description="Control-flow phase that changes active context for subsequent phases.",
+        params_schema={"context": {"type": "str"}},
+        defaults={"context": "B"},
+        constraints=("control_flow_phase",),
+        examples=({"params": {"context": "B"}},),
+    ),
+    "criterion_shift": UICatalogMetadata(
+        label="Criterion Shift",
+        description="Control-flow phase that shifts execution based on criterion conditions.",
+        params_schema={"criterion": {"type": "dict"}},
+        defaults={"criterion": {}},
+        constraints=("control_flow_phase",),
+        examples=({"params": {"criterion": {"type": "prediction_threshold", "threshold": 0.2}}},),
+    ),
+    "pavlovian_phase_template": UICatalogMetadata(
+        label="Pavlovian Phase Template",
+        description="Configurable template-backed pavlovian phase.",
+        params_schema={**_COMMON_PAVLOVIAN_SCHEMA, **_COMMON_TEMPLATE_STRATEGY_SCHEMA},
+        defaults={**_COMMON_PAVLOVIAN_DEFAULTS, **_COMMON_TEMPLATE_STRATEGY_DEFAULTS},
+        constraints=("template_phase", "pavlovian_only"),
+        examples=({"stimuli": {"cs_plus": ["tone"]}, "params": {"trial_sampler_strategy": "weighted_random"}},),
+    ),
+    "operant_phase_template": UICatalogMetadata(
+        label="Operant Phase Template",
+        description="Configurable template-backed operant phase.",
+        params_schema={
+            "n_trials": {"type": "int", "min": 1},
+            "context": {"type": "str"},
+            "available_actions": {"type": "list[str]"},
+            "task_key": {"type": "str"},
+            **_COMMON_TEMPLATE_STRATEGY_SCHEMA,
+        },
+        defaults={
+            "n_trials": 1,
+            "context": "A",
+            "available_actions": [],
+            "task_key": "operant",
+            **{**_COMMON_TEMPLATE_STRATEGY_DEFAULTS, "schedule_builder_strategy": "operant"},
+        },
+        constraints=("template_phase", "operant_only"),
+        examples=(
+            {
+                "stimuli": {"cs_plus": ["lever"]},
+                "params": {"available_actions": ["left", "right"], "schedule_builder_strategy": "operant"},
+            },
+        ),
+    ),
+}
+
+PHASE_METADATA: dict[str, UICatalogMetadata] = {}
+for phase_key in PHASE_BUILDERS.keys():
+    if phase_key in _PHASE_METADATA_OVERRIDES:
+        PHASE_METADATA[phase_key] = _PHASE_METADATA_OVERRIDES[phase_key]
+    elif phase_key.endswith("_template"):
+        base_key = phase_key[: -len("_template")]
+        if base_key in _PHASE_METADATA_OVERRIDES:
+            base_meta = _PHASE_METADATA_OVERRIDES[base_key]
+            PHASE_METADATA[phase_key] = UICatalogMetadata(
+                label=f"{base_meta.label} Template",
+                description=f"Template alias for {base_meta.label}.",
+                params_schema=dict(base_meta.params_schema),
+                defaults=dict(base_meta.defaults),
+                constraints=tuple(sorted(set(base_meta.constraints + ("template_alias",)))),
+                examples=base_meta.examples,
+            )
+            continue
+        PHASE_METADATA[phase_key] = make_default_ui_metadata(phase_key, description_prefix="Template phase")
+    else:
+        PHASE_METADATA[phase_key] = make_default_ui_metadata(phase_key, description_prefix="Phase")
+
+validate_ui_metadata_map(
+    keys=set(PHASE_BUILDERS.keys()),
+    metadata_map=PHASE_METADATA,
+    namespace="experiment.phases.catalog_runtime",
+)
+
 
 def available_phases() -> list[str]:
     return sorted(PHASE_BUILDERS.keys())
+
+
+def get_phase_metadata(name: str) -> UICatalogMetadata:
+    validate_phase_key(name)
+    return PHASE_METADATA[name]
 
 
 def validate_phase_key(name: str) -> None:

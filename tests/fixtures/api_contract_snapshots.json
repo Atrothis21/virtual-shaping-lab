@@ -79,6 +79,7 @@
     ],
     "extensions_keys": [
       "protocols",
+      "phenomena",
       "learners",
       "policies",
       "representations",
