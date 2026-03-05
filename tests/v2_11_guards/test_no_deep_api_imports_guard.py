@@ -1,14 +1,9 @@
 from __future__ import annotations
 
 import ast
-import os
 from pathlib import Path
 
-import pytest
-
-
 ROOT = Path(__file__).resolve().parents[2] / "virtual_shaping_lab"
-STRICT = os.getenv("V2_11_GUARDS_STRICT", "0") == "1"
 
 FORBIDDEN_DEEP_IMPORTS = (
     "experiment.assemble",
@@ -57,18 +52,7 @@ def _collect_violations(paths: list[Path], forbidden_prefixes: tuple[str, ...]) 
     return sorted(bad)
 
 
-def _assert_or_soft_xfail(*, violations: list[tuple[str, str]], guard_name: str):
-    if violations and not STRICT:
-        pytest.xfail(
-            f"[soft-guard:{guard_name}] violations found (non-blocking until strict mode): {violations}"
-        )
-    assert not violations, f"{guard_name} violations: {violations}"
-
-
 def test_no_deep_api_imports_guard():
     api_paths = list(_iter_python_files(ROOT / "api"))
     violations = _collect_violations(api_paths, FORBIDDEN_DEEP_IMPORTS)
-    _assert_or_soft_xfail(
-        violations=violations,
-        guard_name="no_deep_api_imports",
-    )
+    assert not violations, f"no_deep_api_imports violations: {violations}"
