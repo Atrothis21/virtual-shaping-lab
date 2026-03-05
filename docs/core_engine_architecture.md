@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.13)
+# Core Engine Architecture (V2.14)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.13), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.14), including runtime control flow, object boundaries, extension points, test governance, and known gaps.
 
 ---
 
@@ -292,6 +292,27 @@ Public facade entrypoints (preferred for cross-layer integration):
 
 Template phase authoring reference:
 - `docs/phase_template_authoring.md`
+
+---
+
+## Test + CI Governance (V2.14)
+
+CI truth is now architecture-first and ordered by risk:
+1. guard bucket (`tests/v2_11_guards`)
+2. contract bucket (`tests/v2_11_contract`)
+3. behavioral bucket (`tests/behavioral_signatures`)
+4. selected unit slices (`tests/test_run_api_contract.py`, `tests/test_api_contract_snapshots.py`, `tests/test_visualizations.py`)
+
+Transitional compare mode:
+- full-suite run is retained as a temporary non-blocking compare job (`full_suite_compare`) for parity monitoring during migration.
+
+Warning policy:
+- architecture-critical buckets run with `-W error`
+- only explicitly allowlisted transitional warnings are permitted
+- allowlist is documented in `.github/warning_allowlist_architecture.md` with owner/review date/removal trigger
+
+Retirement policy:
+- legacy-only/duplicate tests are removed only after replacement mapping is explicit in `V2.14_test_ownership_matrix.md` and bucket gates remain green.
 
 ---
 
