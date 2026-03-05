@@ -11,6 +11,8 @@ import numpy as np
 
 from virtual_shaping_lab.domain.types import Observation
 
+SUPPORTED_TEMPLATE_SPEC_VERSIONS: tuple[int, ...] = (1,)
+
 
 TrialSpec = dict[str, Any]
 
@@ -219,6 +221,7 @@ class PhaseSpec:
     time: TrialTimeSpec
     trial_types: list[TrialTypeSpec]
     contingency: ContingencySpec
+    spec_version: int = 1
     learning: LearningGateSpec = field(default_factory=LearningGateSpec)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -240,6 +243,11 @@ class PhaseSpec:
                 raise ValueError("PhaseSpec.trial_types must contain TrialTypeSpec values.")
         if not isinstance(self.contingency, (PavlovianContingencySpec, OperantContingencySpec)):
             raise ValueError("PhaseSpec.contingency must be a supported contingency spec.")
+        if int(self.spec_version) not in SUPPORTED_TEMPLATE_SPEC_VERSIONS:
+            supported = ", ".join(str(v) for v in SUPPORTED_TEMPLATE_SPEC_VERSIONS)
+            raise ValueError(
+                f"Unsupported PhaseSpec.spec_version={self.spec_version}. Supported versions: {supported}."
+            )
         if not isinstance(self.learning, LearningGateSpec):
             raise ValueError("PhaseSpec.learning must be a LearningGateSpec.")
 

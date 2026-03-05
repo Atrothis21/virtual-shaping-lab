@@ -115,6 +115,7 @@ def _build_pavlovian_phase_template(
             us_magnitude=float(params.get("outcome", params.get("reward_value", 1.0))),
             us_event_type=str(params.get("us_event_type", "reward")),
         ),
+        spec_version=int(params.get("spec_version", 1)),
         learning=LearningGateSpec(enabled=bool(params.get("learning_enabled", True))),
         metadata={"factory_phase_key": "pavlovian_phase_template"},
     )
@@ -156,6 +157,7 @@ def _build_operant_phase_template(
             action_labels=action_labels,
             schedule_runtime=schedule_runtime,
         ),
+        spec_version=int(params.get("spec_version", 1)),
         learning=LearningGateSpec(enabled=bool(params.get("learning_enabled", True))),
         metadata={"factory_phase_key": "operant_phase_template"},
     )
@@ -291,6 +293,7 @@ def _build_differential_acquisition_template(
                 us_event_type=c.us_event_type,
                 metadata={**c.metadata, "rewards_by_label": rewards_by_label},
             ),
+            spec_version=template.spec.spec_version,
             learning=template.spec.learning,
             metadata=dict(template.spec.metadata),
         )
