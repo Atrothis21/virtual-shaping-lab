@@ -21,7 +21,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r virtual_shaping_lab/requirements.txt
           pip install -r requirements-dev.txt
+      - name: Run V2.11 guard gates
+        run: pytest -q tests/v2_11_guards
+      - name: Run V2.11 contract gates
+        run: pytest -q tests/v2_11_contract
       - name: Run behavioral signature gates
         run: pytest -q tests/behavioral_signatures
-      - name: Run tests
+      - name: Run full test suite
         run: pytest
