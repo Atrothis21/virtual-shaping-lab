@@ -1,0 +1,88 @@
+{
+  "plan": {
+    "top_level_keys": [
+      "status",
+      "plan",
+      "stable_hash",
+      "lifecycle"
+    ],
+    "plan_required_keys": [
+      "settings",
+      "units"
+    ],
+    "lifecycle_keys": [
+      "state",
+      "next_actions"
+    ]
+  },
+  "run": {
+    "top_level_keys": [
+      "status",
+      "run_id",
+      "state",
+      "artifacts",
+      "metadata",
+      "lifecycle"
+    ],
+    "metadata_required_keys": [
+      "plan_hash",
+      "record_schema_version",
+      "template_version_used"
+    ],
+    "lifecycle_keys": [
+      "state",
+      "next_actions"
+    ]
+  },
+  "run_status": {
+    "top_level_keys": [
+      "status",
+      "run_id",
+      "state",
+      "artifacts",
+      "metadata",
+      "error",
+      "lifecycle"
+    ],
+    "metadata_required_keys": [
+      "plan_hash",
+      "record_schema_version",
+      "template_version_used"
+    ],
+    "lifecycle_keys": [
+      "state",
+      "next_actions"
+    ]
+  },
+  "report": {
+    "top_level_keys": [
+      "status",
+      "run_id",
+      "artifacts",
+      "metadata",
+      "lifecycle"
+    ],
+    "metadata_required_keys": [
+      "source_run_id",
+      "regenerated",
+      "regeneration_mode"
+    ],
+    "lifecycle_keys": [
+      "state",
+      "next_actions"
+    ]
+  },
+  "extensions": {
+    "top_level_keys": [
+      "status",
+      "extensions"
+    ],
+    "extensions_keys": [
+      "protocols",
+      "learners",
+      "policies",
+      "representations",
+      "report_templates"
+    ]
+  }
+}
