@@ -10,10 +10,13 @@ ROOT = Path(__file__).resolve().parents[2] / "virtual_shaping_lab"
 # - factory internals are consumed by composition/adaptor seams only.
 ALLOWED_IMPORTER_PATHS = {
     "experiment/assemble.py",
-    "experiment/phases/catalog_runtime.py",
-    "experiment/phases/public.py",
     "api/extensions.py",
     "tools/audit_registries.py",
+}
+
+PHASE_FACTORY_MODULES = {
+    "experiment.factories.phase_factory",
+    "virtual_shaping_lab.experiment.factories.phase_factory",
 }
 
 
@@ -39,10 +42,13 @@ def _import_modules(path: Path) -> set[str]:
 
 def test_factory_boundary_usage_guard():
     violations: list[tuple[str, str]] = []
+    phase_factory_violations: list[tuple[str, str]] = []
     for path in _iter_python_files(ROOT):
         rel = path.relative_to(ROOT).as_posix()
         imports = _import_modules(path)
         for mod in imports:
+            if mod in PHASE_FACTORY_MODULES:
+                phase_factory_violations.append((rel, mod))
             if mod == "experiment.factories" or mod.startswith("experiment.factories."):
                 if rel not in ALLOWED_IMPORTER_PATHS:
                     violations.append((rel, mod))
@@ -50,4 +56,8 @@ def test_factory_boundary_usage_guard():
                 if rel not in ALLOWED_IMPORTER_PATHS:
                     violations.append((rel, mod))
 
+    assert not phase_factory_violations, (
+        "Direct phase_factory imports are forbidden; use experiment.phases.public "
+        f"or experiment.phases.catalog_runtime. Violations: {sorted(phase_factory_violations)}"
+    )
     assert not violations, f"factory_boundary_usage violations: {sorted(violations)}"
