@@ -22,13 +22,25 @@ jobs:
           pip install -r virtual_shaping_lab/requirements.txt
           pip install -r requirements-dev.txt
       - name: Run guard bucket
-        run: pytest -q tests/v2_11_guards
+        run: >
+          pytest -q tests/v2_11_guards
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run contract bucket
-        run: pytest -q tests/v2_11_contract
+        run: >
+          pytest -q tests/v2_11_contract
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run behavioral bucket
-        run: pytest -q tests/behavioral_signatures
+        run: >
+          pytest -q tests/behavioral_signatures
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run selected unit slices bucket
-        run: pytest -q tests/test_run_api_contract.py tests/test_api_contract_snapshots.py tests/test_visualizations.py
+        run: >
+          pytest -q tests/test_run_api_contract.py tests/test_api_contract_snapshots.py tests/test_visualizations.py
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest
