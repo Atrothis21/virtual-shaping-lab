@@ -1,4 +1,5 @@
 import pytest
+import warnings
 
 from analysis.report.catalog import (
     DEFAULT_REPORT_BY_PROTOCOL,
@@ -8,6 +9,7 @@ from analysis.report.catalog import (
 
 
 def test_report_catalog_has_extinction_and_rapid_reacquisition_mapping():
+    assert DEFAULT_REPORT_BY_PROTOCOL["acquisition"] == "verification_report"
     assert DEFAULT_REPORT_BY_PROTOCOL["extinction"] == "verification_report"
     assert DEFAULT_REPORT_BY_PROTOCOL["rapid_reacquisition"] == "verification_report"
     assert DEFAULT_REPORT_BY_PROTOCOL["blocking"] == "verification_report"
@@ -43,3 +45,11 @@ def test_report_catalog_normalizes_protocol_keys():
     assert get_default_report_for_protocol("Operant-Conditioning") == "verification_report"
     template = get_default_template_for_protocol("OPERANT-CONDITIONING")
     assert template.report_name == "verification_report"
+
+
+def test_report_catalog_has_explicit_acquisition_template_mapping_without_warning():
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        template = get_default_template_for_protocol("acquisition")
+    assert template.report_name == "verification_report"
+    assert len(captured) == 0

@@ -8,6 +8,7 @@ from analysis.domain.types import ReportTemplateSpec
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
 
 DEFAULT_REPORT_BY_PROTOCOL: dict[str, str] = {
+    "acquisition": "verification_report",
     "extinction": "verification_report",
     "rapid_reacquisition": "verification_report",
     "blocking": "verification_report",
