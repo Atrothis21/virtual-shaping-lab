@@ -103,7 +103,7 @@ PHASE_CONSTRAINTS = {
 
 # Template-first policy:
 # - Canonical protocol composition should prefer template-backed phase variants.
-# - Phase-mode canonical keys remain class-based for behavioral compatibility.
+# - Canonical phase-mode keys migrate to template-backed variants as parity closes.
 # - Legacy class-based canonical variants are factory-only via explicit *_legacy keys.
 # - Custom phase classes are still allowed only for true control-flow/runtime phases.
 CUSTOM_PHASE_CLASS_ALLOWLIST = {

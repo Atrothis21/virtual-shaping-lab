@@ -169,7 +169,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(diff, PhaseTemplate)
-    assert diff.spec.name == "Differential Acquisition"
+    assert diff.spec.name == "differential_acquisition"
 
     probe = phase_factory.build_phase(
         "probe_template",
@@ -213,7 +213,7 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
     assert isinstance(legacy, AcquisitionPhase)
 
 
-def test_phase_factory_keeps_differential_acquisition_as_class_exception():
+def test_phase_factory_maps_differential_acquisition_to_template_and_preserves_legacy_alias():
     class DummyAgent:
         policy = type("P", (), {"actions": ["left", "right"]})()
 
@@ -226,13 +226,21 @@ def test_phase_factory_keeps_differential_acquisition_as_class_exception():
         def learn(self, transition):
             return None
 
-    phase = phase_factory.build_phase(
+    canonical = phase_factory.build_phase(
         "differential_acquisition",
         agent=DummyAgent(),
         stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
         n_trials=1,
     )
-    assert isinstance(phase, DifferentialAcquisitionPhase)
+    assert isinstance(canonical, PhaseTemplate)
+
+    legacy = phase_factory.build_phase(
+        "differential_acquisition_legacy",
+        agent=DummyAgent(),
+        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+        n_trials=1,
+    )
+    assert isinstance(legacy, DifferentialAcquisitionPhase)
 
 
 def test_policy_factory_unknown_and_build(monkeypatch):

@@ -284,7 +284,7 @@ def _build_differential_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Differential Acquisition"),
+            "phase_name": params.get("phase_name", "differential_acquisition"),
             "outcome": float(params.get("reinforced_outcome", 1.0)),
         },
     )
@@ -340,7 +340,7 @@ PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
     "nonreinforcement": NonReinforcementPhase,
     "compound_acquisition": CompoundAcquisitionPhase,
     "compound_nonreinforcement": CompoundNonReinforcementPhase,
-    "differential_acquisition": DifferentialAcquisitionPhase,
+    "differential_acquisition": _build_differential_acquisition_template,
     "probe": ProbePhase,
     # Legacy compatibility aliases for explicit class-based usage.
     "acquisition_legacy": AcquisitionPhase,
