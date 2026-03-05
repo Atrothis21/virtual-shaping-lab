@@ -12,8 +12,6 @@ from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
 from experiment.domain.types import TrialTimeSpec
 from experiment.phases.templates import PhaseTemplate
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
 
 
 def test_validate_agent_rejects_unknown():
@@ -181,7 +179,7 @@ def test_phase_factory_builds_canonical_template_variants():
     assert probe.spec.name == "probe"
 
 
-def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
+def test_phase_factory_template_first_canonical_keys():
     class DummyAgent:
         policy = type("P", (), {"actions": ["left", "right"]})()
 
@@ -204,14 +202,6 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
     )
     assert isinstance(canonical, PhaseTemplate)
 
-    legacy = phase_factory.build_phase(
-        "acquisition_legacy",
-        agent=agent,
-        stimuli={"cs_plus": ["tone"]},
-        n_trials=1,
-    )
-    assert isinstance(legacy, AcquisitionPhase)
-
     canonical_probe = phase_factory.build_phase(
         "probe",
         agent=agent,
@@ -221,7 +211,7 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
     assert isinstance(canonical_probe, PhaseTemplate)
 
 
-def test_phase_factory_maps_differential_acquisition_to_template_and_preserves_legacy_alias():
+def test_phase_factory_maps_differential_acquisition_to_template():
     class DummyAgent:
         policy = type("P", (), {"actions": ["left", "right"]})()
 
@@ -241,14 +231,6 @@ def test_phase_factory_maps_differential_acquisition_to_template_and_preserves_l
         n_trials=1,
     )
     assert isinstance(canonical, PhaseTemplate)
-
-    legacy = phase_factory.build_phase(
-        "differential_acquisition_legacy",
-        agent=DummyAgent(),
-        stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
-        n_trials=1,
-    )
-    assert isinstance(legacy, DifferentialAcquisitionPhase)
 
 
 def test_policy_factory_unknown_and_build(monkeypatch):

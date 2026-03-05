@@ -11,12 +11,6 @@ Template-first policy:
 from typing import Any, Callable, Dict
 
 from experiment.phases.base import PhaseBase
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
-from experiment.phases.compound_acquisition import CompoundAcquisitionPhase
-from experiment.phases.compound_nonreinforcement import CompoundNonReinforcementPhase
-from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
-from experiment.phases.probe import ProbePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.templates import (
@@ -342,13 +336,6 @@ PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
     "compound_nonreinforcement": _build_compound_nonreinforcement_template,
     "differential_acquisition": _build_differential_acquisition_template,
     "probe": _build_probe_template,
-    # Legacy compatibility aliases for explicit class-based usage.
-    "acquisition_legacy": AcquisitionPhase,
-    "nonreinforcement_legacy": NonReinforcementPhase,
-    "compound_acquisition_legacy": CompoundAcquisitionPhase,
-    "compound_nonreinforcement_legacy": CompoundNonReinforcementPhase,
-    "differential_acquisition_legacy": DifferentialAcquisitionPhase,
-    "probe_legacy": ProbePhase,
     # Custom control-flow phases remain class-based.
     "context_shift": ContextShiftPhase,
     "criterion_shift": CriterionShiftPhase,
