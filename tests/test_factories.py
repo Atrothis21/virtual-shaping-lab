@@ -285,7 +285,7 @@ def test_reward_schedule_factory_branches(monkeypatch):
             self.kwargs = kwargs
 
     monkeypatch.setattr(
-        reward_schedule_factory,
+        reward_schedule_factory.world_reward_schedules,
         "REWARD_SCHEDULE_REGISTRY",
         {
             "fixed_ratio": DummySchedule,

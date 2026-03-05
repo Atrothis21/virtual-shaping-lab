@@ -15,7 +15,8 @@ from protocols.catalog import PROTOCOL_BUILDERS
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
 
 
-PROTOCOL_REGISTRY = dict(PROTOCOL_BUILDERS)
+# Single-owner alias to canonical protocol builder registry.
+PROTOCOL_REGISTRY = PROTOCOL_BUILDERS
 
 
 def validate_protocol(name: str) -> None:
