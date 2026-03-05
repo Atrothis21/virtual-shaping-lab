@@ -175,7 +175,7 @@ def test_parse_policy_errors():
         ExperimentConfig._parse_policy(exp)
 
 
-def test_parse_phases_errors_and_legacy():
+def test_parse_phases_errors():
     exp = {"phases": [{"params": {}}]}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_phases(exp)

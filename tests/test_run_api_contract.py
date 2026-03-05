@@ -10,7 +10,7 @@ from api.contracts import (
     RunCreateResponse,
     RunStatusResponse,
 )
-from analysis.report.report import run_report as real_run_report
+from analysis.public import run_preset_report as real_run_report
 from api import run as api_run
 from api import services as api_services
 from api.services import PlanService
@@ -92,8 +92,8 @@ def test_run_api_forwards_expected_plan_hash_and_rejects_mismatch():
 
 
 def test_run_service_executes_from_resolved_plan(monkeypatch, tmp_path):
-    from experiment import assemble as assemble_mod
     from experiment.domain.types import ExperimentPlan
+    from experiment.public import assemble_from_plan
 
     payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
     calls = {"saw_plan": False}
@@ -101,7 +101,7 @@ def test_run_service_executes_from_resolved_plan(monkeypatch, tmp_path):
     def _assemble_assert_plan(config):
         assert isinstance(config, ExperimentPlan)
         calls["saw_plan"] = True
-        return assemble_mod.assemble_experiment(config)
+        return assemble_from_plan(config)
 
     def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
         return real_run_report(

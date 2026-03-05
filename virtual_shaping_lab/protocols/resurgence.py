@@ -1,8 +1,8 @@
 from typing import Any, Dict, List
 
 from protocols.base import BaseProtocol
-from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
+from experiment.world.schedules import build_reward_schedule
 
 
 class ResurgenceProtocol(BaseProtocol):

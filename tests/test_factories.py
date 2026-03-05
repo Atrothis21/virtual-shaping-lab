@@ -12,8 +12,6 @@ from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
 from experiment.domain.types import TrialTimeSpec
 from experiment.phases.templates import PhaseTemplate
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
 
 
 def test_validate_agent_rejects_unknown():
@@ -151,7 +149,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(acq, PhaseTemplate)
-    assert acq.spec.name == "Acquisition"
+    assert acq.spec.name == "acquisition"
 
     ext = phase_factory.build_phase(
         "nonreinforcement_template",
@@ -160,7 +158,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(ext, PhaseTemplate)
-    assert ext.spec.name == "Nonreinforcement"
+    assert ext.spec.name == "nonreinforcement"
 
     diff = phase_factory.build_phase(
         "differential_acquisition_template",
@@ -169,7 +167,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(diff, PhaseTemplate)
-    assert diff.spec.name == "Differential Acquisition"
+    assert diff.spec.name == "differential_acquisition"
 
     probe = phase_factory.build_phase(
         "probe_template",
@@ -178,10 +176,10 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=1,
     )
     assert isinstance(probe, PhaseTemplate)
-    assert probe.spec.name == "Probe"
+    assert probe.spec.name == "probe"
 
 
-def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
+def test_phase_factory_template_first_canonical_keys():
     class DummyAgent:
         policy = type("P", (), {"actions": ["left", "right"]})()
 
@@ -202,18 +200,18 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
         stimuli={"cs_plus": ["tone"]},
         n_trials=1,
     )
-    assert isinstance(canonical, AcquisitionPhase)
+    assert isinstance(canonical, PhaseTemplate)
 
-    legacy = phase_factory.build_phase(
-        "acquisition_legacy",
+    canonical_probe = phase_factory.build_phase(
+        "probe",
         agent=agent,
         stimuli={"cs_plus": ["tone"]},
         n_trials=1,
     )
-    assert isinstance(legacy, AcquisitionPhase)
+    assert isinstance(canonical_probe, PhaseTemplate)
 
 
-def test_phase_factory_keeps_differential_acquisition_as_class_exception():
+def test_phase_factory_maps_differential_acquisition_to_template():
     class DummyAgent:
         policy = type("P", (), {"actions": ["left", "right"]})()
 
@@ -226,13 +224,35 @@ def test_phase_factory_keeps_differential_acquisition_as_class_exception():
         def learn(self, transition):
             return None
 
-    phase = phase_factory.build_phase(
+    canonical = phase_factory.build_phase(
         "differential_acquisition",
         agent=DummyAgent(),
         stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
         n_trials=1,
     )
-    assert isinstance(phase, DifferentialAcquisitionPhase)
+    assert isinstance(canonical, PhaseTemplate)
+
+
+def test_phase_factory_rejects_removed_legacy_alias_keys():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    with pytest.raises(KeyError):
+        phase_factory.build_phase(
+            "acquisition_legacy",
+            agent=DummyAgent(),
+            stimuli={"cs_plus": ["tone"]},
+            n_trials=1,
+        )
 
 
 def test_policy_factory_unknown_and_build(monkeypatch):
@@ -287,7 +307,7 @@ def test_reward_schedule_factory_branches(monkeypatch):
             self.kwargs = kwargs
 
     monkeypatch.setattr(
-        reward_schedule_factory,
+        reward_schedule_factory.world_reward_schedules,
         "REWARD_SCHEDULE_REGISTRY",
         {
             "fixed_ratio": DummySchedule,

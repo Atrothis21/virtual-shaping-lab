@@ -11,12 +11,6 @@ Template-first policy:
 from typing import Any, Callable, Dict
 
 from experiment.phases.base import PhaseBase
-from experiment.phases.acquisition import AcquisitionPhase
-from experiment.phases.nonreinforcement import NonReinforcementPhase
-from experiment.phases.compound_acquisition import CompoundAcquisitionPhase
-from experiment.phases.compound_nonreinforcement import CompoundNonReinforcementPhase
-from experiment.phases.differential_acquisition import DifferentialAcquisitionPhase
-from experiment.phases.probe import ProbePhase
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.templates import (
@@ -193,7 +187,7 @@ def _build_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Acquisition"),
+            "phase_name": params.get("phase_name", "acquisition"),
             "outcome": float(params.get("outcome", 1.0)),
         },
     )
@@ -213,7 +207,7 @@ def _build_nonreinforcement_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Nonreinforcement"),
+            "phase_name": params.get("phase_name", "nonreinforcement"),
             "outcome": 0.0,
         },
     )
@@ -235,7 +229,7 @@ def _build_compound_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Compound Acquisition"),
+            "phase_name": params.get("phase_name", "compound_acquisition"),
             "outcome": float(params.get("outcome", 1.0)),
         },
     )
@@ -257,7 +251,7 @@ def _build_compound_nonreinforcement_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Compound Nonreinforcement"),
+            "phase_name": params.get("phase_name", "compound_nonreinforcement"),
             "outcome": 0.0,
         },
     )
@@ -284,7 +278,7 @@ def _build_differential_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Differential Acquisition"),
+            "phase_name": params.get("phase_name", "differential_acquisition"),
             "outcome": float(params.get("reinforced_outcome", 1.0)),
         },
     )
@@ -324,7 +318,7 @@ def _build_probe_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Probe"),
+            "phase_name": params.get("phase_name", "probe"),
             "outcome": reward_value,
             "learning_enabled": False,
         },
@@ -335,20 +329,13 @@ def _build_probe_template(
 
 
 PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
-    # Canonical phase-mode compatibility defaults.
-    "acquisition": AcquisitionPhase,
-    "nonreinforcement": NonReinforcementPhase,
-    "compound_acquisition": CompoundAcquisitionPhase,
-    "compound_nonreinforcement": CompoundNonReinforcementPhase,
-    "differential_acquisition": DifferentialAcquisitionPhase,
-    "probe": ProbePhase,
-    # Legacy compatibility aliases for explicit class-based usage.
-    "acquisition_legacy": AcquisitionPhase,
-    "nonreinforcement_legacy": NonReinforcementPhase,
-    "compound_acquisition_legacy": CompoundAcquisitionPhase,
-    "compound_nonreinforcement_legacy": CompoundNonReinforcementPhase,
-    "differential_acquisition_legacy": DifferentialAcquisitionPhase,
-    "probe_legacy": ProbePhase,
+    # Canonical classical keys resolve to template-backed builders.
+    "acquisition": _build_acquisition_template,
+    "nonreinforcement": _build_nonreinforcement_template,
+    "compound_acquisition": _build_compound_acquisition_template,
+    "compound_nonreinforcement": _build_compound_nonreinforcement_template,
+    "differential_acquisition": _build_differential_acquisition_template,
+    "probe": _build_probe_template,
     # Custom control-flow phases remain class-based.
     "context_shift": ContextShiftPhase,
     "criterion_shift": CriterionShiftPhase,

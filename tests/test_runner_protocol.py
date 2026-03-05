@@ -284,17 +284,6 @@ def test_runner_rejects_legacy_phase_without_iter_steps():
         assert "iter_steps(context)" in str(exc)
 
 
-def test_runner_rejects_legacy_phase_even_without_env_flags():
-    agent = DummyAgent()
-    phase = LegacyOnlyPhase(agent, n_trials=1)
-    runner = Runner(phase)
-    try:
-        runner.run()
-        assert False, "Expected runner to reject legacy phase units without iter_steps(context)"
-    except TypeError as exc:
-        assert "iter_steps(context)" in str(exc)
-
-
 def test_runner_hooks_emit_unit_and_trial_lifecycle_events():
     hooks = CapturingHooks()
     records = Runner(DummyRunnableUnit(), hooks=hooks).run()
