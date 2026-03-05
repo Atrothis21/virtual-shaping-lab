@@ -7,10 +7,10 @@ from typing import Any
 from experiment.factories.learner_factory import build_learner
 from experiment.factories.agent_factory import build_agent
 from experiment.factories.protocol_factory import build_protocol, PROTOCOL_REGISTRY
-from experiment.factories.phase_factory import build_phase
 from experiment.factories.representation_factory import build_representation
 from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.factories.policy_factory import build_policy
+from experiment.phases.public import build_phase
 from experiment.config import PhaseConfig
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import validate_composed_parameter_ownership

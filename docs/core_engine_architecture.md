@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.11)
+# Core Engine Architecture (V2.12)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.11), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.12), including runtime control flow, object boundaries, extension points, and known gaps.
 
 ---
 
@@ -80,6 +80,8 @@ Design intent:
 Primary files:
 - `virtual_shaping_lab/experiment/assemble.py`
 - `virtual_shaping_lab/experiment/factories/*`
+- `virtual_shaping_lab/experiment/phases/catalog_runtime.py`
+- `virtual_shaping_lab/experiment/phases/public.py`
 - `virtual_shaping_lab/protocols/catalog.py`
 
 Responsibilities:
@@ -91,6 +93,7 @@ Responsibilities:
 Extension points:
 - learner/policy/representation/phase/protocol registries
 - protocol builder catalog (`PROTOCOL_BUILDERS`)
+- phase runtime catalog (`PHASE_BUILDERS` in `experiment.phases.catalog_runtime`)
 
 Design intent:
 - keep object creation out of runtime execution
@@ -158,13 +161,17 @@ Design intent:
 - phase handles local trial mechanics
 - no learning math in protocol classes
 
-V2.11 policy:
+V2.12 policy:
 - canonical classical phase keys are template-backed only
 - no `*_legacy` phase aliases remain in runtime phase construction
 - class-based custom/control-flow exceptions remain:
   - `context_shift`
   - `criterion_shift`
-- protocol/phase runtime code is factory-quarantined (imports through public seams)
+- authoritative runtime phase construction lives in:
+  - `experiment.phases.catalog_runtime`
+- protocol/runtime code imports phase construction through:
+  - `experiment.phases.public`
+- `experiment.factories.phase_factory` is compatibility-only shim (deprecation path)
 
 ---
 
@@ -257,7 +264,7 @@ Supported extension seams:
   - register in `protocols/catalog.py`
 - Add phase:
   - implement `PhaseBase` hooks
-  - register in phase factory
+  - register in `experiment.phases.catalog_runtime`
 - Add learner/policy/representation:
   - implement respective interface
   - register in factory
@@ -321,6 +328,13 @@ Impact:
 
 Recommendation:
 - promote composed parameter object envelope to a dedicated plan field for stronger typing end-to-end.
+
+### Gap 7: Deprecated phase-factory shim remains for compatibility
+Impact:
+- `experiment.factories.phase_factory` still exists to preserve backwards compatibility for legacy import paths.
+
+Recommendation:
+- remove the shim in the next hard-cut cycle after import migration window closes.
 
 ---
 
