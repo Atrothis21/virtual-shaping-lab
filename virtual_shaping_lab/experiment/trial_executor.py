@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from typing import Any
+from collections.abc import Mapping
 
 from virtual_shaping_lab.domain.types import Observation, Transition
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
@@ -42,6 +43,64 @@ class TrialExecutor:
             tick += 1
             t_s = t_next_s
 
+    @staticmethod
+    def _safe_value(agent: Any, state: Any, action: Any) -> float | None:
+        if agent is None or not hasattr(agent, "value"):
+            return None
+        try:
+            value = agent.value(state, action=action)
+        except TypeError:
+            try:
+                value = agent.value(state, action)
+            except TypeError:
+                value = agent.value(state)
+        except Exception:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _mapping_to_float_dict(value: Any) -> dict[str, float] | None:
+        if not isinstance(value, Mapping):
+            return None
+        out: dict[str, float] = {}
+        for key, item in value.items():
+            try:
+                out[str(key)] = float(item)
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def _build_debug_payload(
+        self,
+        *,
+        agent: Any,
+        state: Any,
+        action: Any,
+        reward: float,
+        active_stimuli: list[Any],
+    ) -> dict[str, Any]:
+        value = self._safe_value(agent, state, action)
+        prediction_error = (reward - value) if value is not None else None
+
+        learner = getattr(agent, "learner", None) if agent is not None else None
+        attention_effective = self._mapping_to_float_dict(getattr(learner, "attention_map", None))
+        if attention_effective is None:
+            attention_effective = self._mapping_to_float_dict(getattr(learner, "attention", None))
+
+        representation = getattr(agent, "representation", None) if agent is not None else None
+        salience_effective = self._mapping_to_float_dict(getattr(representation, "salience", None))
+
+        return {
+            "value": value,
+            "prediction_error": prediction_error,
+            "active_features": [str(s) for s in active_stimuli],
+            "attention_effective": attention_effective if attention_effective is not None else {},
+            "salience_effective": salience_effective if salience_effective is not None else {},
+        }
+
     def execute(
         self,
         *,
@@ -63,6 +122,7 @@ class TrialExecutor:
             schedule_runtime.reset(ctx.rng)
         if hooks is not None and hasattr(hooks, "on_trial_start"):
             hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
+        last_debug_payload: dict[str, Any] | None = None
 
         for tick, t_s, dt_tick, t_next_s in self._iter_tick_times(
             spec.duration_s, spec.dt_s, spec.allow_partial_last_step
@@ -120,6 +180,14 @@ class TrialExecutor:
                 runtime_event_type = getattr(runtime_out, "event_type", None)
                 runtime_meta = dict(getattr(runtime_out, "metadata", {}) or {})
             reward = event_reward + runtime_reward
+            if self.debug:
+                last_debug_payload = self._build_debug_payload(
+                    agent=agent,
+                    state=state,
+                    action=action,
+                    reward=reward,
+                    active_stimuli=active_stimuli,
+                )
 
             if (
                 self.update_mode == "tick"
@@ -150,20 +218,21 @@ class TrialExecutor:
             }
 
             if self.record_mode == "tick":
-                trial_records.append(
-                    {
-                        "phase": base_record.get("phase", "runnable_unit"),
-                        "trial": base_record.get("trial", trial_id),
-                        "tick": tick,
-                        "t_s": t_s,
-                        "dt_s": dt_tick,
-                        "stimuli": active_stimuli,
-                        "action": action,
-                        "reward": reward,
-                        "context": observation.context,
-                        "metadata": tick_meta,
-                    }
-                )
+                tick_record = {
+                    "phase": base_record.get("phase", "runnable_unit"),
+                    "trial": base_record.get("trial", trial_id),
+                    "tick": tick,
+                    "t_s": t_s,
+                    "dt_s": dt_tick,
+                    "stimuli": active_stimuli,
+                    "action": action,
+                    "reward": reward,
+                    "context": observation.context,
+                    "metadata": tick_meta,
+                }
+                if self.debug and last_debug_payload is not None:
+                    tick_record["debug"] = dict(last_debug_payload)
+                trial_records.append(tick_record)
 
             if hooks is not None and hasattr(hooks, "on_tick"):
                 hooks.on_tick(
@@ -179,6 +248,8 @@ class TrialExecutor:
 
         ctx.clock_s += spec.duration_s + spec.iti_s
 
+        if self.record_mode != "tick" and self.debug and last_debug_payload is not None:
+            base_record["debug"] = dict(last_debug_payload)
         emitted = trial_records if self.record_mode == "tick" else [base_record]
 
         if hooks is not None and hasattr(hooks, "on_trial_end"):

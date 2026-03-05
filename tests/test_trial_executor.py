@@ -131,4 +131,5 @@ def test_trial_executor_accepts_debug_flag_without_behavior_change():
     )
 
     assert len(records) == 2
-    assert all("debug" not in rec for rec in records)
+    assert all("debug" in rec for rec in records)
+    assert all(isinstance(rec["debug"].get("active_features"), list) for rec in records)
