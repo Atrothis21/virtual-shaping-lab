@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2] / "virtual_shaping_lab"
 # - factory internals are consumed by composition/adaptor seams only.
 ALLOWED_IMPORTER_PATHS = {
     "experiment/assemble.py",
+    "experiment/phases/catalog_runtime.py",
     "experiment/phases/public.py",
     "api/extensions.py",
     "tools/audit_registries.py",

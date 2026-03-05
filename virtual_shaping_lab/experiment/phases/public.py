@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from experiment.factories.phase_factory import build_phase as _build_phase
+from experiment.phases.catalog_runtime import build_phase as _build_phase
 
 
 def build_phase(name: str, *, agent: Any, stimuli: Any = None, **phase_params):
