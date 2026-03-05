@@ -151,7 +151,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(acq, PhaseTemplate)
-    assert acq.spec.name == "Acquisition"
+    assert acq.spec.name == "acquisition"
 
     ext = phase_factory.build_phase(
         "nonreinforcement_template",
@@ -160,7 +160,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=2,
     )
     assert isinstance(ext, PhaseTemplate)
-    assert ext.spec.name == "Nonreinforcement"
+    assert ext.spec.name == "nonreinforcement"
 
     diff = phase_factory.build_phase(
         "differential_acquisition_template",
@@ -178,7 +178,7 @@ def test_phase_factory_builds_canonical_template_variants():
         n_trials=1,
     )
     assert isinstance(probe, PhaseTemplate)
-    assert probe.spec.name == "Probe"
+    assert probe.spec.name == "probe"
 
 
 def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
@@ -202,7 +202,7 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
         stimuli={"cs_plus": ["tone"]},
         n_trials=1,
     )
-    assert isinstance(canonical, AcquisitionPhase)
+    assert isinstance(canonical, PhaseTemplate)
 
     legacy = phase_factory.build_phase(
         "acquisition_legacy",
@@ -211,6 +211,14 @@ def test_phase_factory_template_first_canonical_keys_and_legacy_aliases():
         n_trials=1,
     )
     assert isinstance(legacy, AcquisitionPhase)
+
+    canonical_probe = phase_factory.build_phase(
+        "probe",
+        agent=agent,
+        stimuli={"cs_plus": ["tone"]},
+        n_trials=1,
+    )
+    assert isinstance(canonical_probe, PhaseTemplate)
 
 
 def test_phase_factory_maps_differential_acquisition_to_template_and_preserves_legacy_alias():

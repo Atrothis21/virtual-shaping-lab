@@ -193,7 +193,7 @@ def _build_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Acquisition"),
+            "phase_name": params.get("phase_name", "acquisition"),
             "outcome": float(params.get("outcome", 1.0)),
         },
     )
@@ -213,7 +213,7 @@ def _build_nonreinforcement_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Nonreinforcement"),
+            "phase_name": params.get("phase_name", "nonreinforcement"),
             "outcome": 0.0,
         },
     )
@@ -235,7 +235,7 @@ def _build_compound_acquisition_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Compound Acquisition"),
+            "phase_name": params.get("phase_name", "compound_acquisition"),
             "outcome": float(params.get("outcome", 1.0)),
         },
     )
@@ -257,7 +257,7 @@ def _build_compound_nonreinforcement_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Compound Nonreinforcement"),
+            "phase_name": params.get("phase_name", "compound_nonreinforcement"),
             "outcome": 0.0,
         },
     )
@@ -324,7 +324,7 @@ def _build_probe_template(
         n_trials=n_trials,
         params={
             **params,
-            "phase_name": params.get("phase_name", "Probe"),
+            "phase_name": params.get("phase_name", "probe"),
             "outcome": reward_value,
             "learning_enabled": False,
         },
@@ -335,13 +335,13 @@ def _build_probe_template(
 
 
 PHASE_REGISTRY: Dict[str, Callable[..., Any]] = {
-    # Canonical phase-mode compatibility defaults.
-    "acquisition": AcquisitionPhase,
-    "nonreinforcement": NonReinforcementPhase,
-    "compound_acquisition": CompoundAcquisitionPhase,
-    "compound_nonreinforcement": CompoundNonReinforcementPhase,
+    # Canonical classical keys resolve to template-backed builders.
+    "acquisition": _build_acquisition_template,
+    "nonreinforcement": _build_nonreinforcement_template,
+    "compound_acquisition": _build_compound_acquisition_template,
+    "compound_nonreinforcement": _build_compound_nonreinforcement_template,
     "differential_acquisition": _build_differential_acquisition_template,
-    "probe": ProbePhase,
+    "probe": _build_probe_template,
     # Legacy compatibility aliases for explicit class-based usage.
     "acquisition_legacy": AcquisitionPhase,
     "nonreinforcement_legacy": NonReinforcementPhase,
