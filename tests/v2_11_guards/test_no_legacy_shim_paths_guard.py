@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import importlib
 from pathlib import Path
 
@@ -39,6 +40,17 @@ def test_source_tree_contains_no_legacy_shim_import_paths():
         for path in src_root.rglob("*.py"):
             if path.name == "test_no_legacy_shim_paths_guard.py":
                 continue
-            text = path.read_text(encoding="utf-8")
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            imported: set[str] = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        imported.add(alias.name)
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        imported.add(node.module)
             for needle in forbidden:
-                assert needle not in text, f"Found forbidden import path '{needle}' in {path}"
+                for mod in imported:
+                    assert not (mod == needle or mod.startswith(f"{needle}")), (
+                        f"Found forbidden import path '{needle}' in {path} via module '{mod}'"
+                    )
