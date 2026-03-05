@@ -233,6 +233,28 @@ def test_phase_factory_maps_differential_acquisition_to_template():
     assert isinstance(canonical, PhaseTemplate)
 
 
+def test_phase_factory_rejects_removed_legacy_alias_keys():
+    class DummyAgent:
+        policy = type("P", (), {"actions": ["left", "right"]})()
+
+        def observe(self, obs):
+            return obs
+
+        def act(self, state, actions=None, rng=None):
+            return actions[0] if actions else None
+
+        def learn(self, transition):
+            return None
+
+    with pytest.raises(KeyError):
+        phase_factory.build_phase(
+            "acquisition_legacy",
+            agent=DummyAgent(),
+            stimuli={"cs_plus": ["tone"]},
+            n_trials=1,
+        )
+
+
 def test_policy_factory_unknown_and_build(monkeypatch):
     monkeypatch.setattr(policy_factory, "POLICY_REGISTRY", {"dummy": lambda **params: params})
     with pytest.raises(KeyError):
