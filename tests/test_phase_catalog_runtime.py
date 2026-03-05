@@ -69,3 +69,13 @@ def test_phase_catalog_has_ui_metadata_for_all_keys():
     assert meta.description
     assert isinstance(meta.params_schema, dict)
     assert isinstance(meta.defaults, dict)
+    assert meta.defaults.get("outcome") == 1.0
+    assert "pavlovian_only" in meta.constraints
+    assert meta.examples
+
+
+def test_phase_catalog_operant_metadata_declares_operant_constraints():
+    operant_meta = get_phase_metadata("operant_phase_template")
+    assert "operant_only" in operant_meta.constraints
+    assert operant_meta.defaults.get("schedule_builder_strategy") == "operant"
+    assert "available_actions" in operant_meta.params_schema
