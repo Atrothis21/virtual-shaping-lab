@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 from protocols.base import BaseProtocol
 from experiment.phases.operant_acquisition import OperantAcquisitionPhase
-from experiment.factories.reward_schedule_factory import build_reward_schedule
+from experiment.world.schedules import build_reward_schedule
 
 
 CONSEQUENCE_DEFAULT_REWARD = {

@@ -1,5 +1,5 @@
 from protocols.base import BaseProtocol
-from experiment.factories.phase_factory import build_phase
+from experiment.phases.public import build_phase
 
 
 class AABRenewalProtocol(BaseProtocol):

@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 import ast
-import os
 from pathlib import Path
-
-import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2] / "virtual_shaping_lab"
-STRICT = os.getenv("V2_11_GUARDS_STRICT", "0") == "1"
 
 # Intended target state:
 # - factory internals are consumed by composition/adaptor seams only.
 ALLOWED_IMPORTER_PATHS = {
     "experiment/assemble.py",
+    "experiment/phases/public.py",
     "api/extensions.py",
     "tools/audit_registries.py",
 }
@@ -39,14 +36,6 @@ def _import_modules(path: Path) -> set[str]:
     return out
 
 
-def _assert_or_soft_xfail(*, violations: list[tuple[str, str]], guard_name: str):
-    if violations and not STRICT:
-        pytest.xfail(
-            f"[soft-guard:{guard_name}] violations found (non-blocking until strict mode): {violations}"
-        )
-    assert not violations, f"{guard_name} violations: {violations}"
-
-
 def test_factory_boundary_usage_guard():
     violations: list[tuple[str, str]] = []
     for path in _iter_python_files(ROOT):
@@ -60,7 +49,4 @@ def test_factory_boundary_usage_guard():
                 if rel not in ALLOWED_IMPORTER_PATHS:
                     violations.append((rel, mod))
 
-    _assert_or_soft_xfail(
-        violations=sorted(violations),
-        guard_name="factory_boundary_usage",
-    )
+    assert not violations, f"factory_boundary_usage violations: {sorted(violations)}"

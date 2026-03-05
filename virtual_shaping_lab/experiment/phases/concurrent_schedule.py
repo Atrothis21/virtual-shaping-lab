@@ -6,7 +6,7 @@ import numpy as np
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
-from experiment.factories.reward_schedule_factory import build_reward_schedule
+from experiment.world.schedules import build_reward_schedule
 from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
