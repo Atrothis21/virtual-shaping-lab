@@ -18,8 +18,10 @@ from experiment.domain.types import (
 from experiment.phases.context_shift import ContextShiftPhase
 from experiment.phases.criterion_shift import CriterionShiftPhase
 from experiment.phases.templates import (
+    AlwaysLearn,
     BlockedSampler,
     DefaultRecordBuilder,
+    FixedSequenceSampler,
     NeverLearn,
     OperantScheduleBuilder,
     PavlovianScheduleBuilder,
@@ -35,6 +37,16 @@ _FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS = {
     "similarity",
 }
 
+_TRIAL_SAMPLER_KEY = "trial_sampler_strategy"
+_SCHEDULE_BUILDER_KEY = "schedule_builder_strategy"
+_LEARNING_GATE_KEY = "learning_gate_strategy"
+_RECORD_BUILDER_KEY = "record_builder_strategy"
+
+_ALLOWED_TRIAL_SAMPLER_STRATEGIES = {"weighted_random", "blocked", "fixed_sequence"}
+_ALLOWED_SCHEDULE_BUILDER_STRATEGIES = {"pavlovian", "operant"}
+_ALLOWED_LEARNING_GATE_STRATEGIES = {"spec", "always", "never"}
+_ALLOWED_RECORD_BUILDER_STRATEGIES = {"default"}
+
 
 def _validate_template_behavior_params(params: dict[str, Any]) -> None:
     leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_BEHAVIOR_KEYS if k in params)
@@ -43,6 +55,51 @@ def _validate_template_behavior_params(params: dict[str, Any]) -> None:
             "Template phase params must not include representation/learner-owned keys: "
             + ", ".join(leaked)
         )
+
+
+def _resolve_trial_sampler(params: dict[str, Any]):
+    strategy = str(params.get(_TRIAL_SAMPLER_KEY, "weighted_random"))
+    if strategy not in _ALLOWED_TRIAL_SAMPLER_STRATEGIES:
+        allowed = ", ".join(sorted(_ALLOWED_TRIAL_SAMPLER_STRATEGIES))
+        raise ValueError(f"Unknown {_TRIAL_SAMPLER_KEY}='{strategy}'. Allowed: {allowed}")
+    if strategy == "weighted_random":
+        return WeightedRandomSampler()
+    if strategy == "blocked":
+        return BlockedSampler()
+    sequence = params.get("trial_sampler_sequence", [])
+    if not isinstance(sequence, list):
+        raise ValueError("trial_sampler_sequence must be a list when using fixed_sequence sampler.")
+    return FixedSequenceSampler([str(v) for v in sequence])
+
+
+def _resolve_schedule_builder(params: dict[str, Any], *, default: str):
+    strategy = str(params.get(_SCHEDULE_BUILDER_KEY, default))
+    if strategy not in _ALLOWED_SCHEDULE_BUILDER_STRATEGIES:
+        allowed = ", ".join(sorted(_ALLOWED_SCHEDULE_BUILDER_STRATEGIES))
+        raise ValueError(f"Unknown {_SCHEDULE_BUILDER_KEY}='{strategy}'. Allowed: {allowed}")
+    if strategy == "pavlovian":
+        return PavlovianScheduleBuilder()
+    return OperantScheduleBuilder()
+
+
+def _resolve_learning_gate(params: dict[str, Any]):
+    strategy = str(params.get(_LEARNING_GATE_KEY, "spec"))
+    if strategy not in _ALLOWED_LEARNING_GATE_STRATEGIES:
+        allowed = ", ".join(sorted(_ALLOWED_LEARNING_GATE_STRATEGIES))
+        raise ValueError(f"Unknown {_LEARNING_GATE_KEY}='{strategy}'. Allowed: {allowed}")
+    if strategy == "spec":
+        return SpecLearningGate()
+    if strategy == "always":
+        return AlwaysLearn()
+    return NeverLearn()
+
+
+def _resolve_record_builder(params: dict[str, Any]):
+    strategy = str(params.get(_RECORD_BUILDER_KEY, "default"))
+    if strategy not in _ALLOWED_RECORD_BUILDER_STRATEGIES:
+        allowed = ", ".join(sorted(_ALLOWED_RECORD_BUILDER_STRATEGIES))
+        raise ValueError(f"Unknown {_RECORD_BUILDER_KEY}='{strategy}'. Allowed: {allowed}")
+    return DefaultRecordBuilder()
 
 
 def _coerce_trial_types(stimuli: Any) -> list[TrialTypeSpec]:
@@ -122,10 +179,10 @@ def _build_pavlovian_phase_template(
     return PhaseTemplate(
         agent=agent,
         spec=spec,
-        trial_sampler=WeightedRandomSampler(),
-        trial_schedule_builder=PavlovianScheduleBuilder(),
-        learning_gate=SpecLearningGate(),
-        record_builder=DefaultRecordBuilder(),
+        trial_sampler=_resolve_trial_sampler(params),
+        trial_schedule_builder=_resolve_schedule_builder(params, default="pavlovian"),
+        learning_gate=_resolve_learning_gate(params),
+        record_builder=_resolve_record_builder(params),
     )
 
 
@@ -164,10 +221,10 @@ def _build_operant_phase_template(
     return PhaseTemplate(
         agent=agent,
         spec=spec,
-        trial_sampler=WeightedRandomSampler(),
-        trial_schedule_builder=OperantScheduleBuilder(),
-        learning_gate=SpecLearningGate(),
-        record_builder=DefaultRecordBuilder(),
+        trial_sampler=_resolve_trial_sampler(params),
+        trial_schedule_builder=_resolve_schedule_builder(params, default="operant"),
+        learning_gate=_resolve_learning_gate(params),
+        record_builder=_resolve_record_builder(params),
     )
 
 
