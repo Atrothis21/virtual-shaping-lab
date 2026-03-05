@@ -37,12 +37,8 @@ def test_source_tree_contains_no_legacy_shim_import_paths():
 
     for src_root in source_roots:
         for path in src_root.rglob("*.py"):
-            if path.name in {
-                "test_experiment_hardcut_guards.py",
-                "test_no_legacy_shim_paths_guard.py",
-            }:
+            if path.name == "test_no_legacy_shim_paths_guard.py":
                 continue
             text = path.read_text(encoding="utf-8")
             for needle in forbidden:
                 assert needle not in text, f"Found forbidden import path '{needle}' in {path}"
-
