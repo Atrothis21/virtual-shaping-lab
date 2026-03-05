@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.9)
+# Core Engine Architecture (V2.11)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.9), including runtime control flow, object boundaries, extension points, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.11), including runtime control flow, object boundaries, extension points, and known gaps.
 
 ---
 
@@ -158,14 +158,13 @@ Design intent:
 - phase handles local trial mechanics
 - no learning math in protocol classes
 
-V2.9 policy:
-- canonical classical phase authoring is template-first in factory defaults
-- explicit class-based legacy aliases are available via `*_legacy` phase keys
-- approved class-based custom/control-flow exceptions remain:
+V2.11 policy:
+- canonical classical phase keys are template-backed only
+- no `*_legacy` phase aliases remain in runtime phase construction
+- class-based custom/control-flow exceptions remain:
   - `context_shift`
   - `criterion_shift`
-- temporary parity exception remains class-based:
-  - `differential_acquisition`
+- protocol/phase runtime code is factory-quarantined (imports through public seams)
 
 ---
 
@@ -332,4 +331,4 @@ Recommendation:
 3. Promote composed parameter envelope to first-class typed plan field
 4. Strict analysis-template mode for CI
 5. Record schema migration framework (`v1 -> v2`)
-6. Remove temporary `differential_acquisition` class exception after template parity
+6. Continue reducing factory exposure by moving registry introspection to facade-level APIs
