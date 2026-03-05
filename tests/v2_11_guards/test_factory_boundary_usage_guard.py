@@ -37,6 +37,12 @@ def _import_modules(path: Path) -> set[str]:
         elif isinstance(node, ast.ImportFrom):
             if node.module:
                 out.add(node.module)
+                if node.module in {"experiment.factories", "virtual_shaping_lab.experiment.factories"}:
+                    for alias in node.names:
+                        # Treat "from ...factories import phase_factory" as direct phase_factory usage.
+                        imported_name = alias.name
+                        if imported_name == "phase_factory":
+                            out.add(f"{node.module}.phase_factory")
     return out
 
 
