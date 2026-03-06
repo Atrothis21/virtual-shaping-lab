@@ -169,6 +169,18 @@ Deliverables:
 Done definition:
 - Debug UX is predictable and bounded for browser usage.
 
+Debug telemetry UX policy (frozen):
+- Default visibility:
+  - debug panels are `off` by default in standard run view.
+  - users may enable debug via an explicit advanced toggle.
+- Trial vs tick display policy:
+  - default debug display is trial-level summaries.
+  - tick-level debug is advanced-only and only shown when runtime/debug mode supports it.
+- Large-run behavior:
+  - UI renders bounded debug subsets only (respecting backend decimation/cap outputs).
+  - when debug payload is large, UI shows sampled/limited views with explicit "truncated/sampled" notice.
+  - no attempt to render unbounded tick debug tables by default.
+
 ### Slice 3.2 - Decide version mismatch behavior
 Deliverables:
 - Define action matrix for mismatches:
@@ -179,6 +191,26 @@ Deliverables:
 
 Done definition:
 - Version drift handling is deterministic and testable.
+
+Version mismatch behavior matrix (frozen):
+- `catalog_version` mismatch:
+  - Behavior: `warn + soft refresh`.
+  - UI action: show non-blocking banner, invalidate catalog cache, refetch catalogs.
+  - Escalation: block only if refetch fails and required catalog data is unavailable.
+- `record_schema_version` mismatch:
+  - Behavior: `block render` for incompatible run detail/report views.
+  - UI action: show explicit incompatibility error with expected vs received schema version.
+  - Allowed fallback: high-level run status may still render if schema-independent.
+- `template_version_used` mismatch:
+  - Behavior: `degrade gracefully` with warning.
+  - UI action: allow report artifact access and basic metadata display, disable unsupported interactive template-dependent widgets.
+
+User messaging requirements:
+- Always include:
+  - field name (`catalog_version`, `record_schema_version`, `template_version_used`)
+  - expected value/range (if known)
+  - received value
+  - next action (refresh, rerun, update client, or open static artifact)
 
 ---
 
