@@ -13,6 +13,7 @@ from experiment.phases.catalog_runtime import (
     get_phase_metadata,
     validate_phase_key,
 )
+from virtual_shaping_lab.domain.catalog_metadata import UICatalogMetadata, validate_ui_metadata_map
 
 
 class _DummyAgent:
@@ -79,3 +80,19 @@ def test_phase_catalog_operant_metadata_declares_operant_constraints():
     assert "operant_only" in operant_meta.constraints
     assert operant_meta.defaults.get("schedule_builder_strategy") == "operant"
     assert "available_actions" in operant_meta.params_schema
+
+
+def test_phase_catalog_metadata_rejects_unknown_constraint_symbol():
+    bad_map = {
+        "acquisition": UICatalogMetadata(
+            label="Acquisition",
+            description="bad constraints test",
+            constraints=("free_text_constraint",),
+        )
+    }
+    with pytest.raises(ValueError, match="unknown constraints"):
+        validate_ui_metadata_map(
+            keys={"acquisition"},
+            metadata_map=bad_map,
+            namespace="test.phase_catalog",
+        )

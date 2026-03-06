@@ -28,6 +28,10 @@ def test_phenomena_catalog_entries_have_protocol_backing():
     spec = get_phenomenon("blocking")
     assert spec.protocol_key == "blocking"
     assert spec.expected_signatures
+    assert spec.expected_signals
+    assert spec.recommended_template_key == "verification_report"
+    assert "trial_curve" in spec.recommended_figures
+    assert "trial" in spec.default_run_modes
 
 
 def test_phenomena_catalog_validation_rejects_unknown_protocol():
@@ -40,4 +44,19 @@ def test_phenomena_catalog_validation_rejects_unknown_protocol():
         expected_signatures=("x",),
     )
     with pytest.raises(ValueError, match="references unknown protocol"):
+        validate_phenomena_registry(bad)
+
+
+def test_phenomena_catalog_validation_rejects_invalid_default_run_modes():
+    bad = dict(PHENOMENA_REGISTRY)
+    bad["bad_modes"] = PhenomenonSpec(
+        key="bad_modes",
+        name="Bad Modes",
+        description="invalid run mode test",
+        protocol_key="blocking",
+        expected_signatures=("x",),
+        expected_signals=("x",),
+        default_run_modes=("invalid",),
+    )
+    with pytest.raises(ValueError, match="default_run_modes"):
         validate_phenomena_registry(bad)

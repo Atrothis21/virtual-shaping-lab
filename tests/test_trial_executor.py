@@ -133,3 +133,55 @@ def test_trial_executor_accepts_debug_flag_without_behavior_change():
     assert len(records) == 2
     assert all("debug" in rec for rec in records)
     assert all(isinstance(rec["debug"].get("active_features"), list) for rec in records)
+
+
+def test_trial_executor_debug_policy_caps_active_features():
+    agent = DummyAgent()
+    ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(7))
+    spec = TrialTimeSpec(duration_s=1.0, dt_s=0.5)
+    step = StepResult(observation=Observation(stimuli=["tone", "noise", "light"], context="A"), reward=0.0)
+    schedule = TrialSchedule(time=spec, base_stimuli=["tone", "noise", "light"])
+
+    records = TrialExecutor(
+        update_mode="trial",
+        record_mode="tick",
+        debug=True,
+        debug_policy={"debug_max_active_features": 2},
+    ).execute(
+        ctx=ctx,
+        step=step,
+        schedule=schedule,
+        base_record={"phase": "timed", "trial": 10},
+        trial_id=10,
+    )
+
+    assert len(records) == 2
+    assert all("debug" in rec for rec in records)
+    assert all(len(rec["debug"]["active_features"]) <= 2 for rec in records)
+
+
+def test_trial_executor_debug_policy_samples_tick_debug_payload():
+    agent = DummyAgent()
+    ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(8))
+    spec = TrialTimeSpec(duration_s=1.0, dt_s=0.25)
+    step = StepResult(observation=Observation(stimuli=["tone"], context="A"), reward=0.0)
+    schedule = TrialSchedule(time=spec, base_stimuli=["tone"])
+
+    records = TrialExecutor(
+        update_mode="trial",
+        record_mode="tick",
+        debug=True,
+        debug_policy={"debug_sample_every_n_ticks": 2},
+    ).execute(
+        ctx=ctx,
+        step=step,
+        schedule=schedule,
+        base_record={"phase": "timed", "trial": 11},
+        trial_id=11,
+    )
+
+    assert len(records) == 4
+    assert "debug" in records[0]
+    assert "debug" not in records[1]
+    assert "debug" in records[2]
+    assert "debug" not in records[3]

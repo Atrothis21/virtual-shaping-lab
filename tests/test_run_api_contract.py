@@ -345,6 +345,12 @@ def test_plan_api_internal_error_envelope(monkeypatch):
 def test_extensions_api_contract_shape():
     body = api_run.extensions_api()
     assert body["status"] == "success"
+    assert "versions" in body and isinstance(body["versions"], dict)
+    assert set(body["versions"].keys()) == {
+        "catalog_version",
+        "record_schema_version",
+        "template_version_used",
+    }
     ext = body["extensions"]
     assert set(ext.keys()) == {
         "protocols",

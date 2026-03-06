@@ -3,6 +3,10 @@
 ## Purpose
 This guide describes the backend contracts the browser client should consume for discovery and teaching-mode integration.
 
+Canonical contract entrypoint:
+- `docs/ui_contract_manifest.md` (authoritative endpoint/envelope/lifecycle contract)
+- this guide is integration guidance and examples that must remain consistent with the manifest.
+
 Primary rule:
 - UI should be catalog-driven and API-driven.
 - UI should not import or mirror runtime internals.
@@ -86,6 +90,9 @@ UI usage pattern:
 ## 3) Debug Telemetry (Opt-In)
 
 Debug telemetry is disabled by default.
+Formal policy reference:
+- `docs/debug_telemetry_policy.md`
+- runtime contract: `virtual_shaping_lab/experiment/debug_policy.py`
 
 Enable it in payload:
 ```json

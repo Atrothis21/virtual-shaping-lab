@@ -292,6 +292,24 @@ def test_runner_emits_debug_payload_when_runtime_debug_enabled():
     assert "prediction_error" in records[0]["debug"]
 
 
+def test_runner_debug_mode_trial_omits_tick_debug_payloads():
+    records = Runner(
+        TimedRunnableUnit(),
+        settings={
+            "composed_parameters": {
+                "runtime": {
+                    "update_mode": "trial",
+                    "record_mode": "tick",
+                    "debug": True,
+                    "debug_mode": "trial",
+                }
+            }
+        },
+    ).run()
+    assert len(records) == 2
+    assert all("debug" not in rec for rec in records)
+
+
 def test_runner_rejects_legacy_phase_without_iter_steps():
     agent = DummyAgent()
     phase = LegacyOnlyPhase(agent, n_trials=1)

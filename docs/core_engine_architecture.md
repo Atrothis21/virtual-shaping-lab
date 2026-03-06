@@ -3,6 +3,10 @@
 ## Purpose
 This document describes the current core engine architecture for Virtual Shaping Lab (V2.14), including runtime control flow, object boundaries, extension points, test governance, and known gaps.
 
+UI/browser contract authority:
+- `docs/ui_contract_manifest.md`
+- UI integration notes in `docs/ui_integration_catalogs_and_debug.md` are guidance layered on top of the manifest.
+
 ---
 
 ## Top-Level Architecture

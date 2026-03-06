@@ -6,6 +6,14 @@ import warnings
 
 from analysis.domain.types import ReportTemplateSpec
 from virtual_shaping_lab.domain.catalog_metadata import (
+    CONSTRAINT_ACQUISITION_COMPATIBLE,
+    CONSTRAINT_ANALYSIS_DEFAULT_TEMPLATE,
+    CONSTRAINT_CUE_COMPETITION_COMPATIBLE,
+    CONSTRAINT_EXTINCTION_COMPATIBLE,
+    CONSTRAINT_FALLBACK_TEMPLATE,
+    CONSTRAINT_INHIBITION_COMPATIBLE,
+    CONSTRAINT_OPERANT_COMPATIBLE,
+    CONSTRAINT_RENEWAL_COMPATIBLE,
     UICatalogMetadata,
     make_default_ui_metadata,
     validate_ui_metadata_map,
@@ -53,7 +61,7 @@ _DEFAULT_TEMPLATE_METADATA = UICatalogMetadata(
         "metric_names": ["mean_reward"],
         "figure_names": ["trial_curve", "tick_response_curve", "probe_bar"],
     },
-    constraints=("analysis_default_template",),
+    constraints=(CONSTRAINT_ANALYSIS_DEFAULT_TEMPLATE,),
     examples=(
         {
             "report_name": "verification_report",
@@ -69,7 +77,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default analysis template for acquisition-style protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("acquisition_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_ACQUISITION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "extinction": UICatalogMetadata(
@@ -77,7 +85,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default analysis template for extinction and reacquisition protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("extinction_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_EXTINCTION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "rapid_reacquisition": UICatalogMetadata(
@@ -85,7 +93,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for rapid-reacquisition outcome verification.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("extinction_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_EXTINCTION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "blocking": UICatalogMetadata(
@@ -93,7 +101,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for cue-competition phenomena such as blocking.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("cue_competition_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_CUE_COMPETITION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "overshadowing": UICatalogMetadata(
@@ -101,7 +109,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for cue-competition phenomena such as overshadowing.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("cue_competition_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_CUE_COMPETITION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "conditioned_inhibition": UICatalogMetadata(
@@ -109,7 +117,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for conditioned inhibition protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("inhibition_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_INHIBITION_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "aba_renewal": UICatalogMetadata(
@@ -117,7 +125,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for ABA renewal context-shift protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_RENEWAL_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "abc_renewal": UICatalogMetadata(
@@ -125,7 +133,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for ABC renewal context-shift protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_RENEWAL_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "aab_renewal": UICatalogMetadata(
@@ -133,7 +141,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for AAB renewal context-shift protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("renewal_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_RENEWAL_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
     "operant_conditioning": UICatalogMetadata(
@@ -141,7 +149,7 @@ REPORT_TEMPLATE_METADATA: dict[str, UICatalogMetadata] = {
         description="Default template for operant schedule protocols.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("operant_compatible",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_OPERANT_COMPATIBLE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     ),
 }
@@ -174,7 +182,7 @@ def get_report_template_metadata(protocol_name: str) -> UICatalogMetadata:
         description="Fallback template used when no protocol-specific template metadata mapping exists.",
         params_schema=dict(_DEFAULT_TEMPLATE_METADATA.params_schema),
         defaults=dict(_DEFAULT_TEMPLATE_METADATA.defaults),
-        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + ("fallback_template",),
+        constraints=_DEFAULT_TEMPLATE_METADATA.constraints + (CONSTRAINT_FALLBACK_TEMPLATE,),
         examples=_DEFAULT_TEMPLATE_METADATA.examples,
     )
 

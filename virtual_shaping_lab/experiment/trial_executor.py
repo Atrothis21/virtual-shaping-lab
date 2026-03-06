@@ -7,6 +7,13 @@ from typing import Any
 from collections.abc import Mapping
 
 from virtual_shaping_lab.domain.types import Observation, Transition
+from virtual_shaping_lab.experiment.debug_policy import (
+    DEBUG_MODE_BOTH,
+    DEBUG_MODE_TICK,
+    DEBUG_MODE_TRIAL,
+    DebugTelemetryPolicy,
+    resolve_debug_policy,
+)
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 from virtual_shaping_lab.experiment.world.schedules import ScheduleTickInput
 
@@ -18,7 +25,14 @@ _REINFORCEMENT_EVENT_TYPES = {"reward", "reinforcement", "us"}
 class TrialExecutor:
     """Execute one trial schedule at tick resolution."""
 
-    def __init__(self, *, update_mode: str = "trial", record_mode: str = "trial", debug: bool = False):
+    def __init__(
+        self,
+        *,
+        update_mode: str = "trial",
+        record_mode: str = "trial",
+        debug: bool = False,
+        debug_policy: Mapping[str, Any] | DebugTelemetryPolicy | None = None,
+    ):
         if update_mode not in {"trial", "tick"}:
             raise ValueError("update_mode must be one of {'trial', 'tick'}.")
         if record_mode not in {"trial", "tick"}:
@@ -26,6 +40,13 @@ class TrialExecutor:
         self.update_mode = update_mode
         self.record_mode = record_mode
         self.debug = bool(debug)
+        if isinstance(debug_policy, DebugTelemetryPolicy):
+            self.debug_policy = debug_policy
+        else:
+            self.debug_policy = resolve_debug_policy(
+                debug_policy if isinstance(debug_policy, Mapping) else None,
+                fallback_debug_flag=self.debug,
+            )
 
     @staticmethod
     def _event_active(start_s: float, end_s: float, t_s: float, t_next_s: float) -> bool:
@@ -100,6 +121,28 @@ class TrialExecutor:
             "attention_effective": attention_effective if attention_effective is not None else {},
             "salience_effective": salience_effective if salience_effective is not None else {},
         }
+
+    def _policy_allows_tick_debug(self, tick: int) -> bool:
+        if not self.debug_policy.enabled:
+            return False
+        if self.debug_policy.mode not in {DEBUG_MODE_TICK, DEBUG_MODE_BOTH}:
+            return False
+        every_n = self.debug_policy.sample_every_n_ticks
+        if every_n is not None and (tick % every_n) != 0:
+            return False
+        return True
+
+    def _policy_allows_trial_debug(self) -> bool:
+        if not self.debug_policy.enabled:
+            return False
+        return self.debug_policy.mode in {DEBUG_MODE_TRIAL, DEBUG_MODE_BOTH}
+
+    def _apply_debug_policy(self, debug_payload: dict[str, Any]) -> dict[str, Any]:
+        out = dict(debug_payload)
+        cap = self.debug_policy.max_active_features
+        if cap is not None and isinstance(out.get("active_features"), list):
+            out["active_features"] = out["active_features"][:cap]
+        return out
 
     def execute(
         self,
@@ -180,7 +223,7 @@ class TrialExecutor:
                 runtime_event_type = getattr(runtime_out, "event_type", None)
                 runtime_meta = dict(getattr(runtime_out, "metadata", {}) or {})
             reward = event_reward + runtime_reward
-            if self.debug:
+            if self.debug_policy.enabled:
                 last_debug_payload = self._build_debug_payload(
                     agent=agent,
                     state=state,
@@ -230,8 +273,11 @@ class TrialExecutor:
                     "context": observation.context,
                     "metadata": tick_meta,
                 }
-                if self.debug and last_debug_payload is not None:
-                    tick_record["debug"] = dict(last_debug_payload)
+                if (
+                    last_debug_payload is not None
+                    and self._policy_allows_tick_debug(tick)
+                ):
+                    tick_record["debug"] = self._apply_debug_policy(last_debug_payload)
                 trial_records.append(tick_record)
 
             if hooks is not None and hasattr(hooks, "on_tick"):
@@ -248,8 +294,12 @@ class TrialExecutor:
 
         ctx.clock_s += spec.duration_s + spec.iti_s
 
-        if self.record_mode != "tick" and self.debug and last_debug_payload is not None:
-            base_record["debug"] = dict(last_debug_payload)
+        if (
+            self.record_mode != "tick"
+            and last_debug_payload is not None
+            and self._policy_allows_trial_debug()
+        ):
+            base_record["debug"] = self._apply_debug_policy(last_debug_payload)
         emitted = trial_records if self.record_mode == "tick" else [base_record]
 
         if hooks is not None and hasattr(hooks, "on_trial_end"):
