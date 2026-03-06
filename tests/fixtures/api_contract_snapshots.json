@@ -75,7 +75,8 @@
   "extensions": {
     "top_level_keys": [
       "status",
-      "extensions"
+      "extensions",
+      "versions"
     ],
     "extensions_keys": [
       "protocols",
@@ -84,6 +85,11 @@
       "policies",
       "representations",
       "report_templates"
+    ],
+    "versions_keys": [
+      "catalog_version",
+      "record_schema_version",
+      "template_version_used"
     ]
   }
 }

@@ -95,4 +95,5 @@ def test_extensions_endpoint_snapshot_shape():
     body = api_run.extensions_api()
     _assert_exact_keys(body, expected["top_level_keys"])
     _assert_exact_keys(body["extensions"], expected["extensions_keys"])
+    _assert_exact_keys(body["versions"], expected["versions_keys"])
 
