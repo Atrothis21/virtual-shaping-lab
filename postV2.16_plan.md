@@ -313,6 +313,67 @@ Deliverables:
 Done definition:
 - Team can implement screens without rediscovering API dependencies.
 
+One-page screen/dependency map (frozen):
+
+- Plan/Builder screen:
+  - Inputs:
+    - catalog/extensions payload (protocols, phases, reports, phenomena, version stamps)
+    - selected preset or phenomenon seed
+    - current `BuilderExperimentDraft`
+  - Outputs:
+    - draft edits
+    - validated draft readiness state
+    - plan request payload via `draft_to_payload(...)`
+  - Backend dependencies:
+    - `GET /catalog/extensions`
+    - `POST /plan`
+
+- Run screen:
+  - Inputs:
+    - resolved plan summary/hash
+    - run status payload
+    - optional debug metadata from run records/artifacts
+  - Outputs:
+    - run trigger
+    - polling lifecycle transitions
+    - run-level status display
+  - Backend dependencies:
+    - `POST /run`
+    - `GET /runs/{id}`
+
+- Report screen:
+  - Inputs:
+    - run id/status
+    - available/selected report template
+    - report artifacts/metadata
+  - Outputs:
+    - report generation request
+    - report artifact access state
+  - Backend dependencies:
+    - `POST /runs/{id}/report`
+    - `GET /runs/{id}`
+
+- Teaching/Phenomena screen:
+  - Inputs:
+    - phenomenon metadata (`expected_signals`, recommended template/figures, defaults)
+    - run/report outputs when available
+  - Outputs:
+    - phenomenon-guided setup suggestions
+    - interpretation helper view state
+  - Backend dependencies:
+    - `GET /catalog/extensions`
+    - run/report endpoints for concrete outputs
+
+- Catalog/Help surface:
+  - Inputs:
+    - extension catalog metadata and version stamps
+    - contract manifest references
+  - Outputs:
+    - control/tooling help content
+    - version mismatch notifications
+  - Backend dependencies:
+    - `GET /catalog/extensions`
+
 ### Slice 5.2 - UI test strategy for refactor phase
 Deliverables:
 - Define executable UI test plan categories:
@@ -324,6 +385,26 @@ Deliverables:
 
 Done definition:
 - UI refactor has a pre-agreed quality bar and test rollout order.
+
+UI test strategy and rollout order (frozen):
+- Category 1: contract snapshot checks
+  - Purpose: detect backend/UI envelope drift early.
+  - Introduce in: first UI implementation PR that consumes catalog/run endpoints.
+- Category 2: state transition tests
+  - Purpose: validate client lifecycle transitions (`idle -> planning -> running -> complete/failed`) and retry/error transitions.
+  - Introduce in: run screen PR when polling/status orchestration lands.
+- Category 3: builder translation tests
+  - Purpose: ensure builder edits produce valid `BuilderExperimentDraft -> draft_to_payload(...)` outputs.
+  - Introduce in: constrained builder PR.
+- Category 4: critical user-flow tests
+  - Purpose: lock end-to-end core flows:
+    - preset -> plan -> run -> report
+    - phenomenon seed -> constrained edits -> run
+  - Introduce in: integration PR after builder + run/report screens are connected.
+
+Quality bar policy:
+- No screen moves from draft to "default visible" without at least one passing test category tied to that screen.
+- Any contract mismatch bug must be accompanied by a new/updated snapshot or transition test to prevent regression.
 
 ---
 
