@@ -97,6 +97,31 @@ Deliverables:
 Done definition:
 - Every screen concern maps to one state domain.
 
+Client state model (frozen):
+- `planState` (server-derived + local selection):
+  - server-derived: resolved plan payload, stable hash, validation output
+  - local: selected preset/protocol, pending plan request status
+- `runState` (server-derived + derived/transient):
+  - server-derived: run id, lifecycle status, artifact pointers, timestamps
+  - derived/transient: polling status, optimistic transition hints, last refresh time
+- `reportState` (server-derived + local):
+  - server-derived: report generation status, report artifact pointers, template used
+  - local: selected report intent/view tab, user-triggered regenerate requests
+- `builderDraftState` (local authoritative):
+  - local: `BuilderExperimentDraft`, edit history, client-side validation errors
+  - derived: draft completeness/readiness flags
+- `catalogCacheState` (server-derived cache):
+  - server-derived: extensions/catalog payload, version stamps, fetched-at timestamp
+  - local: cache freshness status and invalidation marker
+- `debugAdvancedState` (local policy + server-derived availability):
+  - local: debug visibility mode, advanced panel expanded/collapsed, display limits
+  - server-derived: presence/absence of debug fields in run records
+
+State ownership rule:
+- Local-authoritative state: draft edits and view preferences.
+- Server-derived state: plan/run/report/catalog truth and lifecycle truth.
+- Derived/transient state: UI computation only; must be reproducible from local + server-derived state and never persisted as backend truth.
+
 ### Slice 2.2 - Decide builder editability boundaries
 Deliverables:
 - Define, per workflow, what is:
@@ -107,6 +132,28 @@ Deliverables:
 
 Done definition:
 - Builder is constrained; not a raw payload editor.
+
+Builder editability boundaries (frozen):
+- Directly editable in UI:
+  - high-level experiment identity (name/notes where supported)
+  - phenomenon/preset selection
+  - phase sequencing within allowed catalog constraints
+  - runtime mode toggles exposed by product scope (`trial`/`tick`, debug visibility controls)
+  - report intent/template selection from allowed catalog options
+- Catalog-derived (not free-form):
+  - protocol/phase labels, descriptions, defaults, examples
+  - available parameter keys, value domains, constraints
+  - machine-checkable constraint semantics used for gating
+- Backend-resolved only (non-editable):
+  - inferred/resolved plan internals
+  - stable hash and provenance fields
+  - runtime record schema/version semantics
+  - lifecycle truth/state transitions
+
+Preset and phenomenon mapping policy:
+- Presets are loadable as editable drafts within constrained fields only.
+- Phenomenon selections may seed a draft scaffold (recommended protocol/template/figures), but resulting draft remains constrained by catalogs and translator rules.
+- UI must always submit through `BuilderExperimentDraft -> draft_to_payload(...)`; no direct raw payload assembly path is allowed.
 
 ---
 
