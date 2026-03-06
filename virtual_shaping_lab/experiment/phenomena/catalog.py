@@ -16,7 +16,11 @@ class PhenomenonSpec:
     description: str
     protocol_key: str
     expected_signatures: tuple[str, ...] = ()
+    expected_signals: tuple[str, ...] = ()
     default_template_key: str | None = None
+    recommended_template_key: str | None = None
+    recommended_figures: tuple[str, ...] = ()
+    default_run_modes: tuple[str, ...] = ()
     recommended_presets: tuple[dict[str, Any], ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -28,6 +32,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Prior learning about cue A suppresses learning about cue X in AX+ compound training.",
         protocol_key="blocking",
         expected_signatures=("blocked_cue_lower_than_pretrained_cue",),
+        expected_signals=("blocked_cue_lower_than_pretrained_cue",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "conditioned_inhibition": PhenomenonSpec(
         key="conditioned_inhibition",
@@ -35,6 +43,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Inhibitory cue training reduces responding in compound and probe tests.",
         protocol_key="conditioned_inhibition",
         expected_signatures=("compound_nonreinforcement_suppression", "summation_probe_below_excitatory_baseline"),
+        expected_signals=("compound_nonreinforcement_suppression", "summation_probe_below_excitatory_baseline"),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "renewal_aba": PhenomenonSpec(
         key="renewal_aba",
@@ -42,6 +54,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Recovery after extinction when returned to acquisition context.",
         protocol_key="aba_renewal",
         expected_signatures=("probe_above_extinction_tail",),
+        expected_signals=("probe_above_extinction_tail",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "renewal_abc": PhenomenonSpec(
         key="renewal_abc",
@@ -49,6 +65,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Recovery in a novel context after acquisition and extinction in distinct contexts.",
         protocol_key="abc_renewal",
         expected_signatures=("probe_above_extinction_tail",),
+        expected_signals=("probe_above_extinction_tail",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "renewal_aab": PhenomenonSpec(
         key="renewal_aab",
@@ -56,6 +76,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Acquisition/extinction in same context with probe in shifted context.",
         protocol_key="aab_renewal",
         expected_signatures=("probe_near_extinction_tail",),
+        expected_signals=("probe_near_extinction_tail",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "extinction": PhenomenonSpec(
         key="extinction",
@@ -63,6 +87,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Learned responding declines under nonreinforcement.",
         protocol_key="extinction",
         expected_signatures=("late_extinction_prediction_below_early_extinction",),
+        expected_signals=("late_extinction_prediction_below_early_extinction",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "rapid_reacquisition": PhenomenonSpec(
         key="rapid_reacquisition",
@@ -70,6 +98,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Responding returns quickly when reinforcement is reintroduced after extinction.",
         protocol_key="rapid_reacquisition",
         expected_signatures=("reacquisition_above_extinction_tail",),
+        expected_signals=("reacquisition_above_extinction_tail",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "occasion_setting": PhenomenonSpec(
         key="occasion_setting",
@@ -77,6 +109,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Modulatory cue controls when target cue predicts reinforcement.",
         protocol_key="occasion_setting",
         expected_signatures=("probe_between_acquisition_and_nonreinforcement",),
+        expected_signals=("probe_between_acquisition_and_nonreinforcement",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
     "operant_conditioning": PhenomenonSpec(
         key="operant_conditioning",
@@ -84,6 +120,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Response-contingent reinforcement increases action value and response tendency.",
         protocol_key="operant_conditioning",
         expected_signatures=("reward_and_prediction_increase",),
+        expected_signals=("reward_and_prediction_increase",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "tick_response_curve"),
+        default_run_modes=("trial", "tick"),
     ),
     "matching_law": PhenomenonSpec(
         key="matching_law",
@@ -91,6 +131,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Response allocation tracks reinforcement ratio across concurrent options.",
         protocol_key="matching_law",
         expected_signatures=("choice_bias_under_unequal_schedules",),
+        expected_signals=("choice_bias_under_unequal_schedules",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "tick_response_curve"),
+        default_run_modes=("trial", "tick"),
     ),
     "shaping": PhenomenonSpec(
         key="shaping",
@@ -98,6 +142,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Progressive criterion changes alter reward density over training stages.",
         protocol_key="shaping",
         expected_signatures=("stage_reward_density_shift",),
+        expected_signals=("stage_reward_density_shift",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "tick_response_curve"),
+        default_run_modes=("trial", "tick"),
     ),
     "resurgence": PhenomenonSpec(
         key="resurgence",
@@ -105,6 +153,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Suppressed response returns when alternative reinforcement is removed.",
         protocol_key="resurgence",
         expected_signatures=("recovery_above_suppression",),
+        expected_signals=("recovery_above_suppression",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "tick_response_curve"),
+        default_run_modes=("trial", "tick"),
     ),
     "superextinction": PhenomenonSpec(
         key="superextinction",
@@ -112,6 +164,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Punishment/nonreinforcement phase drives responding below baseline extinction levels.",
         protocol_key="superextinction",
         expected_signatures=("punishment_phase_negative_rewards",),
+        expected_signals=("punishment_phase_negative_rewards",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial", "tick"),
     ),
     "spontaneous_recovery": PhenomenonSpec(
         key="spontaneous_recovery",
@@ -119,6 +175,10 @@ PHENOMENA_REGISTRY: dict[str, PhenomenonSpec] = {
         description="Response partially recovers after delay following extinction.",
         protocol_key="spontaneous_recovery",
         expected_signatures=("probe_above_extinction_tail",),
+        expected_signals=("probe_above_extinction_tail",),
+        recommended_template_key="verification_report",
+        recommended_figures=("trial_curve", "probe_bar"),
+        default_run_modes=("trial",),
     ),
 }
 
@@ -162,6 +222,22 @@ def validate_phenomena_registry(registry: dict[str, PhenomenonSpec] | None = Non
             isinstance(s, str) and s.strip() for s in spec.expected_signatures
         ):
             raise ValueError(f"Phenomenon '{key}' expected_signatures must be tuple[str, ...].")
+        if not isinstance(spec.expected_signals, tuple) or not all(
+            isinstance(s, str) and s.strip() for s in spec.expected_signals
+        ):
+            raise ValueError(f"Phenomenon '{key}' expected_signals must be tuple[str, ...].")
+        if spec.recommended_template_key is not None and (
+            not isinstance(spec.recommended_template_key, str) or not spec.recommended_template_key.strip()
+        ):
+            raise ValueError(f"Phenomenon '{key}' recommended_template_key must be non-empty string when provided.")
+        if not isinstance(spec.recommended_figures, tuple) or not all(
+            isinstance(name, str) and name.strip() for name in spec.recommended_figures
+        ):
+            raise ValueError(f"Phenomenon '{key}' recommended_figures must be tuple[str, ...].")
+        if not isinstance(spec.default_run_modes, tuple) or not all(
+            mode in {"trial", "tick"} for mode in spec.default_run_modes
+        ):
+            raise ValueError(f"Phenomenon '{key}' default_run_modes must be tuple with values in {{'trial', 'tick'}}.")
         if not isinstance(spec.recommended_presets, tuple) or not all(isinstance(v, dict) for v in spec.recommended_presets):
             raise ValueError(f"Phenomenon '{key}' recommended_presets must be tuple[dict[str, Any], ...].")
 

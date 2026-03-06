@@ -26,6 +26,10 @@ def test_extension_catalog_contains_known_entries():
     assert "operant_conditioning" in snap["protocols"]
     assert "blocking" in snap["phenomena"]
     assert snap["phenomena"]["blocking"]["protocol_key"] == "blocking"
+    assert "expected_signals" in snap["phenomena"]["blocking"]
+    assert isinstance(snap["phenomena"]["blocking"]["recommended_figures"], list)
+    assert isinstance(snap["phenomena"]["blocking"]["default_run_modes"], list)
+    assert snap["phenomena"]["blocking"]["recommended_template_key"] == "verification_report"
     assert "rescorla_wagner" in snap["learners"]
     assert "epsilon_greedy" in snap["policies"]
     assert "vector_elemental" in snap["representations"]

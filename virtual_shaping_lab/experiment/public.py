@@ -93,7 +93,11 @@ def list_phenomena() -> dict[str, dict[str, Any]]:
             "description": spec.description,
             "protocol_key": spec.protocol_key,
             "expected_signatures": list(spec.expected_signatures),
+            "expected_signals": list(spec.expected_signals),
             "default_template_key": spec.default_template_key,
+            "recommended_template_key": spec.recommended_template_key,
+            "recommended_figures": list(spec.recommended_figures),
+            "default_run_modes": list(spec.default_run_modes),
             "recommended_presets": [dict(p) for p in spec.recommended_presets],
         }
     return result
