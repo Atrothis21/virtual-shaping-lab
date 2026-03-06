@@ -90,6 +90,9 @@ UI usage pattern:
 ## 3) Debug Telemetry (Opt-In)
 
 Debug telemetry is disabled by default.
+Formal policy reference:
+- `docs/debug_telemetry_policy.md`
+- runtime contract: `virtual_shaping_lab/experiment/debug_policy.py`
 
 Enable it in payload:
 ```json
