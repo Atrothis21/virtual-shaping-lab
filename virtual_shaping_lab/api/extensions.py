@@ -14,6 +14,10 @@ from virtual_shaping_lab.domain.naming import normalize_protocol_key
 
 
 class ExtensionCatalog:
+    CATALOG_VERSION = 1
+    RECORD_SCHEMA_VERSION = "v1"
+    TEMPLATE_VERSION_USED = 1
+
     @staticmethod
     def protocols() -> list[str]:
         return sorted({normalize_protocol_key(name) for name in available_protocols()})
@@ -62,5 +66,13 @@ class ExtensionCatalog:
             "policies": cls.policies(),
             "representations": cls.representations(),
             "report_templates": cls.report_templates(),
+        }
+
+    @classmethod
+    def version_info(cls) -> dict[str, Any]:
+        return {
+            "catalog_version": cls.CATALOG_VERSION,
+            "record_schema_version": cls.RECORD_SCHEMA_VERSION,
+            "template_version_used": cls.TEMPLATE_VERSION_USED,
         }
 

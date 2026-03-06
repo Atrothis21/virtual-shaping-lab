@@ -40,6 +40,7 @@ def extensions_api():
         return {
             "status": "success",
             "extensions": ExtensionCatalog.snapshot(),
+            "versions": ExtensionCatalog.version_info(),
         }
     except Exception as exc:
         raise_internal_error(
