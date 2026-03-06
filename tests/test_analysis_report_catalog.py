@@ -9,6 +9,7 @@ from analysis.report.catalog import (
     get_report_template_metadata,
     get_default_template_for_protocol,
 )
+from virtual_shaping_lab.domain.catalog_metadata import UICatalogMetadata, validate_ui_metadata_map
 
 
 def test_report_catalog_has_extinction_and_rapid_reacquisition_mapping():
@@ -74,3 +75,19 @@ def test_report_catalog_fallback_metadata_is_explicit():
     meta = get_report_template_metadata("missing_protocol")
     assert "fallback_template" in meta.constraints
     assert meta.defaults["report_name"] == "verification_report"
+
+
+def test_report_catalog_metadata_rejects_unknown_constraint_symbol():
+    bad_map = {
+        "extinction": UICatalogMetadata(
+            label="Extinction Template",
+            description="bad constraints test",
+            constraints=("not_machine_checkable",),
+        )
+    }
+    with pytest.raises(ValueError, match="unknown constraints"):
+        validate_ui_metadata_map(
+            keys={"extinction"},
+            metadata_map=bad_map,
+            namespace="test.analysis_report_catalog",
+        )

@@ -6,6 +6,11 @@ from typing import Any, Callable
 
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
 from virtual_shaping_lab.domain.catalog_metadata import (
+    CONSTRAINT_CONCURRENT_SCHEDULE,
+    CONSTRAINT_CONTEXT_SHIFT_PROTOCOL,
+    CONSTRAINT_OPERANT_ONLY,
+    CONSTRAINT_PAVLOVIAN_ONLY,
+    CONSTRAINT_REQUIRES_COMPOUND_TRIALS,
     UICatalogMetadata,
     make_default_ui_metadata,
     validate_ui_metadata_map,
@@ -63,7 +68,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Canonical operant conditioning protocol with response-contingent reinforcement schedule phases.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA, "schedule_type": {"type": "str"}},
         defaults={**_COMMON_PROTOCOL_DEFAULTS, "schedule_type": "fixed_ratio"},
-        constraints=("operant_only",),
+        constraints=(CONSTRAINT_OPERANT_ONLY,),
         examples=({"params": {"n_trials": 100, "schedule_type": "variable_ratio"}},),
     ),
     "extinction": UICatalogMetadata(
@@ -71,7 +76,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Acquisition followed by nonreinforcement to measure decline in conditioned responding.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"params": {"n_trials": 40}},),
     ),
     "conditioned_inhibition": UICatalogMetadata(
@@ -79,7 +84,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Trains an inhibitory cue by nonreinforced compound presentations against reinforced trials.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only", "requires_compound_trials"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_REQUIRES_COMPOUND_TRIALS),
         examples=({"params": {"n_trials": 40}},),
     ),
     "aba_renewal": UICatalogMetadata(
@@ -87,7 +92,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Acquisition in context A, nonreinforcement in B, probe in A.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA, "test_context": {"type": "str"}},
         defaults={**_COMMON_PROTOCOL_DEFAULTS, "test_context": "A"},
-        constraints=("pavlovian_only", "context_shift_protocol"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_CONTEXT_SHIFT_PROTOCOL),
         examples=({"params": {"context": "A", "test_context": "A"}},),
     ),
     "abc_renewal": UICatalogMetadata(
@@ -95,7 +100,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Acquisition in context A, nonreinforcement in B, probe in novel context C.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA, "test_context": {"type": "str"}},
         defaults={**_COMMON_PROTOCOL_DEFAULTS, "test_context": "C"},
-        constraints=("pavlovian_only", "context_shift_protocol"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_CONTEXT_SHIFT_PROTOCOL),
         examples=({"params": {"context": "A", "test_context": "C"}},),
     ),
     "aab_renewal": UICatalogMetadata(
@@ -103,7 +108,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Acquisition and nonreinforcement in context A, probe in context B.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA, "test_context": {"type": "str"}},
         defaults={**_COMMON_PROTOCOL_DEFAULTS, "test_context": "B"},
-        constraints=("pavlovian_only", "context_shift_protocol"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_CONTEXT_SHIFT_PROTOCOL),
         examples=({"params": {"context": "A", "test_context": "B"}},),
     ),
     "rapid_reacquisition": UICatalogMetadata(
@@ -111,7 +116,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Reinforcement returns after extinction to assess faster relearning.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"params": {"n_trials": 60}},),
     ),
     "occasion_setting": UICatalogMetadata(
@@ -119,7 +124,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Uses an occasion setter cue to modulate reinforcement of target cues.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only", "requires_compound_trials"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_REQUIRES_COMPOUND_TRIALS),
         examples=({"params": {"n_trials": 50}},),
     ),
     "blocking": UICatalogMetadata(
@@ -127,7 +132,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Pretraining on one cue reduces acquisition to added cue in compound phase.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only", "requires_compound_trials"),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY, CONSTRAINT_REQUIRES_COMPOUND_TRIALS),
         examples=({"params": {"n_trials": 40}},),
     ),
     "matching_law": UICatalogMetadata(
@@ -135,7 +140,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Concurrent operant schedules to evaluate response allocation against reinforcement ratios.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA, "schedule_left": {"type": "dict"}, "schedule_right": {"type": "dict"}},
         defaults={**_COMMON_PROTOCOL_DEFAULTS, "schedule_left": {}, "schedule_right": {}},
-        constraints=("operant_only", "concurrent_schedule"),
+        constraints=(CONSTRAINT_OPERANT_ONLY, CONSTRAINT_CONCURRENT_SCHEDULE),
         examples=(
             {
                 "params": {
@@ -150,7 +155,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Progressive schedule progression to train target operant behavior.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("operant_only",),
+        constraints=(CONSTRAINT_OPERANT_ONLY,),
         examples=({"params": {"n_trials": 100}},),
     ),
     "resurgence": UICatalogMetadata(
@@ -158,7 +163,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Previously extinguished response returns when alternative reinforcement is removed.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("operant_only",),
+        constraints=(CONSTRAINT_OPERANT_ONLY,),
         examples=({"params": {"n_trials": 80}},),
     ),
     "superextinction": UICatalogMetadata(
@@ -166,7 +171,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Extended nonreinforcement schedule to suppress responding beyond standard extinction.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"params": {"n_trials": 60}},),
     ),
     "spontaneous_recovery": UICatalogMetadata(
@@ -174,7 +179,7 @@ PROTOCOL_METADATA: dict[str, UICatalogMetadata] = {
         description="Recovery of conditioned responding after delay following extinction.",
         params_schema={**_COMMON_PROTOCOL_SCHEMA},
         defaults={**_COMMON_PROTOCOL_DEFAULTS},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"params": {"n_trials": 40}},),
     ),
 }

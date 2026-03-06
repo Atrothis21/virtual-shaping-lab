@@ -30,6 +30,14 @@ from experiment.phases.templates import (
     WeightedRandomSampler,
 )
 from virtual_shaping_lab.domain.catalog_metadata import (
+    CONSTRAINT_CONTROL_FLOW_PHASE,
+    CONSTRAINT_LEARNING_DISABLED_DEFAULT,
+    CONSTRAINT_OPERANT_ONLY,
+    CONSTRAINT_PAVLOVIAN_ONLY,
+    CONSTRAINT_REQUIRES_COMPOUND_STIMULI,
+    CONSTRAINT_REQUIRES_CS_PLUS_CS_MINUS_STIMULI,
+    CONSTRAINT_TEMPLATE_ALIAS,
+    CONSTRAINT_TEMPLATE_PHASE,
     UICatalogMetadata,
     make_default_ui_metadata,
     validate_ui_metadata_map,
@@ -441,7 +449,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Single-cue reinforced pavlovian phase.",
         params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
         defaults={**_COMMON_PAVLOVIAN_DEFAULTS},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 20, "outcome": 1.0},),
     ),
     "nonreinforcement": UICatalogMetadata(
@@ -449,7 +457,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Single-cue nonreinforced pavlovian phase (extinction-like).",
         params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
         defaults={**_COMMON_PAVLOVIAN_DEFAULTS, "outcome": 0.0},
-        constraints=("pavlovian_only",),
+        constraints=(CONSTRAINT_PAVLOVIAN_ONLY,),
         examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 20, "outcome": 0.0},),
     ),
     "compound_acquisition": UICatalogMetadata(
@@ -457,7 +465,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Compound-cue reinforced pavlovian phase.",
         params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
         defaults={**_COMMON_PAVLOVIAN_DEFAULTS},
-        constraints=("requires_compound_stimuli", "pavlovian_only"),
+        constraints=(CONSTRAINT_REQUIRES_COMPOUND_STIMULI, CONSTRAINT_PAVLOVIAN_ONLY),
         examples=({"stimuli": {"compound": ["tone", "light"]}, "n_trials": 20, "outcome": 1.0},),
     ),
     "compound_nonreinforcement": UICatalogMetadata(
@@ -465,7 +473,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Compound-cue nonreinforced pavlovian phase.",
         params_schema={**_COMMON_PAVLOVIAN_SCHEMA},
         defaults={**_COMMON_PAVLOVIAN_DEFAULTS, "outcome": 0.0},
-        constraints=("requires_compound_stimuli", "pavlovian_only"),
+        constraints=(CONSTRAINT_REQUIRES_COMPOUND_STIMULI, CONSTRAINT_PAVLOVIAN_ONLY),
         examples=({"stimuli": {"compound": ["tone", "light"]}, "n_trials": 20, "outcome": 0.0},),
     ),
     "differential_acquisition": UICatalogMetadata(
@@ -478,7 +486,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
             "nonreinforced_outcome": {"type": "float"},
         },
         defaults={"n_trials": 1, "context": "A", "reinforced_outcome": 1.0, "nonreinforced_outcome": 0.0},
-        constraints=("requires_cs_plus_cs_minus_stimuli", "pavlovian_only"),
+        constraints=(CONSTRAINT_REQUIRES_CS_PLUS_CS_MINUS_STIMULI, CONSTRAINT_PAVLOVIAN_ONLY),
         examples=(
             {
                 "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
@@ -498,7 +506,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
             "reward_value": {"type": "float"},
         },
         defaults={"n_trials": 1, "context": "A", "deliver_reward": False, "reward_value": 1.0},
-        constraints=("learning_disabled_default", "pavlovian_only"),
+        constraints=(CONSTRAINT_LEARNING_DISABLED_DEFAULT, CONSTRAINT_PAVLOVIAN_ONLY),
         examples=({"stimuli": {"cs_plus": ["tone"]}, "n_trials": 10, "deliver_reward": False},),
     ),
     "context_shift": UICatalogMetadata(
@@ -506,7 +514,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Control-flow phase that changes active context for subsequent phases.",
         params_schema={"context": {"type": "str"}},
         defaults={"context": "B"},
-        constraints=("control_flow_phase",),
+        constraints=(CONSTRAINT_CONTROL_FLOW_PHASE,),
         examples=({"params": {"context": "B"}},),
     ),
     "criterion_shift": UICatalogMetadata(
@@ -514,7 +522,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Control-flow phase that shifts execution based on criterion conditions.",
         params_schema={"criterion": {"type": "dict"}},
         defaults={"criterion": {}},
-        constraints=("control_flow_phase",),
+        constraints=(CONSTRAINT_CONTROL_FLOW_PHASE,),
         examples=({"params": {"criterion": {"type": "prediction_threshold", "threshold": 0.2}}},),
     ),
     "pavlovian_phase_template": UICatalogMetadata(
@@ -522,7 +530,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
         description="Configurable template-backed pavlovian phase.",
         params_schema={**_COMMON_PAVLOVIAN_SCHEMA, **_COMMON_TEMPLATE_STRATEGY_SCHEMA},
         defaults={**_COMMON_PAVLOVIAN_DEFAULTS, **_COMMON_TEMPLATE_STRATEGY_DEFAULTS},
-        constraints=("template_phase", "pavlovian_only"),
+        constraints=(CONSTRAINT_TEMPLATE_PHASE, CONSTRAINT_PAVLOVIAN_ONLY),
         examples=({"stimuli": {"cs_plus": ["tone"]}, "params": {"trial_sampler_strategy": "weighted_random"}},),
     ),
     "operant_phase_template": UICatalogMetadata(
@@ -542,7 +550,7 @@ _PHASE_METADATA_OVERRIDES: dict[str, UICatalogMetadata] = {
             "task_key": "operant",
             **{**_COMMON_TEMPLATE_STRATEGY_DEFAULTS, "schedule_builder_strategy": "operant"},
         },
-        constraints=("template_phase", "operant_only"),
+        constraints=(CONSTRAINT_TEMPLATE_PHASE, CONSTRAINT_OPERANT_ONLY),
         examples=(
             {
                 "stimuli": {"cs_plus": ["lever"]},
@@ -565,7 +573,7 @@ for phase_key in PHASE_BUILDERS.keys():
                 description=f"Template alias for {base_meta.label}.",
                 params_schema=dict(base_meta.params_schema),
                 defaults=dict(base_meta.defaults),
-                constraints=tuple(sorted(set(base_meta.constraints + ("template_alias",)))),
+                constraints=tuple(sorted(set(base_meta.constraints + (CONSTRAINT_TEMPLATE_ALIAS,)))),
                 examples=base_meta.examples,
             )
             continue
