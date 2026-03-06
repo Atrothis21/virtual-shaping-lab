@@ -230,6 +230,35 @@ Deliverables:
 Done definition:
 - No UI-critical catalog entry is “technically present but unusable.”
 
+Catalog metadata usability audit (initial pass):
+
+Checklist (apply to each UI-consumed catalog entity):
+- `label` present and human-readable
+- `description` present and concise
+- `defaults` present and valid
+- `schema` present and machine-usable
+- `constraints` present using canonical symbols
+- `examples` present (or explicit empty with rationale)
+
+Audit scope:
+- protocol catalog entries
+- phase catalog entries
+- report template catalog entries
+- phenomenon entries exposed through extension payload
+- runtime/debug options exposed to UI controls
+
+Gap tracking format:
+- Entity key
+- Missing field(s)
+- Severity (`blocking`, `important`, `nice-to-have`)
+- Backend owner
+- Target fix version
+
+Initial policy:
+- Any missing `label`, `schema`, or canonical `constraints` on a UI-rendered control is `blocking`.
+- Missing `description` or `defaults` is `important`.
+- Missing `examples` is `nice-to-have` unless the control is high-risk/advanced.
+
 ### Slice 4.2 - Constraint handling behavior matrix
 Deliverables:
 - Define uniform UI response rules for machine constraints:
@@ -241,6 +270,31 @@ Deliverables:
 
 Done definition:
 - Constraint behavior is consistent across the interface.
+
+Constraint handling behavior matrix (frozen):
+- `hide`:
+  - use when option is not applicable in current mode and has no safe fallback.
+  - applies to: phase/protocol options incompatible with selected phenomenon/mode.
+- `disable`:
+  - use when option is conceptually relevant but currently invalid due to unmet prerequisite.
+  - UI must show disabled reason tooltip/message.
+  - applies to: report/runtime controls awaiting run completion or required selection.
+- `warn`:
+  - use when selection is allowed but may reduce interpretability or performance.
+  - warning is non-blocking and must include consequence summary.
+  - applies to: high-cost debug choices, advanced runtime toggles.
+- `auto-correct`:
+  - use only for safe deterministic normalization (for example bound clamping, canonical key normalization).
+  - UI must surface correction in-line and keep user aware of adjusted value.
+  - applies to: constrained numeric/string fields with canonicalization rules.
+
+Cross-surface consistency rules:
+- Same constraint symbol must map to same default behavior across:
+  - phases
+  - protocols
+  - reports
+  - runtime/debug settings
+- If a surface requires a different behavior for the same symbol, that exception must be documented with rationale in the control spec.
 
 ---
 
