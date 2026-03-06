@@ -58,10 +58,20 @@ class Runner:
         self.update_mode = self.settings.get("update_mode", runtime_settings.get("update_mode", "trial"))
         self.record_mode = self.settings.get("record_mode", runtime_settings.get("record_mode", "trial"))
         self.debug_mode = bool(self.settings.get("debug", runtime_settings.get("debug", False)))
+        debug_policy_settings = dict(runtime_settings)
+        for key in (
+            "debug",
+            "debug_mode",
+            "debug_max_active_features",
+            "debug_sample_every_n_ticks",
+        ):
+            if key in self.settings:
+                debug_policy_settings[key] = self.settings[key]
         self._trial_executor = TrialExecutor(
             update_mode=self.update_mode,
             record_mode=self.record_mode,
             debug=self.debug_mode,
+            debug_policy=debug_policy_settings,
         )
 
     def _emit_record(self, record: Dict[str, Any]) -> None:
