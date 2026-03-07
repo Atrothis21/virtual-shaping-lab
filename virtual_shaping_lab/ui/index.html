@@ -715,6 +715,36 @@
       font-size: 0.78rem;
     }
 
+    .builder-constraint-warning {
+      margin: 0;
+      font-size: 0.77rem;
+      color: #fbbf24;
+    }
+
+    .builder-constraint-note {
+      margin: 0;
+      font-size: 0.77rem;
+      color: #94a3b8;
+    }
+
+    .builder-autocorrect-notice {
+      margin-top: 0.6rem;
+      border: 1px solid var(--vsl-color-learning);
+      border-radius: var(--vsl-radius-md);
+      background: rgba(245, 158, 11, 0.12);
+      padding: 0.55rem 0.6rem;
+      display: grid;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      color: #fcd34d;
+    }
+
+    .builder-autocorrect-notice code {
+      font-family: var(--vsl-font-mono);
+      color: #fde68a;
+      font-size: 0.78rem;
+    }
+
     .plan-resolve-inline-error {
       margin-top: 0.7rem;
       border: 1px solid var(--vsl-color-cs-minus);
@@ -1072,6 +1102,7 @@
 <script src="/ui/js/react/state_domains.js"></script>
 <script src="/ui/js/react/preset_read_models.js"></script>
 <script src="/ui/js/react/builder_draft_translator.js"></script>
+<script src="/ui/js/react/builder_constraint_controls.js"></script>
 <script src="/ui/js/react/preset_action_service.js"></script>
 <script src="/ui/js/react/run_report_workflow_service.js"></script>
 <script src="/ui/js/react/lifecycle_view_models.js"></script>

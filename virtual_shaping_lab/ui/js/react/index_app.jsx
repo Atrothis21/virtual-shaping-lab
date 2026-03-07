@@ -758,13 +758,39 @@ function PresetsRouteContainer({
   );
 }
 
-function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, onDraftEdited, resolveErrorView }) {
+function BuilderRouteContainer({
+  builderDraftState,
+  planState,
+  catalogState,
+  onResolvePlan,
+  onDraftEdited,
+  resolveErrorView,
+}) {
   const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
   const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
   const stableHash = planState && planState.stableHash ? planState.stableHash : "";
   const summary = summarizeResolvedPlan(resolvedPlan);
   const expectedSignals = seed && Array.isArray(seed.expected_signals) ? seed.expected_signals : [];
   const flowPreview = expectedSignals.length ? expectedSignals.join(", ") : "n/a";
+  const constraintApi = window.VSLReact.builderConstraintControls || {};
+  const deriveBuilderConstraintState =
+    typeof constraintApi.deriveBuilderConstraintState === "function"
+      ? constraintApi.deriveBuilderConstraintState
+      : () => ({});
+  const evaluateConstraintBehavior =
+    typeof constraintApi.evaluateConstraintBehavior === "function"
+      ? constraintApi.evaluateConstraintBehavior
+      : () => ({ hidden: false, disabled: false, warning: "", autoCorrect: "", autoCorrectBlocked: false, message: "" });
+  const constraints = React.useMemo(
+    () => deriveBuilderConstraintState({ catalogState, draft: seed }),
+    [catalogState, deriveBuilderConstraintState, seed]
+  );
+  const protocolConstraint = evaluateConstraintBehavior(constraints.protocol_key, "protocol_key");
+  const templateConstraint = evaluateConstraintBehavior(constraints.template_key, "template_key");
+  const runModeConstraint = evaluateConstraintBehavior(constraints.run_mode_hint, "run_mode_hint");
+  const advancedConstraint = evaluateConstraintBehavior(constraints.advanced_debug, "advanced_debug");
+  const [autoCorrectNotice, setAutoCorrectNotice] = React.useState(null);
+  const [templateAutoCorrectSuppressed, setTemplateAutoCorrectSuppressed] = React.useState(false);
   function updateDraftPatch(patch) {
     if (typeof onDraftEdited !== "function") return;
     const nextDraft = {
@@ -773,6 +799,20 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, on
     };
     onDraftEdited(nextDraft);
   }
+
+  React.useEffect(() => {
+    if (templateAutoCorrectSuppressed) return;
+    if (!templateConstraint.autoCorrect) return;
+    const current = seed && seed.template_key ? String(seed.template_key) : "";
+    if (current === String(templateConstraint.autoCorrect)) return;
+    setAutoCorrectNotice({
+      field: "template_key",
+      before: current || "(empty)",
+      after: String(templateConstraint.autoCorrect),
+      reason: templateConstraint.message || "Applied safe catalog-derived normalization.",
+    });
+    updateDraftPatch({ template_key: String(templateConstraint.autoCorrect) });
+  }, [seed, templateAutoCorrectSuppressed, templateConstraint.autoCorrect, templateConstraint.message]);
 
   return (
     <div className="route-card">
@@ -818,9 +858,15 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, on
             <input
               type="text"
               value={seed?.protocol_key || ""}
-              onChange={(e) => updateDraftPatch({ protocol_key: e.target.value })}
+              onChange={(e) => {
+                setTemplateAutoCorrectSuppressed(false);
+                updateDraftPatch({ protocol_key: e.target.value });
+              }}
             />
           </label>
+          {protocolConstraint.warning ? (
+            <p className="builder-constraint-warning">{protocolConstraint.warning}</p>
+          ) : null}
         </section>
         <section className="builder-section-panel">
           <h3 className="builder-section-heading">Phases</h3>
@@ -848,11 +894,15 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, on
             <select
               value={seed?.run_mode_hint || "trial"}
               onChange={(e) => updateDraftPatch({ run_mode_hint: e.target.value })}
+              disabled={runModeConstraint.disabled}
             >
               <option value="trial">trial</option>
               <option value="tick">tick</option>
             </select>
           </label>
+          {runModeConstraint.warning ? (
+            <p className="builder-constraint-warning">{runModeConstraint.warning}</p>
+          ) : null}
           <div className="builder-kv"><strong>plan_request_status:</strong> <code>{planState?.requestStatus || "idle"}</code></div>
         </section>
         <section className="builder-section-panel">
@@ -862,18 +912,52 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, on
             <input
               type="text"
               value={seed?.template_key || ""}
-              onChange={(e) => updateDraftPatch({ template_key: e.target.value })}
+              onChange={(e) => {
+                setTemplateAutoCorrectSuppressed(false);
+                updateDraftPatch({ template_key: e.target.value });
+              }}
+              disabled={templateConstraint.disabled}
             />
           </label>
+          {templateConstraint.message ? (
+            <p className={templateConstraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>
+              {templateConstraint.message}
+            </p>
+          ) : null}
           <div className="builder-kv"><strong>stable_hash:</strong> <code>{stableHash || "n/a"}</code></div>
         </section>
-        <section className="builder-section-panel builder-section-panel-muted">
-          <h3 className="builder-section-heading">Advanced/Debug</h3>
-          <div className="builder-kv"><strong>dirty:</strong> <code>{String(Boolean(builderDraftState?.dirty))}</code></div>
-          <div className="builder-kv"><strong>is_ready:</strong> <code>{String(Boolean(builderDraftState?.isReady))}</code></div>
-          <div className="builder-kv"><strong>validation_state:</strong> <code>{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
-        </section>
+        {!advancedConstraint.hidden ? (
+          <section className="builder-section-panel builder-section-panel-muted">
+            <h3 className="builder-section-heading">Advanced/Debug</h3>
+            <div className="builder-kv"><strong>dirty:</strong> <code>{String(Boolean(builderDraftState?.dirty))}</code></div>
+            <div className="builder-kv"><strong>is_ready:</strong> <code>{String(Boolean(builderDraftState?.isReady))}</code></div>
+            <div className="builder-kv"><strong>validation_state:</strong> <code>{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
+          </section>
+        ) : null}
       </div>
+      {autoCorrectNotice ? (
+        <div className="builder-autocorrect-notice">
+          <div>
+            <strong>Auto-correct applied:</strong>{" "}
+            <code>{autoCorrectNotice.field}</code>
+          </div>
+          <div><strong>Before:</strong> <code>{autoCorrectNotice.before}</code></div>
+          <div><strong>After:</strong> <code>{autoCorrectNotice.after}</code></div>
+          <div><strong>Reason:</strong> {autoCorrectNotice.reason}</div>
+          <button
+            type="button"
+            className="route-action"
+            onClick={() => {
+              const previous = autoCorrectNotice.before === "(empty)" ? "" : autoCorrectNotice.before;
+              setTemplateAutoCorrectSuppressed(true);
+              updateDraftPatch({ template_key: previous });
+              setAutoCorrectNotice(null);
+            }}
+          >
+            Undo Auto-correct
+          </button>
+        </div>
+      ) : null}
       <div className="builder-validation-panel">
         <div><strong>Draft Readiness:</strong> <code>{builderDraftState?.isReady ? "ready" : "not_ready"}</code></div>
         <div><strong>Validation Errors:</strong> <code>{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
@@ -1562,6 +1646,7 @@ function AppShell() {
         <BuilderRouteContainer
           builderDraftState={builderDraftState}
           planState={planState}
+          catalogState={catalogState}
           onResolvePlan={resolvePlanFromBuilderContext}
           onDraftEdited={editBuilderDraft}
           resolveErrorView={planResolveErrorView}
