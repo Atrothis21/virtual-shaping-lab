@@ -79,6 +79,106 @@ function buildPresetItemFromDraftSeed(draftSeed) {
   };
 }
 
+function isRunTerminalLifecycle(lifecycleState) {
+  const normalized = String(lifecycleState || "").toLowerCase();
+  return (
+    normalized === "completed" ||
+    normalized === "complete" ||
+    normalized === "failed" ||
+    normalized === "error" ||
+    normalized === "cancelled" ||
+    normalized === "canceled"
+  );
+}
+
+function selectRunLifecycleViewModel(runState, planState) {
+  const state = runState && runState.lifecycleState ? String(runState.lifecycleState) : "idle";
+  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
+  const requestStatus = runState && runState.requestStatus ? String(runState.requestStatus) : "idle";
+  const pollAt = runState && runState.lastPollAtMs ? new Date(runState.lastPollAtMs).toISOString() : "n/a";
+  const canStartRun = Boolean(
+    planState &&
+    planState.requestStatus === "success" &&
+    typeof planState.stableHash === "string" &&
+    planState.stableHash
+  );
+  return {
+    state,
+    requestStatus,
+    activeRunId,
+    pollAt,
+    canStartRun,
+    stableHash: planState && planState.stableHash ? String(planState.stableHash) : "",
+    isTerminal: isRunTerminalLifecycle(state),
+  };
+}
+
+function selectRunProvenanceViewModel(runState) {
+  const runData = runState && runState.runData && typeof runState.runData === "object"
+    ? runState.runData
+    : {};
+  const metadata = runData && runData.metadata && typeof runData.metadata === "object"
+    ? runData.metadata
+    : {};
+  const lifecycle = runData && runData.lifecycle && typeof runData.lifecycle === "object"
+    ? runData.lifecycle
+    : {};
+  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
+  return {
+    runId: runData.run_id ? String(runData.run_id) : "",
+    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
+    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
+    templateVersionUsed:
+      metadata.template_version_used === undefined || metadata.template_version_used === null
+        ? ""
+        : String(metadata.template_version_used),
+    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
+    nextActions,
+  };
+}
+
+function detectRunVersionMismatches(provenance, catalogState, planState) {
+  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
+    ? catalogState.versions
+    : {};
+  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
+  const expectedTemplate =
+    versions.template_version_used === undefined || versions.template_version_used === null
+      ? ""
+      : String(versions.template_version_used);
+  const expectedPlan = planState && planState.stableHash ? String(planState.stableHash) : "";
+
+  const mismatches = [];
+  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
+    mismatches.push({
+      field: "record_schema_version",
+      expected: expectedRecord,
+      received: provenance.recordSchemaVersion,
+      severity: "blocking",
+      action: "Refresh run status or open static artifacts while schema-dependent views are disabled.",
+    });
+  }
+  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
+    mismatches.push({
+      field: "template_version_used",
+      expected: expectedTemplate,
+      received: provenance.templateVersionUsed,
+      severity: "warning",
+      action: "Proceed in degraded mode and refresh if interactive controls remain unavailable.",
+    });
+  }
+  if (provenance.planHash && expectedPlan && provenance.planHash !== expectedPlan) {
+    mismatches.push({
+      field: "plan_hash",
+      expected: expectedPlan,
+      received: provenance.planHash,
+      severity: "warning",
+      action: "Re-resolve plan and start a new run if you need strict hash parity.",
+    });
+  }
+  return mismatches;
+}
+
 function extractFieldHintsFromReason(reason) {
   const text = String(reason || "");
   const matches = text.match(/([a-zA-Z_][a-zA-Z0-9_.\[\]]*)/g) || [];
@@ -558,14 +658,87 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, re
   );
 }
 
-function RunRouteContainer() {
+function RunRouteContainer({
+  runState,
+  planState,
+  onStartRun,
+  onRefreshRun,
+  runActionStatus,
+  provenanceView,
+  mismatchView,
+}) {
+  const vm = selectRunLifecycleViewModel(runState, planState);
+  const blockingMismatch = Array.isArray(mismatchView)
+    ? mismatchView.find((m) => m.severity === "blocking")
+    : null;
   return (
-    <PlaceholderRouteCard
-      title="Run Route Container"
-      description="Lifecycle execution surface for run creation, status polling, and provenance."
-      status="Owned by Run Route"
-      actions={[{ label: "Open Legacy Console", href: "/ui/console.html" }]}
-    />
+    <div className="route-card run-lifecycle-card">
+      <div className="route-card-header">
+        <h2>Run Lifecycle</h2>
+        <span className={`vsl-status-badge semantic ${vm.isTerminal ? "learning" : "probe"}`}>
+          {vm.state}
+        </span>
+      </div>
+      <p>Create runs from resolved plans and monitor lifecycle progression.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onStartRun === "function") onStartRun();
+          }}
+          disabled={!vm.canStartRun || vm.requestStatus === "loading"}
+        >
+          {vm.requestStatus === "loading" ? "Starting Run..." : "Start Run"}
+        </button>
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onRefreshRun === "function") onRefreshRun();
+          }}
+          disabled={!vm.activeRunId}
+        >
+          Refresh Status
+        </button>
+        <a className="route-action" href="/ui/console.html">Open Legacy Console</a>
+      </div>
+      <div className="run-lifecycle-summary">
+        <div><strong>Request Status:</strong> <code>{vm.requestStatus}</code></div>
+        <div><strong>Active Run ID:</strong> <code>{vm.activeRunId || "n/a"}</code></div>
+        <div><strong>Plan Hash:</strong> <code>{vm.stableHash || "n/a"}</code></div>
+        <div><strong>Polling Updated:</strong> <code>{vm.pollAt}</code></div>
+      </div>
+      <div className="run-provenance-summary">
+        <div><strong>Run Provenance</strong></div>
+        <div><strong>run_id:</strong> <code>{provenanceView.runId || "n/a"}</code></div>
+        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
+        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
+        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
+        <div><strong>lifecycle:</strong> <code>{provenanceView.lifecycleState || "n/a"}</code></div>
+        <div>
+          <strong>next_actions:</strong>{" "}
+          <code>{provenanceView.nextActions.length ? provenanceView.nextActions.join(", ") : "n/a"}</code>
+        </div>
+      </div>
+      {blockingMismatch ? (
+        <div className="run-blocking-note">
+          <strong>Incompatible data version:</strong>{" "}
+          This run detail is in blocking mode for <code>{blockingMismatch.field}</code>.
+        </div>
+      ) : null}
+      {runActionStatus && runActionStatus.message ? (
+        <p className="run-action-message">{runActionStatus.message}</p>
+      ) : null}
+      {runActionStatus && runActionStatus.error && runActionStatus.error.message ? (
+        <p className="run-action-error">{String(runActionStatus.error.message)}</p>
+      ) : null}
+      {!vm.canStartRun ? (
+        <p className="run-action-message">
+          Resolve a plan first to enable run creation from a stable execution hash.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -624,10 +797,15 @@ function AppShell() {
     message: "",
     error: null,
   }));
+  const [runActionStatus, setRunActionStatus] = React.useState(() => ({
+    message: "",
+    error: null,
+  }));
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
   const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
   const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
+  const runState = stateApi && uiState ? stateApi.selectRunState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -700,6 +878,19 @@ function AppShell() {
 
   const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
   const planResolveErrorView = React.useMemo(() => buildPlanResolveErrorView(planState), [planState]);
+  const runProvenanceView = React.useMemo(() => selectRunProvenanceViewModel(runState), [runState]);
+  const runVersionMismatches = React.useMemo(
+    () => detectRunVersionMismatches(runProvenanceView, catalogState, planState),
+    [catalogState, planState, runProvenanceView]
+  );
+  const runBlockingMismatch = React.useMemo(
+    () => runVersionMismatches.find((m) => m.severity === "blocking") || null,
+    [runVersionMismatches]
+  );
+  const runWarningMismatch = React.useMemo(
+    () => runVersionMismatches.find((m) => m.severity === "warning") || null,
+    [runVersionMismatches]
+  );
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -810,6 +1001,119 @@ function AppShell() {
     await resolvePresetFromSelection(presetItem);
   }, [builderDraftState, resolvePresetFromSelection]);
 
+  const startRunFromResolvedPlan = React.useCallback(async () => {
+    if (!apiClient || !stateApi) return;
+    const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
+    const presetItem = buildPresetItemFromDraftSeed(draftSeed);
+    if (!presetItem) {
+      setRunActionStatus({
+        message: "Run start blocked.",
+        error: { message: "Seed a preset first to provide run payload context." },
+      });
+      return;
+    }
+    if (!planState || planState.requestStatus !== "success" || !planState.stableHash) {
+      setRunActionStatus({
+        message: "Run start blocked.",
+        error: { message: "Resolve plan first to produce stable_hash for run start." },
+      });
+      return;
+    }
+    const payloadBuilder = presetActionServiceApi && typeof presetActionServiceApi.buildPresetApiPayload === "function"
+      ? presetActionServiceApi.buildPresetApiPayload
+      : null;
+    const payload = payloadBuilder
+      ? payloadBuilder(presetItem, draftSeed)
+      : { report: { preset: presetItem.key || "custom_protocol" } };
+    const runPayload = { ...payload, expected_plan_hash: planState.stableHash };
+
+    setRunActionStatus({ message: "Starting run from resolved plan...", error: null });
+    dispatchEvent({ type: stateApi.UI_EVENTS.RUN_START_REQUESTED });
+    try {
+      const runData = await apiClient.postJson("run", runPayload);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_START_SUCCEEDED,
+        payload: {
+          runId: runData && runData.run_id ? String(runData.run_id) : "",
+          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
+            ? String(runData.lifecycle.state).toLowerCase()
+            : "running",
+          runData: runData || null,
+          atMs: Date.now(),
+        },
+      });
+      setRunActionStatus({ message: "Run started.", error: null });
+    } catch (error) {
+      const normalized = error && typeof error === "object" ? error : { message: "Run creation failed." };
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_START_FAILED,
+        payload: { error: normalized },
+      });
+      setRunActionStatus({
+        message: "Run creation failed.",
+        error: normalized,
+      });
+    }
+  }, [apiClient, builderDraftState, dispatchEvent, planState, presetActionServiceApi, stateApi]);
+
+  const refreshActiveRunStatus = React.useCallback(async () => {
+    if (!apiClient || !stateApi || !runState || !runState.activeRunId) return;
+    const runId = String(runState.activeRunId);
+    try {
+      const runData = await apiClient.getJson(`runs/${encodeURIComponent(runId)}`);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
+        payload: {
+          runData: runData || null,
+          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
+            ? String(runData.lifecycle.state).toLowerCase()
+            : undefined,
+          atMs: Date.now(),
+        },
+      });
+      setRunActionStatus({ message: "Run status refreshed.", error: null });
+    } catch (error) {
+      setRunActionStatus({
+        message: "Run status refresh failed.",
+        error: error && typeof error === "object" ? error : { message: "Run status refresh failed." },
+      });
+    }
+  }, [apiClient, dispatchEvent, runState, stateApi]);
+
+  React.useEffect(() => {
+    if (!apiClient || !stateApi || !runState || !runState.activeRunId) return;
+    if (isRunTerminalLifecycle(runState.lifecycleState)) return;
+
+    let cancelled = false;
+    const intervalId = window.setInterval(async () => {
+      try {
+        const runData = await apiClient.getJson(`runs/${encodeURIComponent(runState.activeRunId)}`);
+        if (cancelled) return;
+        dispatchEvent({
+          type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
+          payload: {
+            runData: runData || null,
+            lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
+              ? String(runData.lifecycle.state).toLowerCase()
+              : undefined,
+            atMs: Date.now(),
+          },
+        });
+      } catch (_error) {
+        if (cancelled) return;
+        setRunActionStatus((prev) => ({
+          ...prev,
+          message: "Polling interrupted. You can refresh status manually.",
+          error: prev.error,
+        }));
+      }
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [apiClient, dispatchEvent, runState, stateApi]);
+
   function renderActiveRoute() {
     if (activeRoute === ROUTES.builder.key) {
       return (
@@ -821,7 +1125,19 @@ function AppShell() {
         />
       );
     }
-    if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
+    if (activeRoute === ROUTES.run.key) {
+      return (
+        <RunRouteContainer
+          runState={runState}
+          planState={planState}
+          onStartRun={startRunFromResolvedPlan}
+          onRefreshRun={refreshActiveRunStatus}
+          runActionStatus={runActionStatus}
+          provenanceView={runProvenanceView}
+          mismatchView={runVersionMismatches}
+        />
+      );
+    }
     if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
     return (
@@ -904,6 +1220,23 @@ function AppShell() {
               }
               actionLabel="Retry Resolve"
               onAction={resolvePlanFromBuilderContext}
+            />
+          ) : null}
+          {activeRoute === ROUTES.run.key && runWarningMismatch ? (
+            <GlobalBanner
+              level="warning"
+              title="Version mismatch detected"
+              message={`Field: ${runWarningMismatch.field} | Expected: ${runWarningMismatch.expected} | Received: ${runWarningMismatch.received} | Action: ${runWarningMismatch.action}`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.run.key && runBlockingMismatch ? (
+            <BlockingPanel
+              title="Incompatible data version"
+              message={`This view cannot be rendered with ${runBlockingMismatch.field}. Expected ${runBlockingMismatch.expected}, received ${runBlockingMismatch.received}. Use manual refresh or open static artifacts.`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
             />
           ) : null}
           {renderActiveRoute()}
