@@ -16,12 +16,15 @@ def test_report_route_has_create_report_action_and_lifecycle_summary():
     assert "Create Report" in text
     assert "Refresh Run Status" in text
     assert "selectReportLifecycleViewModel" in text
+    assert "buildLifecycleInstrumentView" in text
     assert "Run ID:" in text
     assert "Lifecycle:" in text
     assert "Next Actions:" in text
     assert "report-provenance-summary" in text
     assert "source_run_id:" in text
     assert "template_version_used:" in text
+    assert "lifecycle-instrument" in text
+    assert "lifecycle-meter" in text
 
 
 def test_report_route_wires_report_events_and_report_endpoint():
@@ -33,8 +36,12 @@ def test_report_route_wires_report_events_and_report_endpoint():
     assert "apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {})" in text
     assert "reportActionStatus={reportActionStatus}" in text
     assert "selectReportArtifactViewModel" in text
+    assert "inferFigureSemanticTone" in text
     assert "detectReportVersionMismatches" in text
     assert "Degraded mode active for" in text
+    assert "report-plot-legend" in text
+    assert "report-figure-grid" in text
+    assert "report-figure-card" in text
 
 
 def test_report_lifecycle_styles_exist():
@@ -46,6 +53,16 @@ def test_report_lifecycle_styles_exist():
     assert ".report-artifact-grid" in text
     assert ".report-artifact-card" in text
     assert ".report-artifact-missing" in text
+    assert ".report-plot-legend" in text
+    assert ".report-figure-grid" in text
+    assert ".report-figure-card" in text
+    assert ".report-figure-card.accent-cs-plus::before" in text
+    assert ".report-figure-card.accent-cs-minus::before" in text
+    assert ".report-figure-card.accent-probe::before" in text
+    assert ".report-figure-card.accent-compound::before" in text
+    assert ".report-figure-card.accent-learning::before" in text
+    assert ".report-figure-title" in text
+    assert ".report-figure-tone" in text
     assert ".report-figure-list" in text
     assert ".report-action-message" in text
     assert ".report-action-error" in text

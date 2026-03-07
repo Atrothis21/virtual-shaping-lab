@@ -113,6 +113,40 @@ function selectRunLifecycleViewModel(runState, planState) {
   };
 }
 
+function resolveLifecycleTone(lifecycleState, requestStatus) {
+  const status = String(lifecycleState || "").toLowerCase();
+  const request = String(requestStatus || "").toLowerCase();
+  if (status.includes("fail") || status.includes("error") || request === "error") return "cs-minus";
+  if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) return "cs-plus";
+  if (status.includes("progress") || status.includes("running") || request === "loading") return "probe";
+  return "learning";
+}
+
+function buildLifecycleInstrumentView(lifecycleState, requestStatus) {
+  const status = String(lifecycleState || "").toLowerCase();
+  const request = String(requestStatus || "").toLowerCase();
+  let progressPct = 8;
+  let phaseLabel = "idle";
+  if (status.includes("progress") || status.includes("running") || request === "loading") {
+    progressPct = 52;
+    phaseLabel = "in_progress";
+  } else if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) {
+    progressPct = 100;
+    phaseLabel = "complete";
+  } else if (status.includes("fail") || status.includes("error") || request === "error") {
+    progressPct = 100;
+    phaseLabel = "failure";
+  } else if (request === "success") {
+    progressPct = 72;
+    phaseLabel = "ready";
+  }
+  return {
+    tone: resolveLifecycleTone(lifecycleState, requestStatus),
+    progressPct,
+    phaseLabel,
+  };
+}
+
 function selectRunProvenanceViewModel(runState) {
   const runData = runState && runState.runData && typeof runState.runData === "object"
     ? runState.runData
@@ -168,6 +202,15 @@ function normalizeArtifactHref(value) {
   return slashed.startsWith("/") ? slashed : `/${slashed}`;
 }
 
+function inferFigureSemanticTone(pathValue) {
+  const value = String(pathValue || "").toLowerCase();
+  if (value.includes("cs_minus") || value.includes("cs-") || value.includes("minus")) return "cs-minus";
+  if (value.includes("cs_plus") || value.includes("cs+") || value.includes("plus")) return "cs-plus";
+  if (value.includes("probe")) return "probe";
+  if (value.includes("compound")) return "compound";
+  return "learning";
+}
+
 function selectReportArtifactViewModel(reportState) {
   const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
     ? reportState.reportData
@@ -176,7 +219,14 @@ function selectReportArtifactViewModel(reportState) {
     ? reportData.artifacts
     : {};
   const figureList = Array.isArray(artifacts.figures)
-    ? artifacts.figures.map((item) => normalizeArtifactHref(item)).filter(Boolean)
+    ? artifacts.figures
+        .map((item) => normalizeArtifactHref(item))
+        .filter(Boolean)
+        .map((href) => ({
+          href,
+          label: href.split("/").pop() || href,
+          tone: inferFigureSemanticTone(href),
+        }))
     : [];
   const pdfPath = normalizeArtifactHref(artifacts.pdf);
   return {
@@ -775,6 +825,7 @@ function RunRouteContainer({
   mismatchView,
 }) {
   const vm = selectRunLifecycleViewModel(runState, planState);
+  const lifecycleInstrument = buildLifecycleInstrumentView(vm.state, vm.requestStatus);
   const blockingMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "blocking")
     : null;
@@ -782,9 +833,17 @@ function RunRouteContainer({
     <div className="route-card run-lifecycle-card">
       <div className="route-card-header">
         <h2>Run Lifecycle</h2>
-        <span className={`vsl-status-badge semantic ${vm.isTerminal ? "learning" : "probe"}`}>
+        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
           {vm.state}
         </span>
+      </div>
+      <div className="lifecycle-instrument">
+        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
+          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
+        </div>
+        <div className="lifecycle-caption">
+          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
+        </div>
       </div>
       <p>Create runs from resolved plans and monitor lifecycle progression.</p>
       <div className="route-actions">
@@ -860,6 +919,7 @@ function ReportRouteContainer({
   artifactView,
 }) {
   const vm = selectReportLifecycleViewModel(reportState, runState);
+  const lifecycleInstrument = buildLifecycleInstrumentView(vm.lifecycleState, vm.requestStatus);
   const warningMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "warning")
     : null;
@@ -867,9 +927,17 @@ function ReportRouteContainer({
     <div className="route-card report-lifecycle-card">
       <div className="route-card-header">
         <h2>Report Lifecycle</h2>
-        <span className={`vsl-status-badge semantic ${vm.requestStatus === "success" ? "cs-plus" : "learning"}`}>
+        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
           {vm.requestStatus}
         </span>
+      </div>
+      <div className="lifecycle-instrument">
+        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
+          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
+        </div>
+        <div className="lifecycle-caption">
+          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
+        </div>
       </div>
       <p>Create report artifacts from completed runs and monitor report lifecycle state.</p>
       <div className="route-actions">
@@ -930,14 +998,28 @@ function ReportRouteContainer({
         </div>
         <div className="report-artifact-card">
           <strong>Figure Artifacts</strong>
+          <div className="report-plot-legend">
+            <span className="vsl-status-badge semantic cs-plus">CS+</span>
+            <span className="vsl-status-badge semantic cs-minus">CS-</span>
+            <span className="vsl-status-badge semantic probe">Probe</span>
+            <span className="vsl-status-badge semantic compound">Compound</span>
+            <span className="vsl-status-badge semantic learning">Learning</span>
+          </div>
           {artifactView.figureList.length ? (
-            <ul className="report-figure-list">
-              {artifactView.figureList.map((figurePath) => (
-                <li key={figurePath}>
-                  <a href={figurePath} target="_blank" rel="noreferrer">{figurePath.split("/").pop() || figurePath}</a>
-                </li>
+            <div className="report-figure-grid">
+              {artifactView.figureList.map((figure) => (
+                <a
+                  key={figure.href}
+                  className={`report-figure-card accent-${figure.tone}`}
+                  href={figure.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="report-figure-title">{figure.label}</span>
+                  <span className="report-figure-tone">{figure.tone}</span>
+                </a>
               ))}
-            </ul>
+            </div>
           ) : (
             <span className="report-artifact-missing">No figures available yet</span>
           )}

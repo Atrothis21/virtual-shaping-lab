@@ -674,6 +674,61 @@
         radial-gradient(circle at 92% 10%, rgba(56, 189, 248, 0.12), transparent 44%);
     }
 
+    .lifecycle-badge {
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .lifecycle-instrument {
+      margin-top: 0.55rem;
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .lifecycle-meter {
+      position: relative;
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.2);
+      border: 1px solid rgba(148, 163, 184, 0.32);
+    }
+
+    .lifecycle-meter span {
+      display: block;
+      height: 100%;
+      transition: width 180ms ease-out;
+      background: linear-gradient(90deg, rgba(148, 163, 184, 0.3), rgba(148, 163, 184, 0.85));
+    }
+
+    .lifecycle-meter.cs-plus span {
+      background: linear-gradient(90deg, rgba(56, 189, 248, 0.35), rgba(34, 197, 94, 0.9));
+    }
+
+    .lifecycle-meter.cs-minus span {
+      background: linear-gradient(90deg, rgba(251, 113, 133, 0.5), rgba(239, 68, 68, 0.95));
+    }
+
+    .lifecycle-meter.probe span {
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.4), rgba(14, 165, 233, 0.92));
+    }
+
+    .lifecycle-meter.learning span {
+      background: linear-gradient(90deg, rgba(251, 191, 36, 0.42), rgba(245, 158, 11, 0.95));
+    }
+
+    .lifecycle-caption {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .lifecycle-caption code {
+      font-family: var(--vsl-font-mono);
+      color: #e2e8f0;
+      font-size: 0.78rem;
+    }
+
     .run-lifecycle-summary {
       margin-top: 0.7rem;
       border-top: 1px solid var(--vsl-color-panel-border);
@@ -794,7 +849,22 @@
     .report-artifact-card {
       border: 1px solid var(--vsl-color-panel-border);
       border-radius: var(--vsl-radius-md);
-      background: rgba(15, 23, 42, 0.55);
+      background:
+        linear-gradient(180deg, rgba(17, 25, 40, 0.86) 0%, rgba(15, 23, 42, 0.78) 100%),
+        repeating-linear-gradient(
+          to right,
+          transparent 0,
+          transparent 20px,
+          rgba(51, 65, 85, 0.22) 20px,
+          rgba(51, 65, 85, 0.22) 21px
+        ),
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 20px,
+          rgba(51, 65, 85, 0.18) 20px,
+          rgba(51, 65, 85, 0.18) 21px
+        );
       padding: 0.6rem 0.65rem;
       display: grid;
       gap: 0.35rem;
@@ -814,6 +884,77 @@
     .report-artifact-missing {
       color: #94a3b8;
       font-size: 0.82rem;
+    }
+
+    .report-plot-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.1rem;
+    }
+
+    .report-figure-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.2rem;
+    }
+
+    .report-figure-card {
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      padding: 0.45rem 0.5rem;
+      text-decoration: none;
+      background: rgba(15, 23, 42, 0.72);
+      display: grid;
+      gap: 0.22rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .report-figure-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--vsl-color-learning);
+    }
+
+    .report-figure-card.accent-cs-plus::before {
+      background: var(--vsl-color-cs-plus);
+    }
+
+    .report-figure-card.accent-cs-minus::before {
+      background: var(--vsl-color-cs-minus);
+    }
+
+    .report-figure-card.accent-probe::before {
+      background: var(--vsl-color-probe);
+    }
+
+    .report-figure-card.accent-compound::before {
+      background: var(--vsl-color-compound);
+    }
+
+    .report-figure-card.accent-learning::before {
+      background: var(--vsl-color-learning);
+    }
+
+    .report-figure-title {
+      color: #e2e8f0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding-left: 0.1rem;
+    }
+
+    .report-figure-tone {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding-left: 0.1rem;
     }
 
     .report-figure-list {

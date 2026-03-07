@@ -22,11 +22,14 @@ def test_run_route_has_start_and_polling_controls():
 def test_run_route_renders_lifecycle_and_provenance_summary():
     text = _read(INDEX_APP)
     assert "selectRunLifecycleViewModel" in text
+    assert "buildLifecycleInstrumentView" in text
     assert "Request Status:" in text
     assert "Active Run ID:" in text
     assert "Plan Hash:" in text
     assert "Polling Updated:" in text
     assert "isRunTerminalLifecycle" in text
+    assert "lifecycle-instrument" in text
+    assert "lifecycle-meter" in text
 
 
 def test_run_route_wires_run_create_and_polling_events():
@@ -43,6 +46,9 @@ def test_run_lifecycle_styles_exist():
     text = _read(INDEX_HTML)
     assert ".run-lifecycle-card" in text
     assert ".run-lifecycle-summary" in text
+    assert ".lifecycle-badge" in text
+    assert ".lifecycle-instrument" in text
+    assert ".lifecycle-meter" in text
+    assert ".lifecycle-caption" in text
     assert ".run-action-message" in text
     assert ".run-action-error" in text
-
