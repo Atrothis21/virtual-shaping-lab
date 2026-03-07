@@ -30,9 +30,11 @@ def test_builder_route_renders_resolved_plan_hash_and_summary():
 
 def test_builder_context_resolve_uses_seeded_preset_handoff():
     text = _read(INDEX_APP)
-    assert "buildPresetItemFromDraftSeed" in text
+    assert "builderDraftTranslator" in text
+    assert "draft_to_payload" in text
+    assert "apiClient.postJson(\"plan\", translatedPayload)" in text
     assert "Seed a preset first, then resolve plan." in text
-    assert "resolvePresetFromSelection(presetItem)" in text
+    assert "stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED" in text
 
 
 def test_plan_resolve_summary_has_dedicated_styles():

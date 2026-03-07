@@ -912,6 +912,7 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, on
 function RunRouteContainer({
   runState,
   planState,
+  builderDraftState,
   onStartRun,
   onRefreshRun,
   runActionStatus,
@@ -921,7 +922,7 @@ function RunRouteContainer({
   const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
   const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || selectRunLifecycleViewModel;
   const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
-  const vm = selectRunLifecycleViewModelFn(runState, planState);
+  const vm = selectRunLifecycleViewModelFn(runState, planState, builderDraftState);
   const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
   const blockingMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "blocking")
@@ -998,7 +999,9 @@ function RunRouteContainer({
       ) : null}
       {!vm.canStartRun ? (
         <p className="run-action-message">
-          Resolve a plan first to enable run creation from a stable execution hash.
+          {!vm.stableHash
+            ? "Resolve a plan first to enable run creation from a stable execution hash."
+            : "Plan is stale for current draft. Re-resolve plan to enable run creation."}
         </p>
       ) : null}
     </div>
@@ -1008,6 +1011,7 @@ function RunRouteContainer({
 function ReportRouteContainer({
   reportState,
   runState,
+  isPlanFresh,
   onCreateReport,
   onRefreshRun,
   reportActionStatus,
@@ -1018,7 +1022,7 @@ function ReportRouteContainer({
   const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
   const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || selectReportLifecycleViewModel;
   const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
-  const vm = selectReportLifecycleViewModelFn(reportState, runState);
+  const vm = selectReportLifecycleViewModelFn(reportState, runState, { isPlanFresh });
   const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
   const warningMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "warning")
@@ -1133,7 +1137,9 @@ function ReportRouteContainer({
       ) : null}
       {!vm.canCreateReport ? (
         <p className="report-action-message">
-          Start and complete a run first to enable report generation.
+          {vm.isPlanFresh
+            ? "Start and complete a run first to enable report generation."
+            : "Plan is stale for current draft. Re-resolve plan before generating report."}
         </p>
       ) : null}
     </div>
@@ -1318,6 +1324,11 @@ function AppShell() {
     () => selectReportArtifactViewModelFn(reportState),
     [reportState, selectReportArtifactViewModelFn]
   );
+  const isPlanFreshForCurrentDraft = Boolean(
+    stateApi &&
+    typeof stateApi.isPlanFreshForCurrentDraft === "function" &&
+    stateApi.isPlanFreshForCurrentDraft(uiState)
+  );
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -1364,6 +1375,7 @@ function AppShell() {
   }
 
   const presetActionServiceApi = window.VSLReact.presetActionService || {};
+  const builderDraftTranslatorApi = window.VSLReact.builderDraftTranslator || {};
   const runReportWorkflowApi = window.VSLReact.runReportWorkflowService || {};
   const presetActionHandlers = React.useMemo(() => {
     if (!apiClient || !stateApi) return null;
@@ -1393,8 +1405,12 @@ function AppShell() {
         presetActionServiceApi && typeof presetActionServiceApi.buildPresetApiPayload === "function"
           ? presetActionServiceApi.buildPresetApiPayload
           : null,
+      draftToPayload:
+        builderDraftTranslatorApi && typeof builderDraftTranslatorApi.draft_to_payload === "function"
+          ? builderDraftTranslatorApi.draft_to_payload
+          : null,
     });
-  }, [apiClient, dispatchEvent, presetActionServiceApi, runReportWorkflowApi, stateApi]);
+  }, [apiClient, builderDraftTranslatorApi, dispatchEvent, presetActionServiceApi, runReportWorkflowApi, stateApi]);
 
   const seedDraftFromPreset = React.useCallback((presetItem) => {
     if (!stateApi || !presetItem) return;
@@ -1439,9 +1455,9 @@ function AppShell() {
   }, [presetActionHandlers]);
 
   const resolvePlanFromBuilderContext = React.useCallback(async () => {
+    if (!apiClient || !stateApi) return;
     const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
-    const presetItem = buildPresetItemFromDraftSeed(draftSeed);
-    if (!presetItem) {
+    if (!draftSeed) {
       setPresetActionState({
         status: "error",
         step: "plan",
@@ -1450,8 +1466,56 @@ function AppShell() {
       });
       return;
     }
-    await resolvePresetFromSelection(presetItem);
-  }, [builderDraftState, resolvePresetFromSelection]);
+    const draft_to_payload = builderDraftTranslatorApi && typeof builderDraftTranslatorApi.draft_to_payload === "function"
+      ? builderDraftTranslatorApi.draft_to_payload
+      : null;
+    if (!draft_to_payload) {
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "Builder translator unavailable.",
+        error: { message: "draft_to_payload translator is required for builder submission." },
+      });
+      return;
+    }
+
+    const translatedPayload = draft_to_payload(draftSeed);
+    setPresetActionState({
+      status: "loading",
+      step: "plan",
+      message: "Resolving builder plan...",
+      error: null,
+    });
+    dispatchEvent({ type: stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED });
+    try {
+      const data = await apiClient.postJson("plan", translatedPayload);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.PLAN_RESOLVE_SUCCEEDED,
+        payload: {
+          resolvedPlan: data && data.plan ? data.plan : null,
+          stableHash: data && data.stable_hash ? data.stable_hash : "",
+        },
+      });
+      setPresetActionState({
+        status: "success",
+        step: "plan",
+        message: "Builder plan resolved.",
+        error: null,
+      });
+    } catch (error) {
+      const normalized = error && typeof error === "object" ? error : { message: "Builder plan resolve failed." };
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
+        payload: { error: normalized },
+      });
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "Builder plan resolve failed.",
+        error: normalized,
+      });
+    }
+  }, [apiClient, builderDraftState, builderDraftTranslatorApi, dispatchEvent, stateApi]);
 
   const startRunFromResolvedPlan = React.useCallback(async () => {
     if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.startRunFromResolvedPlan !== "function") return;
@@ -1471,8 +1535,10 @@ function AppShell() {
     await runReportWorkflowHandlers.createReportFromActiveRun({
       runState,
       reportState,
+      builderDraftState,
+      planState,
     });
-  }, [reportState, runReportWorkflowHandlers, runState]);
+  }, [builderDraftState, planState, reportState, runReportWorkflowHandlers, runState]);
 
   React.useEffect(() => {
     if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.pollActiveRunStatus !== "function") return;
@@ -1507,6 +1573,7 @@ function AppShell() {
         <RunRouteContainer
           runState={runState}
           planState={planState}
+          builderDraftState={builderDraftState}
           onStartRun={startRunFromResolvedPlan}
           onRefreshRun={refreshActiveRunStatus}
           runActionStatus={runActionStatus}
@@ -1520,6 +1587,7 @@ function AppShell() {
         <ReportRouteContainer
           reportState={reportState}
           runState={runState}
+          isPlanFresh={isPlanFreshForCurrentDraft}
           onCreateReport={createReportFromActiveRun}
           onRefreshRun={refreshActiveRunStatus}
           reportActionStatus={reportActionStatus}

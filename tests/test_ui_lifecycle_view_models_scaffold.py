@@ -20,6 +20,8 @@ def test_lifecycle_view_model_module_exports_selector_api():
     assert "detectRunVersionMismatches" in text
     assert "detectReportVersionMismatches" in text
     assert "buildLifecycleInstrumentView" in text
+    assert "isPlanFresh" in text
+    assert "canCreateReport" in text
 
 
 def test_lifecycle_view_model_module_normalizes_artifacts_and_tones():
@@ -28,3 +30,4 @@ def test_lifecycle_view_model_module_normalizes_artifacts_and_tones():
     assert "inferFigureSemanticTone" in text
     assert "figureList" in text
     assert "tone: inferFigureSemanticTone(href)" in text
+    assert "isFreshForDraftVersion" in text

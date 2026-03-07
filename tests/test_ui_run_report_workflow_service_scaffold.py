@@ -21,6 +21,10 @@ def test_run_report_workflow_service_exports_boundary():
 
 def test_run_report_workflow_service_owns_run_and_report_side_effects():
     text = _read(SERVICE)
+    assert "draftToPayload" in text
+    assert "isFreshForDraftVersion" in text
+    assert "Plan is stale for current draft. Re-resolve plan before running." in text
+    assert "Report generation blocked until plan is fresh." in text
     assert 'apiClient.postJson("run", runPayload)' in text
     assert 'apiClient.getJson(`runs/${encodeURIComponent(runId)}`)' in text
     assert 'apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {})' in text

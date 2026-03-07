@@ -12,16 +12,23 @@ function isRunTerminalLifecycle(lifecycleState) {
   );
 }
 
-function selectRunLifecycleViewModel(runState, planState) {
+function selectRunLifecycleViewModel(runState, planState, builderDraftState) {
   const state = runState && runState.lifecycleState ? String(runState.lifecycleState) : "idle";
   const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
   const requestStatus = runState && runState.requestStatus ? String(runState.requestStatus) : "idle";
   const pollAt = runState && runState.lastPollAtMs ? new Date(runState.lastPollAtMs).toISOString() : "n/a";
+  const isPlanFresh = Boolean(
+    planState &&
+    builderDraftState &&
+    planState.isFreshForDraftVersion != null &&
+    planState.isFreshForDraftVersion === builderDraftState.draftVersion
+  );
   const canStartRun = Boolean(
     planState &&
     planState.requestStatus === "success" &&
     typeof planState.stableHash === "string" &&
-    planState.stableHash
+    planState.stableHash &&
+    isPlanFresh
   );
   return {
     state,
@@ -29,6 +36,7 @@ function selectRunLifecycleViewModel(runState, planState) {
     activeRunId,
     pollAt,
     canStartRun,
+    isPlanFresh,
     stableHash: planState && planState.stableHash ? String(planState.stableHash) : "",
     isTerminal: isRunTerminalLifecycle(state),
   };
@@ -58,7 +66,9 @@ function selectRunProvenanceViewModel(runState) {
   };
 }
 
-function selectReportLifecycleViewModel(reportState, runState) {
+function selectReportLifecycleViewModel(reportState, runState, options) {
+  const opts = options && typeof options === "object" ? options : {};
+  const isPlanFresh = Boolean(opts.isPlanFresh !== false);
   const requestStatus = reportState && reportState.requestStatus ? String(reportState.requestStatus) : "idle";
   const reportRunId = reportState && reportState.runId ? String(reportState.runId) : "";
   const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
@@ -76,7 +86,8 @@ function selectReportLifecycleViewModel(reportState, runState) {
     lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
     nextActions,
     reportData,
-    canCreateReport: Boolean(effectiveRunId),
+    isPlanFresh,
+    canCreateReport: Boolean(effectiveRunId && isPlanFresh),
   };
 }
 
