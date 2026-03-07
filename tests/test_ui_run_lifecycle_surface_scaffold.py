@@ -34,12 +34,15 @@ def test_run_route_renders_lifecycle_and_provenance_summary():
 
 def test_run_route_wires_run_create_and_polling_events():
     text = _read(INDEX_APP)
-    assert "stateApi.UI_EVENTS.RUN_START_REQUESTED" in text
-    assert "stateApi.UI_EVENTS.RUN_START_SUCCEEDED" in text
-    assert "stateApi.UI_EVENTS.RUN_START_FAILED" in text
-    assert "stateApi.UI_EVENTS.RUN_STATUS_UPDATED" in text
+    assert "window.VSLReact.lifecycleViewModels" in text
+    assert "selectRunLifecycleViewModelFn" in text
+    assert "buildLifecycleInstrumentViewFn" in text
+    assert "runReportWorkflowService" in text
+    assert "createRunReportWorkflowService" in text
+    assert "runReportWorkflowHandlers.startRunFromResolvedPlan" in text
+    assert "runReportWorkflowHandlers.refreshActiveRunStatus" in text
+    assert "runReportWorkflowHandlers.pollActiveRunStatus" in text
     assert "window.setInterval" in text
-    assert "runs/${encodeURIComponent(runState.activeRunId)}" in text
 
 
 def test_run_lifecycle_styles_exist():

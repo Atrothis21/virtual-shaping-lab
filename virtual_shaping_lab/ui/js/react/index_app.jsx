@@ -824,8 +824,11 @@ function RunRouteContainer({
   provenanceView,
   mismatchView,
 }) {
-  const vm = selectRunLifecycleViewModel(runState, planState);
-  const lifecycleInstrument = buildLifecycleInstrumentView(vm.state, vm.requestStatus);
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || selectRunLifecycleViewModel;
+  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
+  const vm = selectRunLifecycleViewModelFn(runState, planState);
+  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
   const blockingMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "blocking")
     : null;
@@ -918,8 +921,11 @@ function ReportRouteContainer({
   mismatchView,
   artifactView,
 }) {
-  const vm = selectReportLifecycleViewModel(reportState, runState);
-  const lifecycleInstrument = buildLifecycleInstrumentView(vm.lifecycleState, vm.requestStatus);
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || selectReportLifecycleViewModel;
+  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
+  const vm = selectReportLifecycleViewModelFn(reportState, runState);
+  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
   const warningMismatch = Array.isArray(mismatchView)
     ? mismatchView.find((m) => m.severity === "warning")
     : null;
@@ -1168,12 +1174,27 @@ function AppShell() {
     });
   }, [catalogState]);
 
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectRunProvenanceViewModelFn =
+    lifecycleViewModelsApi.selectRunProvenanceViewModel || selectRunProvenanceViewModel;
+  const detectRunVersionMismatchesFn =
+    lifecycleViewModelsApi.detectRunVersionMismatches || detectRunVersionMismatches;
+  const selectReportProvenanceViewModelFn =
+    lifecycleViewModelsApi.selectReportProvenanceViewModel || selectReportProvenanceViewModel;
+  const detectReportVersionMismatchesFn =
+    lifecycleViewModelsApi.detectReportVersionMismatches || detectReportVersionMismatches;
+  const selectReportArtifactViewModelFn =
+    lifecycleViewModelsApi.selectReportArtifactViewModel || selectReportArtifactViewModel;
+
   const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
   const planResolveErrorView = React.useMemo(() => buildPlanResolveErrorView(planState), [planState]);
-  const runProvenanceView = React.useMemo(() => selectRunProvenanceViewModel(runState), [runState]);
+  const runProvenanceView = React.useMemo(
+    () => selectRunProvenanceViewModelFn(runState),
+    [runState, selectRunProvenanceViewModelFn]
+  );
   const runVersionMismatches = React.useMemo(
-    () => detectRunVersionMismatches(runProvenanceView, catalogState, planState),
-    [catalogState, planState, runProvenanceView]
+    () => detectRunVersionMismatchesFn(runProvenanceView, catalogState, planState),
+    [catalogState, detectRunVersionMismatchesFn, planState, runProvenanceView]
   );
   const runBlockingMismatch = React.useMemo(
     () => runVersionMismatches.find((m) => m.severity === "blocking") || null,
@@ -1183,10 +1204,13 @@ function AppShell() {
     () => runVersionMismatches.find((m) => m.severity === "warning") || null,
     [runVersionMismatches]
   );
-  const reportProvenanceView = React.useMemo(() => selectReportProvenanceViewModel(reportState), [reportState]);
+  const reportProvenanceView = React.useMemo(
+    () => selectReportProvenanceViewModelFn(reportState),
+    [reportState, selectReportProvenanceViewModelFn]
+  );
   const reportVersionMismatches = React.useMemo(
-    () => detectReportVersionMismatches(reportProvenanceView, catalogState),
-    [catalogState, reportProvenanceView]
+    () => detectReportVersionMismatchesFn(reportProvenanceView, catalogState),
+    [catalogState, detectReportVersionMismatchesFn, reportProvenanceView]
   );
   const reportBlockingMismatch = React.useMemo(
     () => reportVersionMismatches.find((m) => m.severity === "blocking") || null,
@@ -1196,7 +1220,10 @@ function AppShell() {
     () => reportVersionMismatches.find((m) => m.severity === "warning") || null,
     [reportVersionMismatches]
   );
-  const reportArtifactView = React.useMemo(() => selectReportArtifactViewModel(reportState), [reportState]);
+  const reportArtifactView = React.useMemo(
+    () => selectReportArtifactViewModelFn(reportState),
+    [reportState, selectReportArtifactViewModelFn]
+  );
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -1243,6 +1270,7 @@ function AppShell() {
   }
 
   const presetActionServiceApi = window.VSLReact.presetActionService || {};
+  const runReportWorkflowApi = window.VSLReact.runReportWorkflowService || {};
   const presetActionHandlers = React.useMemo(() => {
     if (!apiClient || !stateApi) return null;
     if (typeof presetActionServiceApi.createPresetActionService !== "function") return null;
@@ -1257,6 +1285,22 @@ function AppShell() {
       },
     });
   }, [apiClient, dispatchEvent, presetActionServiceApi, stateApi]);
+  const runReportWorkflowHandlers = React.useMemo(() => {
+    if (!apiClient || !stateApi) return null;
+    if (typeof runReportWorkflowApi.createRunReportWorkflowService !== "function") return null;
+    return runReportWorkflowApi.createRunReportWorkflowService({
+      apiClient,
+      stateApi,
+      dispatchEvent,
+      setRunActionStatus,
+      setReportActionStatus,
+      buildPresetItemFromDraftSeed,
+      buildPresetApiPayload:
+        presetActionServiceApi && typeof presetActionServiceApi.buildPresetApiPayload === "function"
+          ? presetActionServiceApi.buildPresetApiPayload
+          : null,
+    });
+  }, [apiClient, dispatchEvent, presetActionServiceApi, runReportWorkflowApi, stateApi]);
 
   const seedDraftFromPreset = React.useCallback((presetItem) => {
     if (!stateApi || !presetItem) return;
@@ -1308,157 +1352,41 @@ function AppShell() {
   }, [builderDraftState, resolvePresetFromSelection]);
 
   const startRunFromResolvedPlan = React.useCallback(async () => {
-    if (!apiClient || !stateApi) return;
-    const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
-    const presetItem = buildPresetItemFromDraftSeed(draftSeed);
-    if (!presetItem) {
-      setRunActionStatus({
-        message: "Run start blocked.",
-        error: { message: "Seed a preset first to provide run payload context." },
-      });
-      return;
-    }
-    if (!planState || planState.requestStatus !== "success" || !planState.stableHash) {
-      setRunActionStatus({
-        message: "Run start blocked.",
-        error: { message: "Resolve plan first to produce stable_hash for run start." },
-      });
-      return;
-    }
-    const payloadBuilder = presetActionServiceApi && typeof presetActionServiceApi.buildPresetApiPayload === "function"
-      ? presetActionServiceApi.buildPresetApiPayload
-      : null;
-    const payload = payloadBuilder
-      ? payloadBuilder(presetItem, draftSeed)
-      : { report: { preset: presetItem.key || "custom_protocol" } };
-    const runPayload = { ...payload, expected_plan_hash: planState.stableHash };
-
-    setRunActionStatus({ message: "Starting run from resolved plan...", error: null });
-    dispatchEvent({ type: stateApi.UI_EVENTS.RUN_START_REQUESTED });
-    try {
-      const runData = await apiClient.postJson("run", runPayload);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_START_SUCCEEDED,
-        payload: {
-          runId: runData && runData.run_id ? String(runData.run_id) : "",
-          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
-            ? String(runData.lifecycle.state).toLowerCase()
-            : "running",
-          runData: runData || null,
-          atMs: Date.now(),
-        },
-      });
-      setRunActionStatus({ message: "Run started.", error: null });
-    } catch (error) {
-      const normalized = error && typeof error === "object" ? error : { message: "Run creation failed." };
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_START_FAILED,
-        payload: { error: normalized },
-      });
-      setRunActionStatus({
-        message: "Run creation failed.",
-        error: normalized,
-      });
-    }
-  }, [apiClient, builderDraftState, dispatchEvent, planState, presetActionServiceApi, stateApi]);
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.startRunFromResolvedPlan !== "function") return;
+    await runReportWorkflowHandlers.startRunFromResolvedPlan({
+      builderDraftState,
+      planState,
+    });
+  }, [builderDraftState, planState, runReportWorkflowHandlers]);
 
   const refreshActiveRunStatus = React.useCallback(async () => {
-    if (!apiClient || !stateApi || !runState || !runState.activeRunId) return;
-    const runId = String(runState.activeRunId);
-    try {
-      const runData = await apiClient.getJson(`runs/${encodeURIComponent(runId)}`);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
-        payload: {
-          runData: runData || null,
-          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
-            ? String(runData.lifecycle.state).toLowerCase()
-            : undefined,
-          atMs: Date.now(),
-        },
-      });
-      setRunActionStatus({ message: "Run status refreshed.", error: null });
-    } catch (error) {
-      setRunActionStatus({
-        message: "Run status refresh failed.",
-        error: error && typeof error === "object" ? error : { message: "Run status refresh failed." },
-      });
-    }
-  }, [apiClient, dispatchEvent, runState, stateApi]);
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.refreshActiveRunStatus !== "function") return;
+    await runReportWorkflowHandlers.refreshActiveRunStatus({ runState });
+  }, [runReportWorkflowHandlers, runState]);
 
   const createReportFromActiveRun = React.useCallback(async () => {
-    if (!apiClient || !stateApi || !runState || !reportState) return;
-    const runId = reportState.runId || runState.activeRunId;
-    if (!runId) {
-      setReportActionStatus({
-        message: "Report generation unavailable until a run is selected.",
-        error: { message: "No run_id available for report creation." },
-      });
-      return;
-    }
-
-    setReportActionStatus({ message: "Generating report artifacts...", error: null });
-    dispatchEvent({
-      type: stateApi.UI_EVENTS.REPORT_REQUESTED,
-      payload: { runId: String(runId) },
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.createReportFromActiveRun !== "function") return;
+    await runReportWorkflowHandlers.createReportFromActiveRun({
+      runState,
+      reportState,
     });
-
-    try {
-      const reportData = await apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.REPORT_SUCCEEDED,
-        payload: {
-          runId: String(runId),
-          reportData: reportData || null,
-        },
-      });
-      setReportActionStatus({ message: "Report artifacts generated.", error: null });
-    } catch (error) {
-      const normalized = error && typeof error === "object" ? error : { message: "Report generation failed." };
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.REPORT_FAILED,
-        payload: { error: normalized },
-      });
-      setReportActionStatus({
-        message: "Report generation failed. Retry when run lifecycle is report-ready.",
-        error: normalized,
-      });
-    }
-  }, [apiClient, dispatchEvent, reportState, runState, stateApi]);
+  }, [reportState, runReportWorkflowHandlers, runState]);
 
   React.useEffect(() => {
-    if (!apiClient || !stateApi || !runState || !runState.activeRunId) return;
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.pollActiveRunStatus !== "function") return;
+    if (!runState || !runState.activeRunId) return;
     if (isRunTerminalLifecycle(runState.lifecycleState)) return;
 
     let cancelled = false;
     const intervalId = window.setInterval(async () => {
-      try {
-        const runData = await apiClient.getJson(`runs/${encodeURIComponent(runState.activeRunId)}`);
-        if (cancelled) return;
-        dispatchEvent({
-          type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
-          payload: {
-            runData: runData || null,
-            lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
-              ? String(runData.lifecycle.state).toLowerCase()
-              : undefined,
-            atMs: Date.now(),
-          },
-        });
-      } catch (_error) {
-        if (cancelled) return;
-        setRunActionStatus((prev) => ({
-          ...prev,
-          message: "Polling interrupted. You can refresh status manually.",
-          error: prev.error,
-        }));
-      }
+      await runReportWorkflowHandlers.pollActiveRunStatus({ runState });
+      if (cancelled) return;
     }, 1500);
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [apiClient, dispatchEvent, runState, stateApi]);
+  }, [runReportWorkflowHandlers, runState]);
 
   function renderActiveRoute() {
     if (activeRoute === ROUTES.builder.key) {

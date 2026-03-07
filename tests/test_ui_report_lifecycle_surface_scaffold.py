@@ -30,10 +30,12 @@ def test_report_route_has_create_report_action_and_lifecycle_summary():
 def test_report_route_wires_report_events_and_report_endpoint():
     text = _read(INDEX_APP)
     assert "createReportFromActiveRun" in text
-    assert "stateApi.UI_EVENTS.REPORT_REQUESTED" in text
-    assert "stateApi.UI_EVENTS.REPORT_SUCCEEDED" in text
-    assert "stateApi.UI_EVENTS.REPORT_FAILED" in text
-    assert "apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {})" in text
+    assert "window.VSLReact.lifecycleViewModels" in text
+    assert "selectReportLifecycleViewModelFn" in text
+    assert "selectReportArtifactViewModelFn" in text
+    assert "detectReportVersionMismatchesFn" in text
+    assert "runReportWorkflowService" in text
+    assert "runReportWorkflowHandlers.createReportFromActiveRun" in text
     assert "reportActionStatus={reportActionStatus}" in text
     assert "selectReportArtifactViewModel" in text
     assert "inferFigureSemanticTone" in text
