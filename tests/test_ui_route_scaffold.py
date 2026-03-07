@@ -26,7 +26,7 @@ def test_index_app_defines_first_pass_routes():
 
 def test_index_app_has_route_container_components():
     text = _read(INDEX_APP)
-    assert "function PresetsRouteContainer()" in text
+    assert "function PresetsRouteContainer(" in text
     assert "function BuilderRouteContainer()" in text
     assert "function RunRouteContainer()" in text
     assert "function ReportRouteContainer()" in text

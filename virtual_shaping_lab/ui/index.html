@@ -315,6 +315,59 @@
       flex-wrap: wrap;
     }
 
+    .preset-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.65rem;
+    }
+
+    .preset-controls label {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .preset-controls input,
+    .preset-controls select {
+      font: inherit;
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: #1a2537;
+      color: var(--vsl-color-text-primary);
+      padding: 0.4rem 0.55rem;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .preset-card code {
+      font-family: var(--vsl-font-mono);
+      font-size: 0.82rem;
+      color: #dbeafe;
+    }
+
+    .preset-detail {
+      margin-top: 0.75rem;
+    }
+
+    .preset-detail-selectors {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-detail-selectors .route-action.active {
+      border-color: var(--vsl-color-probe);
+      color: var(--vsl-color-probe);
+      font-weight: 600;
+    }
+
     .route-action {
       text-decoration: none;
       color: var(--vsl-color-text-primary);

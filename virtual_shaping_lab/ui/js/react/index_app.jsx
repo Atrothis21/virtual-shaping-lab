@@ -58,14 +58,218 @@ function PlaceholderRouteCard({ title, description, status, actions }) {
   );
 }
 
-function PresetsRouteContainer() {
+function selectPresetCatalogViewModel(catalogState) {
+  const extensions = catalogState && catalogState.extensions ? catalogState.extensions : null;
+  const phenomena = extensions && extensions.phenomena && typeof extensions.phenomena === "object"
+    ? extensions.phenomena
+    : {};
+  const items = Object.entries(phenomena).map(([key, spec]) => {
+    const runModes = Array.isArray(spec.default_run_modes) ? spec.default_run_modes : [];
+    return {
+      key,
+      title: spec.name || key,
+      description: spec.description || "No description provided.",
+      protocolKey: spec.protocol_key || "n/a",
+      expectedSignals: Array.isArray(spec.expected_signals) ? spec.expected_signals : [],
+      defaultTemplate: spec.recommended_template_key || spec.default_template_key || "n/a",
+      runModes,
+    };
+  });
+  return {
+    status: catalogState ? catalogState.requestStatus : "idle",
+    items,
+  };
+}
+
+function PresetBrowserGrid({ items }) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return (
+      <div className="route-card">
+        <p>No presets available from catalog metadata.</p>
+      </div>
+    );
+  }
+
   return (
-    <PlaceholderRouteCard
-      title="Presets Route Container"
-      description="Primary entry flow for preset-backed experiments and phenomenon metadata support."
-      status="Owned by Presets Route"
-      actions={[{ label: "Open Legacy Presets", href: "/ui/presets.html" }]}
-    />
+    <div className="preset-grid">
+      {items.map((item) => (
+        <div className="route-card preset-card" key={item.key}>
+          <div className="route-card-header">
+            <h2>{item.title}</h2>
+            <span className="vsl-status-badge">{item.protocolKey}</span>
+          </div>
+          <p>{item.description}</p>
+          <p style={{ marginBottom: "0.35rem" }}>
+            <strong>Template:</strong> <code>{item.defaultTemplate}</code>
+          </p>
+          <p style={{ marginBottom: "0.35rem" }}>
+            <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
+          </p>
+          <p style={{ marginBottom: "0.7rem" }}>
+            <strong>Expected Signals:</strong>{" "}
+            {item.expectedSignals.length ? item.expectedSignals.slice(0, 3).join(", ") : "n/a"}
+          </p>
+          <div className="route-actions">
+            <button
+              type="button"
+              className="route-action"
+              onClick={() => {
+                window.location.hash = "#/builder";
+              }}
+            >
+              Use In Builder
+            </button>
+            <a className="route-action" href="/ui/presets.html">
+              Open Legacy Presets
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PresetDetailPanel({ item }) {
+  if (!item) {
+    return (
+      <div className="route-card preset-detail">
+        <h2>Preset Detail</h2>
+        <p>Select a preset to inspect details and lifecycle actions.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="route-card preset-detail">
+      <div className="route-card-header">
+        <h2>{item.title}</h2>
+        <span className="vsl-status-badge">{item.protocolKey}</span>
+      </div>
+      <p>{item.description}</p>
+      <p style={{ marginBottom: "0.35rem" }}>
+        <strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code>
+      </p>
+      <p style={{ marginBottom: "0.35rem" }}>
+        <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
+      </p>
+      <p style={{ marginBottom: "0.7rem" }}>
+        <strong>Expected Signals:</strong>{" "}
+        {item.expectedSignals.length ? item.expectedSignals.join(", ") : "n/a"}
+      </p>
+      <div className="route-actions">
+        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/run"; }}>
+          Resolve Preset
+        </button>
+        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/run"; }}>
+          Resolve + Run
+        </button>
+        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/report"; }}>
+          Resolve + Run + Report
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PresetsRouteContainer({ catalogState }) {
+  const viewModel = React.useMemo(
+    () => selectPresetCatalogViewModel(catalogState),
+    [catalogState]
+  );
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [runModeFilter, setRunModeFilter] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("title");
+  const [selectedPresetKey, setSelectedPresetKey] = React.useState("");
+
+  const filteredItems = React.useMemo(() => {
+    let next = [...viewModel.items];
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      next = next.filter((item) => {
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q) ||
+          item.protocolKey.toLowerCase().includes(q)
+        );
+      });
+    }
+    if (runModeFilter !== "all") {
+      next = next.filter((item) => item.runModes.includes(runModeFilter));
+    }
+    if (sortBy === "protocol") {
+      next.sort((a, b) => a.protocolKey.localeCompare(b.protocolKey));
+    } else {
+      next.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return next;
+  }, [viewModel.items, searchQuery, runModeFilter, sortBy]);
+
+  const selectedPreset = React.useMemo(() => {
+    if (!selectedPresetKey) return filteredItems[0] || null;
+    const fromFiltered = filteredItems.find((item) => item.key === selectedPresetKey);
+    if (fromFiltered) return fromFiltered;
+    return viewModel.items.find((item) => item.key === selectedPresetKey) || null;
+  }, [filteredItems, selectedPresetKey, viewModel.items]);
+
+  return (
+    <section className="vsl-page-region">
+      <div className="route-card">
+        <div className="route-card-header">
+          <h2>Presets Browser</h2>
+          <span className="vsl-status-badge">{viewModel.status}</span>
+        </div>
+        <p>Browse catalog-backed phenomenon presets and choose a starting point.</p>
+        <div className="preset-controls">
+          <label>
+            Search
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search preset, protocol, signal..."
+            />
+          </label>
+          <label>
+            Run Mode
+            <select value={runModeFilter} onChange={(e) => setRunModeFilter(e.target.value)}>
+              <option value="all">All</option>
+              <option value="trial">Trial</option>
+              <option value="tick">Tick</option>
+            </select>
+          </label>
+          <label>
+            Sort
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="title">Name</option>
+              <option value="protocol">Protocol</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <PresetDetailPanel item={selectedPreset} />
+
+      <PresetBrowserGrid items={filteredItems} />
+
+      <div className="route-card" style={{ marginTop: "0.75rem" }}>
+        <strong>Quick Select</strong>
+        <p style={{ marginTop: "0.35rem", marginBottom: "0.5rem" }}>
+          Choose which preset appears in detail view.
+        </p>
+        <div className="preset-detail-selectors">
+          {filteredItems.slice(0, 10).map((item) => (
+            <button
+              type="button"
+              key={`select-${item.key}`}
+              className={`route-action ${selectedPreset?.key === item.key ? "active" : ""}`}
+              onClick={() => setSelectedPresetKey(item.key)}
+            >
+              {item.title}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -263,7 +467,7 @@ function AppShell() {
     if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
     if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
-    return <PresetsRouteContainer />;
+    return <PresetsRouteContainer catalogState={catalogState} />;
   }
 
   return (
