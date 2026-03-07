@@ -42,6 +42,337 @@ function ShellNavItem({ label, isActive, onClick }) {
   );
 }
 
+function summarizeResolvedPlan(resolvedPlan) {
+  if (!resolvedPlan || typeof resolvedPlan !== "object") {
+    return {
+      unitCount: 0,
+      flow: "n/a",
+      totalTrials: 0,
+    };
+  }
+  const units = Array.isArray(resolvedPlan.units) ? resolvedPlan.units : [];
+  const flow = units.map((unit) => unit && (unit.protocol || unit.unit_key || unit.name || "unit")).join(" -> ");
+  const totalTrials = units.reduce((acc, unit) => {
+    const params = unit && unit.params && typeof unit.params === "object" ? unit.params : {};
+    const nTrials = Number.isFinite(Number(params.n_trials)) ? Number(params.n_trials) : 0;
+    return acc + nTrials;
+  }, 0);
+  return {
+    unitCount: units.length,
+    flow: flow || "n/a",
+    totalTrials,
+  };
+}
+
+function buildPresetItemFromDraftSeed(draftSeed) {
+  if (!draftSeed || typeof draftSeed !== "object") return null;
+  const presetKey = draftSeed.preset_key || draftSeed.phenomenon_key || null;
+  if (!presetKey) return null;
+  return {
+    key: presetKey,
+    title: presetKey,
+    description: "Seed-derived preset context",
+    protocolKey: draftSeed.protocol_key || "n/a",
+    defaultTemplate: draftSeed.template_key || "n/a",
+    runModes: draftSeed.run_mode_hint ? [draftSeed.run_mode_hint] : [],
+    expectedSignals: Array.isArray(draftSeed.expected_signals) ? draftSeed.expected_signals : [],
+  };
+}
+
+function isRunTerminalLifecycle(lifecycleState) {
+  const normalized = String(lifecycleState || "").toLowerCase();
+  return (
+    normalized === "completed" ||
+    normalized === "complete" ||
+    normalized === "failed" ||
+    normalized === "error" ||
+    normalized === "cancelled" ||
+    normalized === "canceled"
+  );
+}
+
+function selectRunLifecycleViewModel(runState, planState) {
+  const state = runState && runState.lifecycleState ? String(runState.lifecycleState) : "idle";
+  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
+  const requestStatus = runState && runState.requestStatus ? String(runState.requestStatus) : "idle";
+  const pollAt = runState && runState.lastPollAtMs ? new Date(runState.lastPollAtMs).toISOString() : "n/a";
+  const canStartRun = Boolean(
+    planState &&
+    planState.requestStatus === "success" &&
+    typeof planState.stableHash === "string" &&
+    planState.stableHash
+  );
+  return {
+    state,
+    requestStatus,
+    activeRunId,
+    pollAt,
+    canStartRun,
+    stableHash: planState && planState.stableHash ? String(planState.stableHash) : "",
+    isTerminal: isRunTerminalLifecycle(state),
+  };
+}
+
+function resolveLifecycleTone(lifecycleState, requestStatus) {
+  const status = String(lifecycleState || "").toLowerCase();
+  const request = String(requestStatus || "").toLowerCase();
+  if (status.includes("fail") || status.includes("error") || request === "error") return "cs-minus";
+  if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) return "cs-plus";
+  if (status.includes("progress") || status.includes("running") || request === "loading") return "probe";
+  return "learning";
+}
+
+function buildLifecycleInstrumentView(lifecycleState, requestStatus) {
+  const status = String(lifecycleState || "").toLowerCase();
+  const request = String(requestStatus || "").toLowerCase();
+  let progressPct = 8;
+  let phaseLabel = "idle";
+  if (status.includes("progress") || status.includes("running") || request === "loading") {
+    progressPct = 52;
+    phaseLabel = "in_progress";
+  } else if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) {
+    progressPct = 100;
+    phaseLabel = "complete";
+  } else if (status.includes("fail") || status.includes("error") || request === "error") {
+    progressPct = 100;
+    phaseLabel = "failure";
+  } else if (request === "success") {
+    progressPct = 72;
+    phaseLabel = "ready";
+  }
+  return {
+    tone: resolveLifecycleTone(lifecycleState, requestStatus),
+    progressPct,
+    phaseLabel,
+  };
+}
+
+function selectRunProvenanceViewModel(runState) {
+  const runData = runState && runState.runData && typeof runState.runData === "object"
+    ? runState.runData
+    : {};
+  const metadata = runData && runData.metadata && typeof runData.metadata === "object"
+    ? runData.metadata
+    : {};
+  const lifecycle = runData && runData.lifecycle && typeof runData.lifecycle === "object"
+    ? runData.lifecycle
+    : {};
+  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
+  return {
+    runId: runData.run_id ? String(runData.run_id) : "",
+    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
+    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
+    templateVersionUsed:
+      metadata.template_version_used === undefined || metadata.template_version_used === null
+        ? ""
+        : String(metadata.template_version_used),
+    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
+    nextActions,
+  };
+}
+
+function selectReportLifecycleViewModel(reportState, runState) {
+  const requestStatus = reportState && reportState.requestStatus ? String(reportState.requestStatus) : "idle";
+  const reportRunId = reportState && reportState.runId ? String(reportState.runId) : "";
+  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
+  const effectiveRunId = reportRunId || activeRunId;
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const lifecycle = reportData && reportData.lifecycle && typeof reportData.lifecycle === "object"
+    ? reportData.lifecycle
+    : {};
+  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
+  return {
+    requestStatus,
+    effectiveRunId,
+    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
+    nextActions,
+    reportData,
+    canCreateReport: Boolean(effectiveRunId),
+  };
+}
+
+function normalizeArtifactHref(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const slashed = raw.replace(/\\/g, "/");
+  return slashed.startsWith("/") ? slashed : `/${slashed}`;
+}
+
+function inferFigureSemanticTone(pathValue) {
+  const value = String(pathValue || "").toLowerCase();
+  if (value.includes("cs_minus") || value.includes("cs-") || value.includes("minus")) return "cs-minus";
+  if (value.includes("cs_plus") || value.includes("cs+") || value.includes("plus")) return "cs-plus";
+  if (value.includes("probe")) return "probe";
+  if (value.includes("compound")) return "compound";
+  return "learning";
+}
+
+function selectReportArtifactViewModel(reportState) {
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const artifacts = reportData && reportData.artifacts && typeof reportData.artifacts === "object"
+    ? reportData.artifacts
+    : {};
+  const figureList = Array.isArray(artifacts.figures)
+    ? artifacts.figures
+        .map((item) => normalizeArtifactHref(item))
+        .filter(Boolean)
+        .map((href) => ({
+          href,
+          label: href.split("/").pop() || href,
+          tone: inferFigureSemanticTone(href),
+        }))
+    : [];
+  const pdfPath = normalizeArtifactHref(artifacts.pdf);
+  return {
+    hasArtifacts: Boolean(pdfPath || figureList.length),
+    pdfPath,
+    figureList,
+  };
+}
+
+function selectReportProvenanceViewModel(reportState) {
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const metadata = reportData && reportData.metadata && typeof reportData.metadata === "object"
+    ? reportData.metadata
+    : {};
+  return {
+    sourceRunId: metadata.source_run_id ? String(metadata.source_run_id) : "",
+    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
+    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
+    templateVersionUsed:
+      metadata.template_version_used === undefined || metadata.template_version_used === null
+        ? ""
+        : String(metadata.template_version_used),
+    regenerated:
+      metadata.regenerated === undefined || metadata.regenerated === null
+        ? ""
+        : String(Boolean(metadata.regenerated)),
+    regenerationMode: metadata.regeneration_mode ? String(metadata.regeneration_mode) : "",
+    missingSourceMetadata: Array.isArray(metadata.missing_source_metadata)
+      ? metadata.missing_source_metadata.map((item) => String(item))
+      : [],
+  };
+}
+
+function detectReportVersionMismatches(provenance, catalogState) {
+  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
+    ? catalogState.versions
+    : {};
+  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
+  const expectedTemplate =
+    versions.template_version_used === undefined || versions.template_version_used === null
+      ? ""
+      : String(versions.template_version_used);
+
+  const mismatches = [];
+  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
+    mismatches.push({
+      field: "record_schema_version",
+      expected: expectedRecord,
+      received: provenance.recordSchemaVersion,
+      severity: "blocking",
+      action: "Open static artifacts where available, then refresh run/report context.",
+    });
+  }
+  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
+    mismatches.push({
+      field: "template_version_used",
+      expected: expectedTemplate,
+      received: provenance.templateVersionUsed,
+      severity: "warning",
+      action: "Proceed in degraded mode using static artifacts and refresh if needed.",
+    });
+  }
+  return mismatches;
+}
+
+function detectRunVersionMismatches(provenance, catalogState, planState) {
+  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
+    ? catalogState.versions
+    : {};
+  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
+  const expectedTemplate =
+    versions.template_version_used === undefined || versions.template_version_used === null
+      ? ""
+      : String(versions.template_version_used);
+  const expectedPlan = planState && planState.stableHash ? String(planState.stableHash) : "";
+
+  const mismatches = [];
+  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
+    mismatches.push({
+      field: "record_schema_version",
+      expected: expectedRecord,
+      received: provenance.recordSchemaVersion,
+      severity: "blocking",
+      action: "Refresh run status or open static artifacts while schema-dependent views are disabled.",
+    });
+  }
+  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
+    mismatches.push({
+      field: "template_version_used",
+      expected: expectedTemplate,
+      received: provenance.templateVersionUsed,
+      severity: "warning",
+      action: "Proceed in degraded mode and refresh if interactive controls remain unavailable.",
+    });
+  }
+  if (provenance.planHash && expectedPlan && provenance.planHash !== expectedPlan) {
+    mismatches.push({
+      field: "plan_hash",
+      expected: expectedPlan,
+      received: provenance.planHash,
+      severity: "warning",
+      action: "Re-resolve plan and start a new run if you need strict hash parity.",
+    });
+  }
+  return mismatches;
+}
+
+function extractFieldHintsFromReason(reason) {
+  const text = String(reason || "");
+  const matches = text.match(/([a-zA-Z_][a-zA-Z0-9_.\[\]]*)/g) || [];
+  const candidates = matches.filter((token) => {
+    const lower = token.toLowerCase();
+    return (
+      lower.includes("experiment") ||
+      lower.includes("phase") ||
+      lower.includes("protocol") ||
+      lower.includes("stimuli") ||
+      lower.includes("params") ||
+      lower.includes("runtime") ||
+      lower.includes("report")
+    );
+  });
+  return Array.from(new Set(candidates)).slice(0, 6);
+}
+
+function buildPlanResolveErrorView(planState) {
+  const err = planState && planState.lastError ? planState.lastError : null;
+  if (!err) return null;
+  const envelope = err.envelope && typeof err.envelope === "object" ? err.envelope : null;
+  const code = envelope && envelope.code ? String(envelope.code) : "request_error";
+  const message = envelope && envelope.message ? String(envelope.message) : String(err.message || "Plan resolve failed.");
+  const details = envelope && envelope.details && typeof envelope.details === "object" ? envelope.details : {};
+  const reason = details.reason ? String(details.reason) : "";
+  const invalidFields = extractFieldHintsFromReason(reason);
+  const hint = details.hint ? String(details.hint) : "Edit draft fields, revalidate, and retry plan resolution.";
+  return {
+    code,
+    message,
+    reason,
+    invalidFields,
+    hint,
+  };
+}
+
 function PlaceholderRouteCard({ title, description, status, actions }) {
   const foundation = window.VSLReact.foundationPrimitives || {};
   const SurfacePanel = foundation.SurfacePanel || ((props) => <div {...props} />);
@@ -427,37 +758,291 @@ function PresetsRouteContainer({
   );
 }
 
-function BuilderRouteContainer({ builderDraftState }) {
+function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, resolveErrorView }) {
   const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
+  const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
+  const stableHash = planState && planState.stableHash ? planState.stableHash : "";
+  const summary = summarizeResolvedPlan(resolvedPlan);
   return (
-    <PlaceholderRouteCard
-      title="Builder Route Container"
-      description="Constrained draft editing surface for builder-driven experiment setup."
-      status={seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
-      actions={[{ label: "Open Legacy Builder", href: "/ui/builder.html" }]}
-    />
+    <div className="route-card">
+      <div className="route-card-header">
+        <h2>Builder Route Container</h2>
+        <span className="vsl-status-badge">
+          {seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
+        </span>
+      </div>
+      <p>Constrained draft editing surface for builder-driven experiment setup.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onResolvePlan === "function") onResolvePlan();
+          }}
+        >
+          Resolve Plan
+        </button>
+        <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
+      </div>
+      <div className="plan-resolve-summary">
+        <div><strong>Plan Status:</strong> <code>{planState && planState.requestStatus ? planState.requestStatus : "idle"}</code></div>
+        <div><strong>Stable Hash:</strong> <code>{stableHash || "n/a"}</code></div>
+        <div><strong>Unit Count:</strong> <code>{summary.unitCount}</code></div>
+        <div><strong>Total Trials:</strong> <code>{summary.totalTrials}</code></div>
+        <div><strong>Flow:</strong> <code>{summary.flow}</code></div>
+      </div>
+      {resolveErrorView ? (
+        <div className="plan-resolve-inline-error">
+          <div><strong>Resolve Error Code:</strong> <code>{resolveErrorView.code}</code></div>
+          <div><strong>Message:</strong> {resolveErrorView.message}</div>
+          {resolveErrorView.reason ? (
+            <div><strong>Reason:</strong> <code>{resolveErrorView.reason}</code></div>
+          ) : null}
+          {resolveErrorView.invalidFields.length ? (
+            <div>
+              <strong>Likely Fields:</strong>
+              <ul>
+                {resolveErrorView.invalidFields.map((field) => (
+                  <li key={`resolve-field-${field}`}><code>{field}</code></li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <div><strong>Recovery:</strong> {resolveErrorView.hint}</div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
-function RunRouteContainer() {
+function RunRouteContainer({
+  runState,
+  planState,
+  onStartRun,
+  onRefreshRun,
+  runActionStatus,
+  provenanceView,
+  mismatchView,
+}) {
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || selectRunLifecycleViewModel;
+  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
+  const vm = selectRunLifecycleViewModelFn(runState, planState);
+  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
+  const blockingMismatch = Array.isArray(mismatchView)
+    ? mismatchView.find((m) => m.severity === "blocking")
+    : null;
   return (
-    <PlaceholderRouteCard
-      title="Run Route Container"
-      description="Lifecycle execution surface for run creation, status polling, and provenance."
-      status="Owned by Run Route"
-      actions={[{ label: "Open Legacy Console", href: "/ui/console.html" }]}
-    />
+    <div className="route-card run-lifecycle-card">
+      <div className="route-card-header">
+        <h2>Run Lifecycle</h2>
+        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
+          {vm.state}
+        </span>
+      </div>
+      <div className="lifecycle-instrument">
+        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
+          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
+        </div>
+        <div className="lifecycle-caption">
+          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
+        </div>
+      </div>
+      <p>Create runs from resolved plans and monitor lifecycle progression.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onStartRun === "function") onStartRun();
+          }}
+          disabled={!vm.canStartRun || vm.requestStatus === "loading"}
+        >
+          {vm.requestStatus === "loading" ? "Starting Run..." : "Start Run"}
+        </button>
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onRefreshRun === "function") onRefreshRun();
+          }}
+          disabled={!vm.activeRunId}
+        >
+          Refresh Status
+        </button>
+        <a className="route-action" href="/ui/console.html">Open Legacy Console</a>
+      </div>
+      <div className="run-lifecycle-summary">
+        <div><strong>Request Status:</strong> <code>{vm.requestStatus}</code></div>
+        <div><strong>Active Run ID:</strong> <code>{vm.activeRunId || "n/a"}</code></div>
+        <div><strong>Plan Hash:</strong> <code>{vm.stableHash || "n/a"}</code></div>
+        <div><strong>Polling Updated:</strong> <code>{vm.pollAt}</code></div>
+      </div>
+      <div className="run-provenance-summary">
+        <div><strong>Run Provenance</strong></div>
+        <div><strong>run_id:</strong> <code>{provenanceView.runId || "n/a"}</code></div>
+        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
+        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
+        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
+        <div><strong>lifecycle:</strong> <code>{provenanceView.lifecycleState || "n/a"}</code></div>
+        <div>
+          <strong>next_actions:</strong>{" "}
+          <code>{provenanceView.nextActions.length ? provenanceView.nextActions.join(", ") : "n/a"}</code>
+        </div>
+      </div>
+      {blockingMismatch ? (
+        <div className="run-blocking-note">
+          <strong>Incompatible data version:</strong>{" "}
+          This run detail is in blocking mode for <code>{blockingMismatch.field}</code>.
+        </div>
+      ) : null}
+      {runActionStatus && runActionStatus.message ? (
+        <p className="run-action-message">{runActionStatus.message}</p>
+      ) : null}
+      {runActionStatus && runActionStatus.error && runActionStatus.error.message ? (
+        <p className="run-action-error">{String(runActionStatus.error.message)}</p>
+      ) : null}
+      {!vm.canStartRun ? (
+        <p className="run-action-message">
+          Resolve a plan first to enable run creation from a stable execution hash.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
-function ReportRouteContainer() {
+function ReportRouteContainer({
+  reportState,
+  runState,
+  onCreateReport,
+  onRefreshRun,
+  reportActionStatus,
+  provenanceView,
+  mismatchView,
+  artifactView,
+}) {
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || selectReportLifecycleViewModel;
+  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
+  const vm = selectReportLifecycleViewModelFn(reportState, runState);
+  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
+  const warningMismatch = Array.isArray(mismatchView)
+    ? mismatchView.find((m) => m.severity === "warning")
+    : null;
   return (
-    <PlaceholderRouteCard
-      title="Report Route Container"
-      description="Report generation and artifact access surface tied to completed runs."
-      status="Owned by Report Route"
-      actions={[{ label: "Open Legacy Results", href: "/ui/results.html" }]}
-    />
+    <div className="route-card report-lifecycle-card">
+      <div className="route-card-header">
+        <h2>Report Lifecycle</h2>
+        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
+          {vm.requestStatus}
+        </span>
+      </div>
+      <div className="lifecycle-instrument">
+        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
+          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
+        </div>
+        <div className="lifecycle-caption">
+          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
+        </div>
+      </div>
+      <p>Create report artifacts from completed runs and monitor report lifecycle state.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onCreateReport === "function") onCreateReport();
+          }}
+          disabled={!vm.canCreateReport || vm.requestStatus === "loading"}
+        >
+          {vm.requestStatus === "loading" ? "Generating Report..." : "Create Report"}
+        </button>
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onRefreshRun === "function") onRefreshRun();
+          }}
+          disabled={!vm.effectiveRunId}
+        >
+          Refresh Run Status
+        </button>
+        <a className="route-action" href="/ui/results.html">Open Legacy Results</a>
+      </div>
+      <div className="report-lifecycle-summary">
+        <div><strong>Run ID:</strong> <code>{vm.effectiveRunId || "n/a"}</code></div>
+        <div><strong>Lifecycle:</strong> <code>{vm.lifecycleState || "n/a"}</code></div>
+        <div><strong>Next Actions:</strong> <code>{vm.nextActions.length ? vm.nextActions.join(", ") : "n/a"}</code></div>
+      </div>
+      <div className="report-provenance-summary">
+        <div><strong>source_run_id:</strong> <code>{provenanceView.sourceRunId || "n/a"}</code></div>
+        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
+        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
+        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
+        <div><strong>regenerated:</strong> <code>{provenanceView.regenerated || "n/a"}</code></div>
+        <div><strong>regeneration_mode:</strong> <code>{provenanceView.regenerationMode || "n/a"}</code></div>
+        <div>
+          <strong>missing_source_metadata:</strong>{" "}
+          <code>{provenanceView.missingSourceMetadata.length ? provenanceView.missingSourceMetadata.join(", ") : "n/a"}</code>
+        </div>
+      </div>
+      {warningMismatch ? (
+        <p className="report-degraded-note">
+          Degraded mode active for <code>{warningMismatch.field}</code>. Static artifacts remain available.
+        </p>
+      ) : null}
+      <div className="report-artifact-grid">
+        <div className="report-artifact-card">
+          <strong>PDF Report</strong>
+          <div>
+            {artifactView.pdfPath ? (
+              <a href={artifactView.pdfPath} target="_blank" rel="noreferrer">Open report.pdf</a>
+            ) : (
+              <span className="report-artifact-missing">Not available yet</span>
+            )}
+          </div>
+        </div>
+        <div className="report-artifact-card">
+          <strong>Figure Artifacts</strong>
+          <div className="report-plot-legend">
+            <span className="vsl-status-badge semantic cs-plus">CS+</span>
+            <span className="vsl-status-badge semantic cs-minus">CS-</span>
+            <span className="vsl-status-badge semantic probe">Probe</span>
+            <span className="vsl-status-badge semantic compound">Compound</span>
+            <span className="vsl-status-badge semantic learning">Learning</span>
+          </div>
+          {artifactView.figureList.length ? (
+            <div className="report-figure-grid">
+              {artifactView.figureList.map((figure) => (
+                <a
+                  key={figure.href}
+                  className={`report-figure-card accent-${figure.tone}`}
+                  href={figure.href}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="report-figure-title">{figure.label}</span>
+                  <span className="report-figure-tone">{figure.tone}</span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <span className="report-artifact-missing">No figures available yet</span>
+          )}
+        </div>
+      </div>
+      {reportActionStatus && reportActionStatus.message ? (
+        <p className="report-action-message">{reportActionStatus.message}</p>
+      ) : null}
+      {reportActionStatus && reportActionStatus.error && reportActionStatus.error.message ? (
+        <p className="report-action-error">{String(reportActionStatus.error.message)}</p>
+      ) : null}
+      {!vm.canCreateReport ? (
+        <p className="report-action-message">
+          Start and complete a run first to enable report generation.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -505,9 +1090,20 @@ function AppShell() {
     message: "",
     error: null,
   }));
+  const [runActionStatus, setRunActionStatus] = React.useState(() => ({
+    message: "",
+    error: null,
+  }));
+  const [reportActionStatus, setReportActionStatus] = React.useState(() => ({
+    message: "",
+    error: null,
+  }));
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
   const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
+  const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
+  const runState = stateApi && uiState ? stateApi.selectRunState(uiState) : null;
+  const reportState = stateApi && uiState ? stateApi.selectReportState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -578,7 +1174,56 @@ function AppShell() {
     });
   }, [catalogState]);
 
+  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const selectRunProvenanceViewModelFn =
+    lifecycleViewModelsApi.selectRunProvenanceViewModel || selectRunProvenanceViewModel;
+  const detectRunVersionMismatchesFn =
+    lifecycleViewModelsApi.detectRunVersionMismatches || detectRunVersionMismatches;
+  const selectReportProvenanceViewModelFn =
+    lifecycleViewModelsApi.selectReportProvenanceViewModel || selectReportProvenanceViewModel;
+  const detectReportVersionMismatchesFn =
+    lifecycleViewModelsApi.detectReportVersionMismatches || detectReportVersionMismatches;
+  const selectReportArtifactViewModelFn =
+    lifecycleViewModelsApi.selectReportArtifactViewModel || selectReportArtifactViewModel;
+
   const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
+  const planResolveErrorView = React.useMemo(() => buildPlanResolveErrorView(planState), [planState]);
+  const runProvenanceView = React.useMemo(
+    () => selectRunProvenanceViewModelFn(runState),
+    [runState, selectRunProvenanceViewModelFn]
+  );
+  const runVersionMismatches = React.useMemo(
+    () => detectRunVersionMismatchesFn(runProvenanceView, catalogState, planState),
+    [catalogState, detectRunVersionMismatchesFn, planState, runProvenanceView]
+  );
+  const runBlockingMismatch = React.useMemo(
+    () => runVersionMismatches.find((m) => m.severity === "blocking") || null,
+    [runVersionMismatches]
+  );
+  const runWarningMismatch = React.useMemo(
+    () => runVersionMismatches.find((m) => m.severity === "warning") || null,
+    [runVersionMismatches]
+  );
+  const reportProvenanceView = React.useMemo(
+    () => selectReportProvenanceViewModelFn(reportState),
+    [reportState, selectReportProvenanceViewModelFn]
+  );
+  const reportVersionMismatches = React.useMemo(
+    () => detectReportVersionMismatchesFn(reportProvenanceView, catalogState),
+    [catalogState, detectReportVersionMismatchesFn, reportProvenanceView]
+  );
+  const reportBlockingMismatch = React.useMemo(
+    () => reportVersionMismatches.find((m) => m.severity === "blocking") || null,
+    [reportVersionMismatches]
+  );
+  const reportWarningMismatch = React.useMemo(
+    () => reportVersionMismatches.find((m) => m.severity === "warning") || null,
+    [reportVersionMismatches]
+  );
+  const reportArtifactView = React.useMemo(
+    () => selectReportArtifactViewModelFn(reportState),
+    [reportState, selectReportArtifactViewModelFn]
+  );
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -625,6 +1270,7 @@ function AppShell() {
   }
 
   const presetActionServiceApi = window.VSLReact.presetActionService || {};
+  const runReportWorkflowApi = window.VSLReact.runReportWorkflowService || {};
   const presetActionHandlers = React.useMemo(() => {
     if (!apiClient || !stateApi) return null;
     if (typeof presetActionServiceApi.createPresetActionService !== "function") return null;
@@ -639,6 +1285,22 @@ function AppShell() {
       },
     });
   }, [apiClient, dispatchEvent, presetActionServiceApi, stateApi]);
+  const runReportWorkflowHandlers = React.useMemo(() => {
+    if (!apiClient || !stateApi) return null;
+    if (typeof runReportWorkflowApi.createRunReportWorkflowService !== "function") return null;
+    return runReportWorkflowApi.createRunReportWorkflowService({
+      apiClient,
+      stateApi,
+      dispatchEvent,
+      setRunActionStatus,
+      setReportActionStatus,
+      buildPresetItemFromDraftSeed,
+      buildPresetApiPayload:
+        presetActionServiceApi && typeof presetActionServiceApi.buildPresetApiPayload === "function"
+          ? presetActionServiceApi.buildPresetApiPayload
+          : null,
+    });
+  }, [apiClient, dispatchEvent, presetActionServiceApi, runReportWorkflowApi, stateApi]);
 
   const seedDraftFromPreset = React.useCallback((presetItem) => {
     if (!stateApi || !presetItem) return;
@@ -674,10 +1336,96 @@ function AppShell() {
     return presetActionHandlers.resolveRunReportPresetFromSelection(presetItem);
   }, [presetActionHandlers]);
 
+  const resolvePlanFromBuilderContext = React.useCallback(async () => {
+    const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
+    const presetItem = buildPresetItemFromDraftSeed(draftSeed);
+    if (!presetItem) {
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "No preset seed is available in builder context.",
+        error: { message: "Seed a preset first, then resolve plan." },
+      });
+      return;
+    }
+    await resolvePresetFromSelection(presetItem);
+  }, [builderDraftState, resolvePresetFromSelection]);
+
+  const startRunFromResolvedPlan = React.useCallback(async () => {
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.startRunFromResolvedPlan !== "function") return;
+    await runReportWorkflowHandlers.startRunFromResolvedPlan({
+      builderDraftState,
+      planState,
+    });
+  }, [builderDraftState, planState, runReportWorkflowHandlers]);
+
+  const refreshActiveRunStatus = React.useCallback(async () => {
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.refreshActiveRunStatus !== "function") return;
+    await runReportWorkflowHandlers.refreshActiveRunStatus({ runState });
+  }, [runReportWorkflowHandlers, runState]);
+
+  const createReportFromActiveRun = React.useCallback(async () => {
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.createReportFromActiveRun !== "function") return;
+    await runReportWorkflowHandlers.createReportFromActiveRun({
+      runState,
+      reportState,
+    });
+  }, [reportState, runReportWorkflowHandlers, runState]);
+
+  React.useEffect(() => {
+    if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.pollActiveRunStatus !== "function") return;
+    if (!runState || !runState.activeRunId) return;
+    if (isRunTerminalLifecycle(runState.lifecycleState)) return;
+
+    let cancelled = false;
+    const intervalId = window.setInterval(async () => {
+      await runReportWorkflowHandlers.pollActiveRunStatus({ runState });
+      if (cancelled) return;
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [runReportWorkflowHandlers, runState]);
+
   function renderActiveRoute() {
-    if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer builderDraftState={builderDraftState} />;
-    if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
-    if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
+    if (activeRoute === ROUTES.builder.key) {
+      return (
+        <BuilderRouteContainer
+          builderDraftState={builderDraftState}
+          planState={planState}
+          onResolvePlan={resolvePlanFromBuilderContext}
+          resolveErrorView={planResolveErrorView}
+        />
+      );
+    }
+    if (activeRoute === ROUTES.run.key) {
+      return (
+        <RunRouteContainer
+          runState={runState}
+          planState={planState}
+          onStartRun={startRunFromResolvedPlan}
+          onRefreshRun={refreshActiveRunStatus}
+          runActionStatus={runActionStatus}
+          provenanceView={runProvenanceView}
+          mismatchView={runVersionMismatches}
+        />
+      );
+    }
+    if (activeRoute === ROUTES.report.key) {
+      return (
+        <ReportRouteContainer
+          reportState={reportState}
+          runState={runState}
+          onCreateReport={createReportFromActiveRun}
+          onRefreshRun={refreshActiveRunStatus}
+          reportActionStatus={reportActionStatus}
+          provenanceView={reportProvenanceView}
+          mismatchView={reportVersionMismatches}
+          artifactView={reportArtifactView}
+        />
+      );
+    }
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
     return (
       <PresetsRouteContainer
@@ -746,6 +1494,53 @@ function AppShell() {
               message="The app cannot bootstrap required catalog metadata right now. Retry catalog loading before continuing."
               actionLabel="Retry Catalog Load"
               onAction={refreshCatalog}
+            />
+          ) : null}
+          {activeRoute === ROUTES.builder.key && planResolveErrorView ? (
+            <GlobalBanner
+              level="error"
+              title="Plan validation failed"
+              message={
+                planResolveErrorView.invalidFields.length
+                  ? `Invalid fields: ${planResolveErrorView.invalidFields.join(", ")}`
+                  : planResolveErrorView.message
+              }
+              actionLabel="Retry Resolve"
+              onAction={resolvePlanFromBuilderContext}
+            />
+          ) : null}
+          {activeRoute === ROUTES.run.key && runWarningMismatch ? (
+            <GlobalBanner
+              level="warning"
+              title="Version mismatch detected"
+              message={`Field: ${runWarningMismatch.field} | Expected: ${runWarningMismatch.expected} | Received: ${runWarningMismatch.received} | Action: ${runWarningMismatch.action}`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.run.key && runBlockingMismatch ? (
+            <BlockingPanel
+              title="Incompatible data version"
+              message={`This view cannot be rendered with ${runBlockingMismatch.field}. Expected ${runBlockingMismatch.expected}, received ${runBlockingMismatch.received}. Use manual refresh or open static artifacts.`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.report.key && reportWarningMismatch ? (
+            <GlobalBanner
+              level="warning"
+              title="Version mismatch detected"
+              message={`Field: ${reportWarningMismatch.field} | Expected: ${reportWarningMismatch.expected} | Received: ${reportWarningMismatch.received} | Action: ${reportWarningMismatch.action}`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.report.key && reportBlockingMismatch ? (
+            <BlockingPanel
+              title="Incompatible data version"
+              message={`Report detail rendering is blocked for ${reportBlockingMismatch.field}. Expected ${reportBlockingMismatch.expected}, received ${reportBlockingMismatch.received}. Open static artifacts where available, then refresh context.`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
             />
           ) : null}
           {renderActiveRoute()}

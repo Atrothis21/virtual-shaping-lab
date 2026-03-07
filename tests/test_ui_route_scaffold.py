@@ -28,8 +28,8 @@ def test_index_app_has_route_container_components():
     text = _read(INDEX_APP)
     assert "function PresetsRouteContainer(" in text
     assert "function BuilderRouteContainer(" in text
-    assert "function RunRouteContainer()" in text
-    assert "function ReportRouteContainer()" in text
+    assert "function RunRouteContainer(" in text
+    assert "function ReportRouteContainer(" in text
     assert "function CatalogHelpRouteContainer()" in text
     assert "function renderActiveRoute()" in text
 
@@ -48,6 +48,8 @@ def test_index_html_loads_react_shell_entrypoint():
     state_idx = text.find('/ui/js/react/state_domains.js')
     read_models_idx = text.find('/ui/js/react/preset_read_models.js')
     action_service_idx = text.find('/ui/js/react/preset_action_service.js')
+    workflow_service_idx = text.find('/ui/js/react/run_report_workflow_service.js')
+    lifecycle_selectors_idx = text.find('/ui/js/react/lifecycle_view_models.js')
     contracts_idx = text.find('/ui/js/react/ui_architecture_contracts.js')
     foundation_idx = text.find('/ui/js/react/ui_foundation_primitives.jsx')
     primitives_idx = text.find('/ui/js/react/ui_primitives.jsx')
@@ -57,6 +59,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert state_idx != -1
     assert read_models_idx != -1
     assert action_service_idx != -1
+    assert workflow_service_idx != -1
+    assert lifecycle_selectors_idx != -1
     assert contracts_idx != -1
     assert foundation_idx != -1
     assert primitives_idx != -1
@@ -66,6 +70,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert state_idx < app_idx
     assert read_models_idx < app_idx
     assert action_service_idx < app_idx
+    assert workflow_service_idx < app_idx
+    assert lifecycle_selectors_idx < app_idx
     assert contracts_idx < app_idx
     assert foundation_idx < app_idx
     assert primitives_idx < app_idx
