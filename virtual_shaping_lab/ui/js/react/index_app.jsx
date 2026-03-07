@@ -122,6 +122,11 @@ function AppShell() {
     return window.VSLApi.createApiClient({ baseUrl: "" });
   }, []);
   const stateApi = window.VSLReact.stateDomains;
+  const contractApi = window.VSLReact.architectureContracts;
+  const contractRegistry = React.useMemo(() => {
+    if (!contractApi || typeof contractApi.createDefaultContractRegistry !== "function") return null;
+    return contractApi.createDefaultContractRegistry();
+  }, [contractApi]);
   const uiPrimitives = window.VSLReact.uiPrimitives || {};
   const GlobalBanner = uiPrimitives.GlobalBanner || (() => null);
   const BlockingPanel = uiPrimitives.BlockingPanel || (() => null);
@@ -274,6 +279,9 @@ function AppShell() {
           </p>
           <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
             Catalog bootstrap status: {catalogState ? catalogState.requestStatus : "n/a"}
+          </p>
+          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+            Architecture contracts loaded: {contractRegistry ? "yes" : "no"}
           </p>
         </div>
       </header>

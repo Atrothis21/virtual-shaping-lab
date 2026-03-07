@@ -1,0 +1,17 @@
+{
+  "layers": ["shared", "features", "routes"],
+  "allowed_dependencies": {
+    "shared": [],
+    "features": ["shared"],
+    "routes": ["features", "shared"]
+  },
+  "file_layers": {
+    "api_client.js": "shared",
+    "state_domains.js": "shared",
+    "ui_theme_tokens.js": "shared",
+    "ui_primitives.jsx": "shared",
+    "ui_foundation_primitives.jsx": "shared",
+    "index_app.jsx": "routes"
+  },
+  "forbidden_direct_fetch_outside": ["api_client.js"]
+}
