@@ -137,6 +137,113 @@ function selectRunProvenanceViewModel(runState) {
   };
 }
 
+function selectReportLifecycleViewModel(reportState, runState) {
+  const requestStatus = reportState && reportState.requestStatus ? String(reportState.requestStatus) : "idle";
+  const reportRunId = reportState && reportState.runId ? String(reportState.runId) : "";
+  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
+  const effectiveRunId = reportRunId || activeRunId;
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const lifecycle = reportData && reportData.lifecycle && typeof reportData.lifecycle === "object"
+    ? reportData.lifecycle
+    : {};
+  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
+  return {
+    requestStatus,
+    effectiveRunId,
+    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
+    nextActions,
+    reportData,
+    canCreateReport: Boolean(effectiveRunId),
+  };
+}
+
+function normalizeArtifactHref(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const slashed = raw.replace(/\\/g, "/");
+  return slashed.startsWith("/") ? slashed : `/${slashed}`;
+}
+
+function selectReportArtifactViewModel(reportState) {
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const artifacts = reportData && reportData.artifacts && typeof reportData.artifacts === "object"
+    ? reportData.artifacts
+    : {};
+  const figureList = Array.isArray(artifacts.figures)
+    ? artifacts.figures.map((item) => normalizeArtifactHref(item)).filter(Boolean)
+    : [];
+  const pdfPath = normalizeArtifactHref(artifacts.pdf);
+  return {
+    hasArtifacts: Boolean(pdfPath || figureList.length),
+    pdfPath,
+    figureList,
+  };
+}
+
+function selectReportProvenanceViewModel(reportState) {
+  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
+    ? reportState.reportData
+    : {};
+  const metadata = reportData && reportData.metadata && typeof reportData.metadata === "object"
+    ? reportData.metadata
+    : {};
+  return {
+    sourceRunId: metadata.source_run_id ? String(metadata.source_run_id) : "",
+    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
+    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
+    templateVersionUsed:
+      metadata.template_version_used === undefined || metadata.template_version_used === null
+        ? ""
+        : String(metadata.template_version_used),
+    regenerated:
+      metadata.regenerated === undefined || metadata.regenerated === null
+        ? ""
+        : String(Boolean(metadata.regenerated)),
+    regenerationMode: metadata.regeneration_mode ? String(metadata.regeneration_mode) : "",
+    missingSourceMetadata: Array.isArray(metadata.missing_source_metadata)
+      ? metadata.missing_source_metadata.map((item) => String(item))
+      : [],
+  };
+}
+
+function detectReportVersionMismatches(provenance, catalogState) {
+  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
+    ? catalogState.versions
+    : {};
+  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
+  const expectedTemplate =
+    versions.template_version_used === undefined || versions.template_version_used === null
+      ? ""
+      : String(versions.template_version_used);
+
+  const mismatches = [];
+  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
+    mismatches.push({
+      field: "record_schema_version",
+      expected: expectedRecord,
+      received: provenance.recordSchemaVersion,
+      severity: "blocking",
+      action: "Open static artifacts where available, then refresh run/report context.",
+    });
+  }
+  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
+    mismatches.push({
+      field: "template_version_used",
+      expected: expectedTemplate,
+      received: provenance.templateVersionUsed,
+      severity: "warning",
+      action: "Proceed in degraded mode using static artifacts and refresh if needed.",
+    });
+  }
+  return mismatches;
+}
+
 function detectRunVersionMismatches(provenance, catalogState, planState) {
   const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
     ? catalogState.versions
@@ -742,14 +849,112 @@ function RunRouteContainer({
   );
 }
 
-function ReportRouteContainer() {
+function ReportRouteContainer({
+  reportState,
+  runState,
+  onCreateReport,
+  onRefreshRun,
+  reportActionStatus,
+  provenanceView,
+  mismatchView,
+  artifactView,
+}) {
+  const vm = selectReportLifecycleViewModel(reportState, runState);
+  const warningMismatch = Array.isArray(mismatchView)
+    ? mismatchView.find((m) => m.severity === "warning")
+    : null;
   return (
-    <PlaceholderRouteCard
-      title="Report Route Container"
-      description="Report generation and artifact access surface tied to completed runs."
-      status="Owned by Report Route"
-      actions={[{ label: "Open Legacy Results", href: "/ui/results.html" }]}
-    />
+    <div className="route-card report-lifecycle-card">
+      <div className="route-card-header">
+        <h2>Report Lifecycle</h2>
+        <span className={`vsl-status-badge semantic ${vm.requestStatus === "success" ? "cs-plus" : "learning"}`}>
+          {vm.requestStatus}
+        </span>
+      </div>
+      <p>Create report artifacts from completed runs and monitor report lifecycle state.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onCreateReport === "function") onCreateReport();
+          }}
+          disabled={!vm.canCreateReport || vm.requestStatus === "loading"}
+        >
+          {vm.requestStatus === "loading" ? "Generating Report..." : "Create Report"}
+        </button>
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onRefreshRun === "function") onRefreshRun();
+          }}
+          disabled={!vm.effectiveRunId}
+        >
+          Refresh Run Status
+        </button>
+        <a className="route-action" href="/ui/results.html">Open Legacy Results</a>
+      </div>
+      <div className="report-lifecycle-summary">
+        <div><strong>Run ID:</strong> <code>{vm.effectiveRunId || "n/a"}</code></div>
+        <div><strong>Lifecycle:</strong> <code>{vm.lifecycleState || "n/a"}</code></div>
+        <div><strong>Next Actions:</strong> <code>{vm.nextActions.length ? vm.nextActions.join(", ") : "n/a"}</code></div>
+      </div>
+      <div className="report-provenance-summary">
+        <div><strong>source_run_id:</strong> <code>{provenanceView.sourceRunId || "n/a"}</code></div>
+        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
+        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
+        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
+        <div><strong>regenerated:</strong> <code>{provenanceView.regenerated || "n/a"}</code></div>
+        <div><strong>regeneration_mode:</strong> <code>{provenanceView.regenerationMode || "n/a"}</code></div>
+        <div>
+          <strong>missing_source_metadata:</strong>{" "}
+          <code>{provenanceView.missingSourceMetadata.length ? provenanceView.missingSourceMetadata.join(", ") : "n/a"}</code>
+        </div>
+      </div>
+      {warningMismatch ? (
+        <p className="report-degraded-note">
+          Degraded mode active for <code>{warningMismatch.field}</code>. Static artifacts remain available.
+        </p>
+      ) : null}
+      <div className="report-artifact-grid">
+        <div className="report-artifact-card">
+          <strong>PDF Report</strong>
+          <div>
+            {artifactView.pdfPath ? (
+              <a href={artifactView.pdfPath} target="_blank" rel="noreferrer">Open report.pdf</a>
+            ) : (
+              <span className="report-artifact-missing">Not available yet</span>
+            )}
+          </div>
+        </div>
+        <div className="report-artifact-card">
+          <strong>Figure Artifacts</strong>
+          {artifactView.figureList.length ? (
+            <ul className="report-figure-list">
+              {artifactView.figureList.map((figurePath) => (
+                <li key={figurePath}>
+                  <a href={figurePath} target="_blank" rel="noreferrer">{figurePath.split("/").pop() || figurePath}</a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="report-artifact-missing">No figures available yet</span>
+          )}
+        </div>
+      </div>
+      {reportActionStatus && reportActionStatus.message ? (
+        <p className="report-action-message">{reportActionStatus.message}</p>
+      ) : null}
+      {reportActionStatus && reportActionStatus.error && reportActionStatus.error.message ? (
+        <p className="report-action-error">{String(reportActionStatus.error.message)}</p>
+      ) : null}
+      {!vm.canCreateReport ? (
+        <p className="report-action-message">
+          Start and complete a run first to enable report generation.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -801,11 +1006,16 @@ function AppShell() {
     message: "",
     error: null,
   }));
+  const [reportActionStatus, setReportActionStatus] = React.useState(() => ({
+    message: "",
+    error: null,
+  }));
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
   const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
   const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
   const runState = stateApi && uiState ? stateApi.selectRunState(uiState) : null;
+  const reportState = stateApi && uiState ? stateApi.selectReportState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -891,6 +1101,20 @@ function AppShell() {
     () => runVersionMismatches.find((m) => m.severity === "warning") || null,
     [runVersionMismatches]
   );
+  const reportProvenanceView = React.useMemo(() => selectReportProvenanceViewModel(reportState), [reportState]);
+  const reportVersionMismatches = React.useMemo(
+    () => detectReportVersionMismatches(reportProvenanceView, catalogState),
+    [catalogState, reportProvenanceView]
+  );
+  const reportBlockingMismatch = React.useMemo(
+    () => reportVersionMismatches.find((m) => m.severity === "blocking") || null,
+    [reportVersionMismatches]
+  );
+  const reportWarningMismatch = React.useMemo(
+    () => reportVersionMismatches.find((m) => m.severity === "warning") || null,
+    [reportVersionMismatches]
+  );
+  const reportArtifactView = React.useMemo(() => selectReportArtifactViewModel(reportState), [reportState]);
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -1080,6 +1304,46 @@ function AppShell() {
     }
   }, [apiClient, dispatchEvent, runState, stateApi]);
 
+  const createReportFromActiveRun = React.useCallback(async () => {
+    if (!apiClient || !stateApi || !runState || !reportState) return;
+    const runId = reportState.runId || runState.activeRunId;
+    if (!runId) {
+      setReportActionStatus({
+        message: "Report generation unavailable until a run is selected.",
+        error: { message: "No run_id available for report creation." },
+      });
+      return;
+    }
+
+    setReportActionStatus({ message: "Generating report artifacts...", error: null });
+    dispatchEvent({
+      type: stateApi.UI_EVENTS.REPORT_REQUESTED,
+      payload: { runId: String(runId) },
+    });
+
+    try {
+      const reportData = await apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.REPORT_SUCCEEDED,
+        payload: {
+          runId: String(runId),
+          reportData: reportData || null,
+        },
+      });
+      setReportActionStatus({ message: "Report artifacts generated.", error: null });
+    } catch (error) {
+      const normalized = error && typeof error === "object" ? error : { message: "Report generation failed." };
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.REPORT_FAILED,
+        payload: { error: normalized },
+      });
+      setReportActionStatus({
+        message: "Report generation failed. Retry when run lifecycle is report-ready.",
+        error: normalized,
+      });
+    }
+  }, [apiClient, dispatchEvent, reportState, runState, stateApi]);
+
   React.useEffect(() => {
     if (!apiClient || !stateApi || !runState || !runState.activeRunId) return;
     if (isRunTerminalLifecycle(runState.lifecycleState)) return;
@@ -1138,7 +1402,20 @@ function AppShell() {
         />
       );
     }
-    if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
+    if (activeRoute === ROUTES.report.key) {
+      return (
+        <ReportRouteContainer
+          reportState={reportState}
+          runState={runState}
+          onCreateReport={createReportFromActiveRun}
+          onRefreshRun={refreshActiveRunStatus}
+          reportActionStatus={reportActionStatus}
+          provenanceView={reportProvenanceView}
+          mismatchView={reportVersionMismatches}
+          artifactView={reportArtifactView}
+        />
+      );
+    }
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
     return (
       <PresetsRouteContainer
@@ -1235,6 +1512,23 @@ function AppShell() {
             <BlockingPanel
               title="Incompatible data version"
               message={`This view cannot be rendered with ${runBlockingMismatch.field}. Expected ${runBlockingMismatch.expected}, received ${runBlockingMismatch.received}. Use manual refresh or open static artifacts.`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.report.key && reportWarningMismatch ? (
+            <GlobalBanner
+              level="warning"
+              title="Version mismatch detected"
+              message={`Field: ${reportWarningMismatch.field} | Expected: ${reportWarningMismatch.expected} | Received: ${reportWarningMismatch.received} | Action: ${reportWarningMismatch.action}`}
+              actionLabel="Refresh Run Status"
+              onAction={refreshActiveRunStatus}
+            />
+          ) : null}
+          {activeRoute === ROUTES.report.key && reportBlockingMismatch ? (
+            <BlockingPanel
+              title="Incompatible data version"
+              message={`Report detail rendering is blocked for ${reportBlockingMismatch.field}. Expected ${reportBlockingMismatch.expected}, received ${reportBlockingMismatch.received}. Open static artifacts where available, then refresh context.`}
               actionLabel="Refresh Run Status"
               onAction={refreshActiveRunStatus}
             />

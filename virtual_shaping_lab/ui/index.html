@@ -728,6 +728,113 @@
       font-size: 0.84rem;
     }
 
+    .report-lifecycle-card {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(30, 41, 59, 0.98) 0%, rgba(20, 30, 46, 0.96) 100%),
+        radial-gradient(circle at 92% 10%, rgba(251, 191, 36, 0.1), transparent 44%);
+    }
+
+    .report-lifecycle-summary {
+      margin-top: 0.7rem;
+      border-top: 1px solid var(--vsl-color-panel-border);
+      padding-top: 0.65rem;
+      display: grid;
+      gap: 0.3rem;
+      font-size: 0.84rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .report-lifecycle-summary code {
+      font-family: var(--vsl-font-mono);
+      color: #fde68a;
+      font-size: 0.8rem;
+    }
+
+    .report-provenance-summary {
+      margin-top: 0.7rem;
+      border-top: 1px solid var(--vsl-color-panel-border);
+      padding-top: 0.65rem;
+      display: grid;
+      gap: 0.28rem;
+      font-size: 0.84rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .report-provenance-summary code {
+      font-family: var(--vsl-font-mono);
+      color: #fef3c7;
+      font-size: 0.8rem;
+    }
+
+    .report-degraded-note {
+      margin: 0.65rem 0 0;
+      border: 1px solid var(--vsl-color-learning);
+      border-radius: var(--vsl-radius-md);
+      background: rgba(245, 158, 11, 0.14);
+      color: #fcd34d;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.82rem;
+    }
+
+    .report-degraded-note code {
+      font-family: var(--vsl-font-mono);
+      color: #fde68a;
+      font-size: 0.8rem;
+    }
+
+    .report-artifact-grid {
+      margin-top: 0.7rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .report-artifact-card {
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: rgba(15, 23, 42, 0.55);
+      padding: 0.6rem 0.65rem;
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.84rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .report-artifact-card a {
+      color: #fef08a;
+      text-decoration: none;
+    }
+
+    .report-artifact-card a:hover {
+      text-decoration: underline;
+    }
+
+    .report-artifact-missing {
+      color: #94a3b8;
+      font-size: 0.82rem;
+    }
+
+    .report-figure-list {
+      margin: 0;
+      padding-left: 1rem;
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .report-action-message {
+      margin: 0.65rem 0 0;
+      color: var(--vsl-color-text-secondary);
+      font-size: 0.84rem;
+    }
+
+    .report-action-error {
+      margin: 0.5rem 0 0;
+      color: #fca5a5;
+      font-size: 0.84rem;
+    }
+
     @media (max-width: 900px) {
       .shell-body {
         grid-template-columns: 1fr;
