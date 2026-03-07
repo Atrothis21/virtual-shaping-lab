@@ -104,6 +104,12 @@ function CatalogHelpRouteContainer() {
 }
 
 function AppShell() {
+  const initialState = React.useMemo(() => {
+    const api = window.VSLReact.stateDomains;
+    return api && typeof api.createInitialUIState === "function"
+      ? api.createInitialUIState()
+      : null;
+  }, []);
   const [activeRoute, setActiveRoute] = React.useState(() => parseRouteFromHash(window.location.hash));
 
   React.useEffect(() => {
@@ -140,6 +146,9 @@ function AppShell() {
           <h1>Virtual Shaping Lab</h1>
           <p className="shell-subtitle">
             V2.17 app shell scaffold with first-pass route containers.
+          </p>
+          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+            State domains initialized: {initialState ? Object.keys(initialState).length : 0}
           </p>
         </div>
       </header>
