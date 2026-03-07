@@ -42,6 +42,80 @@ function ShellNavItem({ label, isActive, onClick }) {
   );
 }
 
+function summarizeResolvedPlan(resolvedPlan) {
+  if (!resolvedPlan || typeof resolvedPlan !== "object") {
+    return {
+      unitCount: 0,
+      flow: "n/a",
+      totalTrials: 0,
+    };
+  }
+  const units = Array.isArray(resolvedPlan.units) ? resolvedPlan.units : [];
+  const flow = units.map((unit) => unit && (unit.protocol || unit.unit_key || unit.name || "unit")).join(" -> ");
+  const totalTrials = units.reduce((acc, unit) => {
+    const params = unit && unit.params && typeof unit.params === "object" ? unit.params : {};
+    const nTrials = Number.isFinite(Number(params.n_trials)) ? Number(params.n_trials) : 0;
+    return acc + nTrials;
+  }, 0);
+  return {
+    unitCount: units.length,
+    flow: flow || "n/a",
+    totalTrials,
+  };
+}
+
+function buildPresetItemFromDraftSeed(draftSeed) {
+  if (!draftSeed || typeof draftSeed !== "object") return null;
+  const presetKey = draftSeed.preset_key || draftSeed.phenomenon_key || null;
+  if (!presetKey) return null;
+  return {
+    key: presetKey,
+    title: presetKey,
+    description: "Seed-derived preset context",
+    protocolKey: draftSeed.protocol_key || "n/a",
+    defaultTemplate: draftSeed.template_key || "n/a",
+    runModes: draftSeed.run_mode_hint ? [draftSeed.run_mode_hint] : [],
+    expectedSignals: Array.isArray(draftSeed.expected_signals) ? draftSeed.expected_signals : [],
+  };
+}
+
+function extractFieldHintsFromReason(reason) {
+  const text = String(reason || "");
+  const matches = text.match(/([a-zA-Z_][a-zA-Z0-9_.\[\]]*)/g) || [];
+  const candidates = matches.filter((token) => {
+    const lower = token.toLowerCase();
+    return (
+      lower.includes("experiment") ||
+      lower.includes("phase") ||
+      lower.includes("protocol") ||
+      lower.includes("stimuli") ||
+      lower.includes("params") ||
+      lower.includes("runtime") ||
+      lower.includes("report")
+    );
+  });
+  return Array.from(new Set(candidates)).slice(0, 6);
+}
+
+function buildPlanResolveErrorView(planState) {
+  const err = planState && planState.lastError ? planState.lastError : null;
+  if (!err) return null;
+  const envelope = err.envelope && typeof err.envelope === "object" ? err.envelope : null;
+  const code = envelope && envelope.code ? String(envelope.code) : "request_error";
+  const message = envelope && envelope.message ? String(envelope.message) : String(err.message || "Plan resolve failed.");
+  const details = envelope && envelope.details && typeof envelope.details === "object" ? envelope.details : {};
+  const reason = details.reason ? String(details.reason) : "";
+  const invalidFields = extractFieldHintsFromReason(reason);
+  const hint = details.hint ? String(details.hint) : "Edit draft fields, revalidate, and retry plan resolution.";
+  return {
+    code,
+    message,
+    reason,
+    invalidFields,
+    hint,
+  };
+}
+
 function PlaceholderRouteCard({ title, description, status, actions }) {
   const foundation = window.VSLReact.foundationPrimitives || {};
   const SurfacePanel = foundation.SurfacePanel || ((props) => <div {...props} />);
@@ -427,15 +501,60 @@ function PresetsRouteContainer({
   );
 }
 
-function BuilderRouteContainer({ builderDraftState }) {
+function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, resolveErrorView }) {
   const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
+  const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
+  const stableHash = planState && planState.stableHash ? planState.stableHash : "";
+  const summary = summarizeResolvedPlan(resolvedPlan);
   return (
-    <PlaceholderRouteCard
-      title="Builder Route Container"
-      description="Constrained draft editing surface for builder-driven experiment setup."
-      status={seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
-      actions={[{ label: "Open Legacy Builder", href: "/ui/builder.html" }]}
-    />
+    <div className="route-card">
+      <div className="route-card-header">
+        <h2>Builder Route Container</h2>
+        <span className="vsl-status-badge">
+          {seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
+        </span>
+      </div>
+      <p>Constrained draft editing surface for builder-driven experiment setup.</p>
+      <div className="route-actions">
+        <button
+          type="button"
+          className="route-action"
+          onClick={() => {
+            if (typeof onResolvePlan === "function") onResolvePlan();
+          }}
+        >
+          Resolve Plan
+        </button>
+        <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
+      </div>
+      <div className="plan-resolve-summary">
+        <div><strong>Plan Status:</strong> <code>{planState && planState.requestStatus ? planState.requestStatus : "idle"}</code></div>
+        <div><strong>Stable Hash:</strong> <code>{stableHash || "n/a"}</code></div>
+        <div><strong>Unit Count:</strong> <code>{summary.unitCount}</code></div>
+        <div><strong>Total Trials:</strong> <code>{summary.totalTrials}</code></div>
+        <div><strong>Flow:</strong> <code>{summary.flow}</code></div>
+      </div>
+      {resolveErrorView ? (
+        <div className="plan-resolve-inline-error">
+          <div><strong>Resolve Error Code:</strong> <code>{resolveErrorView.code}</code></div>
+          <div><strong>Message:</strong> {resolveErrorView.message}</div>
+          {resolveErrorView.reason ? (
+            <div><strong>Reason:</strong> <code>{resolveErrorView.reason}</code></div>
+          ) : null}
+          {resolveErrorView.invalidFields.length ? (
+            <div>
+              <strong>Likely Fields:</strong>
+              <ul>
+                {resolveErrorView.invalidFields.map((field) => (
+                  <li key={`resolve-field-${field}`}><code>{field}</code></li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <div><strong>Recovery:</strong> {resolveErrorView.hint}</div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -508,6 +627,7 @@ function AppShell() {
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
   const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
+  const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -579,6 +699,7 @@ function AppShell() {
   }, [catalogState]);
 
   const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
+  const planResolveErrorView = React.useMemo(() => buildPlanResolveErrorView(planState), [planState]);
   const showBlockingCatalogPanel = Boolean(
     catalogState &&
     catalogState.requestStatus === "error" &&
@@ -674,8 +795,32 @@ function AppShell() {
     return presetActionHandlers.resolveRunReportPresetFromSelection(presetItem);
   }, [presetActionHandlers]);
 
+  const resolvePlanFromBuilderContext = React.useCallback(async () => {
+    const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
+    const presetItem = buildPresetItemFromDraftSeed(draftSeed);
+    if (!presetItem) {
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "No preset seed is available in builder context.",
+        error: { message: "Seed a preset first, then resolve plan." },
+      });
+      return;
+    }
+    await resolvePresetFromSelection(presetItem);
+  }, [builderDraftState, resolvePresetFromSelection]);
+
   function renderActiveRoute() {
-    if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer builderDraftState={builderDraftState} />;
+    if (activeRoute === ROUTES.builder.key) {
+      return (
+        <BuilderRouteContainer
+          builderDraftState={builderDraftState}
+          planState={planState}
+          onResolvePlan={resolvePlanFromBuilderContext}
+          resolveErrorView={planResolveErrorView}
+        />
+      );
+    }
     if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
     if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
@@ -746,6 +891,19 @@ function AppShell() {
               message="The app cannot bootstrap required catalog metadata right now. Retry catalog loading before continuing."
               actionLabel="Retry Catalog Load"
               onAction={refreshCatalog}
+            />
+          ) : null}
+          {activeRoute === ROUTES.builder.key && planResolveErrorView ? (
+            <GlobalBanner
+              level="error"
+              title="Plan validation failed"
+              message={
+                planResolveErrorView.invalidFields.length
+                  ? `Invalid fields: ${planResolveErrorView.invalidFields.join(", ")}`
+                  : planResolveErrorView.message
+              }
+              actionLabel="Retry Resolve"
+              onAction={resolvePlanFromBuilderContext}
             />
           ) : null}
           {renderActiveRoute()}
