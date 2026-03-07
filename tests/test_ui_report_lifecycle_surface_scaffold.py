@@ -36,6 +36,8 @@ def test_report_route_wires_report_events_and_report_endpoint():
     assert "detectReportVersionMismatchesFn" in text
     assert "runReportWorkflowService" in text
     assert "runReportWorkflowHandlers.createReportFromActiveRun" in text
+    assert "isPlanFresh={isPlanFreshForCurrentDraft}" in text
+    assert "Plan is stale for current draft. Re-resolve plan before generating report." in text
     assert "reportActionStatus={reportActionStatus}" in text
     assert "selectReportArtifactViewModel" in text
     assert "inferFigureSemanticTone" in text

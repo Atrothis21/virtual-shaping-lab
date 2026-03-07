@@ -72,11 +72,19 @@ def test_state_domains_encodes_plan_invalidation_and_reset_semantics():
     assert "if (type === UI_EVENTS.DRAFT_EDITED)" in text
     assert 'next[DOMAIN_KEYS.plan].resolvedPlan = null;' in text
     assert 'next[DOMAIN_KEYS.plan].stableHash = "";' in text
+    assert 'next[DOMAIN_KEYS.plan].isFreshForDraftVersion = null;' in text
     assert 'next[DOMAIN_KEYS.report].reportData = null;' in text
     # New run start resets report context.
     assert "if (type === UI_EVENTS.RUN_START_SUCCEEDED)" in text
     assert 'next[DOMAIN_KEYS.report].runId = "";' in text
     assert 'next[DOMAIN_KEYS.report].requestStatus = "idle";' in text
+
+
+def test_state_domains_exposes_freshness_gates_for_run_report_actions():
+    text = _read(STATE_DOMAINS_JS)
+    assert "function isPlanFreshForCurrentDraft(state)" in text
+    assert "function canRunFromState(state)" in text
+    assert "plan.isFreshForDraftVersion === draft.draftVersion" in text
 
 
 def test_state_domains_encodes_catalog_drift_plan_invalidation():

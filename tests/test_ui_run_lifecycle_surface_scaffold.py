@@ -30,12 +30,15 @@ def test_run_route_renders_lifecycle_and_provenance_summary():
     assert "isRunTerminalLifecycle" in text
     assert "lifecycle-instrument" in text
     assert "lifecycle-meter" in text
+    assert "isPlanFreshForCurrentDraft" in text
 
 
 def test_run_route_wires_run_create_and_polling_events():
     text = _read(INDEX_APP)
     assert "window.VSLReact.lifecycleViewModels" in text
     assert "selectRunLifecycleViewModelFn" in text
+    assert "builderDraftState={builderDraftState}" in text
+    assert "Plan is stale for current draft. Re-resolve plan to enable run creation." in text
     assert "buildLifecycleInstrumentViewFn" in text
     assert "runReportWorkflowService" in text
     assert "createRunReportWorkflowService" in text

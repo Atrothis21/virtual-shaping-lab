@@ -18,12 +18,19 @@ function createRunReportWorkflowService(deps) {
     setReportActionStatus,
     buildPresetItemFromDraftSeed,
     buildPresetApiPayload,
+    draftToPayload,
   } = deps || {};
 
   async function startRunFromResolvedPlan(context) {
     if (!apiClient || !stateApi) return;
     const builderDraftState = context && context.builderDraftState ? context.builderDraftState : null;
     const planState = context && context.planState ? context.planState : null;
+    const isPlanFresh = Boolean(
+      planState &&
+      builderDraftState &&
+      planState.isFreshForDraftVersion != null &&
+      planState.isFreshForDraftVersion === builderDraftState.draftVersion
+    );
     const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
     const presetItem = typeof buildPresetItemFromDraftSeed === "function"
       ? buildPresetItemFromDraftSeed(draftSeed)
@@ -42,10 +49,19 @@ function createRunReportWorkflowService(deps) {
       });
       return;
     }
+    if (!isPlanFresh) {
+      setRunActionStatus({
+        message: "Run start blocked.",
+        error: { message: "Plan is stale for current draft. Re-resolve plan before running." },
+      });
+      return;
+    }
 
-    const payload = typeof buildPresetApiPayload === "function"
-      ? buildPresetApiPayload(presetItem, draftSeed)
-      : { report: { preset: presetItem.key || "custom_protocol" } };
+    const payload = typeof draftToPayload === "function"
+      ? draftToPayload(draftSeed)
+      : (typeof buildPresetApiPayload === "function"
+        ? buildPresetApiPayload(presetItem, draftSeed)
+        : { report: { preset: presetItem.key || "custom_protocol" } });
     const runPayload = { ...payload, expected_plan_hash: planState.stableHash };
 
     setRunActionStatus({ message: "Starting run from resolved plan...", error: null });
@@ -120,7 +136,22 @@ function createRunReportWorkflowService(deps) {
     if (!apiClient || !stateApi) return;
     const runState = context && context.runState ? context.runState : null;
     const reportState = context && context.reportState ? context.reportState : null;
+    const builderDraftState = context && context.builderDraftState ? context.builderDraftState : null;
+    const planState = context && context.planState ? context.planState : null;
+    const isPlanFresh = Boolean(
+      planState &&
+      builderDraftState &&
+      planState.isFreshForDraftVersion != null &&
+      planState.isFreshForDraftVersion === builderDraftState.draftVersion
+    );
     const runId = (reportState && reportState.runId) || (runState && runState.activeRunId) || "";
+    if (!isPlanFresh) {
+      setReportActionStatus({
+        message: "Report generation blocked until plan is fresh.",
+        error: { message: "Plan is stale for current draft. Re-resolve plan before report." },
+      });
+      return;
+    }
     if (!runId) {
       setReportActionStatus({
         message: "Report generation unavailable until a run is selected.",
