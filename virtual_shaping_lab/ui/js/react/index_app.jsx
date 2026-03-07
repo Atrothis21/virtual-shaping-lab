@@ -814,6 +814,24 @@ function BuilderRouteContainer({
     updateDraftPatch({ template_key: String(templateConstraint.autoCorrect) });
   }, [seed, templateAutoCorrectSuppressed, templateConstraint.autoCorrect, templateConstraint.message]);
 
+  const renderConstraintStates = (constraint) => {
+    if (!constraint) return null;
+    const chips = [];
+    if (constraint.hidden) chips.push({ key: "hidden", text: "Hidden", tone: "is-hidden" });
+    if (constraint.disabled) chips.push({ key: "disabled", text: "Disabled", tone: "is-disabled" });
+    if (constraint.warning) chips.push({ key: "warning", text: "Warn", tone: "is-warning" });
+    if (constraint.autoCorrect) chips.push({ key: "auto-correct", text: "Auto-correct", tone: "is-autocorrect" });
+    if (constraint.autoCorrectBlocked) chips.push({ key: "auto-correct-blocked", text: "Auto-correct blocked", tone: "is-blocked" });
+    if (!chips.length) return null;
+    return (
+      <div className="builder-constraint-states" role="status" aria-live="polite">
+        {chips.map((chip) => (
+          <span key={chip.key} className={`builder-constraint-chip ${chip.tone}`}>{chip.text}</span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="route-card">
       <div className="route-card-header">
@@ -836,102 +854,138 @@ function BuilderRouteContainer({
         <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
       </div>
       <div className="builder-sections-grid">
-        <section className="builder-section-panel">
-          <h3 className="builder-section-heading">Overview</h3>
-          <div className="builder-kv"><strong>Draft Ownership:</strong> <code>{builderDraftState?.ownership || "n/a"}</code></div>
-          <div className="builder-kv"><strong>Draft Version:</strong> <code>{builderDraftState?.draftVersion ?? "n/a"}</code></div>
-          <div className="builder-kv"><strong>Validation Errors:</strong> <code>{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
+        <section className="builder-section-panel builder-section-overview">
+          <div className="builder-section-header">
+            <h3 className="builder-section-heading">Overview</h3>
+            <span className="builder-section-index">S1</span>
+          </div>
+          <p className="builder-section-subheading">Draft ownership and readiness telemetry.</p>
+          <div className="builder-kv"><strong>Draft Ownership:</strong> <code className="builder-readout">{builderDraftState?.ownership || "n/a"}</code></div>
+          <div className="builder-kv"><strong>Draft Version:</strong> <code className="builder-readout">{builderDraftState?.draftVersion ?? "n/a"}</code></div>
+          <div className="builder-kv"><strong>Validation Errors:</strong> <code className="builder-readout">{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
         </section>
-        <section className="builder-section-panel">
-          <h3 className="builder-section-heading">Protocol/Seed Selection</h3>
-          <div className="builder-kv"><strong>seed_source:</strong> <code>{seed?.seed_source || "n/a"}</code></div>
-          <label className="builder-control">
-            <span>preset_key</span>
-            <input
-              type="text"
-              value={seed?.preset_key || ""}
-              onChange={(e) => updateDraftPatch({ preset_key: e.target.value })}
-            />
-          </label>
-          <label className="builder-control">
-            <span>protocol_key</span>
-            <input
-              type="text"
-              value={seed?.protocol_key || ""}
-              onChange={(e) => {
-                setTemplateAutoCorrectSuppressed(false);
-                updateDraftPatch({ protocol_key: e.target.value });
-              }}
-            />
-          </label>
+        <section className="builder-section-panel builder-section-protocol">
+          <div className="builder-section-header">
+            <h3 className="builder-section-heading">Protocol/Seed Selection</h3>
+            <span className="builder-section-index">S2</span>
+          </div>
+          <p className="builder-section-subheading">Protocol identity and seed context.</p>
+          <div className="builder-kv"><strong>seed_source:</strong> <code className="builder-readout">{seed?.seed_source || "n/a"}</code></div>
+          <div className="builder-control-group">
+            <label className="builder-control">
+              <span>preset_key</span>
+              <input
+                type="text"
+                value={seed?.preset_key || ""}
+                onChange={(e) => updateDraftPatch({ preset_key: e.target.value })}
+              />
+            </label>
+            <label className="builder-control">
+              <span>protocol_key</span>
+              <input
+                type="text"
+                value={seed?.protocol_key || ""}
+                onChange={(e) => {
+                  setTemplateAutoCorrectSuppressed(false);
+                  updateDraftPatch({ protocol_key: e.target.value });
+                }}
+              />
+            </label>
+          </div>
+          {renderConstraintStates(protocolConstraint)}
           {protocolConstraint.warning ? (
             <p className="builder-constraint-warning">{protocolConstraint.warning}</p>
           ) : null}
         </section>
-        <section className="builder-section-panel">
-          <h3 className="builder-section-heading">Phases</h3>
-          <div className="builder-kv"><strong>flow_preview:</strong> <code>{flowPreview}</code></div>
-          <div className="builder-kv"><strong>phase_count_hint:</strong> <code>{expectedSignals.length || 0}</code></div>
-          <label className="builder-control">
-            <span>expected_signals (comma separated)</span>
-            <input
-              type="text"
-              value={expectedSignals.join(", ")}
-              onChange={(e) => {
-                const nextSignals = String(e.target.value || "")
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean);
-                updateDraftPatch({ expected_signals: nextSignals });
-              }}
-            />
-          </label>
+        <section className="builder-section-panel builder-section-phases">
+          <div className="builder-section-header">
+            <h3 className="builder-section-heading">Phases</h3>
+            <span className="builder-section-index">S3</span>
+          </div>
+          <p className="builder-section-subheading">Flow and signal-shaping controls.</p>
+          <div className="builder-kv"><strong>flow_preview:</strong> <code className="builder-readout">{flowPreview}</code></div>
+          <div className="builder-kv"><strong>phase_count_hint:</strong> <code className="builder-readout">{expectedSignals.length || 0}</code></div>
+          <div className="builder-control-group">
+            <label className="builder-control">
+              <span>expected_signals (comma separated)</span>
+              <input
+                type="text"
+                value={expectedSignals.join(", ")}
+                onChange={(e) => {
+                  const nextSignals = String(e.target.value || "")
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+                  updateDraftPatch({ expected_signals: nextSignals });
+                }}
+              />
+            </label>
+          </div>
         </section>
-        <section className="builder-section-panel">
-          <h3 className="builder-section-heading">Runtime</h3>
-          <label className="builder-control">
-            <span>run_mode_hint</span>
-            <select
-              value={seed?.run_mode_hint || "trial"}
-              onChange={(e) => updateDraftPatch({ run_mode_hint: e.target.value })}
-              disabled={runModeConstraint.disabled}
-            >
-              <option value="trial">trial</option>
-              <option value="tick">tick</option>
-            </select>
-          </label>
+        <section className="builder-section-panel builder-section-runtime">
+          <div className="builder-section-header">
+            <h3 className="builder-section-heading">Runtime</h3>
+            <span className="builder-section-index">S4</span>
+          </div>
+          <p className="builder-section-subheading">Execution mode and plan request state.</p>
+          <div className="builder-control-group">
+            <label className="builder-control">
+              <span>run_mode_hint</span>
+              <select
+                value={seed?.run_mode_hint || "trial"}
+                onChange={(e) => updateDraftPatch({ run_mode_hint: e.target.value })}
+                disabled={runModeConstraint.disabled}
+              >
+                <option value="trial">trial</option>
+                <option value="tick">tick</option>
+              </select>
+            </label>
+          </div>
+          {renderConstraintStates(runModeConstraint)}
           {runModeConstraint.warning ? (
             <p className="builder-constraint-warning">{runModeConstraint.warning}</p>
           ) : null}
-          <div className="builder-kv"><strong>plan_request_status:</strong> <code>{planState?.requestStatus || "idle"}</code></div>
+          <div className="builder-kv"><strong>plan_request_status:</strong> <code className="builder-readout">{planState?.requestStatus || "idle"}</code></div>
         </section>
-        <section className="builder-section-panel">
-          <h3 className="builder-section-heading">Report</h3>
-          <label className="builder-control">
-            <span>template_key</span>
-            <input
-              type="text"
-              value={seed?.template_key || ""}
-              onChange={(e) => {
-                setTemplateAutoCorrectSuppressed(false);
-                updateDraftPatch({ template_key: e.target.value });
-              }}
-              disabled={templateConstraint.disabled}
-            />
-          </label>
+        <section className="builder-section-panel builder-section-report">
+          <div className="builder-section-header">
+            <h3 className="builder-section-heading">Report</h3>
+            <span className="builder-section-index">S5</span>
+          </div>
+          <p className="builder-section-subheading">Template selection and resolve hash snapshot.</p>
+          <div className="builder-control-group">
+            <label className="builder-control">
+              <span>template_key</span>
+              <input
+                type="text"
+                value={seed?.template_key || ""}
+                onChange={(e) => {
+                  setTemplateAutoCorrectSuppressed(false);
+                  updateDraftPatch({ template_key: e.target.value });
+                }}
+                disabled={templateConstraint.disabled}
+              />
+            </label>
+          </div>
+          {renderConstraintStates(templateConstraint)}
           {templateConstraint.message ? (
             <p className={templateConstraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>
               {templateConstraint.message}
             </p>
           ) : null}
-          <div className="builder-kv"><strong>stable_hash:</strong> <code>{stableHash || "n/a"}</code></div>
+          <div className="builder-kv"><strong>stable_hash:</strong> <code className="builder-readout">{stableHash || "n/a"}</code></div>
         </section>
         {!advancedConstraint.hidden ? (
-          <section className="builder-section-panel builder-section-panel-muted">
-            <h3 className="builder-section-heading">Advanced/Debug</h3>
-            <div className="builder-kv"><strong>dirty:</strong> <code>{String(Boolean(builderDraftState?.dirty))}</code></div>
-            <div className="builder-kv"><strong>is_ready:</strong> <code>{String(Boolean(builderDraftState?.isReady))}</code></div>
-            <div className="builder-kv"><strong>validation_state:</strong> <code>{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
+          <section className="builder-section-panel builder-section-panel-muted builder-section-advanced">
+            <div className="builder-section-header">
+              <h3 className="builder-section-heading">Advanced/Debug</h3>
+              <span className="builder-section-index">S6</span>
+            </div>
+            <p className="builder-section-subheading">Low-prominence diagnostics for route-state troubleshooting.</p>
+            {renderConstraintStates(advancedConstraint)}
+            <div className="builder-kv"><strong>dirty:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.dirty))}</code></div>
+            <div className="builder-kv"><strong>is_ready:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.isReady))}</code></div>
+            <div className="builder-kv"><strong>validation_state:</strong> <code className="builder-readout">{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
           </section>
         ) : null}
       </div>

@@ -32,5 +32,28 @@ def test_builder_section_styles_exist():
     assert ".builder-sections-grid" in text
     assert ".builder-section-panel" in text
     assert ".builder-section-panel-muted" in text
+    assert "border-style: dashed" in text
+    assert "filter: saturate(0.72)" in text
+    assert ".builder-section-header" in text
+    assert ".builder-section-subheading" in text
+    assert ".builder-section-index" in text
     assert ".builder-section-heading" in text
+    assert ".builder-section-overview::before" in text
+    assert ".builder-section-runtime::before" in text
+    assert ".builder-section-report::before" in text
     assert ".builder-kv" in text
+    assert ".builder-control-group" in text
+    assert ".builder-readout" in text
+
+
+def test_builder_sections_render_console_hierarchy_markers():
+    text = _read(INDEX_APP)
+    assert "builder-section-overview" in text
+    assert "builder-section-protocol" in text
+    assert "builder-section-phases" in text
+    assert "builder-section-runtime" in text
+    assert "builder-section-report" in text
+    assert "builder-section-advanced" in text
+    assert "builder-section-index" in text
+    assert "builder-control-group" in text
+    assert "builder-readout" in text

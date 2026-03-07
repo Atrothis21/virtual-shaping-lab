@@ -39,6 +39,10 @@ def test_builder_route_uses_shared_constraint_state_for_controls():
     assert "templateConstraint" in text
     assert "runModeConstraint" in text
     assert "advancedConstraint" in text
+    assert "renderConstraintStates" in text
+    assert "builder-constraint-states" in text
+    assert "builder-constraint-chip" in text
+    assert "autoCorrectBlocked" in text
     assert "builder-constraint-warning" in text
     assert "builder-constraint-note" in text
 
@@ -47,3 +51,10 @@ def test_builder_constraint_styles_exist():
     text = _read(INDEX_HTML)
     assert ".builder-constraint-warning" in text
     assert ".builder-constraint-note" in text
+    assert ".builder-constraint-states" in text
+    assert ".builder-constraint-chip" in text
+    assert ".builder-constraint-chip.is-hidden" in text
+    assert ".builder-constraint-chip.is-disabled" in text
+    assert ".builder-constraint-chip.is-warning" in text
+    assert ".builder-constraint-chip.is-autocorrect" in text
+    assert ".builder-constraint-chip.is-blocked" in text
