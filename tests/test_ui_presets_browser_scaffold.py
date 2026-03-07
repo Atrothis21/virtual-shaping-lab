@@ -37,7 +37,7 @@ def test_presets_route_renders_grid_component():
     assert "function PresetBrowserGrid" in text
     assert "Use In Builder" in text
     assert "Open Legacy Presets" in text
-    assert "window.location.hash = \"#/builder\"" in text
+    assert "onUseInBuilder(item)" in text
 
 
 def test_presets_route_has_detail_panel_and_primary_actions():
@@ -47,10 +47,31 @@ def test_presets_route_has_detail_panel_and_primary_actions():
     assert "Resolve Preset" in text
     assert "Resolve + Run" in text
     assert "Resolve + Run + Report" in text
-    assert "window.location.hash = \"#/run\"" in text
-    assert "window.location.hash = \"#/report\"" in text
+    assert "onResolvePreset(item)" in text
+    assert "onResolveRun(item)" in text
+    assert "onResolveRunReport(item)" in text
     assert "setSelectedPresetKey" in text
     assert "selectedPreset" in text
+
+
+def test_presets_route_has_seeded_draft_initialization_handoff():
+    text = _read(INDEX_APP)
+    assert "buildConstrainedDraftSeedFromPreset" in text
+    assert "seed_source: \"preset-catalog\"" in text
+    assert "seedDraftFromPreset" in text
+    assert "stateApi.UI_EVENTS.DRAFT_EDITED" in text
+    assert "onSeedDraftFromPreset={seedDraftFromPreset}" in text
+    assert "onNavigate={navigateTo}" in text
+    assert "Seeded: ${seed.seed_source}" in text
+
+
+def test_presets_route_has_lightweight_phenomenon_support_panel():
+    text = _read(INDEX_APP)
+    assert "function PhenomenonSupportPanel" in text
+    assert "Phenomenon Support" in text
+    assert "metadata-only" in text
+    assert "Expected Signals:" in text
+    assert "lightweight support surface" in text
 
 
 def test_index_css_has_presets_browser_layout_styles():
@@ -59,4 +80,6 @@ def test_index_css_has_presets_browser_layout_styles():
     assert ".preset-grid" in text
     assert ".preset-card" in text
     assert ".preset-detail" in text
+    assert ".phenomenon-support" in text
+    assert ".phenomenon-signal-list" in text
     assert ".preset-detail-selectors" in text

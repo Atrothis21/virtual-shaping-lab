@@ -17,6 +17,19 @@ function parseRouteFromHash(hashValue) {
   return ROUTES.presets.key;
 }
 
+function buildConstrainedDraftSeedFromPreset(item) {
+  if (!item) return null;
+  return {
+    seed_source: "preset-catalog",
+    preset_key: item.key,
+    phenomenon_key: item.key,
+    protocol_key: item.protocolKey !== "n/a" ? item.protocolKey : null,
+    template_key: item.defaultTemplate !== "n/a" ? item.defaultTemplate : null,
+    run_mode_hint: item.runModes.length ? item.runModes[0] : null,
+    expected_signals: Array.isArray(item.expectedSignals) ? item.expectedSignals : [],
+  };
+}
+
 function ShellNavItem({ label, isActive, onClick }) {
   return (
     <button
@@ -81,7 +94,7 @@ function selectPresetCatalogViewModel(catalogState) {
   };
 }
 
-function PresetBrowserGrid({ items }) {
+function PresetBrowserGrid({ items, onUseInBuilder }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
       <div className="route-card">
@@ -114,7 +127,7 @@ function PresetBrowserGrid({ items }) {
               type="button"
               className="route-action"
               onClick={() => {
-                window.location.hash = "#/builder";
+                if (typeof onUseInBuilder === "function") onUseInBuilder(item);
               }}
             >
               Use In Builder
@@ -129,7 +142,7 @@ function PresetBrowserGrid({ items }) {
   );
 }
 
-function PresetDetailPanel({ item }) {
+function PresetDetailPanel({ item, onResolvePreset, onResolveRun, onResolveRunReport }) {
   if (!item) {
     return (
       <div className="route-card preset-detail">
@@ -157,13 +170,13 @@ function PresetDetailPanel({ item }) {
         {item.expectedSignals.length ? item.expectedSignals.join(", ") : "n/a"}
       </p>
       <div className="route-actions">
-        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/run"; }}>
+        <button type="button" className="route-action" onClick={() => { if (typeof onResolvePreset === "function") onResolvePreset(item); }}>
           Resolve Preset
         </button>
-        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/run"; }}>
+        <button type="button" className="route-action" onClick={() => { if (typeof onResolveRun === "function") onResolveRun(item); }}>
           Resolve + Run
         </button>
-        <button type="button" className="route-action" onClick={() => { window.location.hash = "#/report"; }}>
+        <button type="button" className="route-action" onClick={() => { if (typeof onResolveRunReport === "function") onResolveRunReport(item); }}>
           Resolve + Run + Report
         </button>
       </div>
@@ -171,7 +184,49 @@ function PresetDetailPanel({ item }) {
   );
 }
 
-function PresetsRouteContainer({ catalogState }) {
+function PhenomenonSupportPanel({ item }) {
+  return (
+    <div className="route-card phenomenon-support">
+      <div className="route-card-header">
+        <h2>Phenomenon Support</h2>
+        <span className="vsl-status-badge warning">metadata-only</span>
+      </div>
+      {!item ? (
+        <p>Select a preset to view phenomenon guidance.</p>
+      ) : (
+        <>
+          <p>
+            <strong>{item.title}</strong> is currently selected. Use this panel to review expected signatures
+            and reporting guidance before execution.
+          </p>
+          <p style={{ marginBottom: "0.35rem" }}>
+            <strong>Recommended Report Template:</strong> <code>{item.defaultTemplate}</code>
+          </p>
+          <p style={{ marginBottom: "0.35rem" }}>
+            <strong>Expected Signals:</strong>
+          </p>
+          {item.expectedSignals.length ? (
+            <ul className="phenomenon-signal-list">
+              {item.expectedSignals.map((signal) => (
+                <li key={`${item.key}-${signal}`}>
+                  <code>{signal}</code>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>n/a</p>
+          )}
+          <p style={{ marginTop: "0.55rem" }}>
+            Scope note: this panel is a lightweight support surface. Full narrative teaching mode is out of scope
+            for V2.17.1.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function PresetsRouteContainer({ catalogState, onSeedDraftFromPreset, onNavigate }) {
   const viewModel = React.useMemo(
     () => selectPresetCatalogViewModel(catalogState),
     [catalogState]
@@ -211,6 +266,24 @@ function PresetsRouteContainer({ catalogState }) {
     return viewModel.items.find((item) => item.key === selectedPresetKey) || null;
   }, [filteredItems, selectedPresetKey, viewModel.items]);
 
+  const handleSeedToBuilder = React.useCallback((item) => {
+    if (!item) return;
+    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onNavigate === "function") onNavigate(ROUTES.builder.key);
+  }, [onNavigate, onSeedDraftFromPreset]);
+
+  const handleResolvePreset = React.useCallback((item) => {
+    if (!item) return;
+    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onNavigate === "function") onNavigate(ROUTES.run.key);
+  }, [onNavigate, onSeedDraftFromPreset]);
+
+  const handleResolveRunReport = React.useCallback((item) => {
+    if (!item) return;
+    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onNavigate === "function") onNavigate(ROUTES.report.key);
+  }, [onNavigate, onSeedDraftFromPreset]);
+
   return (
     <section className="vsl-page-region">
       <div className="route-card">
@@ -247,9 +320,15 @@ function PresetsRouteContainer({ catalogState }) {
         </div>
       </div>
 
-      <PresetDetailPanel item={selectedPreset} />
+      <PresetDetailPanel
+        item={selectedPreset}
+        onResolvePreset={handleResolvePreset}
+        onResolveRun={handleResolvePreset}
+        onResolveRunReport={handleResolveRunReport}
+      />
+      <PhenomenonSupportPanel item={selectedPreset} />
 
-      <PresetBrowserGrid items={filteredItems} />
+      <PresetBrowserGrid items={filteredItems} onUseInBuilder={handleSeedToBuilder} />
 
       <div className="route-card" style={{ marginTop: "0.75rem" }}>
         <strong>Quick Select</strong>
@@ -273,12 +352,13 @@ function PresetsRouteContainer({ catalogState }) {
   );
 }
 
-function BuilderRouteContainer() {
+function BuilderRouteContainer({ builderDraftState }) {
+  const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
   return (
     <PlaceholderRouteCard
       title="Builder Route Container"
       description="Constrained draft editing surface for builder-driven experiment setup."
-      status="Owned by Builder Route"
+      status={seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
       actions={[{ label: "Open Legacy Builder", href: "/ui/builder.html" }]}
     />
   );
@@ -346,6 +426,7 @@ function AppShell() {
   const [notifications, setNotifications] = React.useState([]);
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
+  const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -462,12 +543,27 @@ function AppShell() {
     }
   }
 
+  const seedDraftFromPreset = React.useCallback((presetItem) => {
+    if (!stateApi || !presetItem) return;
+    const draftSeed = buildConstrainedDraftSeedFromPreset(presetItem);
+    dispatchEvent({
+      type: stateApi.UI_EVENTS.DRAFT_EDITED,
+      payload: { draft: draftSeed },
+    });
+  }, [dispatchEvent, stateApi]);
+
   function renderActiveRoute() {
-    if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer />;
+    if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer builderDraftState={builderDraftState} />;
     if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
     if (activeRoute === ROUTES.report.key) return <ReportRouteContainer />;
     if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
-    return <PresetsRouteContainer catalogState={catalogState} />;
+    return (
+      <PresetsRouteContainer
+        catalogState={catalogState}
+        onSeedDraftFromPreset={seedDraftFromPreset}
+        onNavigate={navigateTo}
+      />
+    );
   }
 
   return (
