@@ -641,6 +641,80 @@
       font-size: 0.8rem;
     }
 
+    .builder-sections-grid {
+      margin-top: 0.7rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.55rem;
+    }
+
+    .builder-section-panel {
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: rgba(15, 23, 42, 0.58);
+      padding: 0.55rem 0.6rem;
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .builder-section-panel-muted {
+      opacity: 0.82;
+    }
+
+    .builder-section-heading {
+      margin: 0;
+      font-size: 0.84rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+
+    .builder-kv {
+      font-size: 0.8rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .builder-kv code {
+      font-family: var(--vsl-font-mono);
+      color: #e2e8f0;
+      font-size: 0.78rem;
+    }
+
+    .builder-control {
+      display: grid;
+      gap: 0.25rem;
+      font-size: 0.78rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .builder-control input,
+    .builder-control select {
+      font: inherit;
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: #1a2537;
+      color: var(--vsl-color-text-primary);
+      padding: 0.36rem 0.5rem;
+    }
+
+    .builder-validation-panel {
+      margin-top: 0.6rem;
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: rgba(15, 23, 42, 0.48);
+      padding: 0.5rem 0.6rem;
+      display: grid;
+      gap: 0.25rem;
+      font-size: 0.82rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .builder-validation-panel code {
+      font-family: var(--vsl-font-mono);
+      color: #e2e8f0;
+      font-size: 0.78rem;
+    }
+
     .plan-resolve-inline-error {
       margin-top: 0.7rem;
       border: 1px solid var(--vsl-color-cs-minus);

@@ -758,11 +758,22 @@ function PresetsRouteContainer({
   );
 }
 
-function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, resolveErrorView }) {
+function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, onDraftEdited, resolveErrorView }) {
   const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
   const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
   const stableHash = planState && planState.stableHash ? planState.stableHash : "";
   const summary = summarizeResolvedPlan(resolvedPlan);
+  const expectedSignals = seed && Array.isArray(seed.expected_signals) ? seed.expected_signals : [];
+  const flowPreview = expectedSignals.length ? expectedSignals.join(", ") : "n/a";
+  function updateDraftPatch(patch) {
+    if (typeof onDraftEdited !== "function") return;
+    const nextDraft = {
+      ...(seed && typeof seed === "object" ? seed : {}),
+      ...patch,
+    };
+    onDraftEdited(nextDraft);
+  }
+
   return (
     <div className="route-card">
       <div className="route-card-header">
@@ -783,6 +794,89 @@ function BuilderRouteContainer({ builderDraftState, planState, onResolvePlan, re
           Resolve Plan
         </button>
         <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
+      </div>
+      <div className="builder-sections-grid">
+        <section className="builder-section-panel">
+          <h3 className="builder-section-heading">Overview</h3>
+          <div className="builder-kv"><strong>Draft Ownership:</strong> <code>{builderDraftState?.ownership || "n/a"}</code></div>
+          <div className="builder-kv"><strong>Draft Version:</strong> <code>{builderDraftState?.draftVersion ?? "n/a"}</code></div>
+          <div className="builder-kv"><strong>Validation Errors:</strong> <code>{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
+        </section>
+        <section className="builder-section-panel">
+          <h3 className="builder-section-heading">Protocol/Seed Selection</h3>
+          <div className="builder-kv"><strong>seed_source:</strong> <code>{seed?.seed_source || "n/a"}</code></div>
+          <label className="builder-control">
+            <span>preset_key</span>
+            <input
+              type="text"
+              value={seed?.preset_key || ""}
+              onChange={(e) => updateDraftPatch({ preset_key: e.target.value })}
+            />
+          </label>
+          <label className="builder-control">
+            <span>protocol_key</span>
+            <input
+              type="text"
+              value={seed?.protocol_key || ""}
+              onChange={(e) => updateDraftPatch({ protocol_key: e.target.value })}
+            />
+          </label>
+        </section>
+        <section className="builder-section-panel">
+          <h3 className="builder-section-heading">Phases</h3>
+          <div className="builder-kv"><strong>flow_preview:</strong> <code>{flowPreview}</code></div>
+          <div className="builder-kv"><strong>phase_count_hint:</strong> <code>{expectedSignals.length || 0}</code></div>
+          <label className="builder-control">
+            <span>expected_signals (comma separated)</span>
+            <input
+              type="text"
+              value={expectedSignals.join(", ")}
+              onChange={(e) => {
+                const nextSignals = String(e.target.value || "")
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean);
+                updateDraftPatch({ expected_signals: nextSignals });
+              }}
+            />
+          </label>
+        </section>
+        <section className="builder-section-panel">
+          <h3 className="builder-section-heading">Runtime</h3>
+          <label className="builder-control">
+            <span>run_mode_hint</span>
+            <select
+              value={seed?.run_mode_hint || "trial"}
+              onChange={(e) => updateDraftPatch({ run_mode_hint: e.target.value })}
+            >
+              <option value="trial">trial</option>
+              <option value="tick">tick</option>
+            </select>
+          </label>
+          <div className="builder-kv"><strong>plan_request_status:</strong> <code>{planState?.requestStatus || "idle"}</code></div>
+        </section>
+        <section className="builder-section-panel">
+          <h3 className="builder-section-heading">Report</h3>
+          <label className="builder-control">
+            <span>template_key</span>
+            <input
+              type="text"
+              value={seed?.template_key || ""}
+              onChange={(e) => updateDraftPatch({ template_key: e.target.value })}
+            />
+          </label>
+          <div className="builder-kv"><strong>stable_hash:</strong> <code>{stableHash || "n/a"}</code></div>
+        </section>
+        <section className="builder-section-panel builder-section-panel-muted">
+          <h3 className="builder-section-heading">Advanced/Debug</h3>
+          <div className="builder-kv"><strong>dirty:</strong> <code>{String(Boolean(builderDraftState?.dirty))}</code></div>
+          <div className="builder-kv"><strong>is_ready:</strong> <code>{String(Boolean(builderDraftState?.isReady))}</code></div>
+          <div className="builder-kv"><strong>validation_state:</strong> <code>{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
+        </section>
+      </div>
+      <div className="builder-validation-panel">
+        <div><strong>Draft Readiness:</strong> <code>{builderDraftState?.isReady ? "ready" : "not_ready"}</code></div>
+        <div><strong>Validation Errors:</strong> <code>{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
       </div>
       <div className="plan-resolve-summary">
         <div><strong>Plan Status:</strong> <code>{planState && planState.requestStatus ? planState.requestStatus : "idle"}</code></div>
@@ -1315,6 +1409,14 @@ function AppShell() {
     });
   }, [dispatchEvent, presetActionServiceApi, stateApi]);
 
+  const editBuilderDraft = React.useCallback((nextDraft) => {
+    if (!stateApi || !nextDraft || typeof nextDraft !== "object") return;
+    dispatchEvent({
+      type: stateApi.UI_EVENTS.DRAFT_EDITED,
+      payload: { draft: nextDraft },
+    });
+  }, [dispatchEvent, stateApi]);
+
   const resolvePresetFromSelection = React.useCallback(async (presetItem) => {
     if (!presetActionHandlers || typeof presetActionHandlers.resolvePresetFromSelection !== "function") {
       return { ok: false, error: { message: "Preset action service unavailable." } };
@@ -1395,6 +1497,7 @@ function AppShell() {
           builderDraftState={builderDraftState}
           planState={planState}
           onResolvePlan={resolvePlanFromBuilderContext}
+          onDraftEdited={editBuilderDraft}
           resolveErrorView={planResolveErrorView}
         />
       );
