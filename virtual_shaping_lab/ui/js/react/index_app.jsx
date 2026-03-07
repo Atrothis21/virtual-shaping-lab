@@ -104,13 +104,34 @@ function CatalogHelpRouteContainer() {
 }
 
 function AppShell() {
-  const initialState = React.useMemo(() => {
-    const api = window.VSLReact.stateDomains;
-    return api && typeof api.createInitialUIState === "function"
-      ? api.createInitialUIState()
-      : null;
+  const apiClient = React.useMemo(() => {
+    if (!window.VSLApi || typeof window.VSLApi.createApiClient !== "function") return null;
+    return window.VSLApi.createApiClient({ baseUrl: "" });
   }, []);
+  const stateApi = window.VSLReact.stateDomains;
+  const uiPrimitives = window.VSLReact.uiPrimitives || {};
+  const GlobalBanner = uiPrimitives.GlobalBanner || (() => null);
+  const BlockingPanel = uiPrimitives.BlockingPanel || (() => null);
+  const NotificationStack = uiPrimitives.NotificationStack || (() => null);
+  const buildCatalogMismatchBanner = uiPrimitives.buildCatalogMismatchBanner || (() => null);
+  const initialState = React.useMemo(() => {
+    return stateApi && typeof stateApi.createInitialUIState === "function"
+      ? stateApi.createInitialUIState()
+      : null;
+  }, [stateApi]);
+  const [uiState, setUiState] = React.useState(initialState);
   const [activeRoute, setActiveRoute] = React.useState(() => parseRouteFromHash(window.location.hash));
+  const [notifications, setNotifications] = React.useState([]);
+
+  const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
+
+  const dispatchEvent = React.useCallback(
+    (event) => {
+      if (!stateApi || typeof stateApi.applyUIEvent !== "function") return;
+      setUiState((prev) => stateApi.applyUIEvent(prev || stateApi.createInitialUIState(), event));
+    },
+    [stateApi]
+  );
 
   React.useEffect(() => {
     function onHashChange() {
@@ -120,6 +141,94 @@ function AppShell() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  React.useEffect(() => {
+    if (!apiClient || !stateApi || !catalogState) return;
+    if (catalogState.requestStatus !== "idle") return;
+
+    let cancelled = false;
+
+    async function bootstrapCatalog() {
+      dispatchEvent({ type: stateApi.UI_EVENTS.CATALOG_REFRESH_REQUESTED });
+      try {
+        const payload = await apiClient.getJson("catalog/extensions");
+        if (cancelled) return;
+        dispatchEvent({
+          type: stateApi.UI_EVENTS.CATALOG_REFRESH_SUCCEEDED,
+          payload: {
+            extensions: payload && payload.extensions ? payload.extensions : null,
+            versions: payload && payload.versions ? payload.versions : null,
+            atMs: Date.now(),
+          },
+        });
+      } catch (error) {
+        if (cancelled) return;
+        dispatchEvent({
+          type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
+          payload: { error: error || null },
+        });
+      }
+    }
+
+    bootstrapCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiClient, catalogState, dispatchEvent, stateApi]);
+
+  React.useEffect(() => {
+    if (!catalogState) return;
+    if (catalogState.requestStatus !== "error") return;
+    const err = catalogState.lastError;
+    setNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== "catalog-bootstrap-error");
+      return [
+        ...next,
+        {
+          id: "catalog-bootstrap-error",
+          level: "error",
+          title: "Catalog bootstrap failed",
+          message: err && err.message ? String(err.message) : "Could not load catalog metadata.",
+        },
+      ];
+    });
+  }, [catalogState]);
+
+  const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
+  const showBlockingCatalogPanel = Boolean(
+    catalogState &&
+    catalogState.requestStatus === "error" &&
+    !catalogState.extensions
+  );
+
+  function refreshCatalog() {
+    dispatchEvent({ type: stateApi.UI_EVENTS.CATALOG_REFRESH_REQUESTED });
+    if (!apiClient) {
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
+        payload: { error: { message: "API client unavailable." } },
+      });
+      return;
+    }
+    apiClient
+      .getJson("catalog/extensions")
+      .then((payload) => {
+        dispatchEvent({
+          type: stateApi.UI_EVENTS.CATALOG_REFRESH_SUCCEEDED,
+          payload: {
+            extensions: payload && payload.extensions ? payload.extensions : null,
+            versions: payload && payload.versions ? payload.versions : null,
+            atMs: Date.now(),
+          },
+        });
+      })
+      .catch((error) => {
+        dispatchEvent({
+          type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
+          payload: { error: error || null },
+        });
+      });
+  }
 
   function navigateTo(routeKey) {
     const route = Object.values(ROUTES).find((item) => item.key === routeKey);
@@ -150,12 +259,20 @@ function AppShell() {
           <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
             State domains initialized: {initialState ? Object.keys(initialState).length : 0}
           </p>
+          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+            Catalog bootstrap status: {catalogState ? catalogState.requestStatus : "n/a"}
+          </p>
         </div>
       </header>
 
       <div className="shell-body">
         <nav className="shell-nav">
           <h3>Navigation Scaffold</h3>
+          <div style={{ marginBottom: "0.75rem", fontSize: "0.82rem", color: "#475569" }}>
+            <div><strong>catalog_version:</strong> {catalogState?.versions?.catalog_version || "n/a"}</div>
+            <div><strong>record_schema:</strong> {catalogState?.versions?.record_schema_version || "n/a"}</div>
+            <div><strong>template_version:</strong> {catalogState?.versions?.template_version_used ?? "n/a"}</div>
+          </div>
           {Object.values(ROUTES).map((route) => (
             <ShellNavItem
               key={route.key}
@@ -167,9 +284,27 @@ function AppShell() {
         </nav>
 
         <main className="shell-main">
+          {mismatchBanner ? (
+            <GlobalBanner
+              level={mismatchBanner.level}
+              title={mismatchBanner.title}
+              message={mismatchBanner.message}
+              actionLabel={mismatchBanner.actionLabel}
+              onAction={refreshCatalog}
+            />
+          ) : null}
+          {showBlockingCatalogPanel ? (
+            <BlockingPanel
+              title="Catalog unavailable"
+              message="The app cannot bootstrap required catalog metadata right now. Retry catalog loading before continuing."
+              actionLabel="Retry Catalog Load"
+              onAction={refreshCatalog}
+            />
+          ) : null}
           {renderActiveRoute()}
         </main>
       </div>
+      <NotificationStack items={notifications} />
     </div>
   );
 }

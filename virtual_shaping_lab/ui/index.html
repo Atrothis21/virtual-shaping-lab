@@ -92,6 +92,91 @@
       gap: 0.9rem;
     }
 
+    .global-banner {
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .global-banner .banner-content {
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .global-banner.warning {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .global-banner.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .banner-action {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 0.35rem 0.6rem;
+      background: #f8fafc;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .blocking-panel {
+      border: 1px solid #ef4444;
+      border-radius: 10px;
+      background: #fff1f2;
+      padding: 0.9rem;
+      margin-bottom: 0.9rem;
+      color: #881337;
+    }
+
+    .blocking-panel h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .blocking-panel p {
+      margin: 0.45rem 0 0.75rem;
+    }
+
+    .toast-stack {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      display: grid;
+      gap: 0.45rem;
+      z-index: 20;
+      max-width: 320px;
+    }
+
+    .toast {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      padding: 0.5rem 0.6rem;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+      font-size: 0.86rem;
+    }
+
+    .toast.warning {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
+
+    .toast.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
     .route-card {
       border: 1px solid #cbd5e1;
       border-radius: 10px;
@@ -163,7 +248,9 @@
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="/ui/js/react/api_client.js"></script>
 <script src="/ui/js/react/state_domains.js"></script>
+<script type="text/babel" src="/ui/js/react/ui_primitives.jsx"></script>
 <script type="text/babel" src="/ui/js/react/index_app.jsx"></script>
 </body>
 </html>

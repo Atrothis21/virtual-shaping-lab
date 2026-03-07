@@ -43,5 +43,34 @@ def test_index_app_initializes_from_hash_and_hashchange():
 
 def test_index_html_loads_react_shell_entrypoint():
     text = _read(INDEX_HTML)
+    api_idx = text.find('/ui/js/react/api_client.js')
+    state_idx = text.find('/ui/js/react/state_domains.js')
+    primitives_idx = text.find('/ui/js/react/ui_primitives.jsx')
+    app_idx = text.find('/ui/js/react/index_app.jsx')
+    assert api_idx != -1
+    assert state_idx != -1
+    assert primitives_idx != -1
+    assert app_idx != -1
+    assert api_idx < app_idx
+    assert state_idx < app_idx
+    assert primitives_idx < app_idx
     assert '<script type="text/babel" src="/ui/js/react/index_app.jsx"></script>' in text
     assert 'className="shell-layout"' not in text  # sanity: styles are in css, jsx is separate
+
+
+def test_index_app_bootstraps_catalog_and_surfaces_versions():
+    text = _read(INDEX_APP)
+    assert "window.VSLApi.createApiClient" in text
+    assert "apiClient.getJson(\"catalog/extensions\")" in text
+    assert "stateApi.UI_EVENTS.CATALOG_REFRESH_REQUESTED" in text
+    assert "stateApi.UI_EVENTS.CATALOG_REFRESH_SUCCEEDED" in text
+    assert "stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED" in text
+    assert "Catalog bootstrap status:" in text
+    assert "catalog_version" in text
+    assert "record_schema_version" in text
+    assert "template_version_used" in text
+    assert "GlobalBanner" in text
+    assert "BlockingPanel" in text
+    assert "NotificationStack" in text
+    assert "buildCatalogMismatchBanner" in text
+    assert "Catalog unavailable" in text
