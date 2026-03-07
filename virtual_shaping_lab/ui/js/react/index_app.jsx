@@ -30,6 +30,62 @@ function buildConstrainedDraftSeedFromPreset(item) {
   };
 }
 
+function buildPresetApiPayload(item, draftSeed) {
+  if (!item) return { report: { preset: "custom_protocol" } };
+  const seed = draftSeed || buildConstrainedDraftSeedFromPreset(item);
+  const runModeHint = seed && seed.run_mode_hint ? seed.run_mode_hint : "trial";
+  return {
+    settings: {
+      update_mode: runModeHint === "tick" ? "tick" : "trial",
+      record_mode: "trial",
+    },
+    report: {
+      preset: item.key || "custom_protocol",
+    },
+  };
+}
+
+function toUserError(error, fallbackMessage) {
+  if (error && typeof error === "object" && error.message) return error;
+  return {
+    message: fallbackMessage || "Request failed.",
+    status: error && typeof error === "object" && error.status ? error.status : 0,
+    envelope: error && typeof error === "object" && error.envelope ? error.envelope : null,
+  };
+}
+
+function extractErrorMessage(error) {
+  if (!error || typeof error !== "object") return "";
+  if (error.message) return String(error.message);
+  if (error.envelope && error.envelope.message) return String(error.envelope.message);
+  return "";
+}
+
+function isPlanHashMismatchError(error) {
+  return extractErrorMessage(error).toLowerCase().includes("plan hash mismatch");
+}
+
+function isRunTerminalFromPayload(runData) {
+  const lifecycleState = runData && runData.lifecycle && runData.lifecycle.state
+    ? String(runData.lifecycle.state).toLowerCase()
+    : (runData && runData.state ? String(runData.state).toLowerCase() : "");
+  if (!lifecycleState) return false;
+  return (
+    lifecycleState === "completed" ||
+    lifecycleState === "complete" ||
+    lifecycleState === "failed" ||
+    lifecycleState === "error" ||
+    lifecycleState === "cancelled" ||
+    lifecycleState === "canceled"
+  );
+}
+
+function waitMs(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function ShellNavItem({ label, isActive, onClick }) {
   return (
     <button
@@ -142,7 +198,13 @@ function PresetBrowserGrid({ items, onUseInBuilder }) {
   );
 }
 
-function PresetDetailPanel({ item, onResolvePreset, onResolveRun, onResolveRunReport }) {
+function PresetDetailPanel({
+  item,
+  onResolvePreset,
+  onResolveRun,
+  onResolveRunReport,
+  actionState,
+}) {
   if (!item) {
     return (
       <div className="route-card preset-detail">
@@ -179,6 +241,23 @@ function PresetDetailPanel({ item, onResolvePreset, onResolveRun, onResolveRunRe
         <button type="button" className="route-action" onClick={() => { if (typeof onResolveRunReport === "function") onResolveRunReport(item); }}>
           Resolve + Run + Report
         </button>
+      </div>
+      <div className="preset-action-status">
+        <strong>Action Status:</strong>{" "}
+        <code>{actionState && actionState.status ? actionState.status : "idle"}</code>
+        {actionState && actionState.step ? (
+          <span style={{ marginLeft: "0.45rem" }}>
+            <strong>Step:</strong> <code>{actionState.step}</code>
+          </span>
+        ) : null}
+        {actionState && actionState.message ? (
+          <p className="preset-action-message">{actionState.message}</p>
+        ) : null}
+        {actionState && actionState.error && actionState.error.message ? (
+          <p className="preset-action-error">
+            {String(actionState.error.message)}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -226,7 +305,15 @@ function PhenomenonSupportPanel({ item }) {
   );
 }
 
-function PresetsRouteContainer({ catalogState, onSeedDraftFromPreset, onNavigate }) {
+function PresetsRouteContainer({
+  catalogState,
+  onSeedDraftFromPreset,
+  onNavigate,
+  onResolvePresetAction,
+  onResolveRunAction,
+  onResolveRunReportAction,
+  actionState,
+}) {
   const viewModel = React.useMemo(
     () => selectPresetCatalogViewModel(catalogState),
     [catalogState]
@@ -272,17 +359,40 @@ function PresetsRouteContainer({ catalogState, onSeedDraftFromPreset, onNavigate
     if (typeof onNavigate === "function") onNavigate(ROUTES.builder.key);
   }, [onNavigate, onSeedDraftFromPreset]);
 
-  const handleResolvePreset = React.useCallback((item) => {
+  const handleResolvePreset = React.useCallback(async (item) => {
     if (!item) return;
     if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onResolvePresetAction === "function") {
+      const result = await onResolvePresetAction(item);
+      if (result && result.ok && typeof onNavigate === "function") onNavigate(ROUTES.run.key);
+      return;
+    }
     if (typeof onNavigate === "function") onNavigate(ROUTES.run.key);
-  }, [onNavigate, onSeedDraftFromPreset]);
+  }, [onNavigate, onResolvePresetAction, onSeedDraftFromPreset]);
 
-  const handleResolveRunReport = React.useCallback((item) => {
+  const handleResolveRun = React.useCallback(async (item) => {
     if (!item) return;
     if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onResolveRunAction === "function") {
+      const result = await onResolveRunAction(item);
+      if (result && result.ok && typeof onNavigate === "function") onNavigate(ROUTES.run.key);
+      return;
+    }
+    if (typeof onNavigate === "function") onNavigate(ROUTES.run.key);
+  }, [onNavigate, onResolveRunAction, onSeedDraftFromPreset]);
+
+  const handleResolveRunReport = React.useCallback(async (item) => {
+    if (!item) return;
+    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
+    if (typeof onResolveRunReportAction === "function") {
+      const result = await onResolveRunReportAction(item);
+      if (result && result.ok && typeof onNavigate === "function") {
+        onNavigate(result.routeKey || ROUTES.report.key);
+      }
+      return;
+    }
     if (typeof onNavigate === "function") onNavigate(ROUTES.report.key);
-  }, [onNavigate, onSeedDraftFromPreset]);
+  }, [onNavigate, onResolveRunReportAction, onSeedDraftFromPreset]);
 
   return (
     <section className="vsl-page-region">
@@ -323,8 +433,9 @@ function PresetsRouteContainer({ catalogState, onSeedDraftFromPreset, onNavigate
       <PresetDetailPanel
         item={selectedPreset}
         onResolvePreset={handleResolvePreset}
-        onResolveRun={handleResolvePreset}
+        onResolveRun={handleResolveRun}
         onResolveRunReport={handleResolveRunReport}
+        actionState={actionState}
       />
       <PhenomenonSupportPanel item={selectedPreset} />
 
@@ -424,6 +535,12 @@ function AppShell() {
   const [uiState, setUiState] = React.useState(initialState);
   const [activeRoute, setActiveRoute] = React.useState(() => parseRouteFromHash(window.location.hash));
   const [notifications, setNotifications] = React.useState([]);
+  const [presetActionState, setPresetActionState] = React.useState(() => ({
+    status: "idle",
+    step: "",
+    message: "",
+    error: null,
+  }));
 
   const catalogState = stateApi && uiState ? stateApi.selectCatalogCacheState(uiState) : null;
   const builderDraftState = stateApi && uiState ? stateApi.selectBuilderDraftState(uiState) : null;
@@ -552,6 +669,205 @@ function AppShell() {
     });
   }, [dispatchEvent, stateApi]);
 
+  const resolvePresetFromSelection = React.useCallback(async (presetItem) => {
+    if (!apiClient || !stateApi || !presetItem) return { ok: false, error: { message: "Missing API or preset." } };
+    const draftSeed = buildConstrainedDraftSeedFromPreset(presetItem);
+    const payload = buildPresetApiPayload(presetItem, draftSeed);
+    setPresetActionState({
+      status: "loading",
+      step: "plan",
+      message: "Resolving preset plan...",
+      error: null,
+    });
+    dispatchEvent({ type: stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED });
+    try {
+      const data = await apiClient.postJson("plan", payload);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.PLAN_RESOLVE_SUCCEEDED,
+        payload: {
+          resolvedPlan: data && data.plan ? data.plan : null,
+          stableHash: data && data.stable_hash ? data.stable_hash : "",
+        },
+      });
+      setPresetActionState({
+        status: "success",
+        step: "plan",
+        message: "Preset plan resolved.",
+        error: null,
+      });
+      return { ok: true, data, payload };
+    } catch (error) {
+      const normalized = toUserError(error, "Preset plan resolve failed.");
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
+        payload: { error: normalized },
+      });
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "Preset plan resolve failed.",
+        error: normalized,
+      });
+      return { ok: false, error: normalized };
+    }
+  }, [apiClient, dispatchEvent, stateApi]);
+
+  const resolveAndRunPresetFromSelection = React.useCallback(async (presetItem) => {
+    if (!apiClient || !stateApi || !presetItem) return { ok: false, error: { message: "Missing API or preset." } };
+    const resolved = await resolvePresetFromSelection(presetItem);
+    if (!resolved.ok) return resolved;
+
+    const payload = resolved.payload || buildPresetApiPayload(presetItem, buildConstrainedDraftSeedFromPreset(presetItem));
+    const expectedPlanHash = resolved.data && resolved.data.stable_hash ? resolved.data.stable_hash : "";
+    const runPayload = expectedPlanHash ? { ...payload, expected_plan_hash: expectedPlanHash } : payload;
+
+    setPresetActionState({
+      status: "loading",
+      step: "run",
+      message: "Starting preset run...",
+      error: null,
+    });
+    dispatchEvent({ type: stateApi.UI_EVENTS.RUN_START_REQUESTED });
+    try {
+      const runData = await apiClient.postJson("run", runPayload);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_START_SUCCEEDED,
+        payload: {
+          runId: runData && runData.run_id ? String(runData.run_id) : "",
+          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
+            ? String(runData.lifecycle.state).toLowerCase()
+            : "running",
+          runData: runData || null,
+          atMs: Date.now(),
+        },
+      });
+      setPresetActionState({
+        status: "success",
+        step: "run",
+        message: "Preset run started.",
+        error: null,
+      });
+      return { ok: true, data: runData };
+    } catch (error) {
+      const normalized = toUserError(error, "Preset run failed.");
+      const mismatch = isPlanHashMismatchError(normalized);
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_START_FAILED,
+        payload: { error: normalized },
+      });
+      setPresetActionState({
+        status: "error",
+        step: "run",
+        message: mismatch
+          ? "Plan hash mismatch detected. Re-resolve preset and retry run."
+          : "Preset run failed.",
+        error: normalized,
+      });
+      return { ok: false, error: normalized };
+    }
+  }, [apiClient, dispatchEvent, resolvePresetFromSelection, stateApi]);
+
+  const waitForRunReportReadiness = React.useCallback(async (runId) => {
+    let lastData = null;
+    for (let i = 0; i < 12; i += 1) {
+      const polled = await apiClient.getJson(`runs/${encodeURIComponent(runId)}`);
+      lastData = polled || null;
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
+        payload: {
+          runData: polled || null,
+          lifecycleState: polled && polled.lifecycle && polled.lifecycle.state
+            ? String(polled.lifecycle.state).toLowerCase()
+            : undefined,
+          atMs: Date.now(),
+        },
+      });
+      if (isRunTerminalFromPayload(polled)) return { ok: true, runData: polled };
+      await waitMs(1000);
+    }
+    return { ok: false, runData: lastData };
+  }, [apiClient, dispatchEvent, stateApi]);
+
+  const resolveRunReportPresetFromSelection = React.useCallback(async (presetItem) => {
+    const runResult = await resolveAndRunPresetFromSelection(presetItem);
+    if (!runResult.ok) return runResult;
+
+    const runData = runResult.data || null;
+    const runId = runData && runData.run_id ? String(runData.run_id) : "";
+    if (!runId) {
+      const err = { message: "Run started but no run_id was returned." };
+      setPresetActionState({
+        status: "error",
+        step: "report",
+        message: "Unable to continue to report step.",
+        error: err,
+      });
+      return { ok: false, error: err };
+    }
+
+    setPresetActionState({
+      status: "loading",
+      step: "report_ready",
+      message: "Waiting for run readiness before report...",
+      error: null,
+    });
+
+    const ready = isRunTerminalFromPayload(runData)
+      ? { ok: true, runData }
+      : await waitForRunReportReadiness(runId);
+
+    if (!ready.ok) {
+      setPresetActionState({
+        status: "success",
+        step: "report_ready",
+        message: "Run not report-ready yet. Continue from Run route when complete.",
+        error: null,
+      });
+      return { ok: true, deferred: true, routeKey: ROUTES.run.key };
+    }
+
+    dispatchEvent({
+      type: stateApi.UI_EVENTS.REPORT_REQUESTED,
+      payload: { runId },
+    });
+    setPresetActionState({
+      status: "loading",
+      step: "report",
+      message: "Generating report...",
+      error: null,
+    });
+    try {
+      const reportData = await apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.REPORT_SUCCEEDED,
+        payload: {
+          runId,
+          reportData: reportData || null,
+        },
+      });
+      setPresetActionState({
+        status: "success",
+        step: "report",
+        message: "Preset report generated.",
+        error: null,
+      });
+      return { ok: true, data: reportData, routeKey: ROUTES.report.key };
+    } catch (error) {
+      const normalized = toUserError(error, "Preset report generation failed.");
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.REPORT_FAILED,
+        payload: { error: normalized },
+      });
+      setPresetActionState({
+        status: "error",
+        step: "report",
+        message: "Preset report generation failed.",
+        error: normalized,
+      });
+      return { ok: false, error: normalized };
+    }
+  }, [apiClient, dispatchEvent, resolveAndRunPresetFromSelection, stateApi, waitForRunReportReadiness]);
+
   function renderActiveRoute() {
     if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer builderDraftState={builderDraftState} />;
     if (activeRoute === ROUTES.run.key) return <RunRouteContainer />;
@@ -562,6 +878,10 @@ function AppShell() {
         catalogState={catalogState}
         onSeedDraftFromPreset={seedDraftFromPreset}
         onNavigate={navigateTo}
+        onResolvePresetAction={resolvePresetFromSelection}
+        onResolveRunAction={resolveAndRunPresetFromSelection}
+        onResolveRunReportAction={resolveRunReportPresetFromSelection}
+        actionState={presetActionState}
       />
     );
   }
