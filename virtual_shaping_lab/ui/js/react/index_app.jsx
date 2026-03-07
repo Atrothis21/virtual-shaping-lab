@@ -30,21 +30,31 @@ function ShellNavItem({ label, isActive, onClick }) {
 }
 
 function PlaceholderRouteCard({ title, description, status, actions }) {
+  const foundation = window.VSLReact.foundationPrimitives || {};
+  const SurfacePanel = foundation.SurfacePanel || ((props) => <div {...props} />);
+  const StatusBadge = foundation.StatusBadge || ((props) => <span {...props} />);
+  const SecondaryButton = foundation.SecondaryButton || ((props) => <button type="button" {...props} />);
   return (
-    <section className="route-card">
+    <SurfacePanel className="route-card">
       <div className="route-card-header">
         <h2>{title}</h2>
-        <span className="route-status">{status}</span>
+        <StatusBadge tone="success" className="route-status">{status}</StatusBadge>
       </div>
       <p>{description}</p>
       <div className="route-actions">
         {actions.map((action) => (
-          <a key={`${title}-${action.href}`} className="route-action" href={action.href}>
+          <SecondaryButton
+            key={`${title}-${action.href}`}
+            className="route-action"
+            onClick={() => {
+              window.location.href = action.href;
+            }}
+          >
             {action.label}
-          </a>
+          </SecondaryButton>
         ))}
       </div>
-    </section>
+    </SurfacePanel>
   );
 }
 
@@ -104,6 +114,9 @@ function CatalogHelpRouteContainer() {
 }
 
 function AppShell() {
+  const foundation = window.VSLReact.foundationPrimitives || {};
+  const PageRegion = foundation.PageRegion || ((props) => <section {...props} />);
+  const SurfacePanel = foundation.SurfacePanel || ((props) => <div {...props} />);
   const apiClient = React.useMemo(() => {
     if (!window.VSLApi || typeof window.VSLApi.createApiClient !== "function") return null;
     return window.VSLApi.createApiClient({ baseUrl: "" });
@@ -266,7 +279,7 @@ function AppShell() {
       </header>
 
       <div className="shell-body">
-        <nav className="shell-nav">
+        <SurfacePanel className="shell-nav">
           <h3>Navigation Scaffold</h3>
           <div style={{ marginBottom: "0.75rem", fontSize: "0.82rem", color: "#475569" }}>
             <div><strong>catalog_version:</strong> {catalogState?.versions?.catalog_version || "n/a"}</div>
@@ -281,9 +294,9 @@ function AppShell() {
               onClick={() => navigateTo(route.key)}
             />
           ))}
-        </nav>
+        </SurfacePanel>
 
-        <main className="shell-main">
+        <PageRegion className="shell-main">
           {mismatchBanner ? (
             <GlobalBanner
               level={mismatchBanner.level}
@@ -302,7 +315,7 @@ function AppShell() {
             />
           ) : null}
           {renderActiveRoute()}
-        </main>
+        </PageRegion>
       </div>
       <NotificationStack items={notifications} />
     </div>

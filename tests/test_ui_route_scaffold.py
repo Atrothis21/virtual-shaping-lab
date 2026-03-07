@@ -43,16 +43,22 @@ def test_index_app_initializes_from_hash_and_hashchange():
 
 def test_index_html_loads_react_shell_entrypoint():
     text = _read(INDEX_HTML)
+    theme_idx = text.find('/ui/js/react/ui_theme_tokens.js')
     api_idx = text.find('/ui/js/react/api_client.js')
     state_idx = text.find('/ui/js/react/state_domains.js')
+    foundation_idx = text.find('/ui/js/react/ui_foundation_primitives.jsx')
     primitives_idx = text.find('/ui/js/react/ui_primitives.jsx')
     app_idx = text.find('/ui/js/react/index_app.jsx')
+    assert theme_idx != -1
     assert api_idx != -1
     assert state_idx != -1
+    assert foundation_idx != -1
     assert primitives_idx != -1
     assert app_idx != -1
+    assert theme_idx < app_idx
     assert api_idx < app_idx
     assert state_idx < app_idx
+    assert foundation_idx < app_idx
     assert primitives_idx < app_idx
     assert '<script type="text/babel" src="/ui/js/react/index_app.jsx"></script>' in text
     assert 'className="shell-layout"' not in text  # sanity: styles are in css, jsx is separate
@@ -74,3 +80,6 @@ def test_index_app_bootstraps_catalog_and_surfaces_versions():
     assert "NotificationStack" in text
     assert "buildCatalogMismatchBanner" in text
     assert "Catalog unavailable" in text
+    assert "window.VSLReact.foundationPrimitives" in text
+    assert "SurfacePanel" in text
+    assert "StatusBadge" in text
