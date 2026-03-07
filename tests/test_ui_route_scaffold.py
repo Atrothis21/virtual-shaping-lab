@@ -46,6 +46,8 @@ def test_index_html_loads_react_shell_entrypoint():
     theme_idx = text.find('/ui/js/react/ui_theme_tokens.js')
     api_idx = text.find('/ui/js/react/api_client.js')
     state_idx = text.find('/ui/js/react/state_domains.js')
+    read_models_idx = text.find('/ui/js/react/preset_read_models.js')
+    action_service_idx = text.find('/ui/js/react/preset_action_service.js')
     contracts_idx = text.find('/ui/js/react/ui_architecture_contracts.js')
     foundation_idx = text.find('/ui/js/react/ui_foundation_primitives.jsx')
     primitives_idx = text.find('/ui/js/react/ui_primitives.jsx')
@@ -53,6 +55,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert theme_idx != -1
     assert api_idx != -1
     assert state_idx != -1
+    assert read_models_idx != -1
+    assert action_service_idx != -1
     assert contracts_idx != -1
     assert foundation_idx != -1
     assert primitives_idx != -1
@@ -60,6 +64,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert theme_idx < app_idx
     assert api_idx < app_idx
     assert state_idx < app_idx
+    assert read_models_idx < app_idx
+    assert action_service_idx < app_idx
     assert contracts_idx < app_idx
     assert foundation_idx < app_idx
     assert primitives_idx < app_idx

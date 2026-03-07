@@ -30,62 +30,6 @@ function buildConstrainedDraftSeedFromPreset(item) {
   };
 }
 
-function buildPresetApiPayload(item, draftSeed) {
-  if (!item) return { report: { preset: "custom_protocol" } };
-  const seed = draftSeed || buildConstrainedDraftSeedFromPreset(item);
-  const runModeHint = seed && seed.run_mode_hint ? seed.run_mode_hint : "trial";
-  return {
-    settings: {
-      update_mode: runModeHint === "tick" ? "tick" : "trial",
-      record_mode: "trial",
-    },
-    report: {
-      preset: item.key || "custom_protocol",
-    },
-  };
-}
-
-function toUserError(error, fallbackMessage) {
-  if (error && typeof error === "object" && error.message) return error;
-  return {
-    message: fallbackMessage || "Request failed.",
-    status: error && typeof error === "object" && error.status ? error.status : 0,
-    envelope: error && typeof error === "object" && error.envelope ? error.envelope : null,
-  };
-}
-
-function extractErrorMessage(error) {
-  if (!error || typeof error !== "object") return "";
-  if (error.message) return String(error.message);
-  if (error.envelope && error.envelope.message) return String(error.envelope.message);
-  return "";
-}
-
-function isPlanHashMismatchError(error) {
-  return extractErrorMessage(error).toLowerCase().includes("plan hash mismatch");
-}
-
-function isRunTerminalFromPayload(runData) {
-  const lifecycleState = runData && runData.lifecycle && runData.lifecycle.state
-    ? String(runData.lifecycle.state).toLowerCase()
-    : (runData && runData.state ? String(runData.state).toLowerCase() : "");
-  if (!lifecycleState) return false;
-  return (
-    lifecycleState === "completed" ||
-    lifecycleState === "complete" ||
-    lifecycleState === "failed" ||
-    lifecycleState === "error" ||
-    lifecycleState === "cancelled" ||
-    lifecycleState === "canceled"
-  );
-}
-
-function waitMs(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
 function ShellNavItem({ label, isActive, onClick }) {
   return (
     <button
@@ -125,29 +69,6 @@ function PlaceholderRouteCard({ title, description, status, actions }) {
       </div>
     </SurfacePanel>
   );
-}
-
-function selectPresetCatalogViewModel(catalogState) {
-  const extensions = catalogState && catalogState.extensions ? catalogState.extensions : null;
-  const phenomena = extensions && extensions.phenomena && typeof extensions.phenomena === "object"
-    ? extensions.phenomena
-    : {};
-  const items = Object.entries(phenomena).map(([key, spec]) => {
-    const runModes = Array.isArray(spec.default_run_modes) ? spec.default_run_modes : [];
-    return {
-      key,
-      title: spec.name || key,
-      description: spec.description || "No description provided.",
-      protocolKey: spec.protocol_key || "n/a",
-      expectedSignals: Array.isArray(spec.expected_signals) ? spec.expected_signals : [],
-      defaultTemplate: spec.recommended_template_key || spec.default_template_key || "n/a",
-      runModes,
-    };
-  });
-  return {
-    status: catalogState ? catalogState.requestStatus : "idle",
-    items,
-  };
 }
 
 function getSignalSemanticTone(signal) {
@@ -357,9 +278,20 @@ function PresetsRouteContainer({
   onResolveRunReportAction,
   actionState,
 }) {
+  const readModelApi = window.VSLReact.presetReadModels || {};
+  const selectPresetCatalogReadModel = readModelApi.selectPresetCatalogReadModel;
+  const filterPresetViewModels = readModelApi.filterPresetViewModels;
+  const sortPresetViewModels = readModelApi.sortPresetViewModels;
+  const selectPresetFromReadModels = readModelApi.selectPresetFromReadModels;
+
   const viewModel = React.useMemo(
-    () => selectPresetCatalogViewModel(catalogState),
-    [catalogState]
+    () => {
+      if (typeof selectPresetCatalogReadModel === "function") {
+        return selectPresetCatalogReadModel(catalogState);
+      }
+      return { status: "idle", items: [] };
+    },
+    [catalogState, selectPresetCatalogReadModel]
   );
   const [searchQuery, setSearchQuery] = React.useState("");
   const [runModeFilter, setRunModeFilter] = React.useState("all");
@@ -367,34 +299,23 @@ function PresetsRouteContainer({
   const [selectedPresetKey, setSelectedPresetKey] = React.useState("");
 
   const filteredItems = React.useMemo(() => {
-    let next = [...viewModel.items];
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      next = next.filter((item) => {
-        return (
-          item.title.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q) ||
-          item.protocolKey.toLowerCase().includes(q)
-        );
-      });
-    }
-    if (runModeFilter !== "all") {
-      next = next.filter((item) => item.runModes.includes(runModeFilter));
-    }
-    if (sortBy === "protocol") {
-      next.sort((a, b) => a.protocolKey.localeCompare(b.protocolKey));
-    } else {
-      next.sort((a, b) => a.title.localeCompare(b.title));
-    }
-    return next;
-  }, [viewModel.items, searchQuery, runModeFilter, sortBy]);
+    const filtered = typeof filterPresetViewModels === "function"
+      ? filterPresetViewModels(viewModel.items, searchQuery, runModeFilter)
+      : [...viewModel.items];
+    return typeof sortPresetViewModels === "function"
+      ? sortPresetViewModels(filtered, sortBy)
+      : filtered;
+  }, [filterPresetViewModels, runModeFilter, searchQuery, sortBy, sortPresetViewModels, viewModel.items]);
 
   const selectedPreset = React.useMemo(() => {
+    if (typeof selectPresetFromReadModels === "function") {
+      return selectPresetFromReadModels(viewModel.items, filteredItems, selectedPresetKey);
+    }
     if (!selectedPresetKey) return filteredItems[0] || null;
     const fromFiltered = filteredItems.find((item) => item.key === selectedPresetKey);
     if (fromFiltered) return fromFiltered;
     return viewModel.items.find((item) => item.key === selectedPresetKey) || null;
-  }, [filteredItems, selectedPresetKey, viewModel.items]);
+  }, [filteredItems, selectedPresetKey, selectPresetFromReadModels, viewModel.items]);
 
   const handleSeedToBuilder = React.useCallback((item) => {
     if (!item) return;
@@ -703,213 +624,55 @@ function AppShell() {
     }
   }
 
+  const presetActionServiceApi = window.VSLReact.presetActionService || {};
+  const presetActionHandlers = React.useMemo(() => {
+    if (!apiClient || !stateApi) return null;
+    if (typeof presetActionServiceApi.createPresetActionService !== "function") return null;
+    return presetActionServiceApi.createPresetActionService({
+      apiClient,
+      stateApi,
+      dispatchEvent,
+      setActionState: setPresetActionState,
+      routeKeys: {
+        run: ROUTES.run.key,
+        report: ROUTES.report.key,
+      },
+    });
+  }, [apiClient, dispatchEvent, presetActionServiceApi, stateApi]);
+
   const seedDraftFromPreset = React.useCallback((presetItem) => {
     if (!stateApi || !presetItem) return;
-    const draftSeed = buildConstrainedDraftSeedFromPreset(presetItem);
+    const draftSeed =
+      presetActionServiceApi &&
+      typeof presetActionServiceApi.buildConstrainedDraftSeedFromPreset === "function"
+        ? presetActionServiceApi.buildConstrainedDraftSeedFromPreset(presetItem)
+        : buildConstrainedDraftSeedFromPreset(presetItem);
     dispatchEvent({
       type: stateApi.UI_EVENTS.DRAFT_EDITED,
       payload: { draft: draftSeed },
     });
-  }, [dispatchEvent, stateApi]);
+  }, [dispatchEvent, presetActionServiceApi, stateApi]);
 
   const resolvePresetFromSelection = React.useCallback(async (presetItem) => {
-    if (!apiClient || !stateApi || !presetItem) return { ok: false, error: { message: "Missing API or preset." } };
-    const draftSeed = buildConstrainedDraftSeedFromPreset(presetItem);
-    const payload = buildPresetApiPayload(presetItem, draftSeed);
-    setPresetActionState({
-      status: "loading",
-      step: "plan",
-      message: "Resolving preset plan...",
-      error: null,
-    });
-    dispatchEvent({ type: stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED });
-    try {
-      const data = await apiClient.postJson("plan", payload);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.PLAN_RESOLVE_SUCCEEDED,
-        payload: {
-          resolvedPlan: data && data.plan ? data.plan : null,
-          stableHash: data && data.stable_hash ? data.stable_hash : "",
-        },
-      });
-      setPresetActionState({
-        status: "success",
-        step: "plan",
-        message: "Preset plan resolved.",
-        error: null,
-      });
-      return { ok: true, data, payload };
-    } catch (error) {
-      const normalized = toUserError(error, "Preset plan resolve failed.");
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
-        payload: { error: normalized },
-      });
-      setPresetActionState({
-        status: "error",
-        step: "plan",
-        message: "Preset plan resolve failed.",
-        error: normalized,
-      });
-      return { ok: false, error: normalized };
+    if (!presetActionHandlers || typeof presetActionHandlers.resolvePresetFromSelection !== "function") {
+      return { ok: false, error: { message: "Preset action service unavailable." } };
     }
-  }, [apiClient, dispatchEvent, stateApi]);
+    return presetActionHandlers.resolvePresetFromSelection(presetItem);
+  }, [presetActionHandlers]);
 
   const resolveAndRunPresetFromSelection = React.useCallback(async (presetItem) => {
-    if (!apiClient || !stateApi || !presetItem) return { ok: false, error: { message: "Missing API or preset." } };
-    const resolved = await resolvePresetFromSelection(presetItem);
-    if (!resolved.ok) return resolved;
-
-    const payload = resolved.payload || buildPresetApiPayload(presetItem, buildConstrainedDraftSeedFromPreset(presetItem));
-    const expectedPlanHash = resolved.data && resolved.data.stable_hash ? resolved.data.stable_hash : "";
-    const runPayload = expectedPlanHash ? { ...payload, expected_plan_hash: expectedPlanHash } : payload;
-
-    setPresetActionState({
-      status: "loading",
-      step: "run",
-      message: "Starting preset run...",
-      error: null,
-    });
-    dispatchEvent({ type: stateApi.UI_EVENTS.RUN_START_REQUESTED });
-    try {
-      const runData = await apiClient.postJson("run", runPayload);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_START_SUCCEEDED,
-        payload: {
-          runId: runData && runData.run_id ? String(runData.run_id) : "",
-          lifecycleState: runData && runData.lifecycle && runData.lifecycle.state
-            ? String(runData.lifecycle.state).toLowerCase()
-            : "running",
-          runData: runData || null,
-          atMs: Date.now(),
-        },
-      });
-      setPresetActionState({
-        status: "success",
-        step: "run",
-        message: "Preset run started.",
-        error: null,
-      });
-      return { ok: true, data: runData };
-    } catch (error) {
-      const normalized = toUserError(error, "Preset run failed.");
-      const mismatch = isPlanHashMismatchError(normalized);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_START_FAILED,
-        payload: { error: normalized },
-      });
-      setPresetActionState({
-        status: "error",
-        step: "run",
-        message: mismatch
-          ? "Plan hash mismatch detected. Re-resolve preset and retry run."
-          : "Preset run failed.",
-        error: normalized,
-      });
-      return { ok: false, error: normalized };
+    if (!presetActionHandlers || typeof presetActionHandlers.resolveAndRunPresetFromSelection !== "function") {
+      return { ok: false, error: { message: "Preset action service unavailable." } };
     }
-  }, [apiClient, dispatchEvent, resolvePresetFromSelection, stateApi]);
-
-  const waitForRunReportReadiness = React.useCallback(async (runId) => {
-    let lastData = null;
-    for (let i = 0; i < 12; i += 1) {
-      const polled = await apiClient.getJson(`runs/${encodeURIComponent(runId)}`);
-      lastData = polled || null;
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.RUN_STATUS_UPDATED,
-        payload: {
-          runData: polled || null,
-          lifecycleState: polled && polled.lifecycle && polled.lifecycle.state
-            ? String(polled.lifecycle.state).toLowerCase()
-            : undefined,
-          atMs: Date.now(),
-        },
-      });
-      if (isRunTerminalFromPayload(polled)) return { ok: true, runData: polled };
-      await waitMs(1000);
-    }
-    return { ok: false, runData: lastData };
-  }, [apiClient, dispatchEvent, stateApi]);
+    return presetActionHandlers.resolveAndRunPresetFromSelection(presetItem);
+  }, [presetActionHandlers]);
 
   const resolveRunReportPresetFromSelection = React.useCallback(async (presetItem) => {
-    const runResult = await resolveAndRunPresetFromSelection(presetItem);
-    if (!runResult.ok) return runResult;
-
-    const runData = runResult.data || null;
-    const runId = runData && runData.run_id ? String(runData.run_id) : "";
-    if (!runId) {
-      const err = { message: "Run started but no run_id was returned." };
-      setPresetActionState({
-        status: "error",
-        step: "report",
-        message: "Unable to continue to report step.",
-        error: err,
-      });
-      return { ok: false, error: err };
+    if (!presetActionHandlers || typeof presetActionHandlers.resolveRunReportPresetFromSelection !== "function") {
+      return { ok: false, error: { message: "Preset action service unavailable." } };
     }
-
-    setPresetActionState({
-      status: "loading",
-      step: "report_ready",
-      message: "Waiting for run readiness before report...",
-      error: null,
-    });
-
-    const ready = isRunTerminalFromPayload(runData)
-      ? { ok: true, runData }
-      : await waitForRunReportReadiness(runId);
-
-    if (!ready.ok) {
-      setPresetActionState({
-        status: "success",
-        step: "report_ready",
-        message: "Run not report-ready yet. Continue from Run route when complete.",
-        error: null,
-      });
-      return { ok: true, deferred: true, routeKey: ROUTES.run.key };
-    }
-
-    dispatchEvent({
-      type: stateApi.UI_EVENTS.REPORT_REQUESTED,
-      payload: { runId },
-    });
-    setPresetActionState({
-      status: "loading",
-      step: "report",
-      message: "Generating report...",
-      error: null,
-    });
-    try {
-      const reportData = await apiClient.postJson(`runs/${encodeURIComponent(runId)}/report`, {});
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.REPORT_SUCCEEDED,
-        payload: {
-          runId,
-          reportData: reportData || null,
-        },
-      });
-      setPresetActionState({
-        status: "success",
-        step: "report",
-        message: "Preset report generated.",
-        error: null,
-      });
-      return { ok: true, data: reportData, routeKey: ROUTES.report.key };
-    } catch (error) {
-      const normalized = toUserError(error, "Preset report generation failed.");
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.REPORT_FAILED,
-        payload: { error: normalized },
-      });
-      setPresetActionState({
-        status: "error",
-        step: "report",
-        message: "Preset report generation failed.",
-        error: normalized,
-      });
-      return { ok: false, error: normalized };
-    }
-  }, [apiClient, dispatchEvent, resolveAndRunPresetFromSelection, stateApi, waitForRunReportReadiness]);
+    return presetActionHandlers.resolveRunReportPresetFromSelection(presetItem);
+  }, [presetActionHandlers]);
 
   function renderActiveRoute() {
     if (activeRoute === ROUTES.builder.key) return <BuilderRouteContainer builderDraftState={builderDraftState} />;

@@ -12,11 +12,11 @@ def _read(path: Path) -> str:
 
 def test_presets_route_has_catalog_view_model_selector():
     text = _read(INDEX_APP)
-    assert "function selectPresetCatalogViewModel" in text
-    assert "extensions.phenomena" in text
-    assert "expectedSignals" in text
-    assert "defaultTemplate" in text
-    assert "runModes" in text
+    assert "window.VSLReact.presetReadModels" in text
+    assert "selectPresetCatalogReadModel" in text
+    assert "filterPresetViewModels" in text
+    assert "sortPresetViewModels" in text
+    assert "selectPresetFromReadModels" in text
     assert "getSignalSemanticTone" in text
     assert "getProtocolAccentTone" in text
     assert "PresetSignalChips" in text
@@ -31,8 +31,8 @@ def test_presets_route_has_browser_controls():
     assert "setSearchQuery" in text
     assert "setRunModeFilter" in text
     assert "setSortBy" in text
-    assert "filter((item)" in text
-    assert "localeCompare" in text
+    assert "filterPresetViewModels" in text
+    assert "sortPresetViewModels" in text
 
 
 def test_presets_route_renders_grid_component():
@@ -73,25 +73,18 @@ def test_presets_route_has_seeded_draft_initialization_handoff():
 
 def test_presets_route_wires_resolve_and_run_actions_to_api():
     text = _read(INDEX_APP)
-    assert "buildPresetApiPayload" in text
-    assert "apiClient.postJson(\"plan\", payload)" in text
-    assert "apiClient.postJson(\"run\", runPayload)" in text
+    assert "window.VSLReact.presetActionService" in text
+    assert "createPresetActionService" in text
+    assert "presetActionHandlers" in text
     assert "resolvePresetFromSelection" in text
     assert "resolveAndRunPresetFromSelection" in text
-    assert "stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED" in text
-    assert "stateApi.UI_EVENTS.PLAN_RESOLVE_SUCCEEDED" in text
-    assert "stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED" in text
-    assert "stateApi.UI_EVENTS.RUN_START_REQUESTED" in text
-    assert "stateApi.UI_EVENTS.RUN_START_SUCCEEDED" in text
-    assert "stateApi.UI_EVENTS.RUN_START_FAILED" in text
+    assert "resolveRunReportPresetFromSelection" in text
 
 
 def test_presets_route_renders_action_level_status_and_errors():
     text = _read(INDEX_APP)
     assert "Action Status:" in text
     assert "presetActionState" in text
-    assert "Preset plan resolve failed." in text
-    assert "Preset run failed." in text
 
 
 def test_presets_route_has_lightweight_phenomenon_support_panel():

@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+ACTION_SERVICE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "preset_action_service.js"
 
 
 def _read(path: Path) -> str:
@@ -10,11 +11,11 @@ def _read(path: Path) -> str:
 
 
 def test_preset_action_flow_has_plan_then_run_sequence():
-    text = _read(INDEX_APP)
+    text = _read(ACTION_SERVICE)
     assert "const resolved = await resolvePresetFromSelection(presetItem);" in text
     assert "if (!resolved.ok) return resolved;" in text
     assert "expected_plan_hash" in text
-    assert "setPresetActionState({" in text
+    assert "setActionState({" in text
     assert "message: \"Starting preset run...\"" in text
 
 
@@ -27,7 +28,7 @@ def test_preset_action_flow_exposes_workflow_callbacks_to_route_container():
 
 
 def test_preset_action_flow_has_run_readiness_before_report_creation():
-    text = _read(INDEX_APP)
+    text = _read(ACTION_SERVICE)
     assert "waitForRunReportReadiness" in text
     assert "Waiting for run readiness before report..." in text
     assert "isRunTerminalFromPayload" in text
@@ -39,6 +40,15 @@ def test_preset_action_flow_has_run_readiness_before_report_creation():
 
 
 def test_preset_action_flow_has_hash_mismatch_recovery_message():
-    text = _read(INDEX_APP)
+    text = _read(ACTION_SERVICE)
     assert "isPlanHashMismatchError" in text
     assert "Plan hash mismatch detected. Re-resolve preset and retry run." in text
+
+
+def test_index_app_uses_action_service_handlers():
+    text = _read(INDEX_APP)
+    assert "window.VSLReact.presetActionService" in text
+    assert "presetActionHandlers" in text
+    assert "presetActionHandlers.resolvePresetFromSelection" in text
+    assert "presetActionHandlers.resolveAndRunPresetFromSelection" in text
+    assert "presetActionHandlers.resolveRunReportPresetFromSelection" in text
