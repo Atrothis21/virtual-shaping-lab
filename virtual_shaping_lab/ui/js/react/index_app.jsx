@@ -150,6 +150,50 @@ function selectPresetCatalogViewModel(catalogState) {
   };
 }
 
+function getSignalSemanticTone(signal) {
+  const normalized = String(signal || "").toLowerCase();
+  if (normalized.includes("cs+") || normalized.includes("plus") || normalized.includes("acquisition")) {
+    return "cs-plus";
+  }
+  if (normalized.includes("cs-") || normalized.includes("minus") || normalized.includes("nonreinforcement")) {
+    return "cs-minus";
+  }
+  if (normalized.includes("probe") || normalized.includes("test")) {
+    return "probe";
+  }
+  if (normalized.includes("compound")) {
+    return "compound";
+  }
+  return "learning";
+}
+
+function getProtocolAccentTone(protocolKey) {
+  const normalized = String(protocolKey || "").toLowerCase();
+  if (normalized.includes("nonreinforcement") || normalized.includes("extinction")) return "cs-minus";
+  if (normalized.includes("probe")) return "probe";
+  if (normalized.includes("compound")) return "compound";
+  if (normalized.includes("acquisition")) return "cs-plus";
+  return "learning";
+}
+
+function PresetSignalChips({ signals, maxItems }) {
+  const entries = Array.isArray(signals) ? signals : [];
+  if (!entries.length) return <span className="preset-empty-cue">n/a</span>;
+  const sliced = Number.isFinite(maxItems) ? entries.slice(0, maxItems) : entries;
+  return (
+    <div className="preset-signal-chip-row">
+      {sliced.map((signal) => {
+        const tone = getSignalSemanticTone(signal);
+        return (
+          <span key={`signal-${signal}`} className={`preset-signal-chip ${tone}`}>
+            {signal}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function PresetBrowserGrid({ items, onUseInBuilder }) {
   if (!Array.isArray(items) || items.length === 0) {
     return (
@@ -162,11 +206,12 @@ function PresetBrowserGrid({ items, onUseInBuilder }) {
   return (
     <div className="preset-grid">
       {items.map((item) => (
-        <div className="route-card preset-card" key={item.key}>
+        <div className={`route-card preset-card accent-${getProtocolAccentTone(item.protocolKey)}`} key={item.key}>
           <div className="route-card-header">
             <h2>{item.title}</h2>
-            <span className="vsl-status-badge">{item.protocolKey}</span>
+            <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
           </div>
+          <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
           <p>{item.description}</p>
           <p style={{ marginBottom: "0.35rem" }}>
             <strong>Template:</strong> <code>{item.defaultTemplate}</code>
@@ -175,9 +220,9 @@ function PresetBrowserGrid({ items, onUseInBuilder }) {
             <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
           </p>
           <p style={{ marginBottom: "0.7rem" }}>
-            <strong>Expected Signals:</strong>{" "}
-            {item.expectedSignals.length ? item.expectedSignals.slice(0, 3).join(", ") : "n/a"}
+            <strong>Expected Signals:</strong>
           </p>
+          <PresetSignalChips signals={item.expectedSignals} maxItems={3} />
           <div className="route-actions">
             <button
               type="button"
@@ -215,11 +260,14 @@ function PresetDetailPanel({
   }
 
   return (
-    <div className="route-card preset-detail">
+    <div className={`route-card preset-detail accent-${getProtocolAccentTone(item.protocolKey)}`}>
       <div className="route-card-header">
         <h2>{item.title}</h2>
-        <span className="vsl-status-badge">{item.protocolKey}</span>
+        <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
       </div>
+      <p className="preset-meta-line">
+        Preset Key: <code>{item.key}</code>
+      </p>
       <p>{item.description}</p>
       <p style={{ marginBottom: "0.35rem" }}>
         <strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code>
@@ -228,9 +276,9 @@ function PresetDetailPanel({
         <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
       </p>
       <p style={{ marginBottom: "0.7rem" }}>
-        <strong>Expected Signals:</strong>{" "}
-        {item.expectedSignals.length ? item.expectedSignals.join(", ") : "n/a"}
+        <strong>Expected Signals:</strong>
       </p>
+      <PresetSignalChips signals={item.expectedSignals} />
       <div className="route-actions">
         <button type="button" className="route-action" onClick={() => { if (typeof onResolvePreset === "function") onResolvePreset(item); }}>
           Resolve Preset
@@ -264,8 +312,10 @@ function PresetDetailPanel({
 }
 
 function PhenomenonSupportPanel({ item }) {
+  const accentTone = item ? getProtocolAccentTone(item.protocolKey) : "learning";
+  const signalCount = item && Array.isArray(item.expectedSignals) ? item.expectedSignals.length : 0;
   return (
-    <div className="route-card phenomenon-support">
+    <div className={`route-card phenomenon-support accent-${accentTone}`}>
       <div className="route-card-header">
         <h2>Phenomenon Support</h2>
         <span className="vsl-status-badge warning">metadata-only</span>
@@ -274,6 +324,9 @@ function PhenomenonSupportPanel({ item }) {
         <p>Select a preset to view phenomenon guidance.</p>
       ) : (
         <>
+          <p className="phenomenon-meta-line">
+            Support Mode: <code>setup-guidance</code> | signal_count: <code>{signalCount}</code>
+          </p>
           <p>
             <strong>{item.title}</strong> is currently selected. Use this panel to review expected signatures
             and reporting guidance before execution.
@@ -284,17 +337,7 @@ function PhenomenonSupportPanel({ item }) {
           <p style={{ marginBottom: "0.35rem" }}>
             <strong>Expected Signals:</strong>
           </p>
-          {item.expectedSignals.length ? (
-            <ul className="phenomenon-signal-list">
-              {item.expectedSignals.map((signal) => (
-                <li key={`${item.key}-${signal}`}>
-                  <code>{signal}</code>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>n/a</p>
-          )}
+          <PresetSignalChips signals={item.expectedSignals} />
           <p style={{ marginTop: "0.55rem" }}>
             Scope note: this panel is a lightweight support surface. Full narrative teaching mode is out of scope
             for V2.17.1.

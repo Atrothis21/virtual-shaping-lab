@@ -162,6 +162,36 @@
       color: #fca5a5;
     }
 
+    .vsl-status-badge.semantic.cs-plus {
+      border-color: var(--vsl-color-cs-plus);
+      background: rgba(34, 197, 94, 0.16);
+      color: #86efac;
+    }
+
+    .vsl-status-badge.semantic.cs-minus {
+      border-color: var(--vsl-color-cs-minus);
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+    }
+
+    .vsl-status-badge.semantic.probe {
+      border-color: var(--vsl-color-probe);
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+    }
+
+    .vsl-status-badge.semantic.compound {
+      border-color: var(--vsl-color-compound);
+      background: rgba(167, 139, 250, 0.17);
+      color: #c4b5fd;
+    }
+
+    .vsl-status-badge.semantic.learning {
+      border-color: var(--vsl-color-learning);
+      background: rgba(245, 158, 11, 0.14);
+      color: #fcd34d;
+    }
+
     .vsl-btn {
       border-radius: var(--vsl-radius-md);
       border: 1px solid var(--vsl-color-panel-border);
@@ -346,6 +376,67 @@
       margin-top: 0.75rem;
     }
 
+    .preset-card {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(165deg, rgba(30, 41, 59, 0.96) 0%, rgba(21, 31, 48, 0.96) 100%),
+        radial-gradient(circle at 92% 8%, rgba(148, 163, 184, 0.08), transparent 42%);
+    }
+
+    .preset-card::before,
+    .preset-detail::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--vsl-color-learning);
+      opacity: 0.95;
+    }
+
+    .preset-card.accent-cs-plus::before,
+    .preset-detail.accent-cs-plus::before {
+      background: var(--vsl-color-cs-plus);
+    }
+
+    .preset-card.accent-cs-minus::before,
+    .preset-detail.accent-cs-minus::before {
+      background: var(--vsl-color-cs-minus);
+    }
+
+    .preset-card.accent-probe::before,
+    .preset-detail.accent-probe::before {
+      background: var(--vsl-color-probe);
+    }
+
+    .preset-card.accent-compound::before,
+    .preset-detail.accent-compound::before {
+      background: var(--vsl-color-compound);
+    }
+
+    .preset-card.accent-learning::before,
+    .preset-detail.accent-learning::before {
+      background: var(--vsl-color-learning);
+    }
+
+    .preset-meta-line {
+      margin: 0.35rem 0 0.5rem;
+      color: #9fb4cc;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .preset-meta-line code {
+      font-family: var(--vsl-font-mono);
+      color: #cbd5e1;
+      font-size: 0.79rem;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
     .preset-card code {
       font-family: var(--vsl-font-mono);
       font-size: 0.82rem;
@@ -354,6 +445,158 @@
 
     .preset-detail {
       margin-top: 0.75rem;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(30, 41, 59, 0.98) 0%, rgba(22, 32, 49, 0.96) 100%),
+        radial-gradient(circle at 90% 12%, rgba(56, 189, 248, 0.12), transparent 44%);
+    }
+
+    .preset-signal-chip-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      margin: 0.2rem 0 0.65rem;
+    }
+
+    .preset-signal-chip {
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-pill);
+      padding: 0.16rem 0.5rem;
+      font-family: var(--vsl-font-mono);
+      font-size: 0.76rem;
+      letter-spacing: 0.02em;
+      background: #1a2537;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .preset-signal-chip.cs-plus {
+      border-color: var(--vsl-color-cs-plus);
+      color: #86efac;
+      background: rgba(34, 197, 94, 0.14);
+    }
+
+    .preset-signal-chip.cs-minus {
+      border-color: var(--vsl-color-cs-minus);
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .preset-signal-chip.probe {
+      border-color: var(--vsl-color-probe);
+      color: #7dd3fc;
+      background: rgba(56, 189, 248, 0.15);
+    }
+
+    .preset-signal-chip.compound {
+      border-color: var(--vsl-color-compound);
+      color: #c4b5fd;
+      background: rgba(167, 139, 250, 0.17);
+    }
+
+    .preset-signal-chip.learning {
+      border-color: var(--vsl-color-learning);
+      color: #fcd34d;
+      background: rgba(245, 158, 11, 0.14);
+    }
+
+    .preset-empty-cue {
+      display: inline-block;
+      color: var(--vsl-color-text-secondary);
+      font-family: var(--vsl-font-mono);
+      font-size: 0.8rem;
+    }
+
+    .preset-action-status {
+      margin-top: 0.7rem;
+      border-top: 1px solid var(--vsl-color-panel-border);
+      padding-top: 0.65rem;
+      font-size: 0.86rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .preset-action-status code {
+      font-family: var(--vsl-font-mono);
+      color: #dbeafe;
+      font-size: 0.82rem;
+    }
+
+    .preset-action-message {
+      margin: 0.45rem 0 0;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .preset-action-error {
+      margin: 0.45rem 0 0;
+      color: #fca5a5;
+    }
+
+    .phenomenon-support {
+      margin-top: 0.75rem;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(155deg, rgba(30, 41, 59, 0.98) 0%, rgba(20, 30, 46, 0.97) 100%),
+        radial-gradient(circle at 88% 14%, rgba(245, 158, 11, 0.12), transparent 40%);
+    }
+
+    .phenomenon-support::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--vsl-color-learning);
+      opacity: 0.95;
+    }
+
+    .phenomenon-support.accent-cs-plus::before {
+      background: var(--vsl-color-cs-plus);
+    }
+
+    .phenomenon-support.accent-cs-minus::before {
+      background: var(--vsl-color-cs-minus);
+    }
+
+    .phenomenon-support.accent-probe::before {
+      background: var(--vsl-color-probe);
+    }
+
+    .phenomenon-support.accent-compound::before {
+      background: var(--vsl-color-compound);
+    }
+
+    .phenomenon-support.accent-learning::before {
+      background: var(--vsl-color-learning);
+    }
+
+    .phenomenon-meta-line {
+      margin: 0.35rem 0 0.55rem;
+      color: #9fb4cc;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .phenomenon-meta-line code {
+      font-family: var(--vsl-font-mono);
+      color: #cbd5e1;
+      font-size: 0.79rem;
+      text-transform: none;
+    }
+
+    .phenomenon-signal-list {
+      margin: 0.25rem 0 0.4rem 1.1rem;
+      padding: 0;
+      display: grid;
+      gap: 0.25rem;
+    }
+
+    .phenomenon-signal-list code {
+      font-family: var(--vsl-font-mono);
+      color: #dbeafe;
+      font-size: 0.82rem;
     }
 
     .preset-detail-selectors {
