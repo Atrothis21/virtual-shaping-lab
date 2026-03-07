@@ -773,6 +773,7 @@ function BuilderRouteContainer({
   const expectedSignals = seed && Array.isArray(seed.expected_signals) ? seed.expected_signals : [];
   const flowPreview = expectedSignals.length ? expectedSignals.join(", ") : "n/a";
   const constraintApi = window.VSLReact.builderConstraintControls || {};
+  const formSchemaApi = window.VSLReact.builderFormSchema || {};
   const deriveBuilderConstraintState =
     typeof constraintApi.deriveBuilderConstraintState === "function"
       ? constraintApi.deriveBuilderConstraintState
@@ -789,6 +790,50 @@ function BuilderRouteContainer({
   const templateConstraint = evaluateConstraintBehavior(constraints.template_key, "template_key");
   const runModeConstraint = evaluateConstraintBehavior(constraints.run_mode_hint, "run_mode_hint");
   const advancedConstraint = evaluateConstraintBehavior(constraints.advanced_debug, "advanced_debug");
+  const getBuilderSectionSchema =
+    typeof formSchemaApi.getBuilderSectionSchema === "function"
+      ? formSchemaApi.getBuilderSectionSchema
+      : () => [];
+  const buildBuilderSectionViewModels =
+    typeof formSchemaApi.buildBuilderSectionViewModels === "function"
+      ? formSchemaApi.buildBuilderSectionViewModels
+      : () => [];
+  const toDraftPatchBySchema =
+    typeof formSchemaApi.toDraftPatch === "function"
+      ? formSchemaApi.toDraftPatch
+      : (fieldKey, rawValue) => ({ [fieldKey]: rawValue });
+  const constraintBehaviorByField = React.useMemo(
+    () => ({
+      protocol_key: protocolConstraint,
+      template_key: templateConstraint,
+      run_mode_hint: runModeConstraint,
+      advanced_debug: advancedConstraint,
+    }),
+    [advancedConstraint, protocolConstraint, runModeConstraint, templateConstraint]
+  );
+  const builderSectionSchema = React.useMemo(() => getBuilderSectionSchema(), [getBuilderSectionSchema]);
+  const builderSectionViewModels = React.useMemo(
+    () =>
+      buildBuilderSectionViewModels({
+        schema: builderSectionSchema,
+        seed,
+        expectedSignals,
+        flowPreview,
+        planRequestStatus: planState?.requestStatus || "idle",
+        stableHash: stableHash || "n/a",
+        constraintBehaviorByField,
+      }),
+    [
+      buildBuilderSectionViewModels,
+      builderSectionSchema,
+      constraintBehaviorByField,
+      expectedSignals,
+      flowPreview,
+      planState?.requestStatus,
+      seed,
+      stableHash,
+    ]
+  );
   const [autoCorrectNotice, setAutoCorrectNotice] = React.useState(null);
   const [templateAutoCorrectSuppressed, setTemplateAutoCorrectSuppressed] = React.useState(false);
   function updateDraftPatch(patch) {
@@ -832,6 +877,44 @@ function BuilderRouteContainer({
     );
   };
 
+  const renderBuilderFieldControl = (fieldVm) => {
+    if (!fieldVm || (fieldVm.behavior && fieldVm.behavior.hidden)) return null;
+    const isDisabled = Boolean(fieldVm.behavior && fieldVm.behavior.disabled);
+    const onFieldChange = (nextValue) => {
+      if (fieldVm.key === "protocol_key" || fieldVm.key === "template_key") {
+        setTemplateAutoCorrectSuppressed(false);
+      }
+      updateDraftPatch(toDraftPatchBySchema(fieldVm.key, nextValue));
+    };
+    if (fieldVm.control === "select") {
+      return (
+        <label className="builder-control" key={fieldVm.key}>
+          <span>{fieldVm.label}</span>
+          <select
+            value={fieldVm.value}
+            onChange={(e) => onFieldChange(e.target.value)}
+            disabled={isDisabled}
+          >
+            {(fieldVm.options || []).map((option) => (
+              <option key={`${fieldVm.key}-${option.value}`} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+    return (
+      <label className="builder-control" key={fieldVm.key}>
+        <span>{fieldVm.label}</span>
+        <input
+          type="text"
+          value={fieldVm.value}
+          onChange={(e) => onFieldChange(e.target.value)}
+          disabled={isDisabled}
+        />
+      </label>
+    );
+  };
+
   return (
     <div className="route-card">
       <div className="route-card-header">
@@ -864,117 +947,31 @@ function BuilderRouteContainer({
           <div className="builder-kv"><strong>Draft Version:</strong> <code className="builder-readout">{builderDraftState?.draftVersion ?? "n/a"}</code></div>
           <div className="builder-kv"><strong>Validation Errors:</strong> <code className="builder-readout">{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
         </section>
-        <section className="builder-section-panel builder-section-protocol">
-          <div className="builder-section-header">
-            <h3 className="builder-section-heading">Protocol/Seed Selection</h3>
-            <span className="builder-section-index">S2</span>
-          </div>
-          <p className="builder-section-subheading">Protocol identity and seed context.</p>
-          <div className="builder-kv"><strong>seed_source:</strong> <code className="builder-readout">{seed?.seed_source || "n/a"}</code></div>
-          <div className="builder-control-group">
-            <label className="builder-control">
-              <span>preset_key</span>
-              <input
-                type="text"
-                value={seed?.preset_key || ""}
-                onChange={(e) => updateDraftPatch({ preset_key: e.target.value })}
-              />
-            </label>
-            <label className="builder-control">
-              <span>protocol_key</span>
-              <input
-                type="text"
-                value={seed?.protocol_key || ""}
-                onChange={(e) => {
-                  setTemplateAutoCorrectSuppressed(false);
-                  updateDraftPatch({ protocol_key: e.target.value });
-                }}
-              />
-            </label>
-          </div>
-          {renderConstraintStates(protocolConstraint)}
-          {protocolConstraint.warning ? (
-            <p className="builder-constraint-warning">{protocolConstraint.warning}</p>
-          ) : null}
-        </section>
-        <section className="builder-section-panel builder-section-phases">
-          <div className="builder-section-header">
-            <h3 className="builder-section-heading">Phases</h3>
-            <span className="builder-section-index">S3</span>
-          </div>
-          <p className="builder-section-subheading">Flow and signal-shaping controls.</p>
-          <div className="builder-kv"><strong>flow_preview:</strong> <code className="builder-readout">{flowPreview}</code></div>
-          <div className="builder-kv"><strong>phase_count_hint:</strong> <code className="builder-readout">{expectedSignals.length || 0}</code></div>
-          <div className="builder-control-group">
-            <label className="builder-control">
-              <span>expected_signals (comma separated)</span>
-              <input
-                type="text"
-                value={expectedSignals.join(", ")}
-                onChange={(e) => {
-                  const nextSignals = String(e.target.value || "")
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean);
-                  updateDraftPatch({ expected_signals: nextSignals });
-                }}
-              />
-            </label>
-          </div>
-        </section>
-        <section className="builder-section-panel builder-section-runtime">
-          <div className="builder-section-header">
-            <h3 className="builder-section-heading">Runtime</h3>
-            <span className="builder-section-index">S4</span>
-          </div>
-          <p className="builder-section-subheading">Execution mode and plan request state.</p>
-          <div className="builder-control-group">
-            <label className="builder-control">
-              <span>run_mode_hint</span>
-              <select
-                value={seed?.run_mode_hint || "trial"}
-                onChange={(e) => updateDraftPatch({ run_mode_hint: e.target.value })}
-                disabled={runModeConstraint.disabled}
-              >
-                <option value="trial">trial</option>
-                <option value="tick">tick</option>
-              </select>
-            </label>
-          </div>
-          {renderConstraintStates(runModeConstraint)}
-          {runModeConstraint.warning ? (
-            <p className="builder-constraint-warning">{runModeConstraint.warning}</p>
-          ) : null}
-          <div className="builder-kv"><strong>plan_request_status:</strong> <code className="builder-readout">{planState?.requestStatus || "idle"}</code></div>
-        </section>
-        <section className="builder-section-panel builder-section-report">
-          <div className="builder-section-header">
-            <h3 className="builder-section-heading">Report</h3>
-            <span className="builder-section-index">S5</span>
-          </div>
-          <p className="builder-section-subheading">Template selection and resolve hash snapshot.</p>
-          <div className="builder-control-group">
-            <label className="builder-control">
-              <span>template_key</span>
-              <input
-                type="text"
-                value={seed?.template_key || ""}
-                onChange={(e) => {
-                  setTemplateAutoCorrectSuppressed(false);
-                  updateDraftPatch({ template_key: e.target.value });
-                }}
-                disabled={templateConstraint.disabled}
-              />
-            </label>
-          </div>
-          {renderConstraintStates(templateConstraint)}
-          {templateConstraint.message ? (
-            <p className={templateConstraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>
-              {templateConstraint.message}
-            </p>
-          ) : null}
-          <div className="builder-kv"><strong>stable_hash:</strong> <code className="builder-readout">{stableHash || "n/a"}</code></div>
-        </section>
+        {builderSectionViewModels.map((sectionVm) => (
+          <section key={sectionVm.key} className={`builder-section-panel ${sectionVm.className || ""}`}>
+            <div className="builder-section-header">
+              <h3 className="builder-section-heading">{sectionVm.title}</h3>
+              <span className="builder-section-index">{sectionVm.index}</span>
+            </div>
+            <p className="builder-section-subheading">{sectionVm.subheading}</p>
+            {Array.isArray(sectionVm.readouts)
+              ? sectionVm.readouts.map((item) => (
+                <div key={`${sectionVm.key}-${item.label}`} className="builder-kv">
+                  <strong>{item.label}:</strong> <code className="builder-readout">{String(item.value)}</code>
+                </div>
+              ))
+              : null}
+            <div className="builder-control-group">
+              {Array.isArray(sectionVm.fields) ? sectionVm.fields.map((fieldVm) => renderBuilderFieldControl(fieldVm)) : null}
+            </div>
+            {renderConstraintStates(sectionVm.constraint)}
+            {sectionVm.constraint && sectionVm.constraint.message ? (
+              <p className={sectionVm.constraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>
+                {sectionVm.constraint.message}
+              </p>
+            ) : null}
+          </section>
+        ))}
         {!advancedConstraint.hidden ? (
           <section className="builder-section-panel builder-section-panel-muted builder-section-advanced">
             <div className="builder-section-header">
@@ -1514,6 +1511,7 @@ function AppShell() {
 
   const presetActionServiceApi = window.VSLReact.presetActionService || {};
   const builderDraftTranslatorApi = window.VSLReact.builderDraftTranslator || {};
+  const builderSubmissionGuardsApi = window.VSLReact.builderSubmissionGuards || {};
   const runReportWorkflowApi = window.VSLReact.runReportWorkflowService || {};
   const presetActionHandlers = React.useMemo(() => {
     if (!apiClient || !stateApi) return null;
@@ -1604,6 +1602,14 @@ function AppShell() {
       });
       return;
     }
+    const assertBuilderDraftForTranslation =
+      builderSubmissionGuardsApi && typeof builderSubmissionGuardsApi.assertBuilderDraftForTranslation === "function"
+        ? builderSubmissionGuardsApi.assertBuilderDraftForTranslation
+        : (value) => value;
+    const assertTranslatedBuilderPayload =
+      builderSubmissionGuardsApi && typeof builderSubmissionGuardsApi.assertTranslatedBuilderPayload === "function"
+        ? builderSubmissionGuardsApi.assertTranslatedBuilderPayload
+        : (value) => value;
     const draft_to_payload = builderDraftTranslatorApi && typeof builderDraftTranslatorApi.draft_to_payload === "function"
       ? builderDraftTranslatorApi.draft_to_payload
       : null;
@@ -1617,7 +1623,24 @@ function AppShell() {
       return;
     }
 
-    const translatedPayload = draft_to_payload(draftSeed);
+    let translatedPayload;
+    try {
+      const guardedDraft = assertBuilderDraftForTranslation(draftSeed);
+      translatedPayload = assertTranslatedBuilderPayload(draft_to_payload(guardedDraft));
+    } catch (error) {
+      const normalized = error && typeof error === "object" ? error : { message: "Builder submission guard failed." };
+      setPresetActionState({
+        status: "error",
+        step: "plan",
+        message: "Builder submission guard blocked payload.",
+        error: normalized,
+      });
+      dispatchEvent({
+        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
+        payload: { error: normalized },
+      });
+      return;
+    }
     setPresetActionState({
       status: "loading",
       step: "plan",
@@ -1653,7 +1676,7 @@ function AppShell() {
         error: normalized,
       });
     }
-  }, [apiClient, builderDraftState, builderDraftTranslatorApi, dispatchEvent, stateApi]);
+  }, [apiClient, builderDraftState, builderDraftTranslatorApi, builderSubmissionGuardsApi, dispatchEvent, stateApi]);
 
   const startRunFromResolvedPlan = React.useCallback(async () => {
     if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.startRunFromResolvedPlan !== "function") return;

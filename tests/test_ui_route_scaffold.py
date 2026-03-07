@@ -49,6 +49,8 @@ def test_index_html_loads_react_shell_entrypoint():
     read_models_idx = text.find('/ui/js/react/preset_read_models.js')
     draft_translator_idx = text.find('/ui/js/react/builder_draft_translator.js')
     constraint_controls_idx = text.find('/ui/js/react/builder_constraint_controls.js')
+    builder_form_schema_idx = text.find('/ui/js/react/builder_form_schema.js')
+    builder_submission_guards_idx = text.find('/ui/js/react/builder_submission_guards.js')
     action_service_idx = text.find('/ui/js/react/preset_action_service.js')
     workflow_service_idx = text.find('/ui/js/react/run_report_workflow_service.js')
     lifecycle_selectors_idx = text.find('/ui/js/react/lifecycle_view_models.js')
@@ -62,6 +64,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert read_models_idx != -1
     assert draft_translator_idx != -1
     assert constraint_controls_idx != -1
+    assert builder_form_schema_idx != -1
+    assert builder_submission_guards_idx != -1
     assert action_service_idx != -1
     assert workflow_service_idx != -1
     assert lifecycle_selectors_idx != -1
@@ -75,6 +79,8 @@ def test_index_html_loads_react_shell_entrypoint():
     assert read_models_idx < app_idx
     assert draft_translator_idx < app_idx
     assert constraint_controls_idx < app_idx
+    assert builder_form_schema_idx < app_idx
+    assert builder_submission_guards_idx < app_idx
     assert action_service_idx < app_idx
     assert workflow_service_idx < app_idx
     assert lifecycle_selectors_idx < app_idx

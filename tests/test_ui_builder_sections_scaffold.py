@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+FORM_SCHEMA = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_form_schema.js"
 
 
 def _read(path: Path) -> str:
@@ -12,12 +13,13 @@ def _read(path: Path) -> str:
 
 def test_builder_route_has_scoped_section_layout():
     text = _read(INDEX_APP)
+    schema_text = _read(FORM_SCHEMA)
     assert "builder-sections-grid" in text
     assert "Overview" in text
-    assert "Protocol/Seed Selection" in text
-    assert "Phases" in text
-    assert "Runtime" in text
-    assert "Report" in text
+    assert "Protocol/Seed Selection" in schema_text
+    assert "Phases" in schema_text
+    assert "Runtime" in schema_text
+    assert "Report" in schema_text
     assert "Advanced/Debug" in text
 
 
@@ -48,11 +50,12 @@ def test_builder_section_styles_exist():
 
 def test_builder_sections_render_console_hierarchy_markers():
     text = _read(INDEX_APP)
+    schema_text = _read(FORM_SCHEMA)
     assert "builder-section-overview" in text
-    assert "builder-section-protocol" in text
-    assert "builder-section-phases" in text
-    assert "builder-section-runtime" in text
-    assert "builder-section-report" in text
+    assert "builder-section-protocol" in schema_text
+    assert "builder-section-phases" in schema_text
+    assert "builder-section-runtime" in schema_text
+    assert "builder-section-report" in schema_text
     assert "builder-section-advanced" in text
     assert "builder-section-index" in text
     assert "builder-control-group" in text

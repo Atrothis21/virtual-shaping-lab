@@ -21,5 +21,5 @@ def test_builder_translator_module_exports_draft_to_payload():
 def test_builder_route_uses_translator_for_plan_submission():
     text = _read(INDEX_APP)
     assert "builderDraftTranslatorApi" in text
-    assert "draft_to_payload(draftSeed)" in text
+    assert "draft_to_payload(guardedDraft)" in text
     assert "apiClient.postJson(\"plan\", translatedPayload)" in text
