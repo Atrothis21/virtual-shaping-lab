@@ -228,6 +228,51 @@ Attention mathematical contract (v2.17 target):
 - `cuewise_contributions` means per-feature prediction terms (for linear forms: `{ i -> w_i x_i }`)
 - protocol/phase/runtime layers must not mutate attention internals directly; they only provide transitions consumed by learner update.
 
+### Attention Conformance Crosswalk (V2.17)
+
+Operator mapping:
+- `F = pi o L o R`
+- attention lives in `L` only (not `R`, not protocol composition).
+
+Module-to-math role mapping:
+- `virtual_shaping_lab/experiment/config.py`
+  - enforces attention object contract (`attention_config.name`, `attention_config.params`) and strategy parameter bounds
+  - normalizes legacy map form into explicit strategy form
+- `virtual_shaping_lab/experiment/parameters/pipeline.py`
+  - validates attention strategy names/params at composition boundary
+  - fails fast on out-of-domain parameters (`[0,1]` unit interval where required)
+- `virtual_shaping_lab/agents/learners/attention_strategies.py`
+  - defines `AttentionContext` sufficient statistics (`active_features`, `feature_contributions`, `total_prediction`, `reward`, `prediction_error`)
+  - implements `A_{t+1} = G(...)` strategy updates for `none`, `static`, `pearce_hall`, `mackintosh`
+  - enforces bounded associability state (`A_t in [0,1]^n`)
+- `virtual_shaping_lab/agents/learners/base.py`
+  - canonical learner modulation path via `attention_modulated_state(...)`
+  - applies `A_t odot x_t` before learner-specific parameter update
+  - captures diagnostics (`alpha_by_stimulus`, `mean_alpha`, `prediction_error`, `cuewise_contributions`)
+- `virtual_shaping_lab/agents/learners/rescorla_wagner.py`
+- `virtual_shaping_lab/agents/learners/td_value.py`
+- `virtual_shaping_lab/agents/learners/q_learner.py`
+  - consume the canonical modulated state path rather than separate ad hoc attention logic
+- `virtual_shaping_lab/experiment/trial_executor.py`
+  - emits runtime debug evidence for attention process state (diagnostics only; no attention mutation)
+- `virtual_shaping_lab/experiment/runtime_records.py`
+  - validates/persists attention debug fields at record boundary
+- `virtual_shaping_lab/experiment/assemble.py`
+  - resolves configured attention strategy into learner at assembly time (no phase/protocol ownership)
+
+Domain/codomain contract:
+- `A_t in [0,1]^n`
+- `D(A_t): X -> X`
+- learner update path uses `x'_t = A_t odot x_t`, then model-specific `Delta theta_t`
+- attention state update consumes `AttentionContext` and returns bounded next state.
+
+Migration notes (legacy/implicit attention path removal):
+- representation-level attention fields are forbidden (`representation.params.attention`, `attention_compound`)
+- template/phase parameter leakage of attention keys is blocked by ownership guards
+- runtime code no longer relies on implicit representation-time attention mutation
+- legacy `experiment.attention` map remains compatibility input only and is translated to explicit strategy config
+- active attention updates are strategy-driven inside learners; protocols/phases provide data but do not own attention state transitions.
+
 Design intent:
 - agent is a thin orchestrator, not a math container
 - learners own value state and update equations
