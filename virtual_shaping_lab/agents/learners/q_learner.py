@@ -56,9 +56,16 @@ class QLearner(BaseLearner):
             q_next = float(np.max(self.weights @ transition.s_next.x))
 
         delta = transition.r + self.gamma * q_next - q_sa
-        alpha = self.effective_alpha(transition)
-
-        self.weights[a_idx] += alpha * float(delta) * transition.s.x
+        x_mod = self.attention_modulated_state(
+            transition,
+            total_prediction=q_sa,
+            prediction_error=delta,
+            feature_contributions={
+                f"f{i}": self.weights[a_idx, i] * transition.s.x[i]
+                for i in range(self.weights.shape[1])
+            },
+        )
+        self.weights[a_idx] += float(self.alpha) * float(delta) * x_mod
 
     def expects_action(self) -> bool:
         return True

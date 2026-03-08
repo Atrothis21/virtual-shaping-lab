@@ -136,6 +136,9 @@ def test_finalize_record_accepts_valid_debug_telemetry_schema():
             "prediction_error": -0.1,
             "active_features": ["tone", "context:A"],
             "attention_effective": {"tone": 0.8},
+            "alpha_by_stimulus": {"tone": 0.7},
+            "mean_alpha": 0.7,
+            "cuewise_contributions": {"tone": 0.3},
             "salience_effective": {"tone": 0.5},
         },
     }

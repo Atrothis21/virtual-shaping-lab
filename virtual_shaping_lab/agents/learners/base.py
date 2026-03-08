@@ -28,6 +28,7 @@ class BaseLearner(ILearner, ABC):
         self.gamma = float(gamma)
         self.attention_map: Dict[str, float] = {}
         self._attention_strategy: AttentionStrategy = build_attention_strategy("none")
+        self._last_attention_context: AttentionContext | None = None
 
     def reset(self) -> None:
         self._attention_strategy.reset()
@@ -50,7 +51,82 @@ class BaseLearner(ILearner, ABC):
         return float(self._attention_strategy.current_alpha_for_cues(cue_labels))
 
     def update_attention_state(self, context: AttentionContext) -> None:
+        self._last_attention_context = context
         self._attention_strategy.update_state(context)
+
+    def attention_diagnostics(self, cue_labels: Any = None) -> dict[str, Any]:
+        active_features = self._coerce_active_features(
+            cue_labels,
+            self._last_attention_context.feature_contributions
+            if self._last_attention_context is not None
+            else {},
+        )
+        alpha_by_stimulus = (
+            self._attention_strategy.current_alpha(active_features)
+            if active_features
+            else {}
+        )
+        alpha_vals = [float(v) for v in alpha_by_stimulus.values()]
+        mean_alpha = (sum(alpha_vals) / len(alpha_vals)) if alpha_vals else 1.0
+        out: dict[str, Any] = {
+            "alpha_by_stimulus": alpha_by_stimulus,
+            "mean_alpha": float(mean_alpha),
+        }
+        if self._last_attention_context is not None:
+            out["prediction_error"] = float(self._last_attention_context.prediction_error)
+            out["cuewise_contributions"] = {
+                str(k): float(v)
+                for k, v in self._last_attention_context.feature_contributions.items()
+            }
+        return out
+
+    @staticmethod
+    def _coerce_active_features(cue_labels: Any, feature_contributions: Mapping[str, float]) -> tuple[str, ...]:
+        if cue_labels is not None:
+            if isinstance(cue_labels, (str, int, float)):
+                return (str(cue_labels),)
+            labels = tuple(str(c) for c in cue_labels)
+            if labels:
+                return labels
+        if isinstance(feature_contributions, Mapping) and feature_contributions:
+            return tuple(str(k) for k in feature_contributions.keys())
+        return ()
+
+    def attention_modulated_state(
+        self,
+        transition: Transition,
+        *,
+        total_prediction: float,
+        prediction_error: float,
+        feature_contributions: Mapping[str, float],
+    ) -> np.ndarray:
+        """
+        Canonical learner attention path:
+        use current attention to modulate input (A_t ⊙ x_t), then update attention state.
+        """
+        cue_labels = transition.metadata.get(META_CUE_LABELS)
+        active_features = self._coerce_active_features(cue_labels, feature_contributions)
+
+        if cue_labels is not None:
+            alpha_scale = float(self.attention_multiplier(cue_labels))
+        elif active_features:
+            alpha_map = self._attention_strategy.current_alpha(active_features)
+            alpha_vals = [float(v) for v in alpha_map.values()] if alpha_map else [1.0]
+            alpha_scale = float(sum(alpha_vals) / len(alpha_vals))
+        else:
+            alpha_scale = 1.0
+
+        x_mod = np.asarray(transition.s.x, dtype=float) * float(alpha_scale)
+        self.update_attention_state(
+            AttentionContext(
+                active_features=active_features,
+                feature_contributions={str(k): float(v) for k, v in feature_contributions.items()},
+                total_prediction=float(total_prediction),
+                reward=float(transition.r),
+                prediction_error=float(prediction_error),
+            )
+        )
+        return x_mod
 
     @abstractmethod
     def update(self, transition: Transition) -> None:

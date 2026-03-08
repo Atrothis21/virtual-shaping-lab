@@ -77,6 +77,20 @@ def test_rescorla_wagner_update_paths():
     assert learner2.value(state) > 0
 
 
+def test_rescorla_wagner_attention_modulated_input_path():
+    learner = RescorlaWagnerLearner(state_dim=2, alpha=0.5)
+    learner.set_attention_map({"tone": 0.5})
+    state = s([1.0, 0.0])
+    learner.update(t(state, reward=1.0, metadata={"cue_labels": ["tone"]}))
+    # canonical update path: w += alpha * delta * (A_t ⊙ x_t)
+    # here: 0 + 0.5 * 1.0 * (0.5 * 1.0) = 0.25
+    assert learner.weights[0] == pytest.approx(0.25, abs=1e-12)
+    diagnostics = learner.attention_diagnostics(cue_labels=["tone"])
+    assert "alpha_by_stimulus" in diagnostics
+    assert "mean_alpha" in diagnostics
+    assert "prediction_error" in diagnostics
+
+
 def test_td_value_update_paths():
     learner = TDValueLearner(state_dim=2, alpha=0.5, gamma=0.9)
     state = s([1.0, 0.0])
