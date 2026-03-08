@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relative Cue Dominance Preset</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 900px; }
+    label { font-weight: 600; display: block; margin-top: 0.6rem; }
+    input[type="range"], select { width: 100%; margin-top: 0.4rem; }
+    .panel { border-left: 3px solid #eee; padding-left: 1rem; margin-top: 1.5rem; }
+    .actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    button, .btn { margin-top: 0.6rem; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; text-decoration: none; color: #111; }
+    pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    .error { background: #ffe6e6; color: #900; padding: 0.6rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel" src="/ui/js/react/relative_cue_dominance_editor.jsx"></script>
+</body>
+</html>
