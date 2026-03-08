@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
+REPORT_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "report_route.jsx"
+LIFECYCLE_VIEW_MODELS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "lifecycle_view_models.js"
 
 
 def _read(path: Path) -> str:
@@ -11,9 +14,9 @@ def _read(path: Path) -> str:
 
 
 def test_report_route_has_create_report_action_and_lifecycle_summary():
-    text = _read(INDEX_APP)
+    text = _read(REPORT_ROUTE)
     assert "function ReportRouteContainer(" in text
-    assert "Create Report" in text
+    assert "Generate Report" in text
     assert "Refresh Run Status" in text
     assert "selectReportLifecycleViewModel" in text
     assert "buildLifecycleInstrumentView" in text
@@ -28,7 +31,7 @@ def test_report_route_has_create_report_action_and_lifecycle_summary():
 
 
 def test_report_route_wires_report_events_and_report_endpoint():
-    text = _read(INDEX_APP)
+    text = _read(REPORT_ROUTE) + _read(INDEX_APP) + _read(LIFECYCLE_VIEW_MODELS)
     assert "createReportFromActiveRun" in text
     assert "window.VSLReact.lifecycleViewModels" in text
     assert "selectReportLifecycleViewModelFn" in text
@@ -39,6 +42,7 @@ def test_report_route_wires_report_events_and_report_endpoint():
     assert "isPlanFresh={isPlanFreshForCurrentDraft}" in text
     assert "Plan is stale for current draft. Re-resolve plan before generating report." in text
     assert "reportActionStatus={reportActionStatus}" in text
+    assert "RouteNotice={RouteNotice}" in text
     assert "selectReportArtifactViewModel" in text
     assert "inferFigureSemanticTone" in text
     assert "detectReportVersionMismatches" in text
@@ -49,7 +53,7 @@ def test_report_route_wires_report_events_and_report_endpoint():
 
 
 def test_report_lifecycle_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".report-lifecycle-card" in text
     assert ".report-lifecycle-summary" in text
     assert ".report-provenance-summary" in text

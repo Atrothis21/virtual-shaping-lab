@@ -1,8 +1,11 @@
-# Browser Recovery Checklist (V2.5)
+# Browser Recovery Checklist (V2.17.4)
 
 ## Goal
 Verify the browser can complete the full lifecycle:
 `PlanDraft -> PlanResolved -> RunComplete -> ReportComplete`.
+
+Also verify first-pass route navigation:
+`/presets -> /builder -> /run/:id -> /report/:id -> /catalog-help`.
 
 ---
 
@@ -30,6 +33,11 @@ Failure shape:
 - HTTP `400` for invalid payload.
 - Envelope fields: `code`, `message`, `details`.
 
+UI smoke:
+- from `/builder`, trigger **Resolve Plan** and confirm:
+  - resolved summary block includes stable hash
+  - stale/invalid state shows consistent route-state panel/banners
+
 ---
 
 ## Step 2 - Execute Run
@@ -53,6 +61,11 @@ Verify:
 Filesystem:
 - `reports/<run_id>/payload.json` exists.
 - `reports/<run_id>/records.json` exists.
+
+UI smoke:
+- from `/run`, trigger run start and confirm:
+  - lifecycle panel updates (running/completed)
+  - provenance block includes `plan_hash`, `record_schema_version`, `template_version_used`
 
 ---
 
@@ -101,6 +114,12 @@ Verify:
 Negative:
 - unknown run id -> HTTP `404` with envelope `code = "not_found"`.
 
+UI smoke:
+- from `/report/:run_id`, trigger report generation and confirm:
+  - lifecycle panel + status chips update
+  - artifacts (PDF/figures) are linked when available
+  - degraded/template mismatch states render warning treatment, not silent failure
+
 ---
 
 ## Step 5 - Render Output in Browser
@@ -126,6 +145,13 @@ Verify:
   - `policies`
   - `representations`
   - `report_templates`
+
+---
+
+## UI Architecture Sanity (V2.17.4)
+- root HTML and root app shell are intentionally slimmed and split into route/components/services modules
+- verify script/module load order succeeds with no missing global/module reference errors
+- verify route transitions keep state-domain behavior intact (draft invalidation, resolve-before-run, run-before-report)
 
 ---
 

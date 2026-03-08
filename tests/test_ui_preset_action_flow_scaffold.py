@@ -52,3 +52,4 @@ def test_index_app_uses_action_service_handlers():
     assert "presetActionHandlers.resolvePresetFromSelection" in text
     assert "presetActionHandlers.resolveAndRunPresetFromSelection" in text
     assert "presetActionHandlers.resolveRunReportPresetFromSelection" in text
+    assert "RouteNotice={RouteNotice}" in text

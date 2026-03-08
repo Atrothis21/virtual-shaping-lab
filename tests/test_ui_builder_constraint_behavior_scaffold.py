@@ -4,7 +4,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONSTRAINTS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_constraint_controls.js"
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+BUILDER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "builder_route.jsx"
+UI_PRIMITIVES = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "ui_primitives.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 
 
 def _read(path: Path) -> str:
@@ -31,7 +34,7 @@ def test_builder_constraints_are_catalog_derived_not_local_ad_hoc():
 
 
 def test_builder_route_uses_shared_constraint_state_for_controls():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE) + _read(UI_PRIMITIVES)
     assert "builderConstraintControls" in text
     assert "deriveBuilderConstraintState" in text
     assert "evaluateConstraintBehavior" in text
@@ -39,16 +42,15 @@ def test_builder_route_uses_shared_constraint_state_for_controls():
     assert "templateConstraint" in text
     assert "runModeConstraint" in text
     assert "advancedConstraint" in text
-    assert "renderConstraintStates" in text
-    assert "builder-constraint-states" in text
-    assert "builder-constraint-chip" in text
+    assert "ConstraintStateChips" in text
+    assert "ConstraintMessage" in text
+    assert "buildConstraintChips" in text
+    assert "classNamePrefix=\"builder-constraint\"" in text
     assert "autoCorrectBlocked" in text
-    assert "builder-constraint-warning" in text
-    assert "builder-constraint-note" in text
 
 
 def test_builder_constraint_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".builder-constraint-warning" in text
     assert ".builder-constraint-note" in text
     assert ".builder-constraint-states" in text

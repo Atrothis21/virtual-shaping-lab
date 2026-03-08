@@ -11,7 +11,23 @@
     "ui_theme_tokens.js": "shared",
     "ui_primitives.jsx": "shared",
     "ui_foundation_primitives.jsx": "shared",
-    "index_app.jsx": "routes"
+    "lifecycle_view_models.js": "shared",
+    "preset_read_models.js": "shared",
+    "router_state.js": "shared",
+    "builder_draft_translator.js": "shared",
+    "builder_constraint_controls.js": "features",
+    "builder_form_schema.js": "features",
+    "builder_submission_guards.js": "features",
+    "catalog_bootstrap_service.js": "features",
+    "plan_workflow_service.js": "features",
+    "preset_action_service.js": "features",
+    "run_report_workflow_service.js": "features",
+    "index_app.jsx": "routes",
+    "routes/presets_route.jsx": "routes",
+    "routes/builder_route.jsx": "routes",
+    "routes/run_route.jsx": "routes",
+    "routes/report_route.jsx": "routes",
+    "routes/catalog_help_route.jsx": "routes"
   },
   "forbidden_direct_fetch_outside": ["api_client.js"]
 }

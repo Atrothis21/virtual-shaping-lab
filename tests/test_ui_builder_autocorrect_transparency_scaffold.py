@@ -3,7 +3,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+BUILDER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "builder_route.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 CONSTRAINTS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_constraint_controls.js"
 
 
@@ -12,7 +14,7 @@ def _read(path: Path) -> str:
 
 
 def test_builder_route_shows_autocorrect_before_after_reason_and_undo():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     assert "builder-autocorrect-notice" in text
     assert "Auto-correct applied:" in text
     assert "Before:" in text
@@ -29,6 +31,6 @@ def test_builder_autocorrect_is_restricted_to_non_semantic_fields():
 
 
 def test_builder_autocorrect_notice_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".builder-autocorrect-notice" in text
     assert ".builder-autocorrect-notice code" in text

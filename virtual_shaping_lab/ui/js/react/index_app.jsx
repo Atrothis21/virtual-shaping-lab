@@ -1,4 +1,4 @@
-window.VSLReact = window.VSLReact || {};
+﻿window.VSLReact = window.VSLReact || {};
 
 const ROUTES = {
   presets: { key: "presets", label: "Presets (/presets)", hash: "#/presets" },
@@ -42,28 +42,6 @@ function ShellNavItem({ label, isActive, onClick }) {
   );
 }
 
-function summarizeResolvedPlan(resolvedPlan) {
-  if (!resolvedPlan || typeof resolvedPlan !== "object") {
-    return {
-      unitCount: 0,
-      flow: "n/a",
-      totalTrials: 0,
-    };
-  }
-  const units = Array.isArray(resolvedPlan.units) ? resolvedPlan.units : [];
-  const flow = units.map((unit) => unit && (unit.protocol || unit.unit_key || unit.name || "unit")).join(" -> ");
-  const totalTrials = units.reduce((acc, unit) => {
-    const params = unit && unit.params && typeof unit.params === "object" ? unit.params : {};
-    const nTrials = Number.isFinite(Number(params.n_trials)) ? Number(params.n_trials) : 0;
-    return acc + nTrials;
-  }, 0);
-  return {
-    unitCount: units.length,
-    flow: flow || "n/a",
-    totalTrials,
-  };
-}
-
 function buildPresetItemFromDraftSeed(draftSeed) {
   if (!draftSeed || typeof draftSeed !== "object") return null;
   const presetKey = draftSeed.preset_key || draftSeed.phenomenon_key || null;
@@ -77,1219 +55,6 @@ function buildPresetItemFromDraftSeed(draftSeed) {
     runModes: draftSeed.run_mode_hint ? [draftSeed.run_mode_hint] : [],
     expectedSignals: Array.isArray(draftSeed.expected_signals) ? draftSeed.expected_signals : [],
   };
-}
-
-function isRunTerminalLifecycle(lifecycleState) {
-  const normalized = String(lifecycleState || "").toLowerCase();
-  return (
-    normalized === "completed" ||
-    normalized === "complete" ||
-    normalized === "failed" ||
-    normalized === "error" ||
-    normalized === "cancelled" ||
-    normalized === "canceled"
-  );
-}
-
-function selectRunLifecycleViewModel(runState, planState) {
-  const state = runState && runState.lifecycleState ? String(runState.lifecycleState) : "idle";
-  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
-  const requestStatus = runState && runState.requestStatus ? String(runState.requestStatus) : "idle";
-  const pollAt = runState && runState.lastPollAtMs ? new Date(runState.lastPollAtMs).toISOString() : "n/a";
-  const canStartRun = Boolean(
-    planState &&
-    planState.requestStatus === "success" &&
-    typeof planState.stableHash === "string" &&
-    planState.stableHash
-  );
-  return {
-    state,
-    requestStatus,
-    activeRunId,
-    pollAt,
-    canStartRun,
-    stableHash: planState && planState.stableHash ? String(planState.stableHash) : "",
-    isTerminal: isRunTerminalLifecycle(state),
-  };
-}
-
-function resolveLifecycleTone(lifecycleState, requestStatus) {
-  const status = String(lifecycleState || "").toLowerCase();
-  const request = String(requestStatus || "").toLowerCase();
-  if (status.includes("fail") || status.includes("error") || request === "error") return "cs-minus";
-  if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) return "cs-plus";
-  if (status.includes("progress") || status.includes("running") || request === "loading") return "probe";
-  return "learning";
-}
-
-function buildLifecycleInstrumentView(lifecycleState, requestStatus) {
-  const status = String(lifecycleState || "").toLowerCase();
-  const request = String(requestStatus || "").toLowerCase();
-  let progressPct = 8;
-  let phaseLabel = "idle";
-  if (status.includes("progress") || status.includes("running") || request === "loading") {
-    progressPct = 52;
-    phaseLabel = "in_progress";
-  } else if (status.includes("complete") || status.includes("reportcomplete") || status.includes("runcomplete")) {
-    progressPct = 100;
-    phaseLabel = "complete";
-  } else if (status.includes("fail") || status.includes("error") || request === "error") {
-    progressPct = 100;
-    phaseLabel = "failure";
-  } else if (request === "success") {
-    progressPct = 72;
-    phaseLabel = "ready";
-  }
-  return {
-    tone: resolveLifecycleTone(lifecycleState, requestStatus),
-    progressPct,
-    phaseLabel,
-  };
-}
-
-function selectRunProvenanceViewModel(runState) {
-  const runData = runState && runState.runData && typeof runState.runData === "object"
-    ? runState.runData
-    : {};
-  const metadata = runData && runData.metadata && typeof runData.metadata === "object"
-    ? runData.metadata
-    : {};
-  const lifecycle = runData && runData.lifecycle && typeof runData.lifecycle === "object"
-    ? runData.lifecycle
-    : {};
-  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
-  return {
-    runId: runData.run_id ? String(runData.run_id) : "",
-    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
-    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
-    templateVersionUsed:
-      metadata.template_version_used === undefined || metadata.template_version_used === null
-        ? ""
-        : String(metadata.template_version_used),
-    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
-    nextActions,
-  };
-}
-
-function selectReportLifecycleViewModel(reportState, runState) {
-  const requestStatus = reportState && reportState.requestStatus ? String(reportState.requestStatus) : "idle";
-  const reportRunId = reportState && reportState.runId ? String(reportState.runId) : "";
-  const activeRunId = runState && runState.activeRunId ? String(runState.activeRunId) : "";
-  const effectiveRunId = reportRunId || activeRunId;
-  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
-    ? reportState.reportData
-    : {};
-  const lifecycle = reportData && reportData.lifecycle && typeof reportData.lifecycle === "object"
-    ? reportData.lifecycle
-    : {};
-  const nextActions = Array.isArray(lifecycle.next_actions) ? lifecycle.next_actions : [];
-  return {
-    requestStatus,
-    effectiveRunId,
-    lifecycleState: lifecycle.state ? String(lifecycle.state) : "",
-    nextActions,
-    reportData,
-    canCreateReport: Boolean(effectiveRunId),
-  };
-}
-
-function normalizeArtifactHref(value) {
-  if (!value) return "";
-  const raw = String(value).trim();
-  if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
-  const slashed = raw.replace(/\\/g, "/");
-  return slashed.startsWith("/") ? slashed : `/${slashed}`;
-}
-
-function inferFigureSemanticTone(pathValue) {
-  const value = String(pathValue || "").toLowerCase();
-  if (value.includes("cs_minus") || value.includes("cs-") || value.includes("minus")) return "cs-minus";
-  if (value.includes("cs_plus") || value.includes("cs+") || value.includes("plus")) return "cs-plus";
-  if (value.includes("probe")) return "probe";
-  if (value.includes("compound")) return "compound";
-  return "learning";
-}
-
-function selectReportArtifactViewModel(reportState) {
-  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
-    ? reportState.reportData
-    : {};
-  const artifacts = reportData && reportData.artifacts && typeof reportData.artifacts === "object"
-    ? reportData.artifacts
-    : {};
-  const figureList = Array.isArray(artifacts.figures)
-    ? artifacts.figures
-        .map((item) => normalizeArtifactHref(item))
-        .filter(Boolean)
-        .map((href) => ({
-          href,
-          label: href.split("/").pop() || href,
-          tone: inferFigureSemanticTone(href),
-        }))
-    : [];
-  const pdfPath = normalizeArtifactHref(artifacts.pdf);
-  return {
-    hasArtifacts: Boolean(pdfPath || figureList.length),
-    pdfPath,
-    figureList,
-  };
-}
-
-function selectReportProvenanceViewModel(reportState) {
-  const reportData = reportState && reportState.reportData && typeof reportState.reportData === "object"
-    ? reportState.reportData
-    : {};
-  const metadata = reportData && reportData.metadata && typeof reportData.metadata === "object"
-    ? reportData.metadata
-    : {};
-  return {
-    sourceRunId: metadata.source_run_id ? String(metadata.source_run_id) : "",
-    planHash: metadata.plan_hash ? String(metadata.plan_hash) : "",
-    recordSchemaVersion: metadata.record_schema_version ? String(metadata.record_schema_version) : "",
-    templateVersionUsed:
-      metadata.template_version_used === undefined || metadata.template_version_used === null
-        ? ""
-        : String(metadata.template_version_used),
-    regenerated:
-      metadata.regenerated === undefined || metadata.regenerated === null
-        ? ""
-        : String(Boolean(metadata.regenerated)),
-    regenerationMode: metadata.regeneration_mode ? String(metadata.regeneration_mode) : "",
-    missingSourceMetadata: Array.isArray(metadata.missing_source_metadata)
-      ? metadata.missing_source_metadata.map((item) => String(item))
-      : [],
-  };
-}
-
-function detectReportVersionMismatches(provenance, catalogState) {
-  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
-    ? catalogState.versions
-    : {};
-  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
-  const expectedTemplate =
-    versions.template_version_used === undefined || versions.template_version_used === null
-      ? ""
-      : String(versions.template_version_used);
-
-  const mismatches = [];
-  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
-    mismatches.push({
-      field: "record_schema_version",
-      expected: expectedRecord,
-      received: provenance.recordSchemaVersion,
-      severity: "blocking",
-      action: "Open static artifacts where available, then refresh run/report context.",
-    });
-  }
-  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
-    mismatches.push({
-      field: "template_version_used",
-      expected: expectedTemplate,
-      received: provenance.templateVersionUsed,
-      severity: "warning",
-      action: "Proceed in degraded mode using static artifacts and refresh if needed.",
-    });
-  }
-  return mismatches;
-}
-
-function detectRunVersionMismatches(provenance, catalogState, planState) {
-  const versions = catalogState && catalogState.versions && typeof catalogState.versions === "object"
-    ? catalogState.versions
-    : {};
-  const expectedRecord = versions.record_schema_version ? String(versions.record_schema_version) : "";
-  const expectedTemplate =
-    versions.template_version_used === undefined || versions.template_version_used === null
-      ? ""
-      : String(versions.template_version_used);
-  const expectedPlan = planState && planState.stableHash ? String(planState.stableHash) : "";
-
-  const mismatches = [];
-  if (provenance.recordSchemaVersion && expectedRecord && provenance.recordSchemaVersion !== expectedRecord) {
-    mismatches.push({
-      field: "record_schema_version",
-      expected: expectedRecord,
-      received: provenance.recordSchemaVersion,
-      severity: "blocking",
-      action: "Refresh run status or open static artifacts while schema-dependent views are disabled.",
-    });
-  }
-  if (provenance.templateVersionUsed && expectedTemplate && provenance.templateVersionUsed !== expectedTemplate) {
-    mismatches.push({
-      field: "template_version_used",
-      expected: expectedTemplate,
-      received: provenance.templateVersionUsed,
-      severity: "warning",
-      action: "Proceed in degraded mode and refresh if interactive controls remain unavailable.",
-    });
-  }
-  if (provenance.planHash && expectedPlan && provenance.planHash !== expectedPlan) {
-    mismatches.push({
-      field: "plan_hash",
-      expected: expectedPlan,
-      received: provenance.planHash,
-      severity: "warning",
-      action: "Re-resolve plan and start a new run if you need strict hash parity.",
-    });
-  }
-  return mismatches;
-}
-
-function extractFieldHintsFromReason(reason) {
-  const text = String(reason || "");
-  const matches = text.match(/([a-zA-Z_][a-zA-Z0-9_.\[\]]*)/g) || [];
-  const candidates = matches.filter((token) => {
-    const lower = token.toLowerCase();
-    return (
-      lower.includes("experiment") ||
-      lower.includes("phase") ||
-      lower.includes("protocol") ||
-      lower.includes("stimuli") ||
-      lower.includes("params") ||
-      lower.includes("runtime") ||
-      lower.includes("report")
-    );
-  });
-  return Array.from(new Set(candidates)).slice(0, 6);
-}
-
-function buildPlanResolveErrorView(planState) {
-  const err = planState && planState.lastError ? planState.lastError : null;
-  if (!err) return null;
-  const envelope = err.envelope && typeof err.envelope === "object" ? err.envelope : null;
-  const code = envelope && envelope.code ? String(envelope.code) : "request_error";
-  const message = envelope && envelope.message ? String(envelope.message) : String(err.message || "Plan resolve failed.");
-  const details = envelope && envelope.details && typeof envelope.details === "object" ? envelope.details : {};
-  const reason = details.reason ? String(details.reason) : "";
-  const invalidFields = extractFieldHintsFromReason(reason);
-  const hint = details.hint ? String(details.hint) : "Edit draft fields, revalidate, and retry plan resolution.";
-  return {
-    code,
-    message,
-    reason,
-    invalidFields,
-    hint,
-  };
-}
-
-function PlaceholderRouteCard({ title, description, status, actions }) {
-  const foundation = window.VSLReact.foundationPrimitives || {};
-  const SurfacePanel = foundation.SurfacePanel || ((props) => <div {...props} />);
-  const StatusBadge = foundation.StatusBadge || ((props) => <span {...props} />);
-  const SecondaryButton = foundation.SecondaryButton || ((props) => <button type="button" {...props} />);
-  return (
-    <SurfacePanel className="route-card">
-      <div className="route-card-header">
-        <h2>{title}</h2>
-        <StatusBadge tone="success" className="route-status">{status}</StatusBadge>
-      </div>
-      <p>{description}</p>
-      <div className="route-actions">
-        {actions.map((action) => (
-          <SecondaryButton
-            key={`${title}-${action.href}`}
-            className="route-action"
-            onClick={() => {
-              window.location.href = action.href;
-            }}
-          >
-            {action.label}
-          </SecondaryButton>
-        ))}
-      </div>
-    </SurfacePanel>
-  );
-}
-
-function getSignalSemanticTone(signal) {
-  const normalized = String(signal || "").toLowerCase();
-  if (normalized.includes("cs+") || normalized.includes("plus") || normalized.includes("acquisition")) {
-    return "cs-plus";
-  }
-  if (normalized.includes("cs-") || normalized.includes("minus") || normalized.includes("nonreinforcement")) {
-    return "cs-minus";
-  }
-  if (normalized.includes("probe") || normalized.includes("test")) {
-    return "probe";
-  }
-  if (normalized.includes("compound")) {
-    return "compound";
-  }
-  return "learning";
-}
-
-function getProtocolAccentTone(protocolKey) {
-  const normalized = String(protocolKey || "").toLowerCase();
-  if (normalized.includes("nonreinforcement") || normalized.includes("extinction")) return "cs-minus";
-  if (normalized.includes("probe")) return "probe";
-  if (normalized.includes("compound")) return "compound";
-  if (normalized.includes("acquisition")) return "cs-plus";
-  return "learning";
-}
-
-function PresetSignalChips({ signals, maxItems }) {
-  const entries = Array.isArray(signals) ? signals : [];
-  if (!entries.length) return <span className="preset-empty-cue">n/a</span>;
-  const sliced = Number.isFinite(maxItems) ? entries.slice(0, maxItems) : entries;
-  return (
-    <div className="preset-signal-chip-row">
-      {sliced.map((signal) => {
-        const tone = getSignalSemanticTone(signal);
-        return (
-          <span key={`signal-${signal}`} className={`preset-signal-chip ${tone}`}>
-            {signal}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-function PresetBrowserGrid({ items, onUseInBuilder }) {
-  if (!Array.isArray(items) || items.length === 0) {
-    return (
-      <div className="route-card">
-        <p>No presets available from catalog metadata.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="preset-grid">
-      {items.map((item) => (
-        <div className={`route-card preset-card accent-${getProtocolAccentTone(item.protocolKey)}`} key={item.key}>
-          <div className="route-card-header">
-            <h2>{item.title}</h2>
-            <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
-          </div>
-          <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
-          <p>{item.description}</p>
-          <p style={{ marginBottom: "0.35rem" }}>
-            <strong>Template:</strong> <code>{item.defaultTemplate}</code>
-          </p>
-          <p style={{ marginBottom: "0.35rem" }}>
-            <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
-          </p>
-          <p style={{ marginBottom: "0.7rem" }}>
-            <strong>Expected Signals:</strong>
-          </p>
-          <PresetSignalChips signals={item.expectedSignals} maxItems={3} />
-          <div className="route-actions">
-            <button
-              type="button"
-              className="route-action"
-              onClick={() => {
-                if (typeof onUseInBuilder === "function") onUseInBuilder(item);
-              }}
-            >
-              Use In Builder
-            </button>
-            <a className="route-action" href="/ui/presets.html">
-              Open Legacy Presets
-            </a>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PresetDetailPanel({
-  item,
-  onResolvePreset,
-  onResolveRun,
-  onResolveRunReport,
-  actionState,
-}) {
-  if (!item) {
-    return (
-      <div className="route-card preset-detail">
-        <h2>Preset Detail</h2>
-        <p>Select a preset to inspect details and lifecycle actions.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`route-card preset-detail accent-${getProtocolAccentTone(item.protocolKey)}`}>
-      <div className="route-card-header">
-        <h2>{item.title}</h2>
-        <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
-      </div>
-      <p className="preset-meta-line">
-        Preset Key: <code>{item.key}</code>
-      </p>
-      <p>{item.description}</p>
-      <p style={{ marginBottom: "0.35rem" }}>
-        <strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code>
-      </p>
-      <p style={{ marginBottom: "0.35rem" }}>
-        <strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}
-      </p>
-      <p style={{ marginBottom: "0.7rem" }}>
-        <strong>Expected Signals:</strong>
-      </p>
-      <PresetSignalChips signals={item.expectedSignals} />
-      <div className="route-actions">
-        <button type="button" className="route-action" onClick={() => { if (typeof onResolvePreset === "function") onResolvePreset(item); }}>
-          Resolve Preset
-        </button>
-        <button type="button" className="route-action" onClick={() => { if (typeof onResolveRun === "function") onResolveRun(item); }}>
-          Resolve + Run
-        </button>
-        <button type="button" className="route-action" onClick={() => { if (typeof onResolveRunReport === "function") onResolveRunReport(item); }}>
-          Resolve + Run + Report
-        </button>
-      </div>
-      <div className="preset-action-status">
-        <strong>Action Status:</strong>{" "}
-        <code>{actionState && actionState.status ? actionState.status : "idle"}</code>
-        {actionState && actionState.step ? (
-          <span style={{ marginLeft: "0.45rem" }}>
-            <strong>Step:</strong> <code>{actionState.step}</code>
-          </span>
-        ) : null}
-        {actionState && actionState.message ? (
-          <p className="preset-action-message">{actionState.message}</p>
-        ) : null}
-        {actionState && actionState.error && actionState.error.message ? (
-          <p className="preset-action-error">
-            {String(actionState.error.message)}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function PhenomenonSupportPanel({ item }) {
-  const accentTone = item ? getProtocolAccentTone(item.protocolKey) : "learning";
-  const signalCount = item && Array.isArray(item.expectedSignals) ? item.expectedSignals.length : 0;
-  return (
-    <div className={`route-card phenomenon-support accent-${accentTone}`}>
-      <div className="route-card-header">
-        <h2>Phenomenon Support</h2>
-        <span className="vsl-status-badge warning">metadata-only</span>
-      </div>
-      {!item ? (
-        <p>Select a preset to view phenomenon guidance.</p>
-      ) : (
-        <>
-          <p className="phenomenon-meta-line">
-            Support Mode: <code>setup-guidance</code> | signal_count: <code>{signalCount}</code>
-          </p>
-          <p>
-            <strong>{item.title}</strong> is currently selected. Use this panel to review expected signatures
-            and reporting guidance before execution.
-          </p>
-          <p style={{ marginBottom: "0.35rem" }}>
-            <strong>Recommended Report Template:</strong> <code>{item.defaultTemplate}</code>
-          </p>
-          <p style={{ marginBottom: "0.35rem" }}>
-            <strong>Expected Signals:</strong>
-          </p>
-          <PresetSignalChips signals={item.expectedSignals} />
-          <p style={{ marginTop: "0.55rem" }}>
-            Scope note: this panel is a lightweight support surface. Full narrative teaching mode is out of scope
-            for V2.17.1.
-          </p>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PresetsRouteContainer({
-  catalogState,
-  onSeedDraftFromPreset,
-  onNavigate,
-  onResolvePresetAction,
-  onResolveRunAction,
-  onResolveRunReportAction,
-  actionState,
-}) {
-  const readModelApi = window.VSLReact.presetReadModels || {};
-  const selectPresetCatalogReadModel = readModelApi.selectPresetCatalogReadModel;
-  const filterPresetViewModels = readModelApi.filterPresetViewModels;
-  const sortPresetViewModels = readModelApi.sortPresetViewModels;
-  const selectPresetFromReadModels = readModelApi.selectPresetFromReadModels;
-
-  const viewModel = React.useMemo(
-    () => {
-      if (typeof selectPresetCatalogReadModel === "function") {
-        return selectPresetCatalogReadModel(catalogState);
-      }
-      return { status: "idle", items: [] };
-    },
-    [catalogState, selectPresetCatalogReadModel]
-  );
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [runModeFilter, setRunModeFilter] = React.useState("all");
-  const [sortBy, setSortBy] = React.useState("title");
-  const [selectedPresetKey, setSelectedPresetKey] = React.useState("");
-
-  const filteredItems = React.useMemo(() => {
-    const filtered = typeof filterPresetViewModels === "function"
-      ? filterPresetViewModels(viewModel.items, searchQuery, runModeFilter)
-      : [...viewModel.items];
-    return typeof sortPresetViewModels === "function"
-      ? sortPresetViewModels(filtered, sortBy)
-      : filtered;
-  }, [filterPresetViewModels, runModeFilter, searchQuery, sortBy, sortPresetViewModels, viewModel.items]);
-
-  const selectedPreset = React.useMemo(() => {
-    if (typeof selectPresetFromReadModels === "function") {
-      return selectPresetFromReadModels(viewModel.items, filteredItems, selectedPresetKey);
-    }
-    if (!selectedPresetKey) return filteredItems[0] || null;
-    const fromFiltered = filteredItems.find((item) => item.key === selectedPresetKey);
-    if (fromFiltered) return fromFiltered;
-    return viewModel.items.find((item) => item.key === selectedPresetKey) || null;
-  }, [filteredItems, selectedPresetKey, selectPresetFromReadModels, viewModel.items]);
-
-  const handleSeedToBuilder = React.useCallback((item) => {
-    if (!item) return;
-    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
-    if (typeof onNavigate === "function") onNavigate(ROUTES.builder.key);
-  }, [onNavigate, onSeedDraftFromPreset]);
-
-  const handleResolvePreset = React.useCallback(async (item) => {
-    if (!item) return;
-    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
-    if (typeof onResolvePresetAction === "function") {
-      const result = await onResolvePresetAction(item);
-      if (result && result.ok && typeof onNavigate === "function") onNavigate(ROUTES.run.key);
-      return;
-    }
-    if (typeof onNavigate === "function") onNavigate(ROUTES.run.key);
-  }, [onNavigate, onResolvePresetAction, onSeedDraftFromPreset]);
-
-  const handleResolveRun = React.useCallback(async (item) => {
-    if (!item) return;
-    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
-    if (typeof onResolveRunAction === "function") {
-      const result = await onResolveRunAction(item);
-      if (result && result.ok && typeof onNavigate === "function") onNavigate(ROUTES.run.key);
-      return;
-    }
-    if (typeof onNavigate === "function") onNavigate(ROUTES.run.key);
-  }, [onNavigate, onResolveRunAction, onSeedDraftFromPreset]);
-
-  const handleResolveRunReport = React.useCallback(async (item) => {
-    if (!item) return;
-    if (typeof onSeedDraftFromPreset === "function") onSeedDraftFromPreset(item);
-    if (typeof onResolveRunReportAction === "function") {
-      const result = await onResolveRunReportAction(item);
-      if (result && result.ok && typeof onNavigate === "function") {
-        onNavigate(result.routeKey || ROUTES.report.key);
-      }
-      return;
-    }
-    if (typeof onNavigate === "function") onNavigate(ROUTES.report.key);
-  }, [onNavigate, onResolveRunReportAction, onSeedDraftFromPreset]);
-
-  return (
-    <section className="vsl-page-region">
-      <div className="route-card">
-        <div className="route-card-header">
-          <h2>Presets Browser</h2>
-          <span className="vsl-status-badge">{viewModel.status}</span>
-        </div>
-        <p>Browse catalog-backed phenomenon presets and choose a starting point.</p>
-        <div className="preset-controls">
-          <label>
-            Search
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search preset, protocol, signal..."
-            />
-          </label>
-          <label>
-            Run Mode
-            <select value={runModeFilter} onChange={(e) => setRunModeFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="trial">Trial</option>
-              <option value="tick">Tick</option>
-            </select>
-          </label>
-          <label>
-            Sort
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="title">Name</option>
-              <option value="protocol">Protocol</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <PresetDetailPanel
-        item={selectedPreset}
-        onResolvePreset={handleResolvePreset}
-        onResolveRun={handleResolveRun}
-        onResolveRunReport={handleResolveRunReport}
-        actionState={actionState}
-      />
-      <PhenomenonSupportPanel item={selectedPreset} />
-
-      <PresetBrowserGrid items={filteredItems} onUseInBuilder={handleSeedToBuilder} />
-
-      <div className="route-card" style={{ marginTop: "0.75rem" }}>
-        <strong>Quick Select</strong>
-        <p style={{ marginTop: "0.35rem", marginBottom: "0.5rem" }}>
-          Choose which preset appears in detail view.
-        </p>
-        <div className="preset-detail-selectors">
-          {filteredItems.slice(0, 10).map((item) => (
-            <button
-              type="button"
-              key={`select-${item.key}`}
-              className={`route-action ${selectedPreset?.key === item.key ? "active" : ""}`}
-              onClick={() => setSelectedPresetKey(item.key)}
-            >
-              {item.title}
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BuilderRouteContainer({
-  builderDraftState,
-  planState,
-  catalogState,
-  onResolvePlan,
-  onDraftEdited,
-  resolveErrorView,
-}) {
-  const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
-  const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
-  const stableHash = planState && planState.stableHash ? planState.stableHash : "";
-  const summary = summarizeResolvedPlan(resolvedPlan);
-  const expectedSignals = seed && Array.isArray(seed.expected_signals) ? seed.expected_signals : [];
-  const flowPreview = expectedSignals.length ? expectedSignals.join(", ") : "n/a";
-  const constraintApi = window.VSLReact.builderConstraintControls || {};
-  const formSchemaApi = window.VSLReact.builderFormSchema || {};
-  const deriveBuilderConstraintState =
-    typeof constraintApi.deriveBuilderConstraintState === "function"
-      ? constraintApi.deriveBuilderConstraintState
-      : () => ({});
-  const evaluateConstraintBehavior =
-    typeof constraintApi.evaluateConstraintBehavior === "function"
-      ? constraintApi.evaluateConstraintBehavior
-      : () => ({ hidden: false, disabled: false, warning: "", autoCorrect: "", autoCorrectBlocked: false, message: "" });
-  const constraints = React.useMemo(
-    () => deriveBuilderConstraintState({ catalogState, draft: seed }),
-    [catalogState, deriveBuilderConstraintState, seed]
-  );
-  const protocolConstraint = evaluateConstraintBehavior(constraints.protocol_key, "protocol_key");
-  const templateConstraint = evaluateConstraintBehavior(constraints.template_key, "template_key");
-  const runModeConstraint = evaluateConstraintBehavior(constraints.run_mode_hint, "run_mode_hint");
-  const advancedConstraint = evaluateConstraintBehavior(constraints.advanced_debug, "advanced_debug");
-  const getBuilderSectionSchema =
-    typeof formSchemaApi.getBuilderSectionSchema === "function"
-      ? formSchemaApi.getBuilderSectionSchema
-      : () => [];
-  const buildBuilderSectionViewModels =
-    typeof formSchemaApi.buildBuilderSectionViewModels === "function"
-      ? formSchemaApi.buildBuilderSectionViewModels
-      : () => [];
-  const toDraftPatchBySchema =
-    typeof formSchemaApi.toDraftPatch === "function"
-      ? formSchemaApi.toDraftPatch
-      : (fieldKey, rawValue) => ({ [fieldKey]: rawValue });
-  const constraintBehaviorByField = React.useMemo(
-    () => ({
-      protocol_key: protocolConstraint,
-      template_key: templateConstraint,
-      run_mode_hint: runModeConstraint,
-      advanced_debug: advancedConstraint,
-    }),
-    [advancedConstraint, protocolConstraint, runModeConstraint, templateConstraint]
-  );
-  const builderSectionSchema = React.useMemo(() => getBuilderSectionSchema(), [getBuilderSectionSchema]);
-  const builderSectionViewModels = React.useMemo(
-    () =>
-      buildBuilderSectionViewModels({
-        schema: builderSectionSchema,
-        seed,
-        expectedSignals,
-        flowPreview,
-        planRequestStatus: planState?.requestStatus || "idle",
-        stableHash: stableHash || "n/a",
-        constraintBehaviorByField,
-      }),
-    [
-      buildBuilderSectionViewModels,
-      builderSectionSchema,
-      constraintBehaviorByField,
-      expectedSignals,
-      flowPreview,
-      planState?.requestStatus,
-      seed,
-      stableHash,
-    ]
-  );
-  const [autoCorrectNotice, setAutoCorrectNotice] = React.useState(null);
-  const [templateAutoCorrectSuppressed, setTemplateAutoCorrectSuppressed] = React.useState(false);
-  function updateDraftPatch(patch) {
-    if (typeof onDraftEdited !== "function") return;
-    const nextDraft = {
-      ...(seed && typeof seed === "object" ? seed : {}),
-      ...patch,
-    };
-    onDraftEdited(nextDraft);
-  }
-
-  React.useEffect(() => {
-    if (templateAutoCorrectSuppressed) return;
-    if (!templateConstraint.autoCorrect) return;
-    const current = seed && seed.template_key ? String(seed.template_key) : "";
-    if (current === String(templateConstraint.autoCorrect)) return;
-    setAutoCorrectNotice({
-      field: "template_key",
-      before: current || "(empty)",
-      after: String(templateConstraint.autoCorrect),
-      reason: templateConstraint.message || "Applied safe catalog-derived normalization.",
-    });
-    updateDraftPatch({ template_key: String(templateConstraint.autoCorrect) });
-  }, [seed, templateAutoCorrectSuppressed, templateConstraint.autoCorrect, templateConstraint.message]);
-
-  const renderConstraintStates = (constraint) => {
-    if (!constraint) return null;
-    const chips = [];
-    if (constraint.hidden) chips.push({ key: "hidden", text: "Hidden", tone: "is-hidden" });
-    if (constraint.disabled) chips.push({ key: "disabled", text: "Disabled", tone: "is-disabled" });
-    if (constraint.warning) chips.push({ key: "warning", text: "Warn", tone: "is-warning" });
-    if (constraint.autoCorrect) chips.push({ key: "auto-correct", text: "Auto-correct", tone: "is-autocorrect" });
-    if (constraint.autoCorrectBlocked) chips.push({ key: "auto-correct-blocked", text: "Auto-correct blocked", tone: "is-blocked" });
-    if (!chips.length) return null;
-    return (
-      <div className="builder-constraint-states" role="status" aria-live="polite">
-        {chips.map((chip) => (
-          <span key={chip.key} className={`builder-constraint-chip ${chip.tone}`}>{chip.text}</span>
-        ))}
-      </div>
-    );
-  };
-
-  const renderBuilderFieldControl = (fieldVm) => {
-    if (!fieldVm || (fieldVm.behavior && fieldVm.behavior.hidden)) return null;
-    const isDisabled = Boolean(fieldVm.behavior && fieldVm.behavior.disabled);
-    const onFieldChange = (nextValue) => {
-      if (fieldVm.key === "protocol_key" || fieldVm.key === "template_key") {
-        setTemplateAutoCorrectSuppressed(false);
-      }
-      updateDraftPatch(toDraftPatchBySchema(fieldVm.key, nextValue));
-    };
-    if (fieldVm.control === "select") {
-      return (
-        <label className="builder-control" key={fieldVm.key}>
-          <span>{fieldVm.label}</span>
-          <select
-            value={fieldVm.value}
-            onChange={(e) => onFieldChange(e.target.value)}
-            disabled={isDisabled}
-          >
-            {(fieldVm.options || []).map((option) => (
-              <option key={`${fieldVm.key}-${option.value}`} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-      );
-    }
-    return (
-      <label className="builder-control" key={fieldVm.key}>
-        <span>{fieldVm.label}</span>
-        <input
-          type="text"
-          value={fieldVm.value}
-          onChange={(e) => onFieldChange(e.target.value)}
-          disabled={isDisabled}
-        />
-      </label>
-    );
-  };
-
-  return (
-    <div className="route-card">
-      <div className="route-card-header">
-        <h2>Builder Route Container</h2>
-        <span className="vsl-status-badge">
-          {seed && seed.seed_source ? `Seeded: ${seed.seed_source}` : "Owned by Builder Route"}
-        </span>
-      </div>
-      <p>Constrained draft editing surface for builder-driven experiment setup.</p>
-      <div className="route-actions">
-        <button
-          type="button"
-          className="route-action"
-          onClick={() => {
-            if (typeof onResolvePlan === "function") onResolvePlan();
-          }}
-        >
-          Resolve Plan
-        </button>
-        <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
-      </div>
-      <div className="builder-sections-grid">
-        <section className="builder-section-panel builder-section-overview">
-          <div className="builder-section-header">
-            <h3 className="builder-section-heading">Overview</h3>
-            <span className="builder-section-index">S1</span>
-          </div>
-          <p className="builder-section-subheading">Draft ownership and readiness telemetry.</p>
-          <div className="builder-kv"><strong>Draft Ownership:</strong> <code className="builder-readout">{builderDraftState?.ownership || "n/a"}</code></div>
-          <div className="builder-kv"><strong>Draft Version:</strong> <code className="builder-readout">{builderDraftState?.draftVersion ?? "n/a"}</code></div>
-          <div className="builder-kv"><strong>Validation Errors:</strong> <code className="builder-readout">{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
-        </section>
-        {builderSectionViewModels.map((sectionVm) => (
-          <section key={sectionVm.key} className={`builder-section-panel ${sectionVm.className || ""}`}>
-            <div className="builder-section-header">
-              <h3 className="builder-section-heading">{sectionVm.title}</h3>
-              <span className="builder-section-index">{sectionVm.index}</span>
-            </div>
-            <p className="builder-section-subheading">{sectionVm.subheading}</p>
-            {Array.isArray(sectionVm.readouts)
-              ? sectionVm.readouts.map((item) => (
-                <div key={`${sectionVm.key}-${item.label}`} className="builder-kv">
-                  <strong>{item.label}:</strong> <code className="builder-readout">{String(item.value)}</code>
-                </div>
-              ))
-              : null}
-            <div className="builder-control-group">
-              {Array.isArray(sectionVm.fields) ? sectionVm.fields.map((fieldVm) => renderBuilderFieldControl(fieldVm)) : null}
-            </div>
-            {renderConstraintStates(sectionVm.constraint)}
-            {sectionVm.constraint && sectionVm.constraint.message ? (
-              <p className={sectionVm.constraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>
-                {sectionVm.constraint.message}
-              </p>
-            ) : null}
-          </section>
-        ))}
-        {!advancedConstraint.hidden ? (
-          <section className="builder-section-panel builder-section-panel-muted builder-section-advanced">
-            <div className="builder-section-header">
-              <h3 className="builder-section-heading">Advanced/Debug</h3>
-              <span className="builder-section-index">S6</span>
-            </div>
-            <p className="builder-section-subheading">Low-prominence diagnostics for route-state troubleshooting.</p>
-            {renderConstraintStates(advancedConstraint)}
-            <div className="builder-kv"><strong>dirty:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.dirty))}</code></div>
-            <div className="builder-kv"><strong>is_ready:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.isReady))}</code></div>
-            <div className="builder-kv"><strong>validation_state:</strong> <code className="builder-readout">{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
-          </section>
-        ) : null}
-      </div>
-      {autoCorrectNotice ? (
-        <div className="builder-autocorrect-notice">
-          <div>
-            <strong>Auto-correct applied:</strong>{" "}
-            <code>{autoCorrectNotice.field}</code>
-          </div>
-          <div><strong>Before:</strong> <code>{autoCorrectNotice.before}</code></div>
-          <div><strong>After:</strong> <code>{autoCorrectNotice.after}</code></div>
-          <div><strong>Reason:</strong> {autoCorrectNotice.reason}</div>
-          <button
-            type="button"
-            className="route-action"
-            onClick={() => {
-              const previous = autoCorrectNotice.before === "(empty)" ? "" : autoCorrectNotice.before;
-              setTemplateAutoCorrectSuppressed(true);
-              updateDraftPatch({ template_key: previous });
-              setAutoCorrectNotice(null);
-            }}
-          >
-            Undo Auto-correct
-          </button>
-        </div>
-      ) : null}
-      <div className="builder-validation-panel">
-        <div><strong>Draft Readiness:</strong> <code>{builderDraftState?.isReady ? "ready" : "not_ready"}</code></div>
-        <div><strong>Validation Errors:</strong> <code>{Array.isArray(builderDraftState?.validationErrors) ? builderDraftState.validationErrors.length : 0}</code></div>
-      </div>
-      <div className="plan-resolve-summary">
-        <div><strong>Plan Status:</strong> <code>{planState && planState.requestStatus ? planState.requestStatus : "idle"}</code></div>
-        <div><strong>Stable Hash:</strong> <code>{stableHash || "n/a"}</code></div>
-        <div><strong>Unit Count:</strong> <code>{summary.unitCount}</code></div>
-        <div><strong>Total Trials:</strong> <code>{summary.totalTrials}</code></div>
-        <div><strong>Flow:</strong> <code>{summary.flow}</code></div>
-      </div>
-      {resolveErrorView ? (
-        <div className="plan-resolve-inline-error">
-          <div><strong>Resolve Error Code:</strong> <code>{resolveErrorView.code}</code></div>
-          <div><strong>Message:</strong> {resolveErrorView.message}</div>
-          {resolveErrorView.reason ? (
-            <div><strong>Reason:</strong> <code>{resolveErrorView.reason}</code></div>
-          ) : null}
-          {resolveErrorView.invalidFields.length ? (
-            <div>
-              <strong>Likely Fields:</strong>
-              <ul>
-                {resolveErrorView.invalidFields.map((field) => (
-                  <li key={`resolve-field-${field}`}><code>{field}</code></li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          <div><strong>Recovery:</strong> {resolveErrorView.hint}</div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function RunRouteContainer({
-  runState,
-  planState,
-  builderDraftState,
-  onStartRun,
-  onRefreshRun,
-  runActionStatus,
-  provenanceView,
-  mismatchView,
-}) {
-  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
-  const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || selectRunLifecycleViewModel;
-  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
-  const vm = selectRunLifecycleViewModelFn(runState, planState, builderDraftState);
-  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
-  const blockingMismatch = Array.isArray(mismatchView)
-    ? mismatchView.find((m) => m.severity === "blocking")
-    : null;
-  return (
-    <div className="route-card run-lifecycle-card">
-      <div className="route-card-header">
-        <h2>Run Lifecycle</h2>
-        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
-          {vm.state}
-        </span>
-      </div>
-      <div className="lifecycle-instrument">
-        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
-          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
-        </div>
-        <div className="lifecycle-caption">
-          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
-        </div>
-      </div>
-      <p>Create runs from resolved plans and monitor lifecycle progression.</p>
-      <div className="route-actions">
-        <button
-          type="button"
-          className="route-action"
-          onClick={() => {
-            if (typeof onStartRun === "function") onStartRun();
-          }}
-          disabled={!vm.canStartRun || vm.requestStatus === "loading"}
-        >
-          {vm.requestStatus === "loading" ? "Starting Run..." : "Start Run"}
-        </button>
-        <button
-          type="button"
-          className="route-action"
-          onClick={() => {
-            if (typeof onRefreshRun === "function") onRefreshRun();
-          }}
-          disabled={!vm.activeRunId}
-        >
-          Refresh Status
-        </button>
-        <a className="route-action" href="/ui/console.html">Open Legacy Console</a>
-      </div>
-      <div className="run-lifecycle-summary">
-        <div><strong>Request Status:</strong> <code>{vm.requestStatus}</code></div>
-        <div><strong>Active Run ID:</strong> <code>{vm.activeRunId || "n/a"}</code></div>
-        <div><strong>Plan Hash:</strong> <code>{vm.stableHash || "n/a"}</code></div>
-        <div><strong>Polling Updated:</strong> <code>{vm.pollAt}</code></div>
-      </div>
-      <div className="run-provenance-summary">
-        <div><strong>Run Provenance</strong></div>
-        <div><strong>run_id:</strong> <code>{provenanceView.runId || "n/a"}</code></div>
-        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
-        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
-        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
-        <div><strong>lifecycle:</strong> <code>{provenanceView.lifecycleState || "n/a"}</code></div>
-        <div>
-          <strong>next_actions:</strong>{" "}
-          <code>{provenanceView.nextActions.length ? provenanceView.nextActions.join(", ") : "n/a"}</code>
-        </div>
-      </div>
-      {blockingMismatch ? (
-        <div className="run-blocking-note">
-          <strong>Incompatible data version:</strong>{" "}
-          This run detail is in blocking mode for <code>{blockingMismatch.field}</code>.
-        </div>
-      ) : null}
-      {runActionStatus && runActionStatus.message ? (
-        <p className="run-action-message">{runActionStatus.message}</p>
-      ) : null}
-      {runActionStatus && runActionStatus.error && runActionStatus.error.message ? (
-        <p className="run-action-error">{String(runActionStatus.error.message)}</p>
-      ) : null}
-      {!vm.canStartRun ? (
-        <p className="run-action-message">
-          {!vm.stableHash
-            ? "Resolve a plan first to enable run creation from a stable execution hash."
-            : "Plan is stale for current draft. Re-resolve plan to enable run creation."}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function ReportRouteContainer({
-  reportState,
-  runState,
-  isPlanFresh,
-  onCreateReport,
-  onRefreshRun,
-  reportActionStatus,
-  provenanceView,
-  mismatchView,
-  artifactView,
-}) {
-  const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
-  const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || selectReportLifecycleViewModel;
-  const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || buildLifecycleInstrumentView;
-  const vm = selectReportLifecycleViewModelFn(reportState, runState, { isPlanFresh });
-  const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
-  const warningMismatch = Array.isArray(mismatchView)
-    ? mismatchView.find((m) => m.severity === "warning")
-    : null;
-  return (
-    <div className="route-card report-lifecycle-card">
-      <div className="route-card-header">
-        <h2>Report Lifecycle</h2>
-        <span className={`vsl-status-badge semantic lifecycle-badge ${lifecycleInstrument.tone}`}>
-          {vm.requestStatus}
-        </span>
-      </div>
-      <div className="lifecycle-instrument">
-        <div className={`lifecycle-meter ${lifecycleInstrument.tone}`}>
-          <span style={{ width: `${lifecycleInstrument.progressPct}%` }} />
-        </div>
-        <div className="lifecycle-caption">
-          <strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code>
-        </div>
-      </div>
-      <p>Create report artifacts from completed runs and monitor report lifecycle state.</p>
-      <div className="route-actions">
-        <button
-          type="button"
-          className="route-action"
-          onClick={() => {
-            if (typeof onCreateReport === "function") onCreateReport();
-          }}
-          disabled={!vm.canCreateReport || vm.requestStatus === "loading"}
-        >
-          {vm.requestStatus === "loading" ? "Generating Report..." : "Create Report"}
-        </button>
-        <button
-          type="button"
-          className="route-action"
-          onClick={() => {
-            if (typeof onRefreshRun === "function") onRefreshRun();
-          }}
-          disabled={!vm.effectiveRunId}
-        >
-          Refresh Run Status
-        </button>
-        <a className="route-action" href="/ui/results.html">Open Legacy Results</a>
-      </div>
-      <div className="report-lifecycle-summary">
-        <div><strong>Run ID:</strong> <code>{vm.effectiveRunId || "n/a"}</code></div>
-        <div><strong>Lifecycle:</strong> <code>{vm.lifecycleState || "n/a"}</code></div>
-        <div><strong>Next Actions:</strong> <code>{vm.nextActions.length ? vm.nextActions.join(", ") : "n/a"}</code></div>
-      </div>
-      <div className="report-provenance-summary">
-        <div><strong>source_run_id:</strong> <code>{provenanceView.sourceRunId || "n/a"}</code></div>
-        <div><strong>plan_hash:</strong> <code>{provenanceView.planHash || "n/a"}</code></div>
-        <div><strong>record_schema_version:</strong> <code>{provenanceView.recordSchemaVersion || "n/a"}</code></div>
-        <div><strong>template_version_used:</strong> <code>{provenanceView.templateVersionUsed || "n/a"}</code></div>
-        <div><strong>regenerated:</strong> <code>{provenanceView.regenerated || "n/a"}</code></div>
-        <div><strong>regeneration_mode:</strong> <code>{provenanceView.regenerationMode || "n/a"}</code></div>
-        <div>
-          <strong>missing_source_metadata:</strong>{" "}
-          <code>{provenanceView.missingSourceMetadata.length ? provenanceView.missingSourceMetadata.join(", ") : "n/a"}</code>
-        </div>
-      </div>
-      {warningMismatch ? (
-        <p className="report-degraded-note">
-          Degraded mode active for <code>{warningMismatch.field}</code>. Static artifacts remain available.
-        </p>
-      ) : null}
-      <div className="report-artifact-grid">
-        <div className="report-artifact-card">
-          <strong>PDF Report</strong>
-          <div>
-            {artifactView.pdfPath ? (
-              <a href={artifactView.pdfPath} target="_blank" rel="noreferrer">Open report.pdf</a>
-            ) : (
-              <span className="report-artifact-missing">Not available yet</span>
-            )}
-          </div>
-        </div>
-        <div className="report-artifact-card">
-          <strong>Figure Artifacts</strong>
-          <div className="report-plot-legend">
-            <span className="vsl-status-badge semantic cs-plus">CS+</span>
-            <span className="vsl-status-badge semantic cs-minus">CS-</span>
-            <span className="vsl-status-badge semantic probe">Probe</span>
-            <span className="vsl-status-badge semantic compound">Compound</span>
-            <span className="vsl-status-badge semantic learning">Learning</span>
-          </div>
-          {artifactView.figureList.length ? (
-            <div className="report-figure-grid">
-              {artifactView.figureList.map((figure) => (
-                <a
-                  key={figure.href}
-                  className={`report-figure-card accent-${figure.tone}`}
-                  href={figure.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <span className="report-figure-title">{figure.label}</span>
-                  <span className="report-figure-tone">{figure.tone}</span>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <span className="report-artifact-missing">No figures available yet</span>
-          )}
-        </div>
-      </div>
-      {reportActionStatus && reportActionStatus.message ? (
-        <p className="report-action-message">{reportActionStatus.message}</p>
-      ) : null}
-      {reportActionStatus && reportActionStatus.error && reportActionStatus.error.message ? (
-        <p className="report-action-error">{String(reportActionStatus.error.message)}</p>
-      ) : null}
-      {!vm.canCreateReport ? (
-        <p className="report-action-message">
-          {vm.isPlanFresh
-            ? "Start and complete a run first to enable report generation."
-            : "Plan is stale for current draft. Re-resolve plan before generating report."}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function CatalogHelpRouteContainer() {
-  return (
-    <PlaceholderRouteCard
-      title="Catalog/Help Route Container"
-      description="Catalog metadata, constraints, and compatibility/help visibility surface."
-      status="Owned by Catalog/Help Route"
-      actions={[{ label: "Open Main Menu", href: "/ui/index.html" }]}
-    />
-  );
 }
 
 function AppShell() {
@@ -1307,9 +72,14 @@ function AppShell() {
     return contractApi.createDefaultContractRegistry();
   }, [contractApi]);
   const uiPrimitives = window.VSLReact.uiPrimitives || {};
+  const routerStateApi = window.VSLReact.routerState || {};
+  const catalogBootstrapApi = window.VSLReact.catalogBootstrapService || {};
+  const planWorkflowApi = window.VSLReact.planWorkflowService || {};
+  const routeContainersApi = window.VSLReact.routeContainers || {};
   const GlobalBanner = uiPrimitives.GlobalBanner || (() => null);
   const BlockingPanel = uiPrimitives.BlockingPanel || (() => null);
   const NotificationStack = uiPrimitives.NotificationStack || (() => null);
+  const RouteNotice = uiPrimitives.RouteNotice || (() => null);
   const buildCatalogMismatchBanner = uiPrimitives.buildCatalogMismatchBanner || (() => null);
   const initialState = React.useMemo(() => {
     return stateApi && typeof stateApi.createInitialUIState === "function"
@@ -1317,6 +87,7 @@ function AppShell() {
       : null;
   }, [stateApi]);
   const [uiState, setUiState] = React.useState(initialState);
+  const routes = routerStateApi.ROUTES || ROUTES;
   const [activeRoute, setActiveRoute] = React.useState(() => parseRouteFromHash(window.location.hash));
   const [notifications, setNotifications] = React.useState([]);
   const [presetActionState, setPresetActionState] = React.useState(() => ({
@@ -1339,6 +110,7 @@ function AppShell() {
   const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
   const runState = stateApi && uiState ? stateApi.selectRunState(uiState) : null;
   const reportState = stateApi && uiState ? stateApi.selectReportState(uiState) : null;
+  const debugAdvancedState = stateApi && uiState ? stateApi.selectDebugAdvancedState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -1363,33 +135,16 @@ function AppShell() {
 
     let cancelled = false;
 
-    async function bootstrapCatalog() {
-      dispatchEvent({ type: stateApi.UI_EVENTS.CATALOG_REFRESH_REQUESTED });
-      try {
-        const payload = await apiClient.getJson("catalog/extensions");
-        if (cancelled) return;
-        dispatchEvent({
-          type: stateApi.UI_EVENTS.CATALOG_REFRESH_SUCCEEDED,
-          payload: {
-            extensions: payload && payload.extensions ? payload.extensions : null,
-            versions: payload && payload.versions ? payload.versions : null,
-            atMs: Date.now(),
-          },
-        });
-      } catch (error) {
-        if (cancelled) return;
-        dispatchEvent({
-          type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
-          payload: { error: error || null },
-        });
-      }
-    }
+    const bootstrapCatalog =
+      typeof catalogBootstrapApi.bootstrapCatalog === "function"
+        ? () => catalogBootstrapApi.bootstrapCatalog({ apiClient, stateApi, dispatchEvent })
+        : async () => {};
 
     bootstrapCatalog();
     return () => {
       cancelled = true;
     };
-  }, [apiClient, catalogState, dispatchEvent, stateApi]);
+  }, [apiClient, catalogBootstrapApi, catalogState, dispatchEvent, stateApi]);
 
   React.useEffect(() => {
     if (!catalogState) return;
@@ -1410,16 +165,24 @@ function AppShell() {
   }, [catalogState]);
 
   const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
+  const isRunTerminalLifecycleFn =
+    typeof lifecycleViewModelsApi.isRunTerminalLifecycle === "function"
+      ? lifecycleViewModelsApi.isRunTerminalLifecycle
+      : () => false;
   const selectRunProvenanceViewModelFn =
-    lifecycleViewModelsApi.selectRunProvenanceViewModel || selectRunProvenanceViewModel;
+    lifecycleViewModelsApi.selectRunProvenanceViewModel || (() => ({}));
   const detectRunVersionMismatchesFn =
-    lifecycleViewModelsApi.detectRunVersionMismatches || detectRunVersionMismatches;
+    lifecycleViewModelsApi.detectRunVersionMismatches || (() => []);
   const selectReportProvenanceViewModelFn =
-    lifecycleViewModelsApi.selectReportProvenanceViewModel || selectReportProvenanceViewModel;
+    lifecycleViewModelsApi.selectReportProvenanceViewModel || (() => ({}));
   const detectReportVersionMismatchesFn =
-    lifecycleViewModelsApi.detectReportVersionMismatches || detectReportVersionMismatches;
+    lifecycleViewModelsApi.detectReportVersionMismatches || (() => []);
   const selectReportArtifactViewModelFn =
-    lifecycleViewModelsApi.selectReportArtifactViewModel || selectReportArtifactViewModel;
+    lifecycleViewModelsApi.selectReportArtifactViewModel || (() => ({ hasArtifacts: false, pdfPath: "", figureList: [] }));
+  const extractFieldHintsFromReason =
+    planWorkflowApi.extractFieldHintsFromReason || (() => []);
+  const buildPlanResolveErrorView =
+    planWorkflowApi.buildPlanResolveErrorView || (() => null);
 
   const mismatchBanner = buildCatalogMismatchBanner(catalogState && catalogState.versionMismatch);
   const planResolveErrorView = React.useMemo(() => buildPlanResolveErrorView(planState), [planState]);
@@ -1471,36 +234,18 @@ function AppShell() {
   );
 
   function refreshCatalog() {
-    dispatchEvent({ type: stateApi.UI_EVENTS.CATALOG_REFRESH_REQUESTED });
-    if (!apiClient) {
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
-        payload: { error: { message: "API client unavailable." } },
-      });
+    if (typeof catalogBootstrapApi.refreshCatalog === "function") {
+      catalogBootstrapApi.refreshCatalog({ apiClient, stateApi, dispatchEvent });
       return;
     }
-    apiClient
-      .getJson("catalog/extensions")
-      .then((payload) => {
-        dispatchEvent({
-          type: stateApi.UI_EVENTS.CATALOG_REFRESH_SUCCEEDED,
-          payload: {
-            extensions: payload && payload.extensions ? payload.extensions : null,
-            versions: payload && payload.versions ? payload.versions : null,
-            atMs: Date.now(),
-          },
-        });
-      })
-      .catch((error) => {
-        dispatchEvent({
-          type: stateApi.UI_EVENTS.CATALOG_REFRESH_FAILED,
-          payload: { error: error || null },
-        });
-      });
   }
 
   function navigateTo(routeKey) {
-    const route = Object.values(ROUTES).find((item) => item.key === routeKey);
+    if (typeof routerStateApi.navigateToRoute === "function") {
+      routerStateApi.navigateToRoute(routeKey, routes, setActiveRoute);
+      return;
+    }
+    const route = Object.values(routes).find((item) => item.key === routeKey);
     if (!route) return;
     if (window.location.hash !== route.hash) {
       window.location.hash = route.hash;
@@ -1522,11 +267,11 @@ function AppShell() {
       dispatchEvent,
       setActionState: setPresetActionState,
       routeKeys: {
-        run: ROUTES.run.key,
-        report: ROUTES.report.key,
+        run: routes.run.key,
+        report: routes.report.key,
       },
     });
-  }, [apiClient, dispatchEvent, presetActionServiceApi, stateApi]);
+  }, [apiClient, dispatchEvent, presetActionServiceApi, routes.report.key, routes.run.key, stateApi]);
   const runReportWorkflowHandlers = React.useMemo(() => {
     if (!apiClient || !stateApi) return null;
     if (typeof runReportWorkflowApi.createRunReportWorkflowService !== "function") return null;
@@ -1591,92 +336,17 @@ function AppShell() {
   }, [presetActionHandlers]);
 
   const resolvePlanFromBuilderContext = React.useCallback(async () => {
-    if (!apiClient || !stateApi) return;
-    const draftSeed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
-    if (!draftSeed) {
-      setPresetActionState({
-        status: "error",
-        step: "plan",
-        message: "No preset seed is available in builder context.",
-        error: { message: "Seed a preset first, then resolve plan." },
-      });
-      return;
-    }
-    const assertBuilderDraftForTranslation =
-      builderSubmissionGuardsApi && typeof builderSubmissionGuardsApi.assertBuilderDraftForTranslation === "function"
-        ? builderSubmissionGuardsApi.assertBuilderDraftForTranslation
-        : (value) => value;
-    const assertTranslatedBuilderPayload =
-      builderSubmissionGuardsApi && typeof builderSubmissionGuardsApi.assertTranslatedBuilderPayload === "function"
-        ? builderSubmissionGuardsApi.assertTranslatedBuilderPayload
-        : (value) => value;
-    const draft_to_payload = builderDraftTranslatorApi && typeof builderDraftTranslatorApi.draft_to_payload === "function"
-      ? builderDraftTranslatorApi.draft_to_payload
-      : null;
-    if (!draft_to_payload) {
-      setPresetActionState({
-        status: "error",
-        step: "plan",
-        message: "Builder translator unavailable.",
-        error: { message: "draft_to_payload translator is required for builder submission." },
-      });
-      return;
-    }
-
-    let translatedPayload;
-    try {
-      const guardedDraft = assertBuilderDraftForTranslation(draftSeed);
-      translatedPayload = assertTranslatedBuilderPayload(draft_to_payload(guardedDraft));
-    } catch (error) {
-      const normalized = error && typeof error === "object" ? error : { message: "Builder submission guard failed." };
-      setPresetActionState({
-        status: "error",
-        step: "plan",
-        message: "Builder submission guard blocked payload.",
-        error: normalized,
-      });
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
-        payload: { error: normalized },
-      });
-      return;
-    }
-    setPresetActionState({
-      status: "loading",
-      step: "plan",
-      message: "Resolving builder plan...",
-      error: null,
+    if (typeof planWorkflowApi.resolvePlanFromBuilderContext !== "function") return;
+    await planWorkflowApi.resolvePlanFromBuilderContext({
+      apiClient,
+      stateApi,
+      builderDraftState,
+      builderDraftTranslatorApi,
+      builderSubmissionGuardsApi,
+      dispatchEvent,
+      setPresetActionState,
     });
-    dispatchEvent({ type: stateApi.UI_EVENTS.PLAN_RESOLVE_REQUESTED });
-    try {
-      const data = await apiClient.postJson("plan", translatedPayload);
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.PLAN_RESOLVE_SUCCEEDED,
-        payload: {
-          resolvedPlan: data && data.plan ? data.plan : null,
-          stableHash: data && data.stable_hash ? data.stable_hash : "",
-        },
-      });
-      setPresetActionState({
-        status: "success",
-        step: "plan",
-        message: "Builder plan resolved.",
-        error: null,
-      });
-    } catch (error) {
-      const normalized = error && typeof error === "object" ? error : { message: "Builder plan resolve failed." };
-      dispatchEvent({
-        type: stateApi.UI_EVENTS.PLAN_RESOLVE_FAILED,
-        payload: { error: normalized },
-      });
-      setPresetActionState({
-        status: "error",
-        step: "plan",
-        message: "Builder plan resolve failed.",
-        error: normalized,
-      });
-    }
-  }, [apiClient, builderDraftState, builderDraftTranslatorApi, builderSubmissionGuardsApi, dispatchEvent, stateApi]);
+  }, [apiClient, builderDraftState, builderDraftTranslatorApi, builderSubmissionGuardsApi, dispatchEvent, planWorkflowApi, stateApi]);
 
   const startRunFromResolvedPlan = React.useCallback(async () => {
     if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.startRunFromResolvedPlan !== "function") return;
@@ -1704,7 +374,7 @@ function AppShell() {
   React.useEffect(() => {
     if (!runReportWorkflowHandlers || typeof runReportWorkflowHandlers.pollActiveRunStatus !== "function") return;
     if (!runState || !runState.activeRunId) return;
-    if (isRunTerminalLifecycle(runState.lifecycleState)) return;
+    if (isRunTerminalLifecycleFn(runState.lifecycleState)) return;
 
     let cancelled = false;
     const intervalId = window.setInterval(async () => {
@@ -1715,24 +385,36 @@ function AppShell() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [runReportWorkflowHandlers, runState]);
+  }, [isRunTerminalLifecycleFn, runReportWorkflowHandlers, runState]);
 
   function renderActiveRoute() {
-    if (activeRoute === ROUTES.builder.key) {
+    const MissingRoute = () => (
+      <div className="route-card">
+        <h2>Route unavailable</h2>
+        <p>Route component registry is missing a required route container.</p>
+      </div>
+    );
+    const BuilderRoute = routeContainersApi.BuilderRouteContainer || MissingRoute;
+    const RunRoute = routeContainersApi.RunRouteContainer || MissingRoute;
+    const ReportRoute = routeContainersApi.ReportRouteContainer || MissingRoute;
+    const PresetsRoute = routeContainersApi.PresetsRouteContainer || MissingRoute;
+    const CatalogHelpRoute = routeContainersApi.CatalogHelpRouteContainer || MissingRoute;
+    if (activeRoute === routes.builder.key) {
       return (
-        <BuilderRouteContainer
-          builderDraftState={builderDraftState}
-          planState={planState}
-          catalogState={catalogState}
-          onResolvePlan={resolvePlanFromBuilderContext}
-          onDraftEdited={editBuilderDraft}
-          resolveErrorView={planResolveErrorView}
-        />
+          <BuilderRoute
+            builderDraftState={builderDraftState}
+            planState={planState}
+            catalogState={catalogState}
+            debugAdvancedState={debugAdvancedState}
+            onResolvePlan={resolvePlanFromBuilderContext}
+            onDraftEdited={editBuilderDraft}
+            resolveErrorView={planResolveErrorView}
+          />
       );
     }
-    if (activeRoute === ROUTES.run.key) {
+    if (activeRoute === routes.run.key) {
       return (
-        <RunRouteContainer
+        <RunRoute
           runState={runState}
           planState={planState}
           builderDraftState={builderDraftState}
@@ -1741,12 +423,13 @@ function AppShell() {
           runActionStatus={runActionStatus}
           provenanceView={runProvenanceView}
           mismatchView={runVersionMismatches}
+          RouteNotice={RouteNotice}
         />
       );
     }
-    if (activeRoute === ROUTES.report.key) {
+    if (activeRoute === routes.report.key) {
       return (
-        <ReportRouteContainer
+        <ReportRoute
           reportState={reportState}
           runState={runState}
           isPlanFresh={isPlanFreshForCurrentDraft}
@@ -1756,12 +439,13 @@ function AppShell() {
           provenanceView={reportProvenanceView}
           mismatchView={reportVersionMismatches}
           artifactView={reportArtifactView}
+          RouteNotice={RouteNotice}
         />
       );
     }
-    if (activeRoute === ROUTES.catalogHelp.key) return <CatalogHelpRouteContainer />;
+    if (activeRoute === routes.catalogHelp.key) return <CatalogHelpRoute />;
     return (
-      <PresetsRouteContainer
+      <PresetsRoute
         catalogState={catalogState}
         onSeedDraftFromPreset={seedDraftFromPreset}
         onNavigate={navigateTo}
@@ -1769,6 +453,12 @@ function AppShell() {
         onResolveRunAction={resolveAndRunPresetFromSelection}
         onResolveRunReportAction={resolveRunReportPresetFromSelection}
         actionState={presetActionState}
+        RouteNotice={RouteNotice}
+        routeKeys={{
+          builder: routes.builder.key,
+          run: routes.run.key,
+          report: routes.report.key,
+        }}
       />
     );
   }
@@ -1781,13 +471,13 @@ function AppShell() {
           <p className="shell-subtitle">
             V2.17 app shell scaffold with first-pass route containers.
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             State domains initialized: {initialState ? Object.keys(initialState).length : 0}
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             Catalog bootstrap status: {catalogState ? catalogState.requestStatus : "n/a"}
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             Architecture contracts loaded: {contractRegistry ? "yes" : "no"}
           </p>
         </div>
@@ -1796,12 +486,12 @@ function AppShell() {
       <div className="shell-body">
         <SurfacePanel className="shell-nav">
           <h3>Navigation Scaffold</h3>
-          <div style={{ marginBottom: "0.75rem", fontSize: "0.82rem", color: "#475569" }}>
+          <div className="shell-nav-version-readout">
             <div><strong>catalog_version:</strong> {catalogState?.versions?.catalog_version || "n/a"}</div>
             <div><strong>record_schema:</strong> {catalogState?.versions?.record_schema_version || "n/a"}</div>
             <div><strong>template_version:</strong> {catalogState?.versions?.template_version_used ?? "n/a"}</div>
           </div>
-          {Object.values(ROUTES).map((route) => (
+          {Object.values(routes).map((route) => (
             <ShellNavItem
               key={route.key}
               label={route.label}
@@ -1829,7 +519,7 @@ function AppShell() {
               onAction={refreshCatalog}
             />
           ) : null}
-          {activeRoute === ROUTES.builder.key && planResolveErrorView ? (
+          {activeRoute === routes.builder.key && planResolveErrorView ? (
             <GlobalBanner
               level="error"
               title="Plan validation failed"
@@ -1842,7 +532,7 @@ function AppShell() {
               onAction={resolvePlanFromBuilderContext}
             />
           ) : null}
-          {activeRoute === ROUTES.run.key && runWarningMismatch ? (
+          {activeRoute === routes.run.key && runWarningMismatch ? (
             <GlobalBanner
               level="warning"
               title="Version mismatch detected"
@@ -1851,7 +541,7 @@ function AppShell() {
               onAction={refreshActiveRunStatus}
             />
           ) : null}
-          {activeRoute === ROUTES.run.key && runBlockingMismatch ? (
+          {activeRoute === routes.run.key && runBlockingMismatch ? (
             <BlockingPanel
               title="Incompatible data version"
               message={`This view cannot be rendered with ${runBlockingMismatch.field}. Expected ${runBlockingMismatch.expected}, received ${runBlockingMismatch.received}. Use manual refresh or open static artifacts.`}
@@ -1859,7 +549,7 @@ function AppShell() {
               onAction={refreshActiveRunStatus}
             />
           ) : null}
-          {activeRoute === ROUTES.report.key && reportWarningMismatch ? (
+          {activeRoute === routes.report.key && reportWarningMismatch ? (
             <GlobalBanner
               level="warning"
               title="Version mismatch detected"
@@ -1868,7 +558,7 @@ function AppShell() {
               onAction={refreshActiveRunStatus}
             />
           ) : null}
-          {activeRoute === ROUTES.report.key && reportBlockingMismatch ? (
+          {activeRoute === routes.report.key && reportBlockingMismatch ? (
             <BlockingPanel
               title="Incompatible data version"
               message={`Report detail rendering is blocked for ${reportBlockingMismatch.field}. Expected ${reportBlockingMismatch.expected}, received ${reportBlockingMismatch.received}. Open static artifacts where available, then refresh context.`}
@@ -1886,3 +576,4 @@ function AppShell() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<AppShell />);
+

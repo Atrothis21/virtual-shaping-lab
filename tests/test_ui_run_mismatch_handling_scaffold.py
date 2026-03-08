@@ -3,7 +3,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+RUN_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "run_route.jsx"
+LIFECYCLE_VIEW_MODELS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "lifecycle_view_models.js"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 
 
 def _read(path: Path) -> str:
@@ -11,7 +14,7 @@ def _read(path: Path) -> str:
 
 
 def test_run_surface_has_provenance_view_model_and_mismatch_detection():
-    text = _read(INDEX_APP)
+    text = _read(INDEX_APP) + _read(LIFECYCLE_VIEW_MODELS)
     assert "selectRunProvenanceViewModel" in text
     assert "detectRunVersionMismatches" in text
     assert "record_schema_version" in text
@@ -29,7 +32,7 @@ def test_run_surface_uses_shared_banner_and_blocking_panel_for_mismatches():
 
 
 def test_run_surface_renders_provenance_context():
-    text = _read(INDEX_APP)
+    text = _read(RUN_ROUTE)
     assert "Run Provenance" in text
     assert "run_id:" in text
     assert "plan_hash:" in text
@@ -39,7 +42,7 @@ def test_run_surface_renders_provenance_context():
 
 
 def test_run_provenance_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".run-provenance-summary" in text
     assert ".run-provenance-summary code" in text
     assert ".run-blocking-note" in text
