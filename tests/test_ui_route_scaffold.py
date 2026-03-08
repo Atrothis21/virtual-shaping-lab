@@ -13,11 +13,13 @@ def _read(path: Path) -> str:
 
 def test_index_app_defines_first_pass_routes():
     text = _read(INDEX_APP)
+    assert 'home: { key: "home"' in text
     assert 'presets: { key: "presets"' in text
     assert 'builder: { key: "builder"' in text
     assert 'run: { key: "run"' in text
     assert 'report: { key: "report"' in text
     assert 'catalogHelp: { key: "catalogHelp"' in text
+    assert '#/home' in text
     assert '#/presets' in text
     assert '#/builder' in text
     assert '#/run' in text
@@ -27,6 +29,7 @@ def test_index_app_defines_first_pass_routes():
 
 def test_index_app_has_route_container_components():
     text = _read(INDEX_APP)
+    assert "routeContainersApi.LauncherRouteContainer" in text
     assert "routeContainersApi.PresetsRouteContainer" in text
     assert "routeContainersApi.BuilderRouteContainer" in text
     assert "routeContainersApi.RunRouteContainer" in text
@@ -58,6 +61,10 @@ def test_index_html_loads_react_shell_entrypoint():
     contracts_idx = text.find('/ui/js/react/ui_architecture_contracts.js')
     foundation_idx = text.find('/ui/js/react/ui_foundation_primitives.jsx')
     primitives_idx = text.find('/ui/js/react/ui_primitives.jsx')
+    launcher_card_idx = text.find('/ui/js/react/features/launcher/LauncherCard.jsx')
+    launcher_view_idx = text.find('/ui/js/react/features/launcher/LauncherView.jsx')
+    first_open_selector_idx = text.find('/ui/js/react/features/launcher/first_open_state_selector.js')
+    launcher_route_idx = text.find('/ui/js/react/routes/launcher_route.jsx')
     presets_route_idx = text.find('/ui/js/react/routes/presets_route.jsx')
     builder_route_idx = text.find('/ui/js/react/routes/builder_route.jsx')
     run_route_idx = text.find('/ui/js/react/routes/run_route.jsx')
@@ -78,6 +85,10 @@ def test_index_html_loads_react_shell_entrypoint():
     assert contracts_idx != -1
     assert foundation_idx != -1
     assert primitives_idx != -1
+    assert launcher_card_idx != -1
+    assert launcher_view_idx != -1
+    assert first_open_selector_idx != -1
+    assert launcher_route_idx != -1
     assert presets_route_idx != -1
     assert builder_route_idx != -1
     assert run_route_idx != -1
@@ -98,6 +109,10 @@ def test_index_html_loads_react_shell_entrypoint():
     assert contracts_idx < app_idx
     assert foundation_idx < app_idx
     assert primitives_idx < app_idx
+    assert launcher_card_idx < app_idx
+    assert launcher_view_idx < app_idx
+    assert first_open_selector_idx < app_idx
+    assert launcher_route_idx < app_idx
     assert presets_route_idx < app_idx
     assert builder_route_idx < app_idx
     assert run_route_idx < app_idx

@@ -2,20 +2,24 @@
 
 (function initIndexApp(global) {
 const ROUTES = {
-  presets: { key: "presets", label: "Presets (/presets)", hash: "#/presets" },
-  builder: { key: "builder", label: "Builder (/builder)", hash: "#/builder" },
-  run: { key: "run", label: "Run (/run/:runId?)", hash: "#/run" },
-  report: { key: "report", label: "Report (/report/:runId)", hash: "#/report" },
-  catalogHelp: { key: "catalogHelp", label: "Catalog/Help (/catalog-help)", hash: "#/catalog-help" },
+  home: { key: "home", label: "Home", hash: "#/home" },
+  presets: { key: "presets", label: "Presets", hash: "#/presets" },
+  builder: { key: "builder", label: "Builder", hash: "#/builder" },
+  run: { key: "run", label: "Runs", hash: "#/run" },
+  report: { key: "report", label: "Reports", hash: "#/report" },
+  catalogHelp: { key: "catalogHelp", label: "Catalog Help", hash: "#/catalog-help" },
 };
+
+const PRIMARY_NAV_KEYS = ["home", "presets", "builder", "run", "report"];
 
 function parseRouteFromHash(hashValue) {
   const normalized = (hashValue || "").toLowerCase();
+  if (normalized.startsWith("#/home")) return ROUTES.home.key;
   if (normalized.startsWith("#/builder")) return ROUTES.builder.key;
   if (normalized.startsWith("#/run")) return ROUTES.run.key;
   if (normalized.startsWith("#/report")) return ROUTES.report.key;
   if (normalized.startsWith("#/catalog-help")) return ROUTES.catalogHelp.key;
-  return ROUTES.presets.key;
+  return ROUTES.home.key;
 }
 
 function buildConstrainedDraftSeedFromPreset(item) {
@@ -89,7 +93,17 @@ function AppShell() {
   }, [stateApi]);
   const [uiState, setUiState] = React.useState(initialState);
   const routes = routerStateApi.ROUTES || ROUTES;
-  const [activeRoute, setActiveRoute] = React.useState(() => parseRouteFromHash(window.location.hash));
+  const launcherFeature = window.VSLReact.launcherFeature || {};
+  const selectFirstOpenState =
+    typeof launcherFeature.selectFirstOpenState === "function"
+      ? launcherFeature.selectFirstOpenState
+      : () => ({ initialRouteKey: routes.home.key, showRecentStrip: false, reason: "default_policy" });
+  const [activeRoute, setActiveRoute] = React.useState(() => {
+    const currentHash = window.location.hash;
+    if (currentHash) return parseRouteFromHash(currentHash);
+    const nextState = selectFirstOpenState({ recentItems: [], hasVisitedLauncher: false });
+    return nextState.initialRouteKey || routes.home.key;
+  });
   const [notifications, setNotifications] = React.useState([]);
   const [presetActionState, setPresetActionState] = React.useState(() => ({
     status: "idle",
@@ -400,6 +414,18 @@ function AppShell() {
     const ReportRoute = routeContainersApi.ReportRouteContainer || MissingRoute;
     const PresetsRoute = routeContainersApi.PresetsRouteContainer || MissingRoute;
     const CatalogHelpRoute = routeContainersApi.CatalogHelpRouteContainer || MissingRoute;
+    const LauncherRoute = routeContainersApi.LauncherRouteContainer || MissingRoute;
+    if (activeRoute === routes.home.key) {
+      return (
+        <LauncherRoute
+          onNavigate={navigateTo}
+          routeKeys={{
+            presets: routes.presets.key,
+            builder: routes.builder.key,
+          }}
+        />
+      );
+    }
     if (activeRoute === routes.builder.key) {
       return (
           <BuilderRoute
@@ -492,7 +518,7 @@ function AppShell() {
             <div><strong>record_schema:</strong> {catalogState?.versions?.record_schema_version || "n/a"}</div>
             <div><strong>template_version:</strong> {catalogState?.versions?.template_version_used ?? "n/a"}</div>
           </div>
-          {Object.values(routes).map((route) => (
+          {PRIMARY_NAV_KEYS.map((key) => routes[key]).filter(Boolean).map((route) => (
             <ShellNavItem
               key={route.key}
               label={route.label}

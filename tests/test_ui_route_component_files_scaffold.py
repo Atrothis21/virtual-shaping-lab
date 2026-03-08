@@ -7,6 +7,7 @@ BUILDER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" 
 RUN_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "run_route.jsx"
 REPORT_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "report_route.jsx"
 CATALOG_HELP_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "catalog_help_route.jsx"
+LAUNCHER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "launcher_route.jsx"
 
 
 def _read(path: Path) -> str:
@@ -20,3 +21,4 @@ def test_route_component_files_register_in_shared_route_registry():
     assert "routeContainers.RunRouteContainer" in _read(RUN_ROUTE)
     assert "routeContainers.ReportRouteContainer" in _read(REPORT_ROUTE)
     assert "routeContainers.CatalogHelpRouteContainer" in _read(CATALOG_HELP_ROUTE)
+    assert "routeContainers.LauncherRouteContainer" in _read(LAUNCHER_ROUTE)
