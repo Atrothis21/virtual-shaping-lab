@@ -218,6 +218,16 @@ Mechanism ownership split:
 - learner-owned:
   - attention modulation of update strength
 
+Attention mathematical contract (v2.17 target):
+- attention state is learner-owned and stateful: `A_t in [0,1]^n`
+- learning uses attention-gated feature updates, not representation-time mutation:
+  - `Delta theta_t = beta * (A_t odot x_t) * delta_t`
+  - equivalent: `Delta theta_t = beta * D(A_t) * x_t * delta_t`
+- attention dynamics are part of learner evolution:
+  - `A_{t+1} = G(A_t, x_t, r_t, y_hat_t, cuewise_contributions)`
+- `cuewise_contributions` means per-feature prediction terms (for linear forms: `{ i -> w_i x_i }`)
+- protocol/phase/runtime layers must not mutate attention internals directly; they only provide transitions consumed by learner update.
+
 Design intent:
 - agent is a thin orchestrator, not a math container
 - learners own value state and update equations

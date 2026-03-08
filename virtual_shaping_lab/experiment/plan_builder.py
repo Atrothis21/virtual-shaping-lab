@@ -95,6 +95,7 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "stimuli": list(config.stimuli),
         "salience": dict(config.salience),
         "attention": dict(config.attention),
+        "attention_config": dict(config.attention_config),
         "context_inference": dict(config.context_inference),
         "runtime": dict(config.runtime),
         "report_preset": config.report_preset,
@@ -121,6 +122,7 @@ def _compose_parameter_settings(config: ExperimentConfig) -> dict[str, Any]:
             "stimuli": list(config.stimuli),
             "salience": dict(config.salience),
             "attention": dict(config.attention),
+            "attention_config": dict(config.attention_config),
             "context_inference": dict(config.context_inference),
             "runtime": dict(config.runtime),
             "phases": [

@@ -70,6 +70,7 @@ class ParameterValidatorPipeline:
     """Semantic and ownership-boundary validation for normalized payloads."""
 
     _LEAK_KEYS = {"attention", "attention_compound", "salience", "similarity"}
+    _ALLOWED_ATTENTION_STRATEGIES = {"none", "static", "pearce_hall", "mackintosh"}
 
     @classmethod
     def validate(cls, payload: Mapping[str, Any]) -> None:
@@ -84,10 +85,35 @@ class ParameterValidatorPipeline:
             raise ValueError("experiment.representation is required")
 
         cls._validate_representation(rep, exp)
+        cls._validate_attention_config(exp)
         cls._validate_attention_keys(exp, rep)
         cls._validate_runtime(exp)
         cls._validate_phases(exp)
         cls._validate_contexts(exp, rep)
+
+    @classmethod
+    def _validate_attention_config(cls, exp: Mapping[str, Any]) -> None:
+        cfg = exp.get("attention_config")
+        if cfg is None:
+            attn = exp.get("attention")
+            if isinstance(attn, Mapping) and ("name" in attn or "params" in attn):
+                cfg = attn
+            else:
+                return
+        if not isinstance(cfg, Mapping):
+            raise ValueError("experiment.attention_config must be an object")
+        if "name" not in cfg or "params" not in cfg:
+            raise ValueError("experiment.attention_config must include 'name' and 'params'")
+        name = cfg.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("experiment.attention_config.name must be a non-empty string")
+        if name.strip().lower() not in cls._ALLOWED_ATTENTION_STRATEGIES:
+            raise ValueError(
+                "Unsupported experiment.attention_config.name "
+                f"'{name}'. Allowed: {', '.join(sorted(cls._ALLOWED_ATTENTION_STRATEGIES))}"
+            )
+        if not isinstance(cfg.get("params"), Mapping):
+            raise ValueError("experiment.attention_config.params must be an object")
 
     @staticmethod
     def _validate_runtime(exp: Mapping[str, Any]) -> None:
@@ -146,6 +172,9 @@ class ParameterValidatorPipeline:
             return
         if not isinstance(attention, Mapping):
             raise ValueError("experiment.attention must be an object")
+        if "name" in attention or "params" in attention:
+            # Strategy-form attention is validated by _validate_attention_config.
+            return
 
         known_stimuli: set[str] = set()
         stimuli = exp.get("stimuli")

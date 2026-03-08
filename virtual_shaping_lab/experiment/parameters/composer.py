@@ -152,10 +152,23 @@ class ParameterComposer:
         gamma_raw = phase_params.get("gamma", exp.get("gamma"))
         gamma = None if gamma_raw is None else _to_float(gamma_raw, 0.0)
         attention_map = _normalize_attention_map(exp.get("attention"))
+        attention_config = exp.get("attention_config", {})
+        mode = "static" if attention_map else "none"
+        default = 1.0
+        overrides = attention_map
+        if isinstance(attention_config, Mapping):
+            cfg_name = str(attention_config.get("name", "")).strip().lower()
+            cfg_params = attention_config.get("params", {})
+            if isinstance(cfg_params, Mapping) and cfg_name:
+                mode = cfg_name
+                default = _to_float(cfg_params.get("default", 1.0), 1.0)
+                cfg_overrides = cfg_params.get("overrides")
+                if isinstance(cfg_overrides, Mapping):
+                    overrides = _normalize_attention_map(cfg_overrides)
         attention = AttentionParams(
-            mode="static" if attention_map else "none",
-            default=1.0,
-            overrides=attention_map,
+            mode=mode,
+            default=default,
+            overrides=overrides,
         )
         return LearnerParams(
             algorithm=str(exp.get("learner", "")),
