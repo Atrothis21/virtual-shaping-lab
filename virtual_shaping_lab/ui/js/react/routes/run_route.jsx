@@ -143,7 +143,7 @@
           <button type="button" className="route-action route-action-secondary" onClick={() => typeof onRefreshRun === "function" && onRefreshRun()} disabled={!vm.activeRunId}>
             Refresh Status
           </button>
-          <a className="route-action route-action-secondary" href="/ui/console.html">Open Legacy Console</a>
+          <a className="route-action route-action-tertiary" href="/ui/console.html">Open Legacy Console</a>
         </div>
         <ConstraintStateChips constraint={runConstraintState} classNamePrefix="route-constraint" />
         <div className="run-lifecycle-summary">

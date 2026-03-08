@@ -151,7 +151,7 @@
         <p>Constrained draft editing surface for builder-driven experiment setup.</p>
         <div className="route-actions">
           <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePlan === "function" && onResolvePlan()}>Resolve Plan</button>
-          <a className="route-action route-action-secondary" href="/ui/builder.html">Open Legacy Builder</a>
+          <a className="route-action route-action-tertiary" href="/ui/builder.html">Open Legacy Builder</a>
         </div>
         <RouteStatePanel state={builderStatePanel.state} title={builderStatePanel.title} message={builderStatePanel.message} />
         <section className="builder-stepper-panel">

@@ -121,9 +121,9 @@
                 <div className="launcher-featured-meta"><strong>Experiment type:</strong> <code>{item.protocolKey}</code></div>
                 <p>{item.description}</p>
                 <div className="route-actions">
-                  <button type="button" className="route-action route-action-primary" onClick={() => handleQuickRun(item)}>Run preset</button>
+                  <button type="button" className="route-action route-action-secondary" onClick={() => handleQuickRun(item)}>Run preset</button>
                   <button type="button" className="route-action route-action-secondary" onClick={() => handleQuickRunReport(item)}>Run + report</button>
-                  <button type="button" className="route-action route-action-secondary" onClick={() => typeof onNavigate === "function" && onNavigate(toPresets)}>More presets</button>
+                  <button type="button" className="route-action route-action-tertiary" onClick={() => typeof onNavigate === "function" && onNavigate(toPresets)}>More presets</button>
                 </div>
               </article>
             ))}

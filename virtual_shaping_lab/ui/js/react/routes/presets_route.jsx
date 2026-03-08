@@ -64,10 +64,10 @@
             <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
             <PresetSignalChips signals={item.expectedSignals} maxItems={3} />
             <div className="route-actions">
-              <button type="button" className="route-action route-action-primary" onClick={() => typeof onUseInBuilder === "function" && onUseInBuilder(item)}>
+              <button type="button" className="route-action route-action-secondary" onClick={() => typeof onUseInBuilder === "function" && onUseInBuilder(item)}>
                 Use In Builder
               </button>
-              <a className="route-action route-action-secondary" href="/ui/presets.html">Open Legacy Presets</a>
+              <a className="route-action route-action-tertiary" href="/ui/presets.html">Open Legacy Presets</a>
             </div>
           </div>
         ))}
@@ -98,8 +98,8 @@
         <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
         <PresetSignalChips signals={item.expectedSignals} />
         <div className="route-actions">
-          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Prepare preset</button>
-          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Run preset</button>
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Run preset</button>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Prepare preset</button>
           <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRunReport === "function" && onResolveRunReport(item)}>Run preset + report</button>
         </div>
         <div className="preset-action-status">

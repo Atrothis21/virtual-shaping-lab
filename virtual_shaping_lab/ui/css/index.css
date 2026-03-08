@@ -752,6 +752,20 @@
       background: rgba(51, 65, 85, 0.92);
     }
 
+    .route-action-tertiary {
+      border-style: dashed;
+      border-color: rgba(100, 116, 139, 0.75);
+      background: rgba(15, 23, 42, 0.55);
+      color: #94a3b8;
+      font-weight: 500;
+      font-size: 0.84rem;
+    }
+
+    .route-action-tertiary:hover {
+      background: rgba(30, 41, 59, 0.78);
+      color: #cbd5e1;
+    }
+
     .plan-resolve-summary {
       margin-top: 0.7rem;
       border-top: 1px solid var(--vsl-color-panel-border);
