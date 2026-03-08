@@ -57,6 +57,20 @@ Behavior:
 Small architecture note:
 - `index.html` and `index_app.jsx` were split further into smaller component/module files to reduce central-file growth and support future route-level iteration without rework.
 
+### 5) Architecture Drift Guard Pass
+Updated:
+- `virtual_shaping_lab/ui/js/react/architecture_boundaries.json`
+- `V2.17.4_architecture_conformance_checklist.md`
+
+Added:
+- `tests/v2_11_guards/test_ui_route_api_and_translator_boundaries_guard.py`
+
+Behavior:
+- expanded UI layer-map coverage to include routes, services, and selector/view-model modules
+- added fail-fast guard against direct API calls (`apiClient.postJson/getJson`, `fetch`) inside route files
+- enforced translator boundary so `draft_to_payload(...)` call sites are limited to translator + plan workflow modules
+- enforced `POST /plan` submission path to use translated payload, not raw draft seed
+
 ---
 
 ## Test Coverage
@@ -66,6 +80,17 @@ Representative gates executed:
 - Tier 2 required gate (builder translation/constraints/resolve scaffolds)
 - Tier 3 recorded gate (route UX consistency + panels/semantics/theme scaffolds)
 - Tier 4 recorded gate (motion/degraded-mode/mismatch focused scaffolds)
+- architecture drift guard gate:
+  - `tests/v2_11_guards/test_ui_v2_architecture_boundaries_guard.py`
+  - `tests/v2_11_guards/test_ui_route_api_and_translator_boundaries_guard.py`
+  - `tests/test_ui_builder_submission_guards_scaffold.py`
+- required CI-policy closeout gate:
+  - `tests/v2_11_guards`
+  - `tests/v2_11_contract`
+  - `tests/behavioral_signatures`
+  - `tests/test_run_api_contract.py`
+  - `tests/test_api_contract_snapshots.py`
+  - `tests/test_visualizations.py`
 
 Result:
 - required tiers are green
@@ -79,10 +104,12 @@ Result:
 Updated:
 - `docs/browser_recovery_checklist.md`
 - `docs/ui_known_limitations.md`
+- `V2.17.4_architecture_conformance_checklist.md`
 
 Coverage:
 - first-pass route workflow smoke and operator checks
 - known limitations and deferred items for upcoming slices
+- explicit architecture-conformance audit checklist with evidence links
 
 ---
 
