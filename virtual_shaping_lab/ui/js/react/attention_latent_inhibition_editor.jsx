@@ -3,9 +3,9 @@ window.VSLReact = window.VSLReact || {};
 const STIMULI = ["tone", "noise", "light", "click"];
 
 function buildPayload(params) {
-  const attentionMap = {};
+  const attentionOverrides = {};
   params.cs_plus.forEach((s) => {
-    attentionMap[s] = { attention: params.attention };
+    attentionOverrides[s] = params.attention;
   });
   return {
     experiment: {
@@ -27,7 +27,10 @@ function buildPayload(params) {
           params: { n_trials: params.acq_n_trials, alpha: params.alpha, gamma: params.gamma },
         },
       ],
-      attention: attentionMap,
+      attention_config: {
+        name: "mackintosh",
+        params: { default: 1.0, overrides: attentionOverrides, kappa: 0.1 },
+      },
     },
     report: { preset: "custom_protocol" },
   };

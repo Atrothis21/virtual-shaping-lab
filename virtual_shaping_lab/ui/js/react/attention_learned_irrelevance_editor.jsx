@@ -2,9 +2,9 @@ window.VSLReact = window.VSLReact || {};
 const STIMULI = ["tone", "noise", "light", "click"];
 
 function buildPayload(params) {
-  const attention = {};
-  params.cs_plus.forEach((s) => { attention[s] = { attention: params.attention_plus }; });
-  params.cs_minus.forEach((s) => { attention[s] = { attention: params.attention_minus }; });
+  const attentionOverrides = {};
+  params.cs_plus.forEach((s) => { attentionOverrides[s] = params.attention_plus; });
+  params.cs_minus.forEach((s) => { attentionOverrides[s] = params.attention_minus; });
   return {
     experiment: {
       learner: "rescorla_wagner",
@@ -19,7 +19,10 @@ function buildPayload(params) {
           params: { n_trials: params.n_trials, alpha: params.alpha },
         },
       ],
-      attention,
+      attention_config: {
+        name: "mackintosh",
+        params: { default: 1.0, overrides: attentionOverrides, kappa: 0.1 },
+      },
     },
     report: { preset: "custom_protocol" },
   };

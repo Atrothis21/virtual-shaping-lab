@@ -32,6 +32,12 @@ _ALLOWED_ATTENTION_STRATEGIES = {
     "pearce_hall",
     "mackintosh",
 }
+_ATTENTION_CONFIG_ALLOWED_PARAM_KEYS = {
+    "none": set(),
+    "static": {"default", "overrides"},
+    "pearce_hall": {"default", "overrides", "eta"},
+    "mackintosh": {"default", "overrides", "kappa"},
+}
 
 
 def _is_template_param_guard_protocol(protocol_name: Any) -> bool:
@@ -353,16 +359,73 @@ class ExperimentConfig:
             for key, val in attention_field.items():
                 if isinstance(val, dict) and "attention" in val:
                     try:
-                        attention[key] = float(val["attention"])
+                        parsed = float(val["attention"])
                     except (TypeError, ValueError):
                         raise ValueError(f"Invalid attention value for '{key}'")
+                    if parsed < 0.0 or parsed > 1.0:
+                        raise ValueError(f"Invalid attention value for '{key}': must be in [0,1]")
+                    attention[key] = parsed
                 else:
                     try:
-                        attention[key] = float(val)
+                        parsed = float(val)
                     except (TypeError, ValueError):
                         raise ValueError(f"Invalid attention value for '{key}'")
+                    if parsed < 0.0 or parsed > 1.0:
+                        raise ValueError(f"Invalid attention value for '{key}': must be in [0,1]")
+                    attention[key] = parsed
             return attention
         return {}
+
+    @staticmethod
+    def _parse_unit_interval(value: Any, field: str) -> float:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{field} must be numeric")
+        if parsed < 0.0 or parsed > 1.0:
+            raise ValueError(f"{field} must be in [0,1]")
+        return parsed
+
+    @classmethod
+    def _normalize_attention_config_params(
+        cls,
+        *,
+        strategy_name: str,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        allowed = _ATTENTION_CONFIG_ALLOWED_PARAM_KEYS[strategy_name]
+        unknown = sorted(k for k in params.keys() if k not in allowed)
+        if unknown:
+            raise ValueError(
+                "experiment.attention_config.params contains unsupported keys for "
+                f"'{strategy_name}': {', '.join(unknown)}"
+            )
+
+        if strategy_name == "none":
+            return {}
+
+        normalized: Dict[str, Any] = {}
+        if "default" in allowed:
+            normalized["default"] = cls._parse_unit_interval(
+                params.get("default", 1.0 if strategy_name == "static" else 0.5),
+                "experiment.attention_config.params.default",
+            )
+        if "overrides" in allowed:
+            overrides = params.get("overrides", {})
+            if not isinstance(overrides, dict):
+                raise ValueError("experiment.attention_config.params.overrides must be an object")
+            normalized["overrides"] = cls._normalize_attention(overrides)
+        if strategy_name == "pearce_hall":
+            normalized["eta"] = cls._parse_unit_interval(
+                params.get("eta", 0.2),
+                "experiment.attention_config.params.eta",
+            )
+        if strategy_name == "mackintosh":
+            normalized["kappa"] = cls._parse_unit_interval(
+                params.get("kappa", 0.1),
+                "experiment.attention_config.params.kappa",
+            )
+        return normalized
 
     @classmethod
     def _normalize_attention_config(
@@ -402,7 +465,13 @@ class ExperimentConfig:
                     "Unsupported experiment.attention_config.name "
                     f"'{name}'. Allowed: {', '.join(sorted(_ALLOWED_ATTENTION_STRATEGIES))}"
                 )
-            return {"name": normalized_name, "params": dict(params)}
+            return {
+                "name": normalized_name,
+                "params": cls._normalize_attention_config_params(
+                    strategy_name=normalized_name,
+                    params=dict(params),
+                ),
+            }
 
         legacy_overrides = cls._normalize_attention(attention_field)
         if legacy_overrides:

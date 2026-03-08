@@ -2,8 +2,8 @@ window.VSLReact = window.VSLReact || {};
 const STIMULI = ["tone", "noise", "light", "click"];
 
 function buildPayload(params) {
-  const attention = {};
-  params.cs_plus.forEach((s) => { attention[s] = { attention: params.attention }; });
+  const attentionOverrides = {};
+  params.cs_plus.forEach((s) => { attentionOverrides[s] = params.attention; });
   return {
     experiment: {
       learner: "rescorla_wagner",
@@ -15,7 +15,10 @@ function buildPayload(params) {
         { name: "Rapid Reacquisition: Extinction", protocol: "nonreinforcement", stimuli: { cs_plus: params.cs_plus }, params: { n_trials: params.ext_n_trials, alpha: params.alpha, gamma: params.gamma } },
         { name: "Rapid Reacquisition: Reacquisition", protocol: "acquisition", stimuli: { cs_plus: params.cs_plus }, params: { n_trials: params.reacq_n_trials, alpha: params.alpha, gamma: params.gamma } },
       ],
-      attention,
+      attention_config: {
+        name: "pearce_hall",
+        params: { default: 1.0, overrides: attentionOverrides, eta: 0.2 },
+      },
     },
     report: { preset: "custom_protocol" },
   };

@@ -2,6 +2,10 @@ window.VSLReact = window.VSLReact || {};
 const STIMULI = ["tone", "noise", "light", "click"];
 
 function buildPayload(params) {
+  const attentionOverrides = {
+    [params.stim_1]: params.attention_cs1,
+    [params.stim_2]: params.attention_cs2,
+  };
   return {
     experiment: {
       learner: "rescorla_wagner",
@@ -12,9 +16,9 @@ function buildPayload(params) {
         { name: "Associability Shift: Acquisition", protocol: "acquisition", stimuli: { cs_plus: [params.stim_1] }, params: { n_trials: params.acq_n_trials, alpha: params.alpha, gamma: params.gamma } },
         { name: "Associability Shift: Compound", protocol: "compound_acquisition", stimuli: { compound: [params.stim_1, params.stim_2] }, params: { n_trials: params.comp_n_trials, alpha_cs1: params.alpha, alpha_cs2: params.alpha, gamma: params.gamma } },
       ],
-      attention: {
-        [params.stim_1]: { attention: params.attention_cs1 },
-        [params.stim_2]: { attention: params.attention_cs2 },
+      attention_config: {
+        name: "mackintosh",
+        params: { default: 1.0, overrides: attentionOverrides, kappa: 0.1 },
       },
     },
     report: { preset: "custom_protocol" },

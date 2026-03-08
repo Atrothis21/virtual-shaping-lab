@@ -71,6 +71,12 @@ class ParameterValidatorPipeline:
 
     _LEAK_KEYS = {"attention", "attention_compound", "salience", "similarity"}
     _ALLOWED_ATTENTION_STRATEGIES = {"none", "static", "pearce_hall", "mackintosh"}
+    _ATTENTION_CONFIG_ALLOWED_PARAM_KEYS = {
+        "none": set(),
+        "static": {"default", "overrides"},
+        "pearce_hall": {"default", "overrides", "eta"},
+        "mackintosh": {"default", "overrides", "kappa"},
+    }
 
     @classmethod
     def validate(cls, payload: Mapping[str, Any]) -> None:
@@ -112,8 +118,46 @@ class ParameterValidatorPipeline:
                 "Unsupported experiment.attention_config.name "
                 f"'{name}'. Allowed: {', '.join(sorted(cls._ALLOWED_ATTENTION_STRATEGIES))}"
             )
-        if not isinstance(cfg.get("params"), Mapping):
+        params = cfg.get("params")
+        if not isinstance(params, Mapping):
             raise ValueError("experiment.attention_config.params must be an object")
+        strategy = name.strip().lower()
+        allowed = cls._ATTENTION_CONFIG_ALLOWED_PARAM_KEYS[strategy]
+        unknown = sorted(k for k in params.keys() if k not in allowed)
+        if unknown:
+            raise ValueError(
+                "experiment.attention_config.params contains unsupported keys for "
+                f"'{strategy}': {', '.join(unknown)}"
+            )
+        if "default" in params:
+            cls._validate_unit_interval(
+                params["default"], "experiment.attention_config.params.default"
+            )
+        if "eta" in params:
+            cls._validate_unit_interval(
+                params["eta"], "experiment.attention_config.params.eta"
+            )
+        if "kappa" in params:
+            cls._validate_unit_interval(
+                params["kappa"], "experiment.attention_config.params.kappa"
+            )
+        if "overrides" in params:
+            overrides = params["overrides"]
+            if not isinstance(overrides, Mapping):
+                raise ValueError("experiment.attention_config.params.overrides must be an object")
+            for key, value in overrides.items():
+                cls._validate_unit_interval(
+                    value, f"experiment.attention_config.params.overrides['{key}']"
+                )
+
+    @staticmethod
+    def _validate_unit_interval(value: Any, field: str) -> None:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{field} must be numeric")
+        if parsed < 0.0 or parsed > 1.0:
+            raise ValueError(f"{field} must be in [0,1]")
 
     @staticmethod
     def _validate_runtime(exp: Mapping[str, Any]) -> None:

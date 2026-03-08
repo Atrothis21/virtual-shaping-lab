@@ -2,8 +2,8 @@ window.VSLReact = window.VSLReact || {};
 const STIMULI = ["tone", "noise", "light", "click"];
 
 function buildPayload(params) {
-  const attention = {};
-  params.cs_plus.forEach((s) => { attention[s] = { attention: params.attention }; });
+  const attentionOverrides = {};
+  params.cs_plus.forEach((s) => { attentionOverrides[s] = params.attention; });
   return {
     experiment: {
       learner: "rescorla_wagner",
@@ -11,7 +11,10 @@ function buildPayload(params) {
       representation: { name: "vector_elemental", params: { stimuli: STIMULI, max_compound_size: 2 } },
       context_inference: { enabled: false, max_contexts: 3 },
       phases: [{ name: "Pearce-Hall Uncertainty", protocol: "acquisition", stimuli: { cs_plus: params.cs_plus }, params: { n_trials: params.n_trials, alpha: params.alpha, gamma: params.gamma } }],
-      attention,
+      attention_config: {
+        name: "pearce_hall",
+        params: { default: 1.0, overrides: attentionOverrides, eta: 0.2 },
+      },
     },
     report: { preset: "custom_protocol" },
   };

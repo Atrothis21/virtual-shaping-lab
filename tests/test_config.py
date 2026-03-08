@@ -91,6 +91,22 @@ def test_attention_config_invalid_contract_rejected():
     with pytest.raises(ValueError, match="experiment.attention_config.params must be an object"):
         ExperimentConfig.from_payload(payload)
 
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "mackintosh",
+        "params": {"kappa": 1.2},
+    }
+    with pytest.raises(ValueError, match="kappa must be in \\[0,1\\]"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "pearce_hall",
+        "params": {"eta": 0.2, "unknown": 1},
+    }
+    with pytest.raises(ValueError, match="contains unsupported keys"):
+        ExperimentConfig.from_payload(payload)
+
 
 def test_similarity_matrix_validation_rejects_bad_size():
     payload = _base_payload()
