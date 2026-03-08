@@ -24,6 +24,9 @@
     onDraftEdited,
     resolveErrorView,
   }) {
+    const uiPrimitives = VSLReact.uiPrimitives || {};
+    const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
+    const ConstraintMessage = uiPrimitives.ConstraintMessage || (() => null);
     const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
     const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
     const stableHash = planState && planState.stableHash ? planState.stableHash : "";
@@ -90,22 +93,6 @@
       updateDraftPatch({ template_key: String(templateConstraint.autoCorrect) });
     }, [seed, templateAutoCorrectSuppressed, templateConstraint.autoCorrect, templateConstraint.message]);
 
-    const renderConstraintStates = (constraint) => {
-      if (!constraint) return null;
-      const chips = [];
-      if (constraint.hidden) chips.push({ key: "hidden", text: "Hidden", tone: "is-hidden" });
-      if (constraint.disabled) chips.push({ key: "disabled", text: "Disabled", tone: "is-disabled" });
-      if (constraint.warning) chips.push({ key: "warning", text: "Warn", tone: "is-warning" });
-      if (constraint.autoCorrect) chips.push({ key: "auto-correct", text: "Auto-correct", tone: "is-autocorrect" });
-      if (constraint.autoCorrectBlocked) chips.push({ key: "auto-correct-blocked", text: "Auto-correct blocked", tone: "is-blocked" });
-      if (!chips.length) return null;
-      return (
-        <div className="builder-constraint-states" role="status" aria-live="polite">
-          {chips.map((chip) => <span key={chip.key} className={`builder-constraint-chip ${chip.tone}`}>{chip.text}</span>)}
-        </div>
-      );
-    };
-
     const renderBuilderFieldControl = (fieldVm) => {
       if (!fieldVm || (fieldVm.behavior && fieldVm.behavior.hidden)) return null;
       const isDisabled = Boolean(fieldVm.behavior && fieldVm.behavior.disabled);
@@ -158,8 +145,8 @@
                 <div key={`${sectionVm.key}-${item.label}`} className="builder-kv"><strong>{item.label}:</strong> <code className="builder-readout">{String(item.value)}</code></div>
               )) : null}
               <div className="builder-control-group">{Array.isArray(sectionVm.fields) ? sectionVm.fields.map((fieldVm) => renderBuilderFieldControl(fieldVm)) : null}</div>
-              {renderConstraintStates(sectionVm.constraint)}
-              {sectionVm.constraint && sectionVm.constraint.message ? <p className={sectionVm.constraint.warning ? "builder-constraint-warning" : "builder-constraint-note"}>{sectionVm.constraint.message}</p> : null}
+              <ConstraintStateChips constraint={sectionVm.constraint} classNamePrefix="builder-constraint" />
+              <ConstraintMessage constraint={sectionVm.constraint} classNamePrefix="builder-constraint" />
             </section>
           ))}
           {!advancedConstraint.hidden ? (
@@ -177,7 +164,7 @@
                 </button>
                 {advancedVisible ? (
                   <div className="builder-advanced-content">
-                    {renderConstraintStates(advancedConstraint)}
+                    <ConstraintStateChips constraint={advancedConstraint} classNamePrefix="builder-constraint" />
                     <div className="builder-debug-summary" role="status" aria-live="polite">
                       <div><strong>debug_mode:</strong> <code className="builder-readout">{debugAdvancedState?.mode || "off"}</code></div>
                       <div><strong>render_cap_rows:</strong> <code className="builder-readout">{debugAdvancedState?.maxRows ?? 200}</code></div>

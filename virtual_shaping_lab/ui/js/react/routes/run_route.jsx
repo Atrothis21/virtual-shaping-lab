@@ -65,10 +65,21 @@
     mismatchView,
     RouteNotice,
   }) {
+    const uiPrimitives = VSLReact.uiPrimitives || {};
+    const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || fallbackSelectRunLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
     const vm = selectRunLifecycleViewModelFn(runState, planState, builderDraftState);
+    const runConstraintState = vm.canStartRun
+      ? null
+      : {
+          disabled: true,
+          warning: true,
+          message: !vm.stableHash
+            ? "Resolve a plan first to enable run creation from a stable execution hash."
+            : "Plan is stale for current draft. Re-resolve plan to enable run creation.",
+        };
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
     const blockingMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "blocking") : null;
 
@@ -92,6 +103,7 @@
           </button>
           <a className="route-action" href="/ui/console.html">Open Legacy Console</a>
         </div>
+        <ConstraintStateChips constraint={runConstraintState} classNamePrefix="route-constraint" />
         <div className="run-lifecycle-summary">
           <div><strong>Request Status:</strong> <code>{vm.requestStatus}</code></div>
           <div><strong>Active Run ID:</strong> <code>{vm.activeRunId || "n/a"}</code></div>

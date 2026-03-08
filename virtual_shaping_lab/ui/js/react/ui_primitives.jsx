@@ -51,6 +51,49 @@ function BlockingPanel({ title, message, actionLabel, onAction }) {
   );
 }
 
+function RouteNotice({ level, title, message, className }) {
+  if (!title && !message) return null;
+  return (
+    <div className={`route-notice ${level || "info"} ${className || ""}`.trim()} role="status">
+      {title ? <strong>{title}</strong> : null}
+      {message ? <span>{message}</span> : null}
+    </div>
+  );
+}
+
+function buildConstraintChips(constraint) {
+  if (!constraint || typeof constraint !== "object") return [];
+  const chips = [];
+  if (constraint.hidden) chips.push({ key: "hidden", text: "Hidden", tone: "is-hidden" });
+  if (constraint.disabled) chips.push({ key: "disabled", text: "Disabled", tone: "is-disabled" });
+  if (constraint.warning) chips.push({ key: "warning", text: "Warn", tone: "is-warning" });
+  if (constraint.autoCorrect) chips.push({ key: "auto-correct", text: "Auto-correct", tone: "is-autocorrect" });
+  if (constraint.autoCorrectBlocked) chips.push({ key: "auto-correct-blocked", text: "Auto-correct blocked", tone: "is-blocked" });
+  return chips;
+}
+
+function ConstraintStateChips({ constraint, classNamePrefix }) {
+  const prefix = classNamePrefix || "builder-constraint";
+  const chips = buildConstraintChips(constraint);
+  if (!chips.length) return null;
+  return (
+    <div className={`${prefix}-states`} role="status" aria-live="polite">
+      {chips.map((chip) => (
+        <span key={chip.key} className={`${prefix}-chip ${chip.tone}`}>
+          {chip.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ConstraintMessage({ constraint, classNamePrefix }) {
+  const prefix = classNamePrefix || "builder-constraint";
+  if (!constraint || !constraint.message) return null;
+  const toneClass = constraint.warning ? `${prefix}-warning` : `${prefix}-note`;
+  return <p className={toneClass}>{constraint.message}</p>;
+}
+
 function buildCatalogMismatchBanner(versionMismatch) {
   if (!versionMismatch || versionMismatch.field !== "catalog_version") return null;
   return {
@@ -65,5 +108,9 @@ window.VSLReact.uiPrimitives = {
   NotificationStack,
   GlobalBanner,
   BlockingPanel,
+  RouteNotice,
+  buildConstraintChips,
+  ConstraintStateChips,
+  ConstraintMessage,
   buildCatalogMismatchBanner,
 };

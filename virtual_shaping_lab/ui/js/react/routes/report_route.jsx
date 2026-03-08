@@ -59,12 +59,23 @@
     artifactView,
     RouteNotice,
   }) {
+    const uiPrimitives = VSLReact.uiPrimitives || {};
+    const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || fallbackSelectReportLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
     const vm = selectReportLifecycleViewModelFn(reportState, runState, { isPlanFresh });
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
     const warningMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "warning") : null;
+    const reportConstraintState = vm.canCreateReport
+      ? null
+      : {
+          disabled: true,
+          warning: true,
+          message: vm.isPlanFresh
+            ? "Start and complete a run first to enable report generation."
+            : "Plan is stale for current draft. Re-resolve plan before generating report.",
+        };
 
     return (
       <div className="route-card report-lifecycle-card">
@@ -86,6 +97,7 @@
           </button>
           <a className="route-action" href="/ui/results.html">Open Legacy Results</a>
         </div>
+        <ConstraintStateChips constraint={reportConstraintState} classNamePrefix="route-constraint" />
         <div className="report-lifecycle-summary">
           <div><strong>Run ID:</strong> <code>{vm.effectiveRunId || "n/a"}</code></div>
           <div><strong>Lifecycle:</strong> <code>{vm.lifecycleState || "n/a"}</code></div>

@@ -925,6 +925,50 @@
       color: #fecdd3;
     }
 
+    .route-constraint-states {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.28rem;
+      margin: 0.2rem 0 0.5rem;
+    }
+
+    .route-constraint-chip {
+      font-family: var(--vsl-font-mono);
+      font-size: 0.67rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      border: 1px solid var(--vsl-color-panel-border);
+      padding: 0.11rem 0.4rem;
+      background: rgba(30, 41, 59, 0.76);
+      color: #cbd5e1;
+    }
+
+    .route-constraint-chip.is-hidden {
+      border-color: var(--vsl-color-probe);
+      color: #7dd3fc;
+    }
+
+    .route-constraint-chip.is-disabled {
+      border-color: var(--vsl-color-cs-minus);
+      color: #fca5a5;
+    }
+
+    .route-constraint-chip.is-warning {
+      border-color: var(--vsl-color-learning);
+      color: #fcd34d;
+    }
+
+    .route-constraint-chip.is-autocorrect {
+      border-color: var(--vsl-color-cs-plus);
+      color: #86efac;
+    }
+
+    .route-constraint-chip.is-blocked {
+      border-color: #fb7185;
+      color: #fecdd3;
+    }
+
     .builder-autocorrect-notice {
       margin-top: 0.6rem;
       border: 1px solid var(--vsl-color-learning);
