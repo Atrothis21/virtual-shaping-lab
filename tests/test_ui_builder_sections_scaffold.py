@@ -46,6 +46,12 @@ def test_builder_section_styles_exist():
     assert ".builder-kv" in text
     assert ".builder-control-group" in text
     assert ".builder-readout" in text
+    assert ".builder-advanced-wrapper" in text
+    assert ".builder-advanced-toggle" in text
+    assert ".builder-advanced-content" in text
+    assert ".builder-debug-summary" in text
+    assert ".builder-debug-details-toggle" in text
+    assert ".builder-debug-details" in text
 
 
 def test_builder_sections_render_console_hierarchy_markers():
@@ -57,6 +63,23 @@ def test_builder_sections_render_console_hierarchy_markers():
     assert "builder-section-runtime" in schema_text
     assert "builder-section-report" in schema_text
     assert "builder-section-advanced" in text
+    assert "Show Advanced Diagnostics" in text
+    assert "Hide Advanced Diagnostics" in text
+    assert "builder-advanced-toggle" in text
+    assert "builder-advanced-content" in text
     assert "builder-section-index" in text
     assert "builder-control-group" in text
     assert "builder-readout" in text
+
+
+def test_builder_advanced_access_model_defaults_to_hidden():
+    text = _read(INDEX_APP)
+    assert "const [advancedVisible, setAdvancedVisible] = React.useState(false);" in text
+    assert "const [debugDetailsVisible, setDebugDetailsVisible] = React.useState(false);" in text
+    assert "aria-expanded={advancedVisible ? \"true\" : \"false\"}" in text
+    assert "{advancedVisible ? (" in text
+    assert "Show Debug Details" in text
+    assert "Hide Debug Details" in text
+    assert "render_cap_rows" in text
+    assert "sample_every_n_ticks" in text
+    assert "cap_policy: \"backend-cap-aware\"" in text

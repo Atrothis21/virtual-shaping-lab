@@ -112,3 +112,9 @@ def test_index_app_bootstraps_catalog_and_surfaces_versions():
     assert "createDefaultContractRegistry()" in text
     assert "SurfacePanel" in text
     assert "StatusBadge" in text
+
+
+def test_index_app_threads_debug_advanced_state_into_builder_route():
+    text = _read(INDEX_APP)
+    assert "stateApi.selectDebugAdvancedState(uiState)" in text
+    assert "debugAdvancedState={debugAdvancedState}" in text

@@ -762,6 +762,7 @@ function BuilderRouteContainer({
   builderDraftState,
   planState,
   catalogState,
+  debugAdvancedState,
   onResolvePlan,
   onDraftEdited,
   resolveErrorView,
@@ -790,6 +791,8 @@ function BuilderRouteContainer({
   const templateConstraint = evaluateConstraintBehavior(constraints.template_key, "template_key");
   const runModeConstraint = evaluateConstraintBehavior(constraints.run_mode_hint, "run_mode_hint");
   const advancedConstraint = evaluateConstraintBehavior(constraints.advanced_debug, "advanced_debug");
+  const [advancedVisible, setAdvancedVisible] = React.useState(false);
+  const [debugDetailsVisible, setDebugDetailsVisible] = React.useState(false);
   const getBuilderSectionSchema =
     typeof formSchemaApi.getBuilderSectionSchema === "function"
       ? formSchemaApi.getBuilderSectionSchema
@@ -979,10 +982,60 @@ function BuilderRouteContainer({
               <span className="builder-section-index">S6</span>
             </div>
             <p className="builder-section-subheading">Low-prominence diagnostics for route-state troubleshooting.</p>
-            {renderConstraintStates(advancedConstraint)}
-            <div className="builder-kv"><strong>dirty:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.dirty))}</code></div>
-            <div className="builder-kv"><strong>is_ready:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.isReady))}</code></div>
-            <div className="builder-kv"><strong>validation_state:</strong> <code className="builder-readout">{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
+            <div className="builder-advanced-wrapper">
+              <button
+                type="button"
+                className="route-action builder-advanced-toggle"
+                aria-expanded={advancedVisible ? "true" : "false"}
+                onClick={() =>
+                  setAdvancedVisible((value) => {
+                    const next = !value;
+                    if (!next) setDebugDetailsVisible(false);
+                    return next;
+                  })
+                }
+              >
+                {advancedVisible ? "Hide Advanced Diagnostics" : "Show Advanced Diagnostics"}
+              </button>
+              {advancedVisible ? (
+                <div className="builder-advanced-content">
+                  {renderConstraintStates(advancedConstraint)}
+                  <div className="builder-debug-summary" role="status" aria-live="polite">
+                    <div><strong>debug_mode:</strong> <code className="builder-readout">{debugAdvancedState?.mode || "off"}</code></div>
+                    <div><strong>render_cap_rows:</strong> <code className="builder-readout">{debugAdvancedState?.maxRows ?? 200}</code></div>
+                    <div><strong>sampled:</strong> <code className="builder-readout">{String(Boolean(debugAdvancedState?.sampled))}</code></div>
+                    <div><strong>sample_every_n_ticks:</strong> <code className="builder-readout">{debugAdvancedState?.sampleEveryNTicks ?? "none"}</code></div>
+                  </div>
+                  <button
+                    type="button"
+                    className="route-action builder-debug-details-toggle"
+                    aria-expanded={debugDetailsVisible ? "true" : "false"}
+                    onClick={() => setDebugDetailsVisible((value) => !value)}
+                  >
+                    {debugDetailsVisible ? "Hide Debug Details" : "Show Debug Details"}
+                  </button>
+                  {debugDetailsVisible ? (
+                    <pre className="builder-debug-details">
+{JSON.stringify(
+  {
+    mode: debugAdvancedState?.mode || "off",
+    max_rows: debugAdvancedState?.maxRows ?? 200,
+    sampled: Boolean(debugAdvancedState?.sampled),
+    sample_every_n_ticks: debugAdvancedState?.sampleEveryNTicks ?? null,
+    cap_policy: "backend-cap-aware",
+    decimation_policy: debugAdvancedState?.sampled ? "active" : "inactive",
+  },
+  null,
+  2
+)}
+                    </pre>
+                  ) : null}
+                  <div className="builder-kv"><strong>dirty:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.dirty))}</code></div>
+                  <div className="builder-kv"><strong>is_ready:</strong> <code className="builder-readout">{String(Boolean(builderDraftState?.isReady))}</code></div>
+                  <div className="builder-kv"><strong>validation_state:</strong> <code className="builder-readout">{builderDraftState?.isReady ? "ready" : "needs_attention"}</code></div>
+                </div>
+              ) : null}
+            </div>
           </section>
         ) : null}
       </div>
@@ -1339,6 +1392,7 @@ function AppShell() {
   const planState = stateApi && uiState ? stateApi.selectPlanState(uiState) : null;
   const runState = stateApi && uiState ? stateApi.selectRunState(uiState) : null;
   const reportState = stateApi && uiState ? stateApi.selectReportState(uiState) : null;
+  const debugAdvancedState = stateApi && uiState ? stateApi.selectDebugAdvancedState(uiState) : null;
 
   const dispatchEvent = React.useCallback(
     (event) => {
@@ -1720,14 +1774,15 @@ function AppShell() {
   function renderActiveRoute() {
     if (activeRoute === ROUTES.builder.key) {
       return (
-        <BuilderRouteContainer
-          builderDraftState={builderDraftState}
-          planState={planState}
-          catalogState={catalogState}
-          onResolvePlan={resolvePlanFromBuilderContext}
-          onDraftEdited={editBuilderDraft}
-          resolveErrorView={planResolveErrorView}
-        />
+          <BuilderRouteContainer
+            builderDraftState={builderDraftState}
+            planState={planState}
+            catalogState={catalogState}
+            debugAdvancedState={debugAdvancedState}
+            onResolvePlan={resolvePlanFromBuilderContext}
+            onDraftEdited={editBuilderDraft}
+            resolveErrorView={planResolveErrorView}
+          />
       );
     }
     if (activeRoute === ROUTES.run.key) {
