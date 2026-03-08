@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GUARDS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_submission_guards.js"
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+PLAN_WORKFLOW = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "plan_workflow_service.js"
 
 
 def _read(path: Path) -> str:
@@ -21,7 +22,7 @@ def test_builder_submission_guards_export_boundary_checks():
 
 
 def test_builder_plan_resolve_path_uses_submission_guards():
-    text = _read(INDEX_APP)
+    text = _read(INDEX_APP) + _read(PLAN_WORKFLOW)
     assert "builderSubmissionGuardsApi" in text
     assert "assertBuilderDraftForTranslation" in text
     assert "assertTranslatedBuilderPayload" in text

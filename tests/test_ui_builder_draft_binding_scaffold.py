@@ -3,7 +3,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+BUILDER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "builder_route.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 
 
 def _read(path: Path) -> str:
@@ -11,7 +13,7 @@ def _read(path: Path) -> str:
 
 
 def test_builder_controls_bind_to_draft_and_emit_draft_edited_event():
-    text = _read(INDEX_APP)
+    text = _read(INDEX_APP) + _read(BUILDER_ROUTE)
     assert "onDraftEdited" in text
     assert "updateDraftPatch" in text
     assert "editBuilderDraft" in text
@@ -24,7 +26,7 @@ def test_builder_controls_bind_to_draft_and_emit_draft_edited_event():
 
 
 def test_builder_route_surfaces_validation_and_readiness_state():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     assert "Draft Readiness:" in text
     assert "Validation Errors:" in text
     assert "validation_state:" in text
@@ -32,7 +34,7 @@ def test_builder_route_surfaces_validation_and_readiness_state():
 
 
 def test_builder_control_and_validation_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".builder-control" in text
     assert ".builder-control input" in text
     assert ".builder-control select" in text

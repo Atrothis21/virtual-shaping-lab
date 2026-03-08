@@ -4,6 +4,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
+RUN_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "run_route.jsx"
 
 
 def _read(path: Path) -> str:
@@ -11,7 +13,7 @@ def _read(path: Path) -> str:
 
 
 def test_run_route_has_start_and_polling_controls():
-    text = _read(INDEX_APP)
+    text = _read(RUN_ROUTE) + _read(INDEX_APP)
     assert "function RunRouteContainer(" in text
     assert "Start Run" in text
     assert "Refresh Status" in text
@@ -20,7 +22,7 @@ def test_run_route_has_start_and_polling_controls():
 
 
 def test_run_route_renders_lifecycle_and_provenance_summary():
-    text = _read(INDEX_APP)
+    text = _read(RUN_ROUTE) + _read(INDEX_APP)
     assert "selectRunLifecycleViewModel" in text
     assert "buildLifecycleInstrumentView" in text
     assert "Request Status:" in text
@@ -30,11 +32,11 @@ def test_run_route_renders_lifecycle_and_provenance_summary():
     assert "isRunTerminalLifecycle" in text
     assert "lifecycle-instrument" in text
     assert "lifecycle-meter" in text
-    assert "isPlanFreshForCurrentDraft" in text
+    assert "isFreshForDraftVersion" in text
 
 
 def test_run_route_wires_run_create_and_polling_events():
-    text = _read(INDEX_APP)
+    text = _read(RUN_ROUTE) + _read(INDEX_APP)
     assert "window.VSLReact.lifecycleViewModels" in text
     assert "selectRunLifecycleViewModelFn" in text
     assert "builderDraftState={builderDraftState}" in text
@@ -45,11 +47,12 @@ def test_run_route_wires_run_create_and_polling_events():
     assert "runReportWorkflowHandlers.startRunFromResolvedPlan" in text
     assert "runReportWorkflowHandlers.refreshActiveRunStatus" in text
     assert "runReportWorkflowHandlers.pollActiveRunStatus" in text
+    assert "RouteNotice={RouteNotice}" in text
     assert "window.setInterval" in text
 
 
 def test_run_lifecycle_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".run-lifecycle-card" in text
     assert ".run-lifecycle-summary" in text
     assert ".lifecycle-badge" in text

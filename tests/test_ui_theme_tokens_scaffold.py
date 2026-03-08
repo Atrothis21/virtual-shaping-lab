@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 THEME_TOKENS_JS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "ui_theme_tokens.js"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 
 
 def _read(path: Path) -> str:
@@ -32,7 +33,7 @@ def test_theme_tokens_include_behavioral_semantic_colors():
 
 
 def test_index_css_uses_theme_css_variables():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert "--vsl-color-bg" in text
     assert "--vsl-color-panel" in text
     assert "--vsl-color-cs-plus" in text

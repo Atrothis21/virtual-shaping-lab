@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FOUNDATION = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "ui_foundation_primitives.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 
 
 def _read(path: Path) -> str:
@@ -21,7 +22,7 @@ def test_foundation_primitives_export_expected_components():
 
 
 def test_index_css_defines_foundation_primitive_styles():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".vsl-page-region" in text
     assert ".vsl-surface-panel" in text
     assert ".vsl-status-badge" in text

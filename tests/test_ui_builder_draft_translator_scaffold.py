@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRANSLATOR_JS = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_draft_translator.js"
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+PLAN_WORKFLOW = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "plan_workflow_service.js"
 
 
 def _read(path: Path) -> str:
@@ -19,7 +20,7 @@ def test_builder_translator_module_exports_draft_to_payload():
 
 
 def test_builder_route_uses_translator_for_plan_submission():
-    text = _read(INDEX_APP)
+    text = _read(INDEX_APP) + _read(PLAN_WORKFLOW)
     assert "builderDraftTranslatorApi" in text
     assert "draft_to_payload(guardedDraft)" in text
     assert "apiClient.postJson(\"plan\", translatedPayload)" in text

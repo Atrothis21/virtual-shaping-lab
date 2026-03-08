@@ -3,7 +3,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_APP = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "index_app.jsx"
+BUILDER_ROUTE = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "routes" / "builder_route.jsx"
 INDEX_HTML = ROOT / "virtual_shaping_lab" / "ui" / "index.html"
+INDEX_CSS = ROOT / "virtual_shaping_lab" / "ui" / "css" / "index.css"
 FORM_SCHEMA = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react" / "builder_form_schema.js"
 
 
@@ -12,7 +14,7 @@ def _read(path: Path) -> str:
 
 
 def test_builder_route_has_scoped_section_layout():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     schema_text = _read(FORM_SCHEMA)
     assert "builder-sections-grid" in text
     assert "Overview" in text
@@ -24,13 +26,13 @@ def test_builder_route_has_scoped_section_layout():
 
 
 def test_builder_route_does_not_expose_raw_payload_editor_surface():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     assert "Raw Payload" not in text
     assert "JSON editor" not in text
 
 
 def test_builder_section_styles_exist():
-    text = _read(INDEX_HTML)
+    text = _read(INDEX_CSS)
     assert ".builder-sections-grid" in text
     assert ".builder-section-panel" in text
     assert ".builder-section-panel-muted" in text
@@ -55,7 +57,7 @@ def test_builder_section_styles_exist():
 
 
 def test_builder_sections_render_console_hierarchy_markers():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     schema_text = _read(FORM_SCHEMA)
     assert "builder-section-overview" in text
     assert "builder-section-protocol" in schema_text
@@ -73,7 +75,7 @@ def test_builder_sections_render_console_hierarchy_markers():
 
 
 def test_builder_advanced_access_model_defaults_to_hidden():
-    text = _read(INDEX_APP)
+    text = _read(BUILDER_ROUTE)
     assert "const [advancedVisible, setAdvancedVisible] = React.useState(false);" in text
     assert "const [debugDetailsVisible, setDebugDetailsVisible] = React.useState(false);" in text
     assert "aria-expanded={advancedVisible ? \"true\" : \"false\"}" in text
