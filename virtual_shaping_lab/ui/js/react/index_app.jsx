@@ -62,6 +62,20 @@ function buildPresetItemFromDraftSeed(draftSeed) {
   };
 }
 
+function hasBuilderDependenciesLoaded() {
+  const vsl = window.VSLReact || {};
+  return Boolean(
+    vsl.builderDraftTranslator &&
+    typeof vsl.builderDraftTranslator.draft_to_payload === "function" &&
+    vsl.builderConstraintControls &&
+    typeof vsl.builderConstraintControls.deriveBuilderConstraintState === "function" &&
+    vsl.builderFormSchema &&
+    typeof vsl.builderFormSchema.getBuilderSectionSchema === "function" &&
+    vsl.builderSubmissionGuards &&
+    typeof vsl.builderSubmissionGuards.assertBuilderDraftForTranslation === "function"
+  );
+}
+
 function AppShell() {
   const foundation = window.VSLReact.foundationPrimitives || {};
   const PageRegion = foundation.PageRegion || ((props) => <section {...props} />);
@@ -81,6 +95,7 @@ function AppShell() {
   const catalogBootstrapApi = window.VSLReact.catalogBootstrapService || {};
   const planWorkflowApi = window.VSLReact.planWorkflowService || {};
   const routeContainersApi = window.VSLReact.routeContainers || {};
+  const lazyRouteLoaderApi = window.VSLReact.lazyRouteLoader || {};
   const GlobalBanner = uiPrimitives.GlobalBanner || (() => null);
   const BlockingPanel = uiPrimitives.BlockingPanel || (() => null);
   const NotificationStack = uiPrimitives.NotificationStack || (() => null);
@@ -105,6 +120,11 @@ function AppShell() {
     return nextState.initialRouteKey || routes.home.key;
   });
   const [notifications, setNotifications] = React.useState([]);
+  const [builderModulesState, setBuilderModulesState] = React.useState(() => ({
+    loading: false,
+    ready: hasBuilderDependenciesLoaded(),
+    error: null,
+  }));
   const [presetActionState, setPresetActionState] = React.useState(() => ({
     status: "idle",
     step: "",
@@ -178,6 +198,45 @@ function AppShell() {
       ];
     });
   }, [catalogState]);
+
+  React.useEffect(() => {
+    if (activeRoute !== routes.builder.key) return;
+    if (builderModulesState.ready || builderModulesState.loading) return;
+    const ensureBuilderModulesLoaded =
+      lazyRouteLoaderApi && typeof lazyRouteLoaderApi.ensureBuilderModulesLoaded === "function"
+        ? lazyRouteLoaderApi.ensureBuilderModulesLoaded
+        : null;
+    if (!ensureBuilderModulesLoaded) {
+      setBuilderModulesState((prev) => ({ ...prev, ready: hasBuilderDependenciesLoaded() }));
+      return;
+    }
+    let cancelled = false;
+    setBuilderModulesState((prev) => ({ ...prev, loading: true, error: null }));
+    ensureBuilderModulesLoaded()
+      .then(() => {
+        if (cancelled) return;
+        setBuilderModulesState({ loading: false, ready: true, error: null });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setBuilderModulesState({
+          loading: false,
+          ready: false,
+          error: error && error.message ? String(error.message) : "Builder modules failed to load.",
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeRoute, builderModulesState.loading, builderModulesState.ready, lazyRouteLoaderApi, routes.builder.key]);
+
+  React.useEffect(() => {
+    if (activeRoute === routes.builder.key) return;
+    setBuilderModulesState((prev) => {
+      if (!prev.loading) return prev;
+      return { ...prev, loading: false };
+    });
+  }, [activeRoute, routes.builder.key]);
 
   const lifecycleViewModelsApi = window.VSLReact.lifecycleViewModels || {};
   const isRunTerminalLifecycleFn =
@@ -464,6 +523,38 @@ function AppShell() {
       );
     }
     if (activeRoute === routes.builder.key) {
+      if (!builderModulesState.ready) {
+        const hasLoadError = Boolean(builderModulesState.error);
+        return (
+          <div className="route-card">
+            <div className="route-card-header">
+              <h2>Builder</h2>
+              <span className="vsl-status-badge">{builderModulesState.loading ? "loading modules" : "modules unavailable"}</span>
+            </div>
+            <RouteNotice
+              level={hasLoadError ? "error" : "info"}
+              message={
+                hasLoadError
+                  ? `Builder modules failed to load. ${builderModulesState.error}`
+                  : "Loading builder modules..."
+              }
+            />
+            <div className="route-actions">
+              <button
+                type="button"
+                className="route-action route-action-secondary"
+                onClick={() => setBuilderModulesState({ loading: false, ready: false, error: null })}
+                disabled={builderModulesState.loading && !hasLoadError}
+              >
+                Retry
+              </button>
+              <button type="button" className="route-action route-action-secondary" onClick={() => navigateTo(routes.presets.key)}>
+                Go to presets
+              </button>
+            </div>
+          </div>
+        );
+      }
       return (
           <BuilderRoute
             builderDraftState={builderDraftState}
