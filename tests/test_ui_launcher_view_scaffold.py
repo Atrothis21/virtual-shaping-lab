@@ -28,4 +28,5 @@ def test_launcher_view_exposes_two_primary_intent_cards():
     assert "LauncherCard" in view
     assert "actionLabel=\"Run preset\"" in view
     assert "actionLabel=\"Build experiment\"" in view
-
+    assert "tone=\"dominant\"" in view
+    assert "tone=\"secondary\"" in view

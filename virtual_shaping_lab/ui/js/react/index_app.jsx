@@ -418,10 +418,19 @@ function AppShell() {
     if (activeRoute === routes.home.key) {
       return (
         <LauncherRoute
+          catalogState={catalogState}
+          runState={runState}
+          reportState={reportState}
+          onSeedDraftFromPreset={seedDraftFromPreset}
+          onResolveRunAction={resolveAndRunPresetFromSelection}
+          onResolveRunReportAction={resolveRunReportPresetFromSelection}
+          actionState={presetActionState}
           onNavigate={navigateTo}
           routeKeys={{
             presets: routes.presets.key,
             builder: routes.builder.key,
+            run: routes.run.key,
+            report: routes.report.key,
           }}
         />
       );

@@ -1457,10 +1457,94 @@
     .launcher-card-dominant {
       border-color: var(--vsl-color-cs-plus);
       box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.24);
+      padding: 0.95rem;
     }
 
     .launcher-card-secondary {
       border-color: var(--vsl-color-panel-border);
+      opacity: 0.94;
+    }
+
+    @media (min-width: 980px) {
+      .launcher-card-dominant {
+        grid-column: span 2;
+      }
+    }
+
+    .launcher-callout-row {
+      margin-top: 0.7rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .launcher-featured {
+      margin-top: 0.6rem;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .launcher-featured h3,
+    .launcher-recent-strip h3 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .launcher-featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .launcher-featured-card {
+      border: 1px solid var(--vsl-color-panel-border);
+      border-radius: var(--vsl-radius-md);
+      background: #1a2537;
+      padding: 0.65rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .launcher-featured-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.45rem;
+    }
+
+    .launcher-featured-title-row code {
+      color: var(--vsl-color-text-secondary);
+      font-family: var(--vsl-font-mono);
+      font-size: 0.72rem;
+    }
+
+    .launcher-featured-card p {
+      margin: 0;
+      font-size: 0.84rem;
+    }
+
+    .launcher-action-message {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .launcher-recent-strip {
+      margin-top: 0.45rem;
+      border-top: 1px dashed var(--vsl-color-panel-border);
+      padding-top: 0.6rem;
+    }
+
+    .launcher-recent-strip ul {
+      margin: 0;
+      padding-left: 1rem;
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.83rem;
+    }
+
+    .launcher-recent-strip p {
+      margin: 0;
+      font-size: 0.83rem;
+      color: var(--vsl-color-text-secondary);
     }
 
     @keyframes vsl-fade-slide-in {
