@@ -16,7 +16,7 @@ def _read(path: Path) -> str:
 def test_report_route_has_create_report_action_and_lifecycle_summary():
     text = _read(REPORT_ROUTE)
     assert "function ReportRouteContainer(" in text
-    assert "Create Report" in text
+    assert "Generate Report" in text
     assert "Refresh Run Status" in text
     assert "selectReportLifecycleViewModel" in text
     assert "buildLifecycleInstrumentView" in text

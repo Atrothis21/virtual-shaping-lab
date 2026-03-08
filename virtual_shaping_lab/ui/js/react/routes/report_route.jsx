@@ -61,6 +61,7 @@
   }) {
     const uiPrimitives = VSLReact.uiPrimitives || {};
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
+    const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || fallbackSelectReportLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
@@ -76,6 +77,18 @@
             ? "Start and complete a run first to enable report generation."
             : "Plan is stale for current draft. Re-resolve plan before generating report.",
         };
+    const reportStatePanel = React.useMemo(() => {
+      if (vm.requestStatus === "loading") {
+        return { state: "loading", title: "Generating Report", message: "Building artifacts from selected run..." };
+      }
+      if (artifactView && (artifactView.pdfPath || (artifactView.figureList && artifactView.figureList.length))) {
+        return { state: "completed", title: "Artifacts Ready", message: "Report artifacts are available for inspection." };
+      }
+      if (!vm.effectiveRunId) {
+        return { state: "empty", title: "No Run Selected", message: "Select or complete a run before requesting report generation." };
+      }
+      return { state: "success", title: "Report Route Ready", message: "Run context loaded. Generate report when eligible." };
+    }, [artifactView, vm.effectiveRunId, vm.requestStatus]);
 
     return (
       <div className="route-card report-lifecycle-card">
@@ -88,14 +101,15 @@
           <div className="lifecycle-caption"><strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code></div>
         </div>
         <p>Create report artifacts from completed runs and monitor report lifecycle state.</p>
+        <RouteStatePanel state={reportStatePanel.state} title={reportStatePanel.title} message={reportStatePanel.message} />
         <div className="route-actions">
-          <button type="button" className="route-action" onClick={() => typeof onCreateReport === "function" && onCreateReport()} disabled={!vm.canCreateReport || vm.requestStatus === "loading"}>
-            {vm.requestStatus === "loading" ? "Generating Report..." : "Create Report"}
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onCreateReport === "function" && onCreateReport()} disabled={!vm.canCreateReport || vm.requestStatus === "loading"}>
+            {vm.requestStatus === "loading" ? "Generating Report..." : "Generate Report"}
           </button>
-          <button type="button" className="route-action" onClick={() => typeof onRefreshRun === "function" && onRefreshRun()} disabled={!vm.effectiveRunId}>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onRefreshRun === "function" && onRefreshRun()} disabled={!vm.effectiveRunId}>
             Refresh Run Status
           </button>
-          <a className="route-action" href="/ui/results.html">Open Legacy Results</a>
+          <a className="route-action route-action-secondary" href="/ui/results.html">Open Legacy Results</a>
         </div>
         <ConstraintStateChips constraint={reportConstraintState} classNamePrefix="route-constraint" />
         <div className="report-lifecycle-summary">

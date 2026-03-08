@@ -59,10 +59,10 @@
             <p style={{ marginBottom: "0.7rem" }}><strong>Expected Signals:</strong></p>
             <PresetSignalChips signals={item.expectedSignals} maxItems={3} />
             <div className="route-actions">
-              <button type="button" className="route-action" onClick={() => typeof onUseInBuilder === "function" && onUseInBuilder(item)}>
+              <button type="button" className="route-action route-action-primary" onClick={() => typeof onUseInBuilder === "function" && onUseInBuilder(item)}>
                 Use In Builder
               </button>
-              <a className="route-action" href="/ui/presets.html">Open Legacy Presets</a>
+              <a className="route-action route-action-secondary" href="/ui/presets.html">Open Legacy Presets</a>
             </div>
           </div>
         ))}
@@ -92,9 +92,9 @@
         <p style={{ marginBottom: "0.7rem" }}><strong>Expected Signals:</strong></p>
         <PresetSignalChips signals={item.expectedSignals} />
         <div className="route-actions">
-          <button type="button" className="route-action" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Resolve Preset</button>
-          <button type="button" className="route-action" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Resolve + Run</button>
-          <button type="button" className="route-action" onClick={() => typeof onResolveRunReport === "function" && onResolveRunReport(item)}>Resolve + Run + Report</button>
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Resolve Preset</button>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Resolve + Run</button>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRunReport === "function" && onResolveRunReport(item)}>Resolve + Run + Report</button>
         </div>
         <div className="preset-action-status">
           <strong>Action Status:</strong> <code>{actionState && actionState.status ? actionState.status : "idle"}</code>
@@ -144,6 +144,8 @@
     RouteNotice,
     routeKeys,
   }) {
+    const uiPrimitives = VSLReact.uiPrimitives || {};
+    const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
     const keys = routeKeys || { builder: "builder", run: "run", report: "report" };
     const readModelApi = VSLReact.presetReadModels || {};
     const selectPresetCatalogReadModel = readModelApi.selectPresetCatalogReadModel;
@@ -167,6 +169,18 @@
         : [...viewModel.items];
       return typeof sortPresetViewModels === "function" ? sortPresetViewModels(filtered, sortBy) : filtered;
     }, [filterPresetViewModels, runModeFilter, searchQuery, sortBy, sortPresetViewModels, viewModel.items]);
+    const browserStatePanel = React.useMemo(() => {
+      if (viewModel.status === "loading") {
+        return { state: "loading", title: "Catalog Loading", message: "Loading presets from catalog metadata..." };
+      }
+      if (viewModel.status === "error") {
+        return { state: "error", title: "Catalog Unavailable", message: "Preset catalog request failed. Retry catalog refresh." };
+      }
+      if (viewModel.status === "success" && filteredItems.length === 0) {
+        return { state: "empty", title: "No Presets Match Filters", message: "Adjust search/sort/run mode filters to broaden results." };
+      }
+      return { state: "success", title: "Presets Ready", message: `${filteredItems.length} preset(s) available for selection.` };
+    }, [filteredItems.length, viewModel.status]);
 
     const selectedPreset = React.useMemo(() => {
       if (typeof selectPresetFromReadModels === "function") {
@@ -228,6 +242,7 @@
             <label>Run Mode<select value={runModeFilter} onChange={(e) => setRunModeFilter(e.target.value)}><option value="all">All</option><option value="trial">Trial</option><option value="tick">Tick</option></select></label>
             <label>Sort<select value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="title">Name</option><option value="protocol">Protocol</option></select></label>
           </div>
+          <RouteStatePanel state={browserStatePanel.state} title={browserStatePanel.title} message={browserStatePanel.message} />
         </div>
 
         <PresetDetailPanel item={selectedPreset} onResolvePreset={handleResolvePreset} onResolveRun={handleResolveRun} onResolveRunReport={handleResolveRunReport} actionState={actionState} RouteNotice={RouteNotice} />
@@ -239,7 +254,7 @@
           <p style={{ marginTop: "0.35rem", marginBottom: "0.5rem" }}>Choose which preset appears in detail view.</p>
           <div className="preset-detail-selectors">
             {filteredItems.slice(0, 10).map((item) => (
-              <button type="button" key={`select-${item.key}`} className={`route-action ${selectedPreset?.key === item.key ? "active" : ""}`} onClick={() => setSelectedPresetKey(item.key)}>
+              <button type="button" key={`select-${item.key}`} className={`route-action route-action-secondary ${selectedPreset?.key === item.key ? "active" : ""}`} onClick={() => setSelectedPresetKey(item.key)}>
                 {item.title}
               </button>
             ))}

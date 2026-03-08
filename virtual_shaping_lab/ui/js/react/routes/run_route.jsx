@@ -67,6 +67,7 @@
   }) {
     const uiPrimitives = VSLReact.uiPrimitives || {};
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
+    const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || fallbackSelectRunLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
@@ -82,6 +83,18 @@
         };
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
     const blockingMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "blocking") : null;
+    const runStatePanel = React.useMemo(() => {
+      if (vm.requestStatus === "loading") {
+        return { state: "loading", title: "Run Request In Flight", message: "Creating or refreshing run lifecycle..." };
+      }
+      if (vm.isTerminal) {
+        return { state: "completed", title: "Run Terminal", message: `Run reached terminal lifecycle: ${vm.state}.` };
+      }
+      if (!vm.activeRunId) {
+        return { state: "empty", title: "No Active Run", message: "Start a run from resolved plan to populate lifecycle and provenance." };
+      }
+      return { state: "success", title: "Run Active", message: "Lifecycle and provenance are available for monitoring." };
+    }, [vm.activeRunId, vm.isTerminal, vm.requestStatus, vm.state]);
 
     return (
       <div className="route-card run-lifecycle-card">
@@ -94,14 +107,15 @@
           <div className="lifecycle-caption"><strong>phase:</strong> <code>{lifecycleInstrument.phaseLabel}</code></div>
         </div>
         <p>Create runs from resolved plans and monitor lifecycle progression.</p>
+        <RouteStatePanel state={runStatePanel.state} title={runStatePanel.title} message={runStatePanel.message} />
         <div className="route-actions">
-          <button type="button" className="route-action" onClick={() => typeof onStartRun === "function" && onStartRun()} disabled={!vm.canStartRun || vm.requestStatus === "loading"}>
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onStartRun === "function" && onStartRun()} disabled={!vm.canStartRun || vm.requestStatus === "loading"}>
             {vm.requestStatus === "loading" ? "Starting Run..." : "Start Run"}
           </button>
-          <button type="button" className="route-action" onClick={() => typeof onRefreshRun === "function" && onRefreshRun()} disabled={!vm.activeRunId}>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onRefreshRun === "function" && onRefreshRun()} disabled={!vm.activeRunId}>
             Refresh Status
           </button>
-          <a className="route-action" href="/ui/console.html">Open Legacy Console</a>
+          <a className="route-action route-action-secondary" href="/ui/console.html">Open Legacy Console</a>
         </div>
         <ConstraintStateChips constraint={runConstraintState} classNamePrefix="route-constraint" />
         <div className="run-lifecycle-summary">

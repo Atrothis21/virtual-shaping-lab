@@ -27,6 +27,7 @@
     const uiPrimitives = VSLReact.uiPrimitives || {};
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const ConstraintMessage = uiPrimitives.ConstraintMessage || (() => null);
+    const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
     const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
     const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
     const stableHash = planState && planState.stableHash ? planState.stableHash : "";
@@ -72,6 +73,19 @@
     );
     const [autoCorrectNotice, setAutoCorrectNotice] = React.useState(null);
     const [templateAutoCorrectSuppressed, setTemplateAutoCorrectSuppressed] = React.useState(false);
+    const builderStatePanel = React.useMemo(() => {
+      const status = planState && planState.requestStatus ? String(planState.requestStatus) : "idle";
+      if (status === "loading") {
+        return { state: "loading", title: "Resolving Plan", message: "Builder draft is being translated and validated." };
+      }
+      if (status === "success" && stableHash) {
+        return { state: "completed", title: "Plan Resolved", message: "Execution plan is resolved and ready for run creation." };
+      }
+      if (status === "error") {
+        return { state: "error", title: "Resolve Failed", message: "Resolve failed. Review inline error details and retry." };
+      }
+      return { state: "empty", title: "Draft Mode", message: "Edit draft fields then resolve to produce a stable execution plan." };
+    }, [planState, stableHash]);
 
     function updateDraftPatch(patch) {
       if (typeof onDraftEdited !== "function") return;
@@ -126,9 +140,10 @@
         </div>
         <p>Constrained draft editing surface for builder-driven experiment setup.</p>
         <div className="route-actions">
-          <button type="button" className="route-action" onClick={() => typeof onResolvePlan === "function" && onResolvePlan()}>Resolve Plan</button>
-          <a className="route-action" href="/ui/builder.html">Open Legacy Builder</a>
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePlan === "function" && onResolvePlan()}>Resolve Plan</button>
+          <a className="route-action route-action-secondary" href="/ui/builder.html">Open Legacy Builder</a>
         </div>
+        <RouteStatePanel state={builderStatePanel.state} title={builderStatePanel.title} message={builderStatePanel.message} />
         <div className="builder-sections-grid">
           <section className="builder-section-panel builder-section-overview">
             <div className="builder-section-header"><h3 className="builder-section-heading">Overview</h3><span className="builder-section-index">S1</span></div>
@@ -201,7 +216,7 @@
             <div><strong>Reason:</strong> {autoCorrectNotice.reason}</div>
             <button
               type="button"
-              className="route-action"
+              className="route-action route-action-secondary"
               onClick={() => {
                 const previous = autoCorrectNotice.before === "(empty)" ? "" : autoCorrectNotice.before;
                 setTemplateAutoCorrectSuppressed(true);

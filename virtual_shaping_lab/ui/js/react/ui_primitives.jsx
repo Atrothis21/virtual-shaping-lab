@@ -94,6 +94,17 @@ function ConstraintMessage({ constraint, classNamePrefix }) {
   return <p className={toneClass}>{constraint.message}</p>;
 }
 
+function RouteStatePanel({ state, title, message, className }) {
+  if (!state && !title && !message) return null;
+  const normalized = String(state || "info").toLowerCase();
+  return (
+    <section className={`route-state-panel ${normalized} ${className || ""}`.trim()} role="status" aria-live="polite">
+      <strong>{title || "State"}</strong>
+      {message ? <span>{message}</span> : null}
+    </section>
+  );
+}
+
 function buildCatalogMismatchBanner(versionMismatch) {
   if (!versionMismatch || versionMismatch.field !== "catalog_version") return null;
   return {
@@ -112,5 +123,6 @@ window.VSLReact.uiPrimitives = {
   buildConstraintChips,
   ConstraintStateChips,
   ConstraintMessage,
+  RouteStatePanel,
   buildCatalogMismatchBanner,
 };
