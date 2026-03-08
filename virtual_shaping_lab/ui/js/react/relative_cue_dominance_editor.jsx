@@ -102,11 +102,39 @@ function RelativeCueDominanceApp() {
       </div>
 
       <div className="panel">
+        <h3>What This Preset Shows</h3>
+        <p>Two cues are trained together. The cue with higher salience contributes more to prediction strength.</p>
+      </div>
+
+      <div className="panel">
         <h3>Salience</h3>
         <p><strong>All other parameters held constant.</strong></p>
         <p>Cue A ({params.stim_1}) Salience: <strong>{params.salience_cs1}</strong></p>
         <p>Cue B ({params.stim_2}) Salience: <strong>{params.salience_cs2}</strong></p>
       </div>
+
+      <div className="panel">
+        <h3>Stimuli</h3>
+        <label>Cue A</label>
+        <select value={params.stim_1} onChange={(e) => {
+          const nextStim1 = e.target.value;
+          const nextStim2 = nextStim1 === params.stim_2 ? (STIMULI.find((s) => s !== nextStim1) || params.stim_2) : params.stim_2;
+          setParams((p) => ({ ...p, stim_1: nextStim1, stim_2: nextStim2 }));
+        }}>
+          {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_2}>{s}</option>)}
+        </select>
+        <label>Cue B</label>
+        <select value={params.stim_2} onChange={(e) => {
+          const nextStim2 = e.target.value;
+          const nextStim1 = nextStim2 === params.stim_1 ? (STIMULI.find((s) => s !== nextStim2) || params.stim_1) : params.stim_1;
+          setParams((p) => ({ ...p, stim_1: nextStim1, stim_2: nextStim2 }));
+        }}>
+          {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_1}>{s}</option>)}
+        </select>
+      </div>
+
+      <h2>Generated Payload</h2>
+      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>

@@ -120,11 +120,38 @@ function SalienceBiasDifferentialApp() {
       </div>
 
       <div className="panel">
+        <h3>What This Preset Shows</h3>
+        <p>In differential conditioning, stronger CS+ salience can widen separation from CS- responding.</p>
+      </div>
+
+      <div className="panel">
         <h3>Salience</h3>
         <p><strong>All other parameters held constant.</strong></p>
         <p>CS+ ({params.cs_plus.join(", ")}) Salience: <strong>{params.salience_plus}</strong></p>
         <p>CS- ({params.cs_minus.join(", ")}) Salience: <strong>{params.salience_minus}</strong></p>
       </div>
+
+      <div className="panel">
+        <h3>Stimuli</h3>
+        <label>CS+ Stimuli</label>
+        <select multiple value={params.cs_plus} onChange={onCSPlusChange}>
+          {STIMULI.map((s) => (
+            <option key={s} value={s} disabled={params.cs_minus.includes(s)}>{s}</option>
+          ))}
+        </select>
+
+        <br /><br />
+
+        <label>CS- Stimuli</label>
+        <select multiple value={params.cs_minus} onChange={onCSMinusChange}>
+          {STIMULI.map((s) => (
+            <option key={s} value={s} disabled={params.cs_plus.includes(s)}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      <h2>Generated Payload</h2>
+      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>
