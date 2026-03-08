@@ -237,6 +237,36 @@ def test_assemble_assigns_attention_to_learner():
     assert agent.learner.attention_map == {"tone": 0.6}
 
 
+def test_assemble_accepts_attention_config_strategy_form():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "attention_config": {
+                "name": "static",
+                "params": {"default": 1.0, "overrides": {"tone": 0.55}},
+            },
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, agent, _rep = assemble_experiment(config)
+    assert runtime_units
+    assert agent.learner.attention_multiplier("tone") == pytest.approx(0.55)
+
+
 def test_assemble_does_not_override_explicit_phase_context():
     payload = {
         "experiment": {

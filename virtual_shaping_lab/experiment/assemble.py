@@ -199,6 +199,16 @@ def _extract_learner_params(config, representation, policy_actions):
 
 
 def _assign_attention_map(config, learner):
+    attention_cfg = getattr(config, "attention_config", None)
+    if isinstance(attention_cfg, dict):
+        cfg_name = attention_cfg.get("name")
+        cfg_params = attention_cfg.get("params", {})
+        if isinstance(cfg_name, str) and hasattr(learner, "set_attention_config"):
+            learner.set_attention_config(
+                name=cfg_name,
+                params=cfg_params if isinstance(cfg_params, dict) else {},
+            )
+
     attention_map = dict(getattr(config, "attention", None) or {})
     if not attention_map:
         composed_learner = _get_composed_learner(config)
@@ -337,6 +347,7 @@ def _plan_to_config(plan: ExperimentPlan):
         salience=settings.get("salience", {}),
         attention=settings.get("attention", {}),
         context_inference=settings.get("context_inference", {}),
+        attention_config=settings.get("attention_config", {}),
         phases=phases,
         composed_parameters=settings.get("composed_parameters", {}),
         resolved_plan=bool(settings.get("resolved_plan", False)),

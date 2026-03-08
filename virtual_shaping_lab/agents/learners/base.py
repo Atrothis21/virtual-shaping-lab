@@ -5,11 +5,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Mapping
 
 import numpy as np
 
 from virtual_shaping_lab.agents.interfaces import ILearner
+from virtual_shaping_lab.agents.learners.attention_strategies import (
+    AttentionContext,
+    AttentionStrategy,
+    build_attention_strategy,
+)
 from virtual_shaping_lab.domain.types import EncodedState, META_CUE_LABELS, Transition
 
 
@@ -22,24 +27,30 @@ class BaseLearner(ILearner, ABC):
         self.alpha = float(alpha)
         self.gamma = float(gamma)
         self.attention_map: Dict[str, float] = {}
+        self._attention_strategy: AttentionStrategy = build_attention_strategy("none")
 
     def reset(self) -> None:
+        self._attention_strategy.reset()
         return None
 
     def set_attention_map(self, attention: Optional[Dict[str, float]]) -> None:
         self.attention_map = dict(attention or {})
+        self.set_attention_config(
+            name="static" if self.attention_map else "none",
+            params={
+                "default": 1.0,
+                "overrides": dict(self.attention_map),
+            },
+        )
+
+    def set_attention_config(self, *, name: str, params: Optional[Mapping[str, Any]] = None) -> None:
+        self._attention_strategy = build_attention_strategy(name=name, params=params)
 
     def attention_multiplier(self, cue_labels: Any) -> float:
-        if not self.attention_map or cue_labels is None:
-            return 1.0
-        if isinstance(cue_labels, (str, int, float)):
-            return float(self.attention_map.get(str(cue_labels), 1.0))
+        return float(self._attention_strategy.current_alpha_for_cues(cue_labels))
 
-        labels = [str(c) for c in cue_labels]
-        if not labels:
-            return 1.0
-        vals = [float(self.attention_map.get(lbl, 1.0)) for lbl in labels]
-        return sum(vals) / len(vals)
+    def update_attention_state(self, context: AttentionContext) -> None:
+        self._attention_strategy.update_state(context)
 
     @abstractmethod
     def update(self, transition: Transition) -> None:
