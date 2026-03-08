@@ -105,6 +105,30 @@ function RouteStatePanel({ state, title, message, className }) {
   );
 }
 
+function RecoveryActionRow({
+  onRetry,
+  onGoPresets,
+  onGoBuilder,
+  retryLabel,
+  presetsLabel,
+  builderLabel,
+  className,
+}) {
+  return (
+    <div className={`route-recovery-actions ${className || ""}`.trim()}>
+      <button type="button" className="route-action route-action-secondary" onClick={onRetry} disabled={typeof onRetry !== "function"}>
+        {retryLabel || "Retry"}
+      </button>
+      <button type="button" className="route-action route-action-secondary" onClick={onGoPresets} disabled={typeof onGoPresets !== "function"}>
+        {presetsLabel || "Go to presets"}
+      </button>
+      <button type="button" className="route-action route-action-secondary" onClick={onGoBuilder} disabled={typeof onGoBuilder !== "function"}>
+        {builderLabel || "Go to builder"}
+      </button>
+    </div>
+  );
+}
+
 function buildCatalogMismatchBanner(versionMismatch) {
   if (!versionMismatch || versionMismatch.field !== "catalog_version") return null;
   return {
@@ -124,5 +148,6 @@ window.VSLReact.uiPrimitives = {
   ConstraintStateChips,
   ConstraintMessage,
   RouteStatePanel,
+  RecoveryActionRow,
   buildCatalogMismatchBanner,
 };

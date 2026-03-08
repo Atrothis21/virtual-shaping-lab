@@ -74,6 +74,7 @@ function createReportState() {
     runId: "",
     reportData: null,
     selectedView: "summary",
+    lastUpdatedAtMs: null,
     lastError: null,
   };
 }
@@ -222,6 +223,7 @@ function applyUIEvent(prevState, event) {
     next[DOMAIN_KEYS.report].requestStatus = "loading";
     next[DOMAIN_KEYS.report].lastError = null;
     next[DOMAIN_KEYS.report].runId = payload.runId || next[DOMAIN_KEYS.run].activeRunId || "";
+    next[DOMAIN_KEYS.report].lastUpdatedAtMs = payload.atMs || Date.now();
     return next;
   }
 
@@ -229,12 +231,14 @@ function applyUIEvent(prevState, event) {
     next[DOMAIN_KEYS.report].requestStatus = "success";
     next[DOMAIN_KEYS.report].runId = payload.runId || next[DOMAIN_KEYS.report].runId;
     next[DOMAIN_KEYS.report].reportData = payload.reportData || null;
+    next[DOMAIN_KEYS.report].lastUpdatedAtMs = payload.atMs || Date.now();
     return next;
   }
 
   if (type === UI_EVENTS.REPORT_FAILED) {
     next[DOMAIN_KEYS.report].requestStatus = "error";
     next[DOMAIN_KEYS.report].lastError = payload.error || null;
+    next[DOMAIN_KEYS.report].lastUpdatedAtMs = payload.atMs || Date.now();
     return next;
   }
 

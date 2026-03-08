@@ -64,6 +64,7 @@
     const uiPrimitives = VSLReact.uiPrimitives || {};
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
+    const RecoveryActionRow = uiPrimitives.RecoveryActionRow || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectReportLifecycleViewModelFn = lifecycleViewModelsApi.selectReportLifecycleViewModel || fallbackSelectReportLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
@@ -71,6 +72,8 @@
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
     const warningMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "warning") : null;
     const toRuns = routeKeys && routeKeys.run ? routeKeys.run : "run";
+    const toPresets = routeKeys && routeKeys.presets ? routeKeys.presets : "presets";
+    const toBuilder = routeKeys && routeKeys.builder ? routeKeys.builder : "builder";
     const reportConstraintState = vm.canCreateReport
       ? null
       : {
@@ -114,6 +117,11 @@
               Go to runs
             </button>
           </div>
+          <RecoveryActionRow
+            onRetry={() => typeof onRefreshRun === "function" && onRefreshRun()}
+            onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+            onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+          />
         </div>
       );
     }
@@ -185,7 +193,14 @@
         </div>
         {reportActionStatus && reportActionStatus.message ? <RouteNotice level="info" className="report-action-message" message={reportActionStatus.message} /> : null}
         {reportActionStatus && reportActionStatus.error && reportActionStatus.error.message ? (
-          <RouteNotice level="error" className="report-action-error" message={String(reportActionStatus.error.message)} />
+          <>
+            <RouteNotice level="error" className="report-action-error" message={String(reportActionStatus.error.message)} />
+            <RecoveryActionRow
+              onRetry={() => typeof onCreateReport === "function" && onCreateReport()}
+              onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+              onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+            />
+          </>
         ) : null}
         {!vm.canCreateReport ? (
           <RouteNotice

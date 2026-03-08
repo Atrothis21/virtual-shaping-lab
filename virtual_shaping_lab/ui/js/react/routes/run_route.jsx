@@ -70,6 +70,7 @@
     const uiPrimitives = VSLReact.uiPrimitives || {};
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
+    const RecoveryActionRow = uiPrimitives.RecoveryActionRow || (() => null);
     const lifecycleViewModelsApi = VSLReact.lifecycleViewModels || {};
     const selectRunLifecycleViewModelFn = lifecycleViewModelsApi.selectRunLifecycleViewModel || fallbackSelectRunLifecycleViewModel;
     const buildLifecycleInstrumentViewFn = lifecycleViewModelsApi.buildLifecycleInstrumentView || fallbackBuildLifecycleInstrumentView;
@@ -86,6 +87,7 @@
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
     const blockingMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "blocking") : null;
     const toPresets = routeKeys && routeKeys.presets ? routeKeys.presets : "presets";
+    const toBuilder = routeKeys && routeKeys.builder ? routeKeys.builder : "builder";
     const runStatePanel = React.useMemo(() => {
       if (vm.requestStatus === "loading") {
         return { state: "loading", title: "Run Request In Flight", message: "Creating or refreshing run lifecycle..." };
@@ -120,6 +122,11 @@
               Go to presets
             </button>
           </div>
+          <RecoveryActionRow
+            onRetry={() => typeof onRefreshRun === "function" && onRefreshRun()}
+            onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+            onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+          />
         </div>
       );
     }
@@ -166,7 +173,14 @@
         ) : null}
         {runActionStatus && runActionStatus.message ? <RouteNotice level="info" className="run-action-message" message={runActionStatus.message} /> : null}
         {runActionStatus && runActionStatus.error && runActionStatus.error.message ? (
-          <RouteNotice level="error" className="run-action-error" message={String(runActionStatus.error.message)} />
+          <>
+            <RouteNotice level="error" className="run-action-error" message={String(runActionStatus.error.message)} />
+            <RecoveryActionRow
+              onRetry={() => typeof onStartRun === "function" && onStartRun()}
+              onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+              onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+            />
+          </>
         ) : null}
         {!vm.canStartRun ? (
           <RouteNotice

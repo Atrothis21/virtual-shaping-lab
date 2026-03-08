@@ -31,5 +31,6 @@ def test_launcher_route_wires_quick_actions_to_shared_handlers():
 def test_launcher_route_keeps_builder_and_presets_navigation_entrypoints():
     text = _read(LAUNCHER_ROUTE)
     assert "onRunPreset={() => typeof onNavigate === \"function\" && onNavigate(toPresets)}" in text
-    assert "onBuildExperiment={() => typeof onNavigate === \"function\" && onNavigate(toBuilder)}" in text
-
+    assert "onBuildExperiment={() => {" in text
+    assert "onStartGuidedBuilder" in text
+    assert "onNavigate(toBuilder)" in text

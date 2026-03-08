@@ -28,6 +28,8 @@
     catalogState,
     debugAdvancedState,
     onResolvePlan,
+    onNavigate,
+    routeKeys,
     onDraftEdited,
     resolveErrorView,
   }) {
@@ -35,6 +37,9 @@
     const ConstraintStateChips = uiPrimitives.ConstraintStateChips || (() => null);
     const ConstraintMessage = uiPrimitives.ConstraintMessage || (() => null);
     const RouteStatePanel = uiPrimitives.RouteStatePanel || (() => null);
+    const RecoveryActionRow = uiPrimitives.RecoveryActionRow || (() => null);
+    const toPresets = routeKeys && routeKeys.presets ? routeKeys.presets : "presets";
+    const toBuilder = routeKeys && routeKeys.builder ? routeKeys.builder : "builder";
     const seed = builderDraftState && builderDraftState.draft ? builderDraftState.draft : null;
     const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
     const stableHash = planState && planState.stableHash ? planState.stableHash : "";
@@ -289,6 +294,11 @@
               </div>
             ) : null}
             <div><strong>Recovery:</strong> {resolveErrorView.hint}</div>
+            <RecoveryActionRow
+              onRetry={() => typeof onResolvePlan === "function" && onResolvePlan()}
+              onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+              onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+            />
           </div>
         ) : null}
       </div>

@@ -623,6 +623,13 @@
       color: #fde68a;
     }
 
+    .route-recovery-actions {
+      margin-top: 0.55rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+    }
+
     .phenomenon-support {
       margin-top: 0.75rem;
       position: relative;

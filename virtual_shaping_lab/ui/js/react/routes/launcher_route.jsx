@@ -28,6 +28,15 @@
     return ranked.slice(0, cap);
   }
 
+  function toEpochMs(value) {
+    if (Number.isFinite(Number(value))) return Number(value);
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+  }
+
   function buildRecentActivityItems(runState, reportState, maxItems) {
     const rows = [];
     if (runState && runState.activeRunId) {
@@ -35,17 +44,30 @@
         key: `run-${runState.activeRunId}`,
         label: "Recent run",
         value: `${runState.activeRunId} (${runState.lifecycleState || "unknown"})`,
+        atMs: toEpochMs(runState.lastPollAtMs),
       });
     }
     if (reportState && reportState.runId) {
+      const reportMeta = reportState.reportData && reportState.reportData.metadata && typeof reportState.reportData.metadata === "object"
+        ? reportState.reportData.metadata
+        : {};
       rows.push({
         key: `report-${reportState.runId}`,
         label: "Recent report",
         value: String(reportState.runId),
+        atMs: Math.max(
+          toEpochMs(reportState.lastUpdatedAtMs),
+          toEpochMs(reportMeta.generated_at_ms || reportMeta.generated_at || 0)
+        ),
       });
     }
+    const ranked = rows.sort((a, b) => {
+      const timeDelta = Number(b.atMs || 0) - Number(a.atMs || 0);
+      if (timeDelta !== 0) return timeDelta;
+      return String(a.key).localeCompare(String(b.key));
+    });
     const cap = Number.isFinite(maxItems) ? maxItems : 3;
-    return rows.slice(0, cap);
+    return ranked.slice(0, cap);
   }
 
   function LauncherRouteContainer({
@@ -58,10 +80,14 @@
     onSeedDraftFromPreset,
     onResolveRunAction,
     onResolveRunReportAction,
+    onRetryCatalog,
     actionState,
   }) {
     const launcherFeature = VSLReact.launcherFeature || {};
     const LauncherView = launcherFeature.LauncherView || (() => null);
+    const uiPrimitives = VSLReact.uiPrimitives || {};
+    const RouteNotice = uiPrimitives.RouteNotice || (() => null);
+    const RecoveryActionRow = uiPrimitives.RecoveryActionRow || (() => null);
     const toPresets = routeKeys && routeKeys.presets ? routeKeys.presets : "presets";
     const toBuilder = routeKeys && routeKeys.builder ? routeKeys.builder : "builder";
     const toRun = routeKeys && routeKeys.run ? routeKeys.run : "run";
@@ -142,6 +168,26 @@
             <p>No recent run/report yet.</p>
           )}
         </section>
+        {catalogState && catalogState.requestStatus === "error" ? (
+          <>
+            <RouteNotice level="error" message="Launcher metadata is unavailable. Retry catalog load or continue with presets/builder." />
+            <RecoveryActionRow
+              onRetry={onRetryCatalog}
+              onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+              onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+            />
+          </>
+        ) : null}
+        {actionState && actionState.error && actionState.error.message ? (
+          <>
+            <RouteNotice level="error" message={String(actionState.error.message)} />
+            <RecoveryActionRow
+              onRetry={() => featured[0] ? handleQuickRun(featured[0]) : null}
+              onGoPresets={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+              onGoBuilder={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+            />
+          </>
+        ) : null}
       </div>
     );
   }

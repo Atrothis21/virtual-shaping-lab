@@ -451,6 +451,7 @@ function AppShell() {
           onSeedDraftFromPreset={seedDraftFromPreset}
           onResolveRunAction={resolveAndRunPresetFromSelection}
           onResolveRunReportAction={resolveRunReportPresetFromSelection}
+          onRetryCatalog={refreshCatalog}
           actionState={presetActionState}
           onNavigate={navigateTo}
           routeKeys={{
@@ -470,6 +471,11 @@ function AppShell() {
             catalogState={catalogState}
             debugAdvancedState={debugAdvancedState}
             onResolvePlan={resolvePlanFromBuilderContext}
+            onNavigate={navigateTo}
+            routeKeys={{
+              presets: routes.presets.key,
+              builder: routes.builder.key,
+            }}
             onDraftEdited={editBuilderDraft}
             resolveErrorView={planResolveErrorView}
           />
@@ -484,7 +490,7 @@ function AppShell() {
           onStartRun={startRunFromResolvedPlan}
           onRefreshRun={refreshActiveRunStatus}
           onNavigate={navigateTo}
-          routeKeys={{ presets: routes.presets.key }}
+          routeKeys={{ presets: routes.presets.key, builder: routes.builder.key }}
           runActionStatus={runActionStatus}
           provenanceView={runProvenanceView}
           mismatchView={runVersionMismatches}
@@ -501,7 +507,7 @@ function AppShell() {
           onCreateReport={createReportFromActiveRun}
           onRefreshRun={refreshActiveRunStatus}
           onNavigate={navigateTo}
-          routeKeys={{ run: routes.run.key }}
+          routeKeys={{ run: routes.run.key, presets: routes.presets.key, builder: routes.builder.key }}
           reportActionStatus={reportActionStatus}
           provenanceView={reportProvenanceView}
           mismatchView={reportVersionMismatches}
