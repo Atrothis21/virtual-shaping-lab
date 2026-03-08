@@ -1,5 +1,6 @@
 ﻿window.VSLReact = window.VSLReact || {};
 
+(function initIndexApp(global) {
 const ROUTES = {
   presets: { key: "presets", label: "Presets (/presets)", hash: "#/presets" },
   builder: { key: "builder", label: "Builder (/builder)", hash: "#/builder" },
@@ -576,4 +577,5 @@ function AppShell() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<AppShell />);
+})(window);
 
