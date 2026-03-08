@@ -54,9 +54,9 @@
             </div>
             <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
             <p>{item.description}</p>
-            <p style={{ marginBottom: "0.35rem" }}><strong>Template:</strong> <code>{item.defaultTemplate}</code></p>
-            <p style={{ marginBottom: "0.35rem" }}><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
-            <p style={{ marginBottom: "0.7rem" }}><strong>Expected Signals:</strong></p>
+            <p className="preset-meta-row"><strong>Template:</strong> <code>{item.defaultTemplate}</code></p>
+            <p className="preset-meta-row"><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
+            <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
             <PresetSignalChips signals={item.expectedSignals} maxItems={3} />
             <div className="route-actions">
               <button type="button" className="route-action route-action-primary" onClick={() => typeof onUseInBuilder === "function" && onUseInBuilder(item)}>
@@ -87,9 +87,9 @@
         </div>
         <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
         <p>{item.description}</p>
-        <p style={{ marginBottom: "0.35rem" }}><strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code></p>
-        <p style={{ marginBottom: "0.35rem" }}><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
-        <p style={{ marginBottom: "0.7rem" }}><strong>Expected Signals:</strong></p>
+        <p className="preset-meta-row"><strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code></p>
+        <p className="preset-meta-row"><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
+        <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
         <PresetSignalChips signals={item.expectedSignals} />
         <div className="route-actions">
           <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Resolve Preset</button>
@@ -98,7 +98,7 @@
         </div>
         <div className="preset-action-status">
           <strong>Action Status:</strong> <code>{actionState && actionState.status ? actionState.status : "idle"}</code>
-          {actionState && actionState.step ? <span style={{ marginLeft: "0.45rem" }}><strong>Step:</strong> <code>{actionState.step}</code></span> : null}
+          {actionState && actionState.step ? <span className="preset-action-step"><strong>Step:</strong> <code>{actionState.step}</code></span> : null}
           {actionState && actionState.message ? <RouteNotice level="info" className="preset-action-message" message={actionState.message} /> : null}
           {actionState && actionState.error && actionState.error.message ? (
             <RouteNotice level="error" className="preset-action-error" message={String(actionState.error.message)} />
@@ -123,10 +123,10 @@
           <>
             <p className="phenomenon-meta-line">Support Mode: <code>setup-guidance</code> | signal_count: <code>{signalCount}</code></p>
             <p><strong>{item.title}</strong> is currently selected. Use this panel to review expected signatures and reporting guidance before execution.</p>
-            <p style={{ marginBottom: "0.35rem" }}><strong>Recommended Report Template:</strong> <code>{item.defaultTemplate}</code></p>
-            <p style={{ marginBottom: "0.35rem" }}><strong>Expected Signals:</strong></p>
+            <p className="preset-meta-row"><strong>Recommended Report Template:</strong> <code>{item.defaultTemplate}</code></p>
+            <p className="preset-meta-row"><strong>Expected Signals:</strong></p>
             <PresetSignalChips signals={item.expectedSignals} />
-            <p style={{ marginTop: "0.55rem" }}>Scope note: this panel is a lightweight support surface. Full narrative teaching mode is out of scope for V2.17.1.</p>
+            <p className="phenomenon-scope-note">Scope note: this panel is a lightweight support surface. Full narrative teaching mode is out of scope for V2.17.1.</p>
           </>
         )}
       </div>
@@ -249,9 +249,9 @@
         <PhenomenonSupportPanel item={selectedPreset} />
         <PresetBrowserGrid items={filteredItems} onUseInBuilder={handleSeedToBuilder} />
 
-        <div className="route-card" style={{ marginTop: "0.75rem" }}>
+        <div className="route-card preset-quick-select-card">
           <strong>Quick Select</strong>
-          <p style={{ marginTop: "0.35rem", marginBottom: "0.5rem" }}>Choose which preset appears in detail view.</p>
+          <p className="preset-quick-select-copy">Choose which preset appears in detail view.</p>
           <div className="preset-detail-selectors">
             {filteredItems.slice(0, 10).map((item) => (
               <button type="button" key={`select-${item.key}`} className={`route-action route-action-secondary ${selectedPreset?.key === item.key ? "active" : ""}`} onClick={() => setSelectedPresetKey(item.key)}>

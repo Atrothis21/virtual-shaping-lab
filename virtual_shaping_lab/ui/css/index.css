@@ -61,6 +61,10 @@
       color: var(--vsl-color-text-secondary);
     }
 
+    .shell-subtitle-compact {
+      margin-top: 0.2rem;
+    }
+
     .shell-body {
       display: grid;
       grid-template-columns: 280px 1fr;
@@ -82,6 +86,12 @@
       margin-top: 0;
       margin-bottom: 0.85rem;
       font-size: 1rem;
+    }
+
+    .shell-nav-version-readout {
+      margin-bottom: 0.75rem;
+      font-size: 0.82rem;
+      color: var(--vsl-color-text-secondary);
     }
 
     .shell-nav-item {
@@ -226,6 +236,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 0.75rem;
+      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
     }
 
     .global-banner .banner-content {
@@ -262,6 +273,7 @@
       padding: 0.9rem;
       margin-bottom: 0.9rem;
       color: #fca5a5;
+      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
     }
 
     .blocking-panel h2 {
@@ -308,6 +320,7 @@
       padding: 1rem 1.1rem;
       background: var(--vsl-color-panel);
       box-shadow: var(--vsl-shadow-soft);
+      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
     }
 
     .route-card-header {
@@ -429,6 +442,14 @@
       text-transform: none;
     }
 
+    .preset-meta-row {
+      margin-bottom: 0.35rem;
+    }
+
+    .preset-meta-row-signals {
+      margin-bottom: 0.7rem;
+    }
+
     .preset-card code {
       font-family: var(--vsl-font-mono);
       font-size: 0.82rem;
@@ -507,6 +528,10 @@
       color: var(--vsl-color-text-secondary);
     }
 
+    .preset-action-step {
+      margin-left: 0.45rem;
+    }
+
     .preset-action-status code {
       font-family: var(--vsl-font-mono);
       color: #dbeafe;
@@ -533,6 +558,7 @@
       gap: 0.16rem;
       font-size: 0.82rem;
       color: var(--vsl-color-text-secondary);
+      transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
     }
 
     .route-notice.info {
@@ -559,6 +585,7 @@
       gap: 0.12rem;
       font-size: 0.8rem;
       color: #cbd5e1;
+      transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
     }
 
     .route-state-panel strong {
@@ -646,6 +673,10 @@
       text-transform: none;
     }
 
+    .phenomenon-scope-note {
+      margin-top: 0.55rem;
+    }
+
     .phenomenon-signal-list {
       margin: 0.25rem 0 0.4rem 1.1rem;
       padding: 0;
@@ -663,6 +694,15 @@
       display: flex;
       gap: 0.5rem;
       flex-wrap: wrap;
+    }
+
+    .preset-quick-select-card {
+      margin-top: 0.75rem;
+    }
+
+    .preset-quick-select-copy {
+      margin-top: 0.35rem;
+      margin-bottom: 0.5rem;
     }
 
     .preset-detail-selectors .route-action.active {
@@ -860,6 +900,7 @@
       gap: 0.32rem;
       border-top: 1px dashed rgba(100, 116, 139, 0.75);
       padding-top: 0.34rem;
+      animation: vsl-fade-slide-in 180ms ease-out;
     }
 
     .builder-debug-summary {
@@ -892,6 +933,7 @@
       padding: 0.45rem 0.52rem;
       overflow-x: auto;
       max-height: 10.5rem;
+      animation: vsl-fade-slide-in 180ms ease-out;
     }
 
     .builder-control {
@@ -1108,7 +1150,7 @@
     .lifecycle-meter span {
       display: block;
       height: 100%;
-      transition: width 180ms ease-out;
+      transition: width 220ms ease-out;
       background: linear-gradient(90deg, rgba(148, 163, 184, 0.3), rgba(148, 163, 184, 0.85));
     }
 
@@ -1320,6 +1362,12 @@
       gap: 0.22rem;
       position: relative;
       overflow: hidden;
+      transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .report-figure-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.26);
     }
 
     .report-figure-card::before {
@@ -1386,6 +1434,17 @@
       font-size: 0.84rem;
     }
 
+    @keyframes vsl-fade-slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @media (max-width: 900px) {
       .shell-body {
         grid-template-columns: 1fr;
@@ -1393,5 +1452,21 @@
 
       .shell-nav {
         position: static;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+
+      .report-figure-card:hover {
+        transform: none;
+        box-shadow: none;
       }
     }

@@ -471,13 +471,13 @@ function AppShell() {
           <p className="shell-subtitle">
             V2.17 app shell scaffold with first-pass route containers.
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             State domains initialized: {initialState ? Object.keys(initialState).length : 0}
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             Catalog bootstrap status: {catalogState ? catalogState.requestStatus : "n/a"}
           </p>
-          <p className="shell-subtitle" style={{ marginTop: "0.2rem" }}>
+          <p className="shell-subtitle shell-subtitle-compact">
             Architecture contracts loaded: {contractRegistry ? "yes" : "no"}
           </p>
         </div>
@@ -486,7 +486,7 @@ function AppShell() {
       <div className="shell-body">
         <SurfacePanel className="shell-nav">
           <h3>Navigation Scaffold</h3>
-          <div style={{ marginBottom: "0.75rem", fontSize: "0.82rem", color: "#475569" }}>
+          <div className="shell-nav-version-readout">
             <div><strong>catalog_version:</strong> {catalogState?.versions?.catalog_version || "n/a"}</div>
             <div><strong>record_schema:</strong> {catalogState?.versions?.record_schema_version || "n/a"}</div>
             <div><strong>template_version:</strong> {catalogState?.versions?.template_version_used ?? "n/a"}</div>
