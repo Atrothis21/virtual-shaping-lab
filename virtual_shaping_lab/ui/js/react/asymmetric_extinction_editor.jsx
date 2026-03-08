@@ -116,45 +116,11 @@ function AsymmetricExtinctionApp() {
       </div>
 
       <div className="panel">
-        <h3>Trials</h3>
-        <label>Acquisition Trials: <span>{params.n_trials_acq}</span></label>
-        <input type="range" min="1" max="500" value={params.n_trials_acq} onChange={(e) => setParams((p) => ({ ...p, n_trials_acq: +e.target.value }))} />
-        <label>Extinction Trials: <span>{params.n_trials_ext}</span></label>
-        <input type="range" min="1" max="500" value={params.n_trials_ext} onChange={(e) => setParams((p) => ({ ...p, n_trials_ext: +e.target.value }))} />
-      </div>
-
-      <div className="panel">
-        <h3>Learning</h3>
-        <label>Alpha Cue A: <span>{params.alpha_cs1}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.alpha_cs1} onChange={(e) => setParams((p) => ({ ...p, alpha_cs1: +e.target.value }))} />
-        <label>Alpha Cue B: <span>{params.alpha_cs2}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.alpha_cs2} onChange={(e) => setParams((p) => ({ ...p, alpha_cs2: +e.target.value }))} />
-        <label>Alpha Extinction: <span>{params.alpha_ext}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.alpha_ext} onChange={(e) => setParams((p) => ({ ...p, alpha_ext: +e.target.value }))} />
-      </div>
-
-      <div className="panel">
         <h3>Salience</h3>
-        <label>Cue A Salience: <span>{params.salience_cs1}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.salience_cs1} onChange={(e) => setParams((p) => ({ ...p, salience_cs1: +e.target.value }))} />
-        <label>Cue B Salience: <span>{params.salience_cs2}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.salience_cs2} onChange={(e) => setParams((p) => ({ ...p, salience_cs2: +e.target.value }))} />
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>Cue A ({params.stim_1}) Salience: <strong>{params.salience_cs1}</strong></p>
+        <p>Cue B ({params.stim_2}) Salience: <strong>{params.salience_cs2}</strong></p>
       </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>Cue A</label>
-        <select value={params.stim_1} onChange={(e) => setParams((p) => ({ ...p, stim_1: e.target.value }))}>
-          {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_2}>{s}</option>)}
-        </select>
-        <label>Cue B</label>
-        <select value={params.stim_2} onChange={(e) => setParams((p) => ({ ...p, stim_2: e.target.value }))}>
-          {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_1}>{s}</option>)}
-        </select>
-      </div>
-
-      <h2>Generated Payload</h2>
-      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>

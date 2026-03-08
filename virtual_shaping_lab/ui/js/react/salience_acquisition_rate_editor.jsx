@@ -101,33 +101,10 @@ function SalienceAcquisitionRateApp() {
       </div>
 
       <div className="panel">
-        <h3>Trials</h3>
-        <label>Number of Trials: <span>{params.n_trials}</span></label>
-        <input type="range" min="1" max="500" value={params.n_trials} onChange={(e) => setParams((prev) => ({ ...prev, n_trials: +e.target.value }))} />
+        <h3>Salience</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>CS ({params.cs_plus.join(", ")}) Salience: <strong>{params.salience}</strong></p>
       </div>
-
-      <div className="panel">
-        <h3>Learning</h3>
-        <label>Learning Rate (alpha): <span>{params.alpha}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.alpha} onChange={(e) => setParams((prev) => ({ ...prev, alpha: +e.target.value }))} />
-        <label>Discount (gamma): <span>{params.gamma}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.gamma} onChange={(e) => setParams((prev) => ({ ...prev, gamma: +e.target.value }))} />
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS</label>
-        <select multiple value={params.cs_plus} onChange={(e) => setParams((prev) => ({ ...prev, cs_plus: Array.from(e.target.selectedOptions).map((o) => o.value) }))}>
-          {STIMULI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <label>Salience (selected CS): <span>{params.salience}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.salience} onChange={(e) => setParams((prev) => ({ ...prev, salience: +e.target.value }))} />
-      </div>
-
-      <h2>Generated Payload</h2>
-      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>

@@ -120,42 +120,11 @@ function SalienceBiasDifferentialApp() {
       </div>
 
       <div className="panel">
-        <h3>Trials</h3>
-        <label>Number of Trials: <span>{params.n_trials}</span></label>
-        <input type="range" min="1" max="500" value={params.n_trials} onChange={(e) => setParams((prev) => ({ ...prev, n_trials: +e.target.value }))} />
+        <h3>Salience</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>CS+ ({params.cs_plus.join(", ")}) Salience: <strong>{params.salience_plus}</strong></p>
+        <p>CS- ({params.cs_minus.join(", ")}) Salience: <strong>{params.salience_minus}</strong></p>
       </div>
-
-      <div className="panel">
-        <h3>Learning</h3>
-        <label>Learning Rate (alpha): <span>{params.alpha}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.alpha} onChange={(e) => setParams((prev) => ({ ...prev, alpha: +e.target.value }))} />
-        <label>CS+ Salience: <span>{params.salience_plus}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.salience_plus} onChange={(e) => setParams((prev) => ({ ...prev, salience_plus: +e.target.value }))} />
-        <label>CS- Salience: <span>{params.salience_minus}</span></label>
-        <input type="range" min="0" max="1" step="0.05" value={params.salience_minus} onChange={(e) => setParams((prev) => ({ ...prev, salience_minus: +e.target.value }))} />
-      </div>
-
-      <div className="panel">
-        <h3>Stimuli</h3>
-        <label>CS+ Stimuli</label>
-        <select multiple value={params.cs_plus} onChange={onCSPlusChange}>
-          {STIMULI.map((s) => (
-            <option key={s} value={s} disabled={params.cs_minus.includes(s)}>{s}</option>
-          ))}
-        </select>
-
-        <br /><br />
-
-        <label>CS- Stimuli</label>
-        <select multiple value={params.cs_minus} onChange={onCSMinusChange}>
-          {STIMULI.map((s) => (
-            <option key={s} value={s} disabled={params.cs_plus.includes(s)}>{s}</option>
-          ))}
-        </select>
-      </div>
-
-      <h2>Generated Payload</h2>
-      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>
