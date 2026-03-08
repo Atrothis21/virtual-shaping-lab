@@ -40,6 +40,9 @@ _DEBUG_TELEMETRY_FIELD_TYPES: dict[str, tuple[type, ...]] = {
     "prediction_error": (int, float),
     "active_features": (list, tuple),
     "attention_effective": (dict,),
+    "alpha_by_stimulus": (dict,),
+    "mean_alpha": (int, float),
+    "cuewise_contributions": (dict,),
     "salience_effective": (dict,),
 }
 

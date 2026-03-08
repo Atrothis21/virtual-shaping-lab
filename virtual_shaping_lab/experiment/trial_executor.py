@@ -110,6 +110,30 @@ class TrialExecutor:
         attention_effective = self._mapping_to_float_dict(getattr(learner, "attention_map", None))
         if attention_effective is None:
             attention_effective = self._mapping_to_float_dict(getattr(learner, "attention", None))
+        attention_diagnostics = {}
+        if learner is not None and hasattr(learner, "attention_diagnostics"):
+            cue_labels = active_stimuli if active_stimuli else None
+            raw_diag = learner.attention_diagnostics(cue_labels=cue_labels)
+            if isinstance(raw_diag, dict):
+                attention_diagnostics = raw_diag
+
+        alpha_by_stimulus = self._mapping_to_float_dict(
+            attention_diagnostics.get("alpha_by_stimulus")
+        )
+        mean_alpha = attention_diagnostics.get("mean_alpha")
+        try:
+            mean_alpha = float(mean_alpha) if mean_alpha is not None else None
+        except (TypeError, ValueError):
+            mean_alpha = None
+        cuewise_contributions = self._mapping_to_float_dict(
+            attention_diagnostics.get("cuewise_contributions")
+        )
+        pred_err = attention_diagnostics.get("prediction_error")
+        if prediction_error is None:
+            try:
+                prediction_error = float(pred_err) if pred_err is not None else None
+            except (TypeError, ValueError):
+                prediction_error = None
 
         representation = getattr(agent, "representation", None) if agent is not None else None
         salience_effective = self._mapping_to_float_dict(getattr(representation, "salience", None))
@@ -119,6 +143,9 @@ class TrialExecutor:
             "prediction_error": prediction_error,
             "active_features": [str(s) for s in active_stimuli],
             "attention_effective": attention_effective if attention_effective is not None else {},
+            "alpha_by_stimulus": alpha_by_stimulus if alpha_by_stimulus is not None else {},
+            "mean_alpha": mean_alpha,
+            "cuewise_contributions": cuewise_contributions if cuewise_contributions is not None else {},
             "salience_effective": salience_effective if salience_effective is not None else {},
         }
 

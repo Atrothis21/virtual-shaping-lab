@@ -52,6 +52,62 @@ def test_attention_normalization_accepts_object():
     assert cfg.attention["noise"] == 0.4
 
 
+def test_attention_config_accepts_strategy_object():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "pearce_hall",
+        "params": {"eta": 0.2},
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.attention_config["name"] == "pearce_hall"
+    assert cfg.attention_config["params"]["eta"] == 0.2
+
+
+def test_attention_strategy_form_in_attention_field_is_supported():
+    payload = _base_payload()
+    payload["experiment"]["attention"] = {
+        "name": "mackintosh",
+        "params": {"kappa": 0.1},
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    assert cfg.attention == {}
+    assert cfg.attention_config["name"] == "mackintosh"
+    assert cfg.attention_config["params"]["kappa"] == 0.1
+
+
+def test_attention_config_invalid_contract_rejected():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "pearce_hall"}
+    with pytest.raises(ValueError, match="must include 'name' and 'params'"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "unknown_model", "params": {}}
+    with pytest.raises(ValueError, match="Unsupported experiment.attention_config.name"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "none", "params": "bad"}
+    with pytest.raises(ValueError, match="experiment.attention_config.params must be an object"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "mackintosh",
+        "params": {"kappa": 1.2},
+    }
+    with pytest.raises(ValueError, match="kappa must be in \\[0,1\\]"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "pearce_hall",
+        "params": {"eta": 0.2, "unknown": 1},
+    }
+    with pytest.raises(ValueError, match="contains unsupported keys"):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_similarity_matrix_validation_rejects_bad_size():
     payload = _base_payload()
     payload["experiment"]["representation"]["params"]["similarity"] = {

@@ -65,6 +65,42 @@ def test_parameter_validator_rejects_unknown_attention_keys():
         ParameterValidatorPipeline.validate(payload)
 
 
+def test_parameter_validator_attention_config_contract():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "pearce_hall", "params": {"eta": 0.2}}
+    ParameterValidatorPipeline.validate(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention"] = {"name": "mackintosh", "params": {"kappa": 0.1}}
+    ParameterValidatorPipeline.validate(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "pearce_hall"}
+    with pytest.raises(ValueError, match="must include 'name' and 'params'"):
+        ParameterValidatorPipeline.validate(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {"name": "unknown_model", "params": {}}
+    with pytest.raises(ValueError, match="Unsupported experiment.attention_config.name"):
+        ParameterValidatorPipeline.validate(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "pearce_hall",
+        "params": {"eta": 1.5},
+    }
+    with pytest.raises(ValueError, match="eta must be in \\[0,1\\]"):
+        ParameterValidatorPipeline.validate(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "static",
+        "params": {"overrides": {"tone": -0.1}},
+    }
+    with pytest.raises(ValueError, match="overrides\\['tone'\\].*\\[0,1\\]"):
+        ParameterValidatorPipeline.validate(payload)
+
+
 def test_parameter_validator_rejects_non_grid_aligned_dt_duration():
     payload = _base_payload()
     payload["experiment"]["phases"][0]["params"]["duration_s"] = 1.0

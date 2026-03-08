@@ -39,9 +39,13 @@ class TDValueLearner(BaseLearner):
             v_next = self.value(transition.s_next)
 
         delta = transition.r + self.gamma * v_next - v
-        alpha = self.effective_alpha(transition)
-
-        self.weights += alpha * float(delta) * transition.s.x
+        x_mod = self.attention_modulated_state(
+            transition,
+            total_prediction=v,
+            prediction_error=delta,
+            feature_contributions={f"f{i}": self.weights[i] * transition.s.x[i] for i in range(len(self.weights))},
+        )
+        self.weights += float(self.alpha) * float(delta) * x_mod
 
     def get_parameters(self):
         return {"weights": self.weights.copy()}

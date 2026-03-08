@@ -26,6 +26,18 @@ _CANONICAL_TEMPLATE_BACKED_PHASE_KEYS = {
     "pavlovian_phase_template",
     "operant_phase_template",
 }
+_ALLOWED_ATTENTION_STRATEGIES = {
+    "none",
+    "static",
+    "pearce_hall",
+    "mackintosh",
+}
+_ATTENTION_CONFIG_ALLOWED_PARAM_KEYS = {
+    "none": set(),
+    "static": {"default", "overrides"},
+    "pearce_hall": {"default", "overrides", "eta"},
+    "mackintosh": {"default", "overrides", "kappa"},
+}
 
 
 def _is_template_param_guard_protocol(protocol_name: Any) -> bool:
@@ -48,7 +60,13 @@ class PayloadNormalizer:
         representation = parser.parse_representation(exp)
         policy = parser.parse_policy(exp)
         runtime = parser.parse_runtime(exp)
-        exp_stimuli, exp_salience, exp_attention, exp_context_inference = parser.parse_experiment_fields(exp)
+        (
+            exp_stimuli,
+            exp_salience,
+            exp_attention,
+            exp_context_inference,
+            exp_attention_config,
+        ) = parser.parse_experiment_fields(exp)
         phases = parser.parse_phases(exp)
         return {
             "representation": representation,
@@ -57,6 +75,7 @@ class PayloadNormalizer:
             "stimuli": exp_stimuli,
             "salience": exp_salience,
             "attention": exp_attention,
+            "attention_config": exp_attention_config,
             "context_inference": exp_context_inference,
             "phases": phases,
         }
@@ -140,7 +159,7 @@ class ConfigParser:
     def parse_experiment_fields(
         self,
         exp: Dict[str, Any],
-    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any]]:
+    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any], Dict[str, Any]]:
         return self._config_cls._parse_experiment_fields(exp)
 
     def parse_phases(self, exp: Dict[str, Any]) -> List["PhaseConfig"]:
@@ -242,6 +261,7 @@ class ConfigPipeline:
             stimuli=normalized["stimuli"],
             salience=normalized["salience"],
             attention=normalized["attention"],
+            attention_config=normalized["attention_config"],
             context_inference=normalized["context_inference"],
             phases=normalized["phases"],
             report_preset=normalized_report["preset"],
@@ -286,6 +306,7 @@ class ExperimentConfig:
     stimuli: List[str]
     salience: Dict[str, float]
     attention: Dict[str, float]
+    attention_config: Dict[str, Any]
     context_inference: Dict[str, Any]
 
     phases: List[PhaseConfig]
@@ -331,20 +352,134 @@ class ExperimentConfig:
           attention_map
         """
         if isinstance(attention_field, dict):
+            if "name" in attention_field or "params" in attention_field:
+                # Strategy-form attention object is parsed by _normalize_attention_config.
+                return {}
             attention = {}
             for key, val in attention_field.items():
                 if isinstance(val, dict) and "attention" in val:
                     try:
-                        attention[key] = float(val["attention"])
+                        parsed = float(val["attention"])
                     except (TypeError, ValueError):
                         raise ValueError(f"Invalid attention value for '{key}'")
+                    if parsed < 0.0 or parsed > 1.0:
+                        raise ValueError(f"Invalid attention value for '{key}': must be in [0,1]")
+                    attention[key] = parsed
                 else:
                     try:
-                        attention[key] = float(val)
+                        parsed = float(val)
                     except (TypeError, ValueError):
                         raise ValueError(f"Invalid attention value for '{key}'")
+                    if parsed < 0.0 or parsed > 1.0:
+                        raise ValueError(f"Invalid attention value for '{key}': must be in [0,1]")
+                    attention[key] = parsed
             return attention
         return {}
+
+    @staticmethod
+    def _parse_unit_interval(value: Any, field: str) -> float:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{field} must be numeric")
+        if parsed < 0.0 or parsed > 1.0:
+            raise ValueError(f"{field} must be in [0,1]")
+        return parsed
+
+    @classmethod
+    def _normalize_attention_config_params(
+        cls,
+        *,
+        strategy_name: str,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        allowed = _ATTENTION_CONFIG_ALLOWED_PARAM_KEYS[strategy_name]
+        unknown = sorted(k for k in params.keys() if k not in allowed)
+        if unknown:
+            raise ValueError(
+                "experiment.attention_config.params contains unsupported keys for "
+                f"'{strategy_name}': {', '.join(unknown)}"
+            )
+
+        if strategy_name == "none":
+            return {}
+
+        normalized: Dict[str, Any] = {}
+        if "default" in allowed:
+            normalized["default"] = cls._parse_unit_interval(
+                params.get("default", 1.0 if strategy_name == "static" else 0.5),
+                "experiment.attention_config.params.default",
+            )
+        if "overrides" in allowed:
+            overrides = params.get("overrides", {})
+            if not isinstance(overrides, dict):
+                raise ValueError("experiment.attention_config.params.overrides must be an object")
+            normalized["overrides"] = cls._normalize_attention(overrides)
+        if strategy_name == "pearce_hall":
+            normalized["eta"] = cls._parse_unit_interval(
+                params.get("eta", 0.2),
+                "experiment.attention_config.params.eta",
+            )
+        if strategy_name == "mackintosh":
+            normalized["kappa"] = cls._parse_unit_interval(
+                params.get("kappa", 0.1),
+                "experiment.attention_config.params.kappa",
+            )
+        return normalized
+
+    @classmethod
+    def _normalize_attention_config(
+        cls,
+        *,
+        attention_field: Any,
+        attention_config_field: Any,
+    ) -> Dict[str, Any]:
+        """
+        Normalize canonical attention strategy config.
+
+        Supported forms:
+          - experiment.attention_config = {"name": str, "params": {...}}
+          - strategy-form experiment.attention = {"name": str, "params": {...}}
+          - legacy experiment.attention map (normalized to static/none config)
+        """
+        cfg = attention_config_field
+        if cfg is None and isinstance(attention_field, dict) and (
+            "name" in attention_field or "params" in attention_field
+        ):
+            cfg = attention_field
+
+        if cfg is not None:
+            if not isinstance(cfg, dict):
+                raise ValueError("experiment.attention_config must be an object")
+            if "name" not in cfg or "params" not in cfg:
+                raise ValueError("experiment.attention_config must include 'name' and 'params'")
+            name = cfg.get("name")
+            params = cfg.get("params")
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError("experiment.attention_config.name must be a non-empty string")
+            if not isinstance(params, dict):
+                raise ValueError("experiment.attention_config.params must be an object")
+            normalized_name = name.strip().lower()
+            if normalized_name not in _ALLOWED_ATTENTION_STRATEGIES:
+                raise ValueError(
+                    "Unsupported experiment.attention_config.name "
+                    f"'{name}'. Allowed: {', '.join(sorted(_ALLOWED_ATTENTION_STRATEGIES))}"
+                )
+            return {
+                "name": normalized_name,
+                "params": cls._normalize_attention_config_params(
+                    strategy_name=normalized_name,
+                    params=dict(params),
+                ),
+            }
+
+        legacy_overrides = cls._normalize_attention(attention_field)
+        if legacy_overrides:
+            return {
+                "name": "static",
+                "params": {"default": 1.0, "overrides": dict(legacy_overrides)},
+            }
+        return {"name": "none", "params": {}}
 
     @staticmethod
     def _normalize_phase_stimuli(phase_stimuli: Any) -> Any:
@@ -553,10 +688,11 @@ class ExperimentConfig:
     def _parse_experiment_fields(
         cls,
         exp: Dict[str, Any],
-    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any]]:
+    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any], Dict[str, Any]]:
         exp_stimuli, exp_salience = [], {}
         exp_attention: Dict[str, float] = {}
         exp_context_inference: Dict[str, Any] = {}
+        exp_attention_config: Dict[str, Any] = {"name": "none", "params": {}}
 
         if "stimuli" in exp:
             exp_stimuli, exp_salience = cls._normalize_stimuli(exp["stimuli"])
@@ -566,11 +702,21 @@ class ExperimentConfig:
 
         if "attention" in exp:
             exp_attention = cls._normalize_attention(exp["attention"])
+        exp_attention_config = cls._normalize_attention_config(
+            attention_field=exp.get("attention"),
+            attention_config_field=exp.get("attention_config"),
+        )
 
         if "context_inference" in exp and isinstance(exp["context_inference"], dict):
             exp_context_inference = exp["context_inference"]
 
-        return exp_stimuli, exp_salience, exp_attention, exp_context_inference
+        return (
+            exp_stimuli,
+            exp_salience,
+            exp_attention,
+            exp_context_inference,
+            exp_attention_config,
+        )
 
     @classmethod
     def validate_runtime_constraints(cls, phases: List[PhaseConfig]) -> None:

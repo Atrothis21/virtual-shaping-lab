@@ -101,10 +101,33 @@ function SalienceAcquisitionRateApp() {
       </div>
 
       <div className="panel">
+        <h3>What This Preset Shows</h3>
+        <p>Higher salience increases effective cue impact, which leads to faster apparent acquisition.</p>
+      </div>
+
+      <div className="panel">
         <h3>Salience</h3>
         <p><strong>All other parameters held constant.</strong></p>
         <p>CS ({params.cs_plus.join(", ")}) Salience: <strong>{params.salience}</strong></p>
       </div>
+
+      <div className="panel">
+        <h3>Stimuli</h3>
+        <label>CS</label>
+        <select multiple value={params.cs_plus} onChange={(e) => {
+          setParams((prev) => ({
+            ...prev,
+            cs_plus: Array.from(e.target.selectedOptions).map((o) => o.value),
+          }));
+        }}>
+          {STIMULI.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      <h2>Generated Payload</h2>
+      <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>
       <pre className={runError ? "error" : ""}>{runOutput}</pre>
