@@ -28,7 +28,8 @@ def test_primary_actions_use_consistent_verbs():
     assert "Resolve Plan" in text
     assert "Start Run" in text
     assert "Generate Report" in text
-    assert "Resolve Preset" in text
+    assert "Prepare preset" in text
+    assert "Run preset" in text
 
 
 def test_action_semantic_styles_exist():

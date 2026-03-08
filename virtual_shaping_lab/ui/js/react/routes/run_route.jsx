@@ -60,6 +60,8 @@
     builderDraftState,
     onStartRun,
     onRefreshRun,
+    onNavigate,
+    routeKeys,
     runActionStatus,
     provenanceView,
     mismatchView,
@@ -83,6 +85,7 @@
         };
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.state, vm.requestStatus);
     const blockingMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "blocking") : null;
+    const toPresets = routeKeys && routeKeys.presets ? routeKeys.presets : "presets";
     const runStatePanel = React.useMemo(() => {
       if (vm.requestStatus === "loading") {
         return { state: "loading", title: "Run Request In Flight", message: "Creating or refreshing run lifecycle..." };
@@ -95,6 +98,31 @@
       }
       return { state: "success", title: "Run Active", message: "Lifecycle and provenance are available for monitoring." };
     }, [vm.activeRunId, vm.isTerminal, vm.requestStatus, vm.state]);
+
+    if (!vm.activeRunId) {
+      return (
+        <div className="route-card run-lifecycle-card run-empty-compact">
+          <div className="route-card-header">
+            <h2>Runs</h2>
+            <span className="vsl-status-badge">No active run</span>
+          </div>
+          <RouteStatePanel
+            state="empty"
+            title="No active run"
+            message="Start from a preset to create and monitor a run."
+          />
+          <div className="route-actions">
+            <button
+              type="button"
+              className="route-action route-action-primary"
+              onClick={() => typeof onNavigate === "function" && onNavigate(toPresets)}
+            >
+              Go to presets
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="route-card run-lifecycle-card">

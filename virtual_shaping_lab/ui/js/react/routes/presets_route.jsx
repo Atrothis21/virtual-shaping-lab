@@ -21,6 +21,10 @@
     return "learning";
   }
 
+  function getExperimentTypeLabel(protocolKey) {
+    return protocolKey && protocolKey !== "n/a" ? protocolKey : "n/a";
+  }
+
   function PresetSignalChips({ signals, maxItems }) {
     const entries = Array.isArray(signals) ? signals : [];
     if (!entries.length) return <span className="preset-empty-cue">n/a</span>;
@@ -50,10 +54,11 @@
           <div className={`route-card preset-card accent-${getProtocolAccentTone(item.protocolKey)}`} key={item.key}>
             <div className="route-card-header">
               <h2>{item.title}</h2>
-              <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
+              <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{getExperimentTypeLabel(item.protocolKey)}</span>
             </div>
             <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
             <p>{item.description}</p>
+            <p className="preset-meta-row"><strong>Experiment type:</strong> <code>{getExperimentTypeLabel(item.protocolKey)}</code></p>
             <p className="preset-meta-row"><strong>Template:</strong> <code>{item.defaultTemplate}</code></p>
             <p className="preset-meta-row"><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
             <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
@@ -83,18 +88,19 @@
       <div className={`route-card preset-detail accent-${getProtocolAccentTone(item.protocolKey)}`}>
         <div className="route-card-header">
           <h2>{item.title}</h2>
-          <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{item.protocolKey}</span>
+          <span className={`vsl-status-badge semantic ${getProtocolAccentTone(item.protocolKey)}`}>{getExperimentTypeLabel(item.protocolKey)}</span>
         </div>
         <p className="preset-meta-line">Preset Key: <code>{item.key}</code></p>
         <p>{item.description}</p>
+        <p className="preset-meta-row"><strong>Experiment type:</strong> <code>{getExperimentTypeLabel(item.protocolKey)}</code></p>
         <p className="preset-meta-row"><strong>Recommended Template:</strong> <code>{item.defaultTemplate}</code></p>
         <p className="preset-meta-row"><strong>Run Modes:</strong> {item.runModes.length ? item.runModes.join(", ") : "n/a"}</p>
         <p className="preset-meta-row preset-meta-row-signals"><strong>Expected Signals:</strong></p>
         <PresetSignalChips signals={item.expectedSignals} />
         <div className="route-actions">
-          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Resolve Preset</button>
-          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Resolve + Run</button>
-          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRunReport === "function" && onResolveRunReport(item)}>Resolve + Run + Report</button>
+          <button type="button" className="route-action route-action-primary" onClick={() => typeof onResolvePreset === "function" && onResolvePreset(item)}>Prepare preset</button>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRun === "function" && onResolveRun(item)}>Run preset</button>
+          <button type="button" className="route-action route-action-secondary" onClick={() => typeof onResolveRunReport === "function" && onResolveRunReport(item)}>Run preset + report</button>
         </div>
         <div className="preset-action-status">
           <strong>Action Status:</strong> <code>{actionState && actionState.status ? actionState.status : "idle"}</code>
@@ -123,6 +129,7 @@
           <>
             <p className="phenomenon-meta-line">Support Mode: <code>setup-guidance</code> | signal_count: <code>{signalCount}</code></p>
             <p><strong>{item.title}</strong> is currently selected. Use this panel to review expected signatures and reporting guidance before execution.</p>
+            <p className="preset-meta-row"><strong>Experiment type:</strong> <code>{getExperimentTypeLabel(item.protocolKey)}</code></p>
             <p className="preset-meta-row"><strong>Recommended Report Template:</strong> <code>{item.defaultTemplate}</code></p>
             <p className="preset-meta-row"><strong>Expected Signals:</strong></p>
             <PresetSignalChips signals={item.expectedSignals} />
@@ -238,9 +245,9 @@
           </div>
           <p>Browse catalog-backed phenomenon presets and choose a starting point.</p>
           <div className="preset-controls">
-            <label>Search<input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search preset, protocol, signal..." /></label>
+            <label>Search<input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search preset, experiment type, signal..." /></label>
             <label>Run Mode<select value={runModeFilter} onChange={(e) => setRunModeFilter(e.target.value)}><option value="all">All</option><option value="trial">Trial</option><option value="tick">Tick</option></select></label>
-            <label>Sort<select value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="title">Name</option><option value="protocol">Protocol</option></select></label>
+            <label>Sort<select value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="title">Name</option><option value="protocol">Experiment type</option></select></label>
           </div>
           <RouteStatePanel state={browserStatePanel.state} title={browserStatePanel.title} message={browserStatePanel.message} />
         </div>

@@ -53,6 +53,8 @@
     isPlanFresh,
     onCreateReport,
     onRefreshRun,
+    onNavigate,
+    routeKeys,
     reportActionStatus,
     provenanceView,
     mismatchView,
@@ -68,6 +70,7 @@
     const vm = selectReportLifecycleViewModelFn(reportState, runState, { isPlanFresh });
     const lifecycleInstrument = buildLifecycleInstrumentViewFn(vm.lifecycleState, vm.requestStatus);
     const warningMismatch = Array.isArray(mismatchView) ? mismatchView.find((m) => m.severity === "warning") : null;
+    const toRuns = routeKeys && routeKeys.run ? routeKeys.run : "run";
     const reportConstraintState = vm.canCreateReport
       ? null
       : {
@@ -89,6 +92,31 @@
       }
       return { state: "success", title: "Report Route Ready", message: "Run context loaded. Generate report when eligible." };
     }, [artifactView, vm.effectiveRunId, vm.requestStatus]);
+
+    if (!vm.effectiveRunId) {
+      return (
+        <div className="route-card report-lifecycle-card report-empty-compact">
+          <div className="route-card-header">
+            <h2>Reports</h2>
+            <span className="vsl-status-badge">No active run</span>
+          </div>
+          <RouteStatePanel
+            state="empty"
+            title="No report context"
+            message="Open the Runs route after starting a run, then generate reports."
+          />
+          <div className="route-actions">
+            <button
+              type="button"
+              className="route-action route-action-primary"
+              onClick={() => typeof onNavigate === "function" && onNavigate(toRuns)}
+            >
+              Go to runs
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="route-card report-lifecycle-card">

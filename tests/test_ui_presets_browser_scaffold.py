@@ -52,9 +52,9 @@ def test_presets_route_has_detail_panel_and_primary_actions():
     text = _read(PRESETS_ROUTE)
     assert "function PresetDetailPanel" in text
     assert "Preset Detail" in text
-    assert "Resolve Preset" in text
-    assert "Resolve + Run" in text
-    assert "Resolve + Run + Report" in text
+    assert "Prepare preset" in text
+    assert "Run preset" in text
+    assert "Run preset + report" in text
     assert "onResolvePreset(item)" in text
     assert "onResolveRun(item)" in text
     assert "onResolveRunReport(item)" in text

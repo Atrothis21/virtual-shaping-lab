@@ -114,6 +114,7 @@
                   <strong>{item.title}</strong>
                   <code>{item.protocolKey}</code>
                 </div>
+                <div className="launcher-featured-meta"><strong>Experiment type:</strong> <code>{item.protocolKey}</code></div>
                 <p>{item.description}</p>
                 <div className="route-actions">
                   <button type="button" className="route-action route-action-primary" onClick={() => handleQuickRun(item)}>Run preset</button>

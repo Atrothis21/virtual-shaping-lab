@@ -456,6 +456,8 @@ function AppShell() {
           builderDraftState={builderDraftState}
           onStartRun={startRunFromResolvedPlan}
           onRefreshRun={refreshActiveRunStatus}
+          onNavigate={navigateTo}
+          routeKeys={{ presets: routes.presets.key }}
           runActionStatus={runActionStatus}
           provenanceView={runProvenanceView}
           mismatchView={runVersionMismatches}
@@ -471,6 +473,8 @@ function AppShell() {
           isPlanFresh={isPlanFreshForCurrentDraft}
           onCreateReport={createReportFromActiveRun}
           onRefreshRun={refreshActiveRunStatus}
+          onNavigate={navigateTo}
+          routeKeys={{ run: routes.run.key }}
           reportActionStatus={reportActionStatus}
           provenanceView={reportProvenanceView}
           mismatchView={reportVersionMismatches}

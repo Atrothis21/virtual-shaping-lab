@@ -323,6 +323,11 @@
       transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
     }
 
+    .run-empty-compact,
+    .report-empty-compact {
+      max-width: 760px;
+    }
+
     .route-card-header {
       display: flex;
       justify-content: space-between;
@@ -1514,6 +1519,17 @@
       color: var(--vsl-color-text-secondary);
       font-family: var(--vsl-font-mono);
       font-size: 0.72rem;
+    }
+
+    .launcher-featured-meta {
+      font-size: 0.78rem;
+      color: var(--vsl-color-text-secondary);
+    }
+
+    .launcher-featured-meta code {
+      color: var(--vsl-color-text-secondary);
+      font-family: var(--vsl-font-mono);
+      font-size: 0.74rem;
     }
 
     .launcher-featured-card p {
