@@ -321,6 +321,32 @@ function AppShell() {
     });
   }, [dispatchEvent, presetActionServiceApi, stateApi]);
 
+  const startGuidedBuilderFromLauncher = React.useCallback((featuredPreset) => {
+    if (!stateApi) return;
+    const fallbackProtocol = featuredPreset && featuredPreset.protocolKey && featuredPreset.protocolKey !== "n/a"
+      ? featuredPreset.protocolKey
+      : "acquisition";
+    const fallbackTemplate = featuredPreset && featuredPreset.defaultTemplate && featuredPreset.defaultTemplate !== "n/a"
+      ? featuredPreset.defaultTemplate
+      : "default";
+    const draft = {
+      seed_source: "launcher-guided-starter",
+      guided_start_step: "start",
+      preset_key: featuredPreset && featuredPreset.key ? featuredPreset.key : "",
+      protocol_key: fallbackProtocol,
+      template_key: fallbackTemplate,
+      run_mode_hint: "trial",
+      expected_signals: [],
+      recommended_seed_hints: featuredPreset && Array.isArray(featuredPreset.expectedSignals)
+        ? featuredPreset.expectedSignals.slice(0, 3)
+        : [],
+    };
+    dispatchEvent({
+      type: stateApi.UI_EVENTS.DRAFT_EDITED,
+      payload: { draft },
+    });
+  }, [dispatchEvent, stateApi]);
+
   const editBuilderDraft = React.useCallback((nextDraft) => {
     if (!stateApi || !nextDraft || typeof nextDraft !== "object") return;
     dispatchEvent({
@@ -421,6 +447,7 @@ function AppShell() {
           catalogState={catalogState}
           runState={runState}
           reportState={reportState}
+          onStartGuidedBuilder={startGuidedBuilderFromLauncher}
           onSeedDraftFromPreset={seedDraftFromPreset}
           onResolveRunAction={resolveAndRunPresetFromSelection}
           onResolveRunReportAction={resolveRunReportPresetFromSelection}

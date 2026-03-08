@@ -15,6 +15,13 @@
     return { unitCount: units.length, flow: flow || "n/a", totalTrials };
   }
 
+  const GUIDED_STEPS = Object.freeze([
+    { key: "start", label: "Start" },
+    { key: "phases", label: "Configure phases" },
+    { key: "runtime", label: "Runtime/report choices" },
+    { key: "resolve", label: "Resolve plan" },
+  ]);
+
   function BuilderRouteContainer({
     builderDraftState,
     planState,
@@ -32,6 +39,7 @@
     const resolvedPlan = planState && planState.resolvedPlan ? planState.resolvedPlan : null;
     const stableHash = planState && planState.stableHash ? planState.stableHash : "";
     const summary = summarizeResolvedPlan(resolvedPlan);
+    const guidedStep = seed && seed.guided_start_step ? String(seed.guided_start_step) : "start";
     const expectedSignals = seed && Array.isArray(seed.expected_signals) ? seed.expected_signals : [];
     const flowPreview = expectedSignals.length ? expectedSignals.join(", ") : "n/a";
     const constraintApi = VSLReact.builderConstraintControls || {};
@@ -71,6 +79,8 @@
         }),
       [buildBuilderSectionViewModels, builderSectionSchema, constraintBehaviorByField, expectedSignals, flowPreview, planState?.requestStatus, seed, stableHash]
     );
+    const advancedPanelId = "builder-advanced-diagnostics-panel";
+    const debugDetailsId = "builder-advanced-debug-details";
     const [autoCorrectNotice, setAutoCorrectNotice] = React.useState(null);
     const [templateAutoCorrectSuppressed, setTemplateAutoCorrectSuppressed] = React.useState(false);
     const builderStatePanel = React.useMemo(() => {
@@ -144,6 +154,27 @@
           <a className="route-action route-action-secondary" href="/ui/builder.html">Open Legacy Builder</a>
         </div>
         <RouteStatePanel state={builderStatePanel.state} title={builderStatePanel.title} message={builderStatePanel.message} />
+        <section className="builder-stepper-panel">
+          <div className="builder-stepper-header">
+            <h3>Guided Builder</h3>
+            <span className="vsl-status-badge">{guidedStep}</span>
+          </div>
+          <ol className="builder-stepper-list">
+            {GUIDED_STEPS.map((step, idx) => (
+              <li key={step.key} className={step.key === guidedStep ? "active" : ""}>
+                <span className="builder-step-index">{idx + 1}</span>
+                <span className="builder-step-label">{step.label}</span>
+              </li>
+            ))}
+          </ol>
+          {seed && seed.seed_source === "launcher-guided-starter" ? (
+            <div className="builder-stepper-hints">
+              <div><strong>Starter experiment type:</strong> <code className="builder-readout">{seed.protocol_key || "n/a"}</code></div>
+              <div><strong>Starter template:</strong> <code className="builder-readout">{seed.template_key || "n/a"}</code></div>
+              <div><strong>Recommended hints:</strong> <code className="builder-readout">{Array.isArray(seed.recommended_seed_hints) && seed.recommended_seed_hints.length ? seed.recommended_seed_hints.join(", ") : "n/a"}</code></div>
+            </div>
+          ) : null}
+        </section>
         <div className="builder-sections-grid">
           <section className="builder-section-panel builder-section-overview">
             <div className="builder-section-header"><h3 className="builder-section-heading">Overview</h3><span className="builder-section-index">S1</span></div>
@@ -173,12 +204,13 @@
                   type="button"
                   className="route-action builder-advanced-toggle"
                   aria-expanded={advancedVisible ? "true" : "false"}
+                  aria-controls={advancedPanelId}
                   onClick={() => setAdvancedVisible((value) => { const next = !value; if (!next) setDebugDetailsVisible(false); return next; })}
                 >
                   {advancedVisible ? "Hide Advanced Diagnostics" : "Show Advanced Diagnostics"}
                 </button>
                 {advancedVisible ? (
-                  <div className="builder-advanced-content">
+                  <div className="builder-advanced-content" id={advancedPanelId}>
                     <ConstraintStateChips constraint={advancedConstraint} classNamePrefix="builder-constraint" />
                     <div className="builder-debug-summary" role="status" aria-live="polite">
                       <div><strong>debug_mode:</strong> <code className="builder-readout">{debugAdvancedState?.mode || "off"}</code></div>
@@ -186,11 +218,17 @@
                       <div><strong>sampled:</strong> <code className="builder-readout">{String(Boolean(debugAdvancedState?.sampled))}</code></div>
                       <div><strong>sample_every_n_ticks:</strong> <code className="builder-readout">{debugAdvancedState?.sampleEveryNTicks ?? "none"}</code></div>
                     </div>
-                    <button type="button" className="route-action builder-debug-details-toggle" aria-expanded={debugDetailsVisible ? "true" : "false"} onClick={() => setDebugDetailsVisible((value) => !value)}>
+                    <button
+                      type="button"
+                      className="route-action builder-debug-details-toggle"
+                      aria-expanded={debugDetailsVisible ? "true" : "false"}
+                      aria-controls={debugDetailsId}
+                      onClick={() => setDebugDetailsVisible((value) => !value)}
+                    >
                       {debugDetailsVisible ? "Hide Debug Details" : "Show Debug Details"}
                     </button>
                     {debugDetailsVisible ? (
-                      <pre className="builder-debug-details">{JSON.stringify({
+                      <pre className="builder-debug-details" id={debugDetailsId}>{JSON.stringify({
                         mode: debugAdvancedState?.mode || "off",
                         max_rows: debugAdvancedState?.maxRows ?? 200,
                         sampled: Boolean(debugAdvancedState?.sampled),

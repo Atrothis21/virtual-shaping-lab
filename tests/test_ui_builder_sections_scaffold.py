@@ -79,9 +79,21 @@ def test_builder_advanced_access_model_defaults_to_hidden():
     assert "const [advancedVisible, setAdvancedVisible] = React.useState(false);" in text
     assert "const [debugDetailsVisible, setDebugDetailsVisible] = React.useState(false);" in text
     assert "aria-expanded={advancedVisible ? \"true\" : \"false\"}" in text
+    assert "aria-controls={advancedPanelId}" in text
+    assert "id={advancedPanelId}" in text
+    assert "aria-controls={debugDetailsId}" in text
+    assert "id={debugDetailsId}" in text
     assert "{advancedVisible ? (" in text
     assert "Show Debug Details" in text
     assert "Hide Debug Details" in text
     assert "render_cap_rows" in text
     assert "sample_every_n_ticks" in text
     assert "cap_policy: \"backend-cap-aware\"" in text
+
+
+def test_builder_advanced_toggle_paths_are_local_ui_only():
+    text = _read(BUILDER_ROUTE)
+    assert "onClick={() => setAdvancedVisible((value) => { const next = !value; if (!next) setDebugDetailsVisible(false); return next; })}" in text
+    assert "onClick={() => setDebugDetailsVisible((value) => !value)}" in text
+    assert "apiClient." not in text
+    assert "dispatchEvent(" not in text

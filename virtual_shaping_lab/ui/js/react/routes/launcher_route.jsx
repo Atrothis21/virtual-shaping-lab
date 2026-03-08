@@ -54,6 +54,7 @@
     catalogState,
     runState,
     reportState,
+    onStartGuidedBuilder,
     onSeedDraftFromPreset,
     onResolveRunAction,
     onResolveRunReportAction,
@@ -98,7 +99,10 @@
         </div>
         <LauncherView
           onRunPreset={() => typeof onNavigate === "function" && onNavigate(toPresets)}
-          onBuildExperiment={() => typeof onNavigate === "function" && onNavigate(toBuilder)}
+          onBuildExperiment={() => {
+            if (typeof onStartGuidedBuilder === "function") onStartGuidedBuilder(featured[0] || null);
+            if (typeof onNavigate === "function") onNavigate(toBuilder);
+          }}
         />
         <div className="launcher-callout-row">
           <span className="vsl-status-badge semantic learning">
