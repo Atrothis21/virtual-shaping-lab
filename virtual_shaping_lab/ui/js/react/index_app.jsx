@@ -14,26 +14,19 @@ function IndexApp() {
   return (
     <>
       <h1>Virtual Shaping Lab</h1>
-      <p>How would you like to design your experiment?</p>
+      <p>Choose how you want to start.</p>
 
       <HomeCard
-        title="Lifecycle Console"
-        description="Use the V2 lifecycle flow (Plan -> Run -> Report) with a thin API-first console."
-        cta="Open Console"
-        href="/ui/console.html"
-      />
-
-      <HomeCard
-        title="Predefined Experiments"
-        description="Choose from canonical behavioral experiments (Pavlovian conditioning, extinction, operant schedules)."
+        title="Presets"
+        description="Choose from predefined experiments and run them quickly."
         cta="Browse Presets"
         href="/ui/presets.html"
       />
 
       <HomeCard
-        title="Build Your Own"
-        description="Construct custom multi-phase experiments with full control."
-        cta="Open Experiment Builder"
+        title="Builder"
+        description="Create an experiment by editing only the allowed parameters."
+        cta="Open Builder"
         href="/ui/builder.html"
       />
     </>
