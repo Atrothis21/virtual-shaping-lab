@@ -4,7 +4,7 @@ const STIMULI = ["lever", "tone", "noise", "light", "click"];
 const OPERANT_ACTIONS = window.VSLReact.OPERANT_ACTIONS || ["nosepoke_L", "nosepoke_R", "leverpress", "keypeck"];
 
 function buildPayload(params) {
-  return {
+  const payload = {
     experiment: {
       learner: "q_learner",
       agent: "operant_agent",
@@ -30,6 +30,8 @@ function buildPayload(params) {
     },
     report: { preset: "superextinction" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function SuperextinctionApp() {

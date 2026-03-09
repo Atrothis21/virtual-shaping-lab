@@ -5,7 +5,7 @@ function buildPayload(params) {
   const attentionOverrides = {};
   params.cs_plus.forEach((s) => { attentionOverrides[s] = params.attention_plus; });
   params.cs_minus.forEach((s) => { attentionOverrides[s] = params.attention_minus; });
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -19,6 +19,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {

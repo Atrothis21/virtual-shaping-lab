@@ -40,7 +40,7 @@ function buildPolicy(params) {
 }
 
 function buildPayload(params) {
-  return {
+  const payload = {
     experiment: {
       learner: params.learner,
       agent: "operant_agent",
@@ -63,6 +63,8 @@ function buildPayload(params) {
     },
     report: { preset: "operant_conditioning" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {

@@ -1,6 +1,16 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["tone", "noise", "light", "click"];
+const FIXED_PARAMS = Object.freeze({
+  n_acq: 50,
+  n_comp: 50,
+  alpha: 0.2,
+  stim_a: "tone",
+  stim_x: "noise",
+  salience_a: 1.0,
+  salience_x: 0.5,
+  representation: "vector_elemental",
+});
 
 function buildPayload(params) {
   const salienceMap = {
@@ -12,7 +22,7 @@ function buildPayload(params) {
     attentionMap[s] = { attention: 1.0 };
   });
 
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -21,20 +31,33 @@ function buildPayload(params) {
         params: { stimuli: STIMULI, max_compound_size: 2 },
       },
       context_inference: { enabled: false, max_contexts: 3 },
-      protocol: "blocking",
-      stimuli: {
-        cs_plus: [params.stim_a, params.stim_x],
-      },
-      params: {
-        n_acquisition_trials: params.n_acq,
-        n_compound_trials: params.n_comp,
-        alpha: params.alpha,
-      },
+      phases: [
+        {
+          name: "Blocking Acquisition",
+          protocol: "acquisition",
+          stimuli: { cs_plus: [params.stim_a] },
+          params: {
+            n_trials: params.n_acq,
+            alpha: params.alpha,
+          },
+        },
+        {
+          name: "Blocking Compound",
+          protocol: "compound_acquisition",
+          stimuli: { compound: [params.stim_a, params.stim_x] },
+          params: {
+            n_trials: params.n_comp,
+            alpha: params.alpha,
+          },
+        },
+      ],
       salience: salienceMap,
       attention: attentionMap,
     },
     report: { preset: "blocking" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {
@@ -46,36 +69,11 @@ function validate(params) {
 }
 
 function BlockingApp() {
-  const [params, setParams] = React.useState({
-    n_acq: 50,
-    n_comp: 50,
-    alpha: 0.2,
-    stim_a: "tone",
-    stim_x: "noise",
-    salience_a: 1.0,
-    salience_x: 1.0,
-    representation: "vector_elemental",
-  });
+  const params = FIXED_PARAMS;
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
 
-  const payload = React.useMemo(() => buildPayload(params), [params]);
-
-  const onStimAChange = (nextA) => {
-    let nextX = params.stim_x;
-    if (nextA === nextX) {
-      nextX = STIMULI.find((s) => s !== nextA) || nextX;
-    }
-    setParams((prev) => ({ ...prev, stim_a: nextA, stim_x: nextX }));
-  };
-
-  const onStimXChange = (nextX) => {
-    let nextA = params.stim_a;
-    if (nextX === nextA) {
-      nextA = STIMULI.find((s) => s !== nextX) || nextA;
-    }
-    setParams((prev) => ({ ...prev, stim_a: nextA, stim_x: nextX }));
-  };
+  const payload = React.useMemo(() => buildPayload(params), []);
 
   const onRun = async () => {
     setRunError(false);
@@ -117,87 +115,36 @@ function BlockingApp() {
       </div>
 
       <div className="panel">
-        <h3>Trials</h3>
-        <label>Acquisition Trials (A+): <span>{params.n_acq}</span></label>
-        <input
-          type="range"
-          min="1"
-          max="500"
-          value={params.n_acq}
-          onChange={(e) => setParams((prev) => ({ ...prev, n_acq: +e.target.value }))}
-        />
-
-        <label>Compound Trials (AX+): <span>{params.n_comp}</span></label>
-        <input
-          type="range"
-          min="1"
-          max="500"
-          value={params.n_comp}
-          onChange={(e) => setParams((prev) => ({ ...prev, n_comp: +e.target.value }))}
-        />
+        <h3>Phase Composition (Read-Only)</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p><strong>Phase 1:</strong> acquisition ({params.stim_a}+) for {params.n_acq} trials</p>
+        <p><strong>Phase 2:</strong> compound_acquisition ({params.stim_a}{params.stim_x}+) for {params.n_comp} trials</p>
       </div>
 
       <div className="panel">
-        <h3>Learning</h3>
-        <label>Learning Rate (alpha): <span>{params.alpha}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.alpha}
-          onChange={(e) => setParams((prev) => ({ ...prev, alpha: +e.target.value }))}
-        />
+        <h3>Fixed Parameters (Read-Only)</h3>
+        <p>Representation: <strong>{params.representation}</strong></p>
+        <p>Learning Rate (alpha): <strong>{params.alpha}</strong></p>
       </div>
 
       <div className="panel">
         <h3>Stimuli</h3>
-        <label>CS+ A</label>
-        <select value={params.stim_a} onChange={(e) => onStimAChange(e.target.value)}>
+        <label>CS+ A (Read-Only)</label>
+        <select value={params.stim_a} disabled>
           {STIMULI.map((s) => (
             <option key={s} value={s} disabled={s === params.stim_x}>{s}</option>
           ))}
         </select>
 
-        <label>CS+ X</label>
-        <select value={params.stim_x} onChange={(e) => onStimXChange(e.target.value)}>
+        <label>CS+ X (Read-Only)</label>
+        <select value={params.stim_x} disabled>
           {STIMULI.map((s) => (
             <option key={s} value={s} disabled={s === params.stim_a}>{s}</option>
           ))}
         </select>
 
-        <label>Salience (A): <span>{params.salience_a}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.salience_a}
-          onChange={(e) => setParams((prev) => ({ ...prev, salience_a: +e.target.value }))}
-        />
-
-        <label>Salience (X): <span>{params.salience_x}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.salience_x}
-          onChange={(e) => setParams((prev) => ({ ...prev, salience_x: +e.target.value }))}
-        />
-      </div>
-
-      <div className="panel">
-        <h3>Representation</h3>
-        <label>Type</label>
-        <select
-          value={params.representation}
-          onChange={(e) => setParams((prev) => ({ ...prev, representation: e.target.value }))}
-        >
-          <option value="vector_elemental">vector_elemental</option>
-          <option value="vector_configural">vector_configural</option>
-          <option value="vector_hybrid">vector_hybrid</option>
-        </select>
+        <p>Salience (A): <strong>{params.salience_a}</strong></p>
+        <p>Salience (X): <strong>{params.salience_x}</strong></p>
       </div>
 
       <h2>Generated Payload</h2>

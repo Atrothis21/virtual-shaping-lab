@@ -11,7 +11,7 @@ const resolveOperantPair = window.VSLReact.resolveOperantPair || ((first, second
 
 function buildPayload(params) {
   const [actionLeft, actionRight] = resolveOperantPair(params.action_left, params.action_right);
-  return {
+  const payload = {
     experiment: {
       learner: "q_learner",
       agent: "operant_agent",
@@ -39,6 +39,8 @@ function buildPayload(params) {
     },
     report: { preset: "resurgence" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function ResurgenceApp() {

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
+from experiment.payload_contract import is_legacy_payload, to_canonical_payload
 
 
 SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -11,6 +12,7 @@ PHASE_SCHEMA_DIR = SCHEMA_DIR / "phases"
 PROTOCOL_SCHEMA_DIR = SCHEMA_DIR / "protocols"
 POLICY_SCHEMA_PATH = SCHEMA_DIR / "policy.schema.json"
 EXPERIMENT_SCHEMA_PATH = SCHEMA_DIR / "experiment.schema.json"
+EXPERIMENT_V2_SCHEMA_PATH = SCHEMA_DIR / "experiment_v2.schema.json"
 REPORT_SCHEMA_PATH = SCHEMA_DIR / "report.schema.json"
 
 
@@ -83,19 +85,26 @@ def _validate_top_level(payload: dict) -> dict:
     if not isinstance(exp, dict):
         raise ValidationError("experiment must be an object")
 
-    if EXPERIMENT_SCHEMA_PATH.exists():
+    try:
+        canonical_payload = to_canonical_payload(payload)
+    except Exception as exc:
+        raise ValidationError(str(exc))
+    canonical_exp = canonical_payload.get("experiment", {})
+    if EXPERIMENT_V2_SCHEMA_PATH.exists():
+        _validate_schema(canonical_exp, EXPERIMENT_V2_SCHEMA_PATH, "experiment")
+    elif EXPERIMENT_SCHEMA_PATH.exists():
+        # Fallback: legacy schema still loaded in transition window.
         _validate_schema(exp, EXPERIMENT_SCHEMA_PATH, "experiment")
 
-    for key in ("learner", "agent", "representation"):
-        if key not in exp:
-            raise ValidationError(f"experiment.{key} is required")
+    # Compatibility is intentionally non-failing during transition.
+    _ = is_legacy_payload(payload)
 
-    return exp
+    return canonical_exp
 
 
 # Shallow policy shape guard only.
 def _validate_policy_guard(exp: dict) -> None:
-    policy = exp.get("policy")
+    policy = exp.get("agent", {}).get("policy") if isinstance(exp.get("agent"), dict) else None
     if not policy:
         return
 
@@ -106,20 +115,16 @@ def _validate_policy_guard(exp: dict) -> None:
 
 
 def _uses_operant_path(exp: dict) -> bool:
-    if "protocol" in exp and exp.get("protocol"):
-        return exp.get("protocol") in OPERANT_PROTOCOLS
+    phases = exp.get("program", {}).get("phases", []) if isinstance(exp.get("program"), dict) else []
     return any(
         p.get("protocol") in OPERANT_PROTOCOLS
-        for p in exp.get("phases", [])
+        for p in phases
         if isinstance(p, dict)
     )
 
 
 def _iter_operant_entries(exp: dict):
-    if "protocol" in exp and exp.get("protocol") in OPERANT_PROTOCOLS:
-        yield exp.get("protocol"), exp.get("params") if isinstance(exp.get("params"), dict) else {}
-
-    for phase in exp.get("phases", []):
+    for phase in exp.get("program", {}).get("phases", []):
         if not isinstance(phase, dict):
             continue
         proto = phase.get("protocol")
@@ -140,24 +145,12 @@ def _validate_representation_mechanism_split(exp: dict) -> None:
 
 # Shallow mode validation: enforce protocol-mode XOR phase-mode and basic shape checks.
 def _validate_protocol_or_phases(exp: dict) -> None:
-    has_protocol = "protocol" in exp and exp.get("protocol")
-    has_phases = "phases" in exp and isinstance(exp.get("phases"), list) and len(exp["phases"]) > 0
-
-    if has_protocol and has_phases:
-        raise ValidationError("experiment must provide either 'protocol' or 'phases', not both")
-    if not has_protocol and not has_phases:
-        raise ValidationError("experiment must provide either 'protocol' or 'phases'")
-
-    if has_protocol:
-        if not isinstance(exp.get("protocol"), str):
-            raise ValidationError("experiment.protocol must be a string")
-        if "params" in exp and not isinstance(exp.get("params"), dict):
-            raise ValidationError("experiment.params must be an object")
-        if "stimuli" in exp and not isinstance(exp.get("stimuli"), dict):
-            raise ValidationError("experiment.stimuli must be an object")
-        return
-
-    phases = exp.get("phases", [])
+    program = exp.get("program")
+    if not isinstance(program, dict):
+        raise ValidationError("experiment.program must be an object")
+    phases = program.get("phases", [])
+    if not isinstance(phases, list) or len(phases) == 0:
+        raise ValidationError("experiment.program.phases must be a non-empty array")
     for idx, phase in enumerate(phases):
         if not isinstance(phase, dict):
             raise ValidationError(f"phase[{idx}] must be an object")
@@ -167,8 +160,12 @@ def _validate_protocol_or_phases(exp: dict) -> None:
             raise ValidationError(f"phase[{idx}].protocol is required")
         if "params" in phase and not isinstance(phase.get("params"), dict):
             raise ValidationError(f"phase[{idx}].params must be an object")
-        if "stimuli" in phase and not isinstance(phase.get("stimuli"), dict):
+        if "stimuli" in phase and phase.get("stimuli") is not None and not isinstance(phase.get("stimuli"), dict):
             raise ValidationError(f"phase[{idx}].stimuli must be an object")
+        if "trials" not in phase:
+            raise ValidationError(f"phase[{idx}].trials is required")
+        if not isinstance(phase.get("trials"), int):
+            raise ValidationError(f"phase[{idx}].trials must be an integer")
 
 
 def validate_phase_order(phases):

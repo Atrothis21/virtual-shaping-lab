@@ -9,7 +9,7 @@ function buildPayload(params) {
     [params.stim_2]: { attention: 1.0 },
   };
 
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -45,6 +45,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {

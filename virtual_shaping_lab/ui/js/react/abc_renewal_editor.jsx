@@ -9,7 +9,7 @@ function buildPayload(params) {
   const attentionMap = {};
   attentionMap[params.cs_plus] = { attention: 1.0 };
 
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -43,6 +43,8 @@ function buildPayload(params) {
     },
     report: { preset: "abc_renewal" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {

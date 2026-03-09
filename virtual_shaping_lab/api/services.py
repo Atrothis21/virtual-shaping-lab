@@ -13,6 +13,7 @@ from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
 )
+from experiment.payload_contract import to_canonical_payload
 
 
 _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
@@ -97,7 +98,7 @@ class PlanService:
 
     @staticmethod
     def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
-        plan = build_plan(payload)
+        plan = build_plan(to_canonical_payload(payload))
         return {
             "plan": plan.to_dict(),
             "stable_hash": plan.stable_hash(),
@@ -115,30 +116,47 @@ class RunService:
         phases: list[Dict[str, Any]] = []
         for i, unit in enumerate(units):
             if isinstance(unit, dict):
+                params = unit.get("params") or {}
+                trials = params.get("n_trials")
+                if trials is None:
+                    trials = 1
                 phases.append(
                     {
                         "name": unit.get("name", f"Phase {i}"),
                         "protocol": unit.get("protocol"),
                         "stimuli": unit.get("stimuli"),
-                        "params": unit.get("params") or {},
+                        "params": params,
+                        "trials": int(trials),
                     }
                 )
+        runtime = (
+            ((settings.get("composed_parameters") or {}).get("runtime") or {})
+            if isinstance(settings.get("composed_parameters"), dict)
+            else {}
+        )
+        runtime = dict(runtime) if isinstance(runtime, dict) else {}
+        if isinstance(settings.get("context_inference"), dict):
+            runtime.setdefault("context_inference", dict(settings.get("context_inference", {})))
+
         return {
             "experiment": {
-                "learner": settings.get("learner"),
-                "agent": settings.get("agent"),
-                "representation": settings.get("representation"),
-                "policy": settings.get("policy"),
-                "stimuli": settings.get("stimuli", []),
-                "salience": settings.get("salience", {}),
-                "attention": settings.get("attention", {}),
-                "context_inference": settings.get("context_inference", {}),
-                "phases": phases,
-                "runtime": (
-                    ((settings.get("composed_parameters") or {}).get("runtime") or {})
-                    if isinstance(settings.get("composed_parameters"), dict)
-                    else {}
-                ),
+                "program": {
+                    "phases": phases,
+                },
+                "agent": {
+                    "name": settings.get("agent"),
+                    "representation": settings.get("representation"),
+                    "learning": {
+                        "rule": settings.get("learner"),
+                        "params": {},
+                        "attention": {
+                            "config": settings.get("attention_config", {}),
+                            "initial": settings.get("attention", {}),
+                        },
+                    },
+                    "policy": settings.get("policy"),
+                },
+                "runtime": runtime,
             },
             "report": {
                 "preset": settings.get("report_preset", "verification_report"),
@@ -199,7 +217,8 @@ class RunService:
         status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
-        plan = build_plan(payload)
+        canonical_payload = to_canonical_payload(payload)
+        plan = build_plan(canonical_payload)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
             raise ValueError(
@@ -277,7 +296,12 @@ class ReportService:
         protocol_name = ""
         if isinstance(payload.get("experiment"), dict):
             exp = payload["experiment"]
-            if isinstance(exp.get("phases"), list) and exp["phases"]:
+            program = exp.get("program")
+            if isinstance(program, dict):
+                phases = program.get("phases")
+                if isinstance(phases, list) and phases:
+                    protocol_name = str(phases[0].get("protocol", "") or "")
+            elif isinstance(exp.get("phases"), list) and exp["phases"]:
                 protocol_name = str(exp["phases"][0].get("protocol", "") or "")
             else:
                 protocol_name = str(exp.get("protocol", "") or "")

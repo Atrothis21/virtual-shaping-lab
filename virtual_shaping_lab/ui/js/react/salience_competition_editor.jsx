@@ -1,10 +1,21 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["tone", "noise", "light", "click"];
+const FIXED_PARAMS = Object.freeze({
+  n_trials: 160,
+  alpha_cs1: 0.2,
+  alpha_cs2: 0.2,
+  gamma: 0.0,
+  salience_cs1: 1.0,
+  salience_cs2: 0.15,
+  stim_1: "tone",
+  stim_2: "noise",
+  representation: "vector_elemental",
+});
 
 function buildPayload(params) {
   const compound = [params.stim_1, params.stim_2];
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -37,6 +48,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {
@@ -50,20 +63,10 @@ function validate(params) {
 }
 
 function SalienceCompetitionApp() {
-  const [params, setParams] = React.useState({
-    n_trials: 160,
-    alpha_cs1: 0.2,
-    alpha_cs2: 0.2,
-    gamma: 0.0,
-    salience_cs1: 1.0,
-    salience_cs2: 0.15,
-    stim_1: "tone",
-    stim_2: "noise",
-    representation: "vector_elemental",
-  });
+  const params = FIXED_PARAMS;
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
-  const payload = React.useMemo(() => buildPayload(params), [params]);
+  const payload = React.useMemo(() => buildPayload(params), []);
 
   const onRun = async () => {
     setRunError(false);
@@ -114,21 +117,23 @@ function SalienceCompetitionApp() {
       </div>
 
       <div className="panel">
+        <h3>Fixed Parameters (Read-Only)</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>Representation: <strong>{params.representation}</strong></p>
+        <p>Trials: <strong>{params.n_trials}</strong></p>
+        <p>Alpha CS1: <strong>{params.alpha_cs1}</strong></p>
+        <p>Alpha CS2: <strong>{params.alpha_cs2}</strong></p>
+        <p>Gamma: <strong>{params.gamma}</strong></p>
+      </div>
+
+      <div className="panel">
         <h3>Stimuli</h3>
-        <label>Cue A</label>
-        <select value={params.stim_1} onChange={(e) => {
-          const nextStim1 = e.target.value;
-          const nextStim2 = nextStim1 === params.stim_2 ? (STIMULI.find((s) => s !== nextStim1) || params.stim_2) : params.stim_2;
-          setParams((p) => ({ ...p, stim_1: nextStim1, stim_2: nextStim2 }));
-        }}>
+        <label>Cue A (Read-Only)</label>
+        <select value={params.stim_1} disabled>
           {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_2}>{s}</option>)}
         </select>
-        <label>Cue B</label>
-        <select value={params.stim_2} onChange={(e) => {
-          const nextStim2 = e.target.value;
-          const nextStim1 = nextStim2 === params.stim_1 ? (STIMULI.find((s) => s !== nextStim2) || params.stim_1) : params.stim_1;
-          setParams((p) => ({ ...p, stim_1: nextStim1, stim_2: nextStim2 }));
-        }}>
+        <label>Cue B (Read-Only)</label>
+        <select value={params.stim_2} disabled>
           {STIMULI.map((s) => <option key={s} value={s} disabled={s === params.stim_1}>{s}</option>)}
         </select>
       </div>

@@ -1,6 +1,15 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["tone", "noise", "light", "click"];
+const FIXED_PARAMS = Object.freeze({
+  n_trials: 140,
+  alpha: 0.2,
+  salience_plus: 1.0,
+  salience_minus: 0.3,
+  cs_plus: ["tone"],
+  cs_minus: ["noise"],
+  representation: "vector_elemental",
+});
 
 function buildPayload(params) {
   const salienceMap = {};
@@ -16,7 +25,7 @@ function buildPayload(params) {
     attentionMap[s] = { attention: 1.0 };
   });
 
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -44,6 +53,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {
@@ -56,30 +67,10 @@ function validate(params) {
 }
 
 function SalienceBiasDifferentialApp() {
-  const [params, setParams] = React.useState({
-    n_trials: 140,
-    alpha: 0.2,
-    salience_plus: 1.0,
-    salience_minus: 0.35,
-    cs_plus: ["tone"],
-    cs_minus: ["noise"],
-    representation: "vector_elemental",
-  });
+  const params = FIXED_PARAMS;
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
-  const payload = React.useMemo(() => buildPayload(params), [params]);
-
-  const onCSPlusChange = (e) => {
-    const nextPlus = Array.from(e.target.selectedOptions).map((o) => o.value);
-    const nextMinus = params.cs_minus.filter((s) => !nextPlus.includes(s));
-    setParams((prev) => ({ ...prev, cs_plus: nextPlus, cs_minus: nextMinus }));
-  };
-
-  const onCSMinusChange = (e) => {
-    const nextMinus = Array.from(e.target.selectedOptions).map((o) => o.value);
-    const nextPlus = params.cs_plus.filter((s) => !nextMinus.includes(s));
-    setParams((prev) => ({ ...prev, cs_plus: nextPlus, cs_minus: nextMinus }));
-  };
+  const payload = React.useMemo(() => buildPayload(params), []);
 
   const onRun = async () => {
     setRunError(false);
@@ -132,9 +123,17 @@ function SalienceBiasDifferentialApp() {
       </div>
 
       <div className="panel">
+        <h3>Fixed Parameters (Read-Only)</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>Representation: <strong>{params.representation}</strong></p>
+        <p>Trials: <strong>{params.n_trials}</strong></p>
+        <p>Alpha: <strong>{params.alpha}</strong></p>
+      </div>
+
+      <div className="panel">
         <h3>Stimuli</h3>
-        <label>CS+ Stimuli</label>
-        <select multiple value={params.cs_plus} onChange={onCSPlusChange}>
+        <label>CS+ Stimuli (Read-Only)</label>
+        <select multiple value={params.cs_plus} disabled>
           {STIMULI.map((s) => (
             <option key={s} value={s} disabled={params.cs_minus.includes(s)}>{s}</option>
           ))}
@@ -142,8 +141,8 @@ function SalienceBiasDifferentialApp() {
 
         <br /><br />
 
-        <label>CS- Stimuli</label>
-        <select multiple value={params.cs_minus} onChange={onCSMinusChange}>
+        <label>CS- Stimuli (Read-Only)</label>
+        <select multiple value={params.cs_minus} disabled>
           {STIMULI.map((s) => (
             <option key={s} value={s} disabled={params.cs_plus.includes(s)}>{s}</option>
           ))}

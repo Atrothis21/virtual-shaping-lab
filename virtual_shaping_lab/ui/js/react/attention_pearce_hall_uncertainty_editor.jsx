@@ -4,7 +4,7 @@ const STIMULI = ["tone", "noise", "light", "click"];
 function buildPayload(params) {
   const attentionOverrides = {};
   params.cs_plus.forEach((s) => { attentionOverrides[s] = params.attention; });
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -18,6 +18,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {

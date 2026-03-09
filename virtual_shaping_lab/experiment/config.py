@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any, List, Union, Tuple, Optional
+from experiment.payload_contract import to_canonical_payload, to_legacy_payload
 
 OPERANT_PROTOCOLS = {
     "operant_conditioning",
@@ -233,9 +234,17 @@ class ConfigPipeline:
         )
 
         validate_payload_shape(payload)
+        try:
+            canonical_payload = to_canonical_payload(payload)
+        except ValueError as exc:
+            message = str(exc)
+            if "canonical keys" in message:
+                raise ValueError("Missing required experiment fields: learner, agent, representation")
+            raise
+        legacy_payload = to_legacy_payload(canonical_payload)
 
-        exp = payload["experiment"]
-        rep = payload["report"]
+        exp = legacy_payload["experiment"]
+        rep = legacy_payload["report"]
 
         validate_phase_shape(exp)
         validate_required_fields(self._config_cls._require_fields, exp, rep)

@@ -102,6 +102,7 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "resolved_plan": True,
         "resolved_phase_contexts": inferred_phase_contexts,
         "composed_parameters": _compose_parameter_settings(config),
+        "canonical_payload": _build_canonical_payload_settings(config),
     }
 
     return ExperimentPlan(
@@ -138,4 +139,43 @@ def _compose_parameter_settings(config: ExperimentConfig) -> dict[str, Any]:
     }
     composed = ParameterComposer.compose(payload, normalize_and_validate=False)
     return parameters_to_dict(composed)
+
+
+def _build_canonical_payload_settings(config: ExperimentConfig) -> dict[str, Any]:
+    phases = []
+    for i, phase in enumerate(config.phases):
+        params = deepcopy(phase.params or {})
+        trials = int(params.get("n_trials", 1))
+        phases.append(
+            {
+                "name": phase.name or f"Phase {i}",
+                "protocol": phase.protocol,
+                "stimuli": deepcopy(phase.stimuli),
+                "params": params,
+                "trials": trials,
+            }
+        )
+    runtime = dict(config.runtime or {})
+    if isinstance(config.context_inference, dict):
+        runtime.setdefault("context_inference", dict(config.context_inference))
+    return {
+        "experiment": {
+            "program": {"phases": phases},
+            "agent": {
+                "name": config.agent,
+                "representation": _resolve_representation(config, _infer_phase_contexts(config)),
+                "learning": {
+                    "rule": config.learner,
+                    "params": {},
+                    "attention": {
+                        "config": dict(config.attention_config or {}),
+                        "initial": dict(config.attention or {}),
+                    },
+                },
+                "policy": deepcopy(config.policy),
+            },
+            "runtime": runtime,
+        },
+        "report": {"preset": config.report_preset},
+    }
 

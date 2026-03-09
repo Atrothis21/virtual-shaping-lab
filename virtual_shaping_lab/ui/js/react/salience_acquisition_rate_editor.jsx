@@ -1,6 +1,14 @@
 window.VSLReact = window.VSLReact || {};
 
 const STIMULI = ["tone", "noise", "light", "click"];
+const FIXED_PARAMS = Object.freeze({
+  n_trials: 120,
+  alpha: 0.2,
+  gamma: 0.0,
+  cs_plus: ["tone"],
+  salience: 0.85,
+  representation: "vector_elemental",
+});
 
 function buildPayload(params) {
   const salienceMap = {};
@@ -13,7 +21,7 @@ function buildPayload(params) {
     attentionMap[s] = { attention: 1.0 };
   });
 
-  return {
+  const payload = {
     experiment: {
       learner: "rescorla_wagner",
       agent: "classical_agent",
@@ -39,6 +47,8 @@ function buildPayload(params) {
     },
     report: { preset: "custom_protocol" },
   };
+
+  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {
@@ -50,17 +60,10 @@ function validate(params) {
 }
 
 function SalienceAcquisitionRateApp() {
-  const [params, setParams] = React.useState({
-    n_trials: 120,
-    alpha: 0.2,
-    gamma: 0.0,
-    cs_plus: ["tone"],
-    salience: 0.7,
-    representation: "vector_elemental",
-  });
+  const params = FIXED_PARAMS;
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
-  const payload = React.useMemo(() => buildPayload(params), [params]);
+  const payload = React.useMemo(() => buildPayload(params), []);
 
   const onRun = async () => {
     setRunError(false);
@@ -112,14 +115,18 @@ function SalienceAcquisitionRateApp() {
       </div>
 
       <div className="panel">
+        <h3>Fixed Parameters (Read-Only)</h3>
+        <p><strong>All other parameters held constant.</strong></p>
+        <p>Representation: <strong>{params.representation}</strong></p>
+        <p>Trials: <strong>{params.n_trials}</strong></p>
+        <p>Alpha: <strong>{params.alpha}</strong></p>
+        <p>Gamma: <strong>{params.gamma}</strong></p>
+      </div>
+
+      <div className="panel">
         <h3>Stimuli</h3>
-        <label>CS</label>
-        <select multiple value={params.cs_plus} onChange={(e) => {
-          setParams((prev) => ({
-            ...prev,
-            cs_plus: Array.from(e.target.selectedOptions).map((o) => o.value),
-          }));
-        }}>
+        <label>CS (Read-Only)</label>
+        <select multiple value={params.cs_plus} disabled>
           {STIMULI.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}

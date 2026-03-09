@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ui.contracts.builder_draft import BuilderExperimentDraft
+from experiment.payload_contract import to_canonical_payload
 
 _KNOWN_REPORT_PRESETS = {
     "aab_renewal",
@@ -99,7 +100,8 @@ def draft_to_payload(
             },
         }
     preset = report_preset if report_preset is not None else _default_report_preset(typed)
-    return {
+    legacy_payload = {
         "experiment": experiment,
         "report": {"preset": preset},
     }
+    return to_canonical_payload(legacy_payload)
