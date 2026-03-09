@@ -81,6 +81,44 @@ class DualTimeSeriesPlot(Visualization):
 
         return {}
 
+    @staticmethod
+    def _coerce_series_values(record: Dict[str, Any]) -> Dict[str, Any] | None:
+        """
+        Normalize per-record series input for dual plotting.
+
+        Differential template records can emit one-sided payloads like:
+          series_values={"CS1": prediction, "CS2": None}
+        for both CS+ and CS- trials. This helper reconstructs canonical
+        CS+/CS- series slots from stimulus_type + prediction so two curves
+        are rendered correctly.
+        """
+        sv = record.get("series_values")
+        stim_type = record.get("stimulus_type")
+        prediction = record.get("prediction")
+
+        if isinstance(sv, dict):
+            # Backward-compat normalization for one-sided CS1/CS2 template output.
+            if (
+                set(sv.keys()) == {"CS1", "CS2"}
+                and sv.get("CS2") is None
+                and stim_type in {"cs_plus", "cs_minus"}
+                and prediction is not None
+            ):
+                return {
+                    "CS+": prediction if stim_type == "cs_plus" else None,
+                    "CS-": prediction if stim_type == "cs_minus" else None,
+                }
+            return sv
+
+        # Synthesize series slots if explicit series payload is absent.
+        if stim_type in {"cs_plus", "cs_minus"} and prediction is not None:
+            return {
+                "CS+": prediction if stim_type == "cs_plus" else None,
+                "CS-": prediction if stim_type == "cs_minus" else None,
+            }
+
+        return None
+
     def render(
         self,
         records: List[Dict[str, Any]],
@@ -94,9 +132,13 @@ class DualTimeSeriesPlot(Visualization):
         # Gather series from records
         series = {}
         labels = None
+        differential_mode = any(
+            r.get("stimulus_type") in {"cs_plus", "cs_minus"}
+            for r in records
+        )
 
         for i, r in enumerate(records):
-            sv = r.get("series_values")
+            sv = self._coerce_series_values(r)
             if not isinstance(sv, dict):
                 continue
 
@@ -108,7 +150,11 @@ class DualTimeSeriesPlot(Visualization):
                     continue
                 canonical = label_map.get(name, name)
                 series.setdefault(canonical, {"trials": [], "values": []})
-                series[canonical]["trials"].append(i)
+                if differential_mode and canonical in {"CS+", "CS-"}:
+                    x_val = len(series[canonical]["trials"])
+                else:
+                    x_val = i
+                series[canonical]["trials"].append(x_val)
                 series[canonical]["values"].append(val)
 
         if not series:
