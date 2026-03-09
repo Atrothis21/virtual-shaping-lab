@@ -4,25 +4,96 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Virtual Shaping Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
   <style>
+    :root {
+      --bg: #0f172a;
+      --bg-2: #111f3d;
+      --panel: #1e293b;
+      --panel-border: #334155;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --accent-run: #22c55e;
+      --accent-probe: #38bdf8;
+      --chip: #0b2740;
+      --chip-border: #1f4a73;
+      --shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: system-ui, sans-serif;
-      margin: 3rem;
-      max-width: 700px;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, #1d335d 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #10253f 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 2rem 1.25rem;
+    }
+
+    #root {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 0.4rem 0;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      letter-spacing: 0.01em;
+    }
+
+    p {
+      margin-top: 0;
+      color: var(--text-dim);
+      line-height: 1.45;
     }
 
     .card {
-      border: 1px solid #ddd;
-      padding: 1.5rem;
-      border-radius: 8px;
-      margin-bottom: 1.5rem;
+      border: 1px solid var(--panel-border);
+      background: linear-gradient(180deg, #1f2f46 0%, var(--panel) 100%);
+      padding: 1.1rem 1.1rem 1rem;
+      border-radius: 12px;
+      margin: 1rem 0 0;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 0.35rem 0;
+      font-size: 1.3rem;
+      color: #f8fafc;
     }
 
     button {
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
+      padding: 0.58rem 1rem;
+      font-size: 0.95rem;
       cursor: pointer;
+      border-radius: 9px;
+      border: 1px solid #1d7a41;
+      background: linear-gradient(180deg, #28cc5c 0%, var(--accent-run) 100%);
+      color: #082610;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    button:hover {
+      filter: brightness(1.06);
+    }
+
+    code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.9em;
+      background: var(--chip);
+      border: 1px solid var(--chip-border);
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
+      color: var(--accent-probe);
     }
   </style>
 </head>

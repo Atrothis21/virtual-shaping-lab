@@ -44,6 +44,33 @@ function PresetSection({ title, items }) {
   );
 }
 
+function MechanismTabs({ mechanisms, selectedMechanisms, onSelectAll, onToggleMechanism }) {
+  return (
+    <div className="actions" style={{ marginTop: "0.75rem", marginBottom: "0.75rem" }}>
+      <button
+        className={`btn ${selectedMechanisms.length === 0 ? "" : "secondary"}`}
+        onClick={onSelectAll}
+        type="button"
+      >
+        All
+      </button>
+      {mechanisms.map((mechanism) => {
+        const active = selectedMechanisms.includes(mechanism);
+        return (
+          <button
+            key={mechanism}
+            className={`btn ${active ? "" : "secondary"}`}
+            onClick={() => onToggleMechanism(mechanism)}
+            type="button"
+          >
+            {mechanism}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function buildMechanismSections(rawSections) {
   const grouped = new Map();
   const BASELINE_ONLY_PRESETS = new Set([
@@ -91,6 +118,26 @@ function buildMechanismSections(rawSections) {
 
 function App() {
   const mechanismSections = buildMechanismSections(sections);
+  const mechanismTitles = mechanismSections.map((section) => section.title);
+  const [selectedMechanisms, setSelectedMechanisms] = React.useState([]);
+
+  const onSelectAll = React.useCallback(() => {
+    setSelectedMechanisms([]);
+  }, []);
+
+  const onToggleMechanism = React.useCallback((mechanism) => {
+    setSelectedMechanisms((prev) => {
+      if (prev.includes(mechanism)) {
+        const next = prev.filter((m) => m !== mechanism);
+        return next;
+      }
+      return [...prev, mechanism];
+    });
+  }, []);
+
+  const visibleSections = selectedMechanisms.length === 0
+    ? mechanismSections
+    : mechanismSections.filter((section) => selectedMechanisms.includes(section.title));
 
   return (
     <>
@@ -106,7 +153,14 @@ function App() {
         </button>
       </div>
 
-      {mechanismSections.map((section) => (
+      <MechanismTabs
+        mechanisms={mechanismTitles}
+        selectedMechanisms={selectedMechanisms}
+        onSelectAll={onSelectAll}
+        onToggleMechanism={onToggleMechanism}
+      />
+
+      {visibleSections.map((section) => (
         <PresetSection key={section.title} title={section.title} items={section.items} />
       ))}
     </>
