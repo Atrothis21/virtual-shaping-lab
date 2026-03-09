@@ -37,7 +37,10 @@ class RescorlaWagnerLearner(BaseLearner):
             transition,
             total_prediction=prediction,
             prediction_error=delta,
-            feature_contributions={f"f{i}": self.weights[i] * transition.s.x[i] for i in range(len(self.weights))},
+            feature_contributions=self.feature_contributions_for_transition(
+                transition,
+                self.weights,
+            ),
         )
         self.weights += float(self.alpha) * float(delta) * x_mod
 

@@ -60,10 +60,10 @@ class QLearner(BaseLearner):
             transition,
             total_prediction=q_sa,
             prediction_error=delta,
-            feature_contributions={
-                f"f{i}": self.weights[a_idx, i] * transition.s.x[i]
-                for i in range(self.weights.shape[1])
-            },
+            feature_contributions=self.feature_contributions_for_transition(
+                transition,
+                self.weights[a_idx],
+            ),
         )
         self.weights[a_idx] += float(self.alpha) * float(delta) * x_mod
 

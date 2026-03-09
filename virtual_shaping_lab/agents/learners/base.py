@@ -98,6 +98,35 @@ class BaseLearner(ILearner, ABC):
             return tuple(str(k) for k in feature_contributions.keys())
         return ()
 
+    @staticmethod
+    def _feature_labels_for_state(cue_labels: Any, state_dim: int) -> tuple[str, ...]:
+        if cue_labels is None:
+            return tuple(f"f{i}" for i in range(state_dim))
+        if isinstance(cue_labels, (str, int, float)):
+            labels = (str(cue_labels),)
+        else:
+            labels = tuple(str(c) for c in cue_labels)
+        if len(labels) == state_dim:
+            return labels
+        return tuple(f"f{i}" for i in range(state_dim))
+
+    def feature_contributions_for_transition(
+        self,
+        transition: Transition,
+        weights: np.ndarray,
+    ) -> dict[str, float]:
+        x = np.asarray(transition.s.x, dtype=float)
+        w = np.asarray(weights, dtype=float)
+        if w.shape != x.shape:
+            raise ValueError(
+                f"feature contribution shape mismatch: weights_shape={w.shape}, state_shape={x.shape}"
+            )
+        labels = self._feature_labels_for_state(
+            transition.metadata.get(META_CUE_LABELS),
+            state_dim=int(x.shape[0]),
+        )
+        return {labels[i]: float(w[i] * x[i]) for i in range(int(x.shape[0]))}
+
     def attention_modulated_state(
         self,
         transition: Transition,
@@ -112,22 +141,18 @@ class BaseLearner(ILearner, ABC):
         - update attention state after computing current-trial sufficient statistics
         - canonical math target is x'_t = A_t odot x_t
         """
+        x = np.asarray(transition.s.x, dtype=float)
         cue_labels = transition.metadata.get(META_CUE_LABELS)
         active_features = self._coerce_active_features(cue_labels, feature_contributions)
-
-        if cue_labels is not None:
-            alpha_scale = float(self.attention_multiplier(cue_labels))
-        elif active_features:
-            alpha_map = self._attention_strategy.current_alpha(active_features)
-            alpha_vals = [float(v) for v in alpha_map.values()] if alpha_map else [1.0]
-            alpha_scale = float(sum(alpha_vals) / len(alpha_vals))
-        else:
-            alpha_scale = 1.0
-
-        x_mod = np.asarray(transition.s.x, dtype=float) * float(alpha_scale)
+        alpha_vec, context_features = self._resolve_attention_vector(
+            x=x,
+            cue_labels=cue_labels,
+            feature_contributions=feature_contributions,
+        )
+        x_mod = x * alpha_vec
         self.update_attention_state(
             AttentionContext(
-                active_features=active_features,
+                active_features=context_features if context_features else active_features,
                 feature_contributions={str(k): float(v) for k, v in feature_contributions.items()},
                 total_prediction=float(total_prediction),
                 reward=float(transition.r),
@@ -135,6 +160,45 @@ class BaseLearner(ILearner, ABC):
             )
         )
         return x_mod
+
+    def _resolve_attention_vector(
+        self,
+        *,
+        x: np.ndarray,
+        cue_labels: Any,
+        feature_contributions: Mapping[str, float],
+    ) -> tuple[np.ndarray, tuple[str, ...]]:
+        x = np.asarray(x, dtype=float)
+        n = int(x.shape[0])
+        cue_features = self._coerce_active_features(cue_labels, {})
+        contrib_features = self._coerce_active_features(None, feature_contributions)
+
+        # Canonical cuewise path when cue labels are aligned to state basis.
+        if cue_features and len(cue_features) == n:
+            alpha_map = self._attention_strategy.current_alpha(cue_features)
+            alpha_vec = np.asarray([float(alpha_map.get(f, 1.0)) for f in cue_features], dtype=float)
+            return alpha_vec, cue_features
+
+        # Compatibility vector path: contribution basis aligned to x; expand cue alpha uniformly.
+        if contrib_features and len(contrib_features) == n and cue_features:
+            cue_alpha = float(self.attention_multiplier(cue_labels))
+            alpha_vec = np.full(n, cue_alpha, dtype=float)
+            return alpha_vec, cue_features
+
+        # Contribution-key cuewise path when labels are absent but contribution basis is aligned.
+        if contrib_features and len(contrib_features) == n:
+            alpha_map = self._attention_strategy.current_alpha(contrib_features)
+            alpha_vec = np.asarray([float(alpha_map.get(f, 1.0)) for f in contrib_features], dtype=float)
+            return alpha_vec, contrib_features
+
+        # No attention features available; neutral identity modulation.
+        if not cue_features and not contrib_features:
+            return np.ones(n, dtype=float), ()
+
+        actual = len(cue_features) if cue_features else len(contrib_features)
+        raise ValueError(
+            f"attention vector shape mismatch: expected={n}, actual={actual}"
+        )
 
     @abstractmethod
     def update(self, transition: Transition) -> None:
