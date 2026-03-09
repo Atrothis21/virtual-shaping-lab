@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Any, Mapping
-import warnings
+import logging
 
 import numpy as np
 
@@ -23,6 +23,8 @@ from virtual_shaping_lab.agents.learners.attention_strategies import (
     build_attention_strategy,
 )
 from virtual_shaping_lab.domain.types import EncodedState, META_CUE_LABELS, Transition
+
+logger = logging.getLogger(__name__)
 
 
 class BaseLearner(ILearner, ABC):
@@ -185,14 +187,10 @@ class BaseLearner(ILearner, ABC):
         if contrib_features and len(contrib_features) == n and cue_features:
             cue_alpha = float(self.attention_multiplier(cue_labels))
             if not self._did_warn_scalar_attention_shim:
-                warnings.warn(
-                    (
-                        "attention scalar compatibility shim applied: cue-label attention was "
-                        "expanded to a uniform vector because cue basis did not align to state basis; "
-                        "prefer aligned cuewise vectors."
-                    ),
-                    DeprecationWarning,
-                    stacklevel=2,
+                logger.warning(
+                    "attention scalar compatibility shim applied: cue-label attention was "
+                    "expanded to a uniform vector because cue basis did not align to state basis; "
+                    "prefer aligned cuewise vectors."
                 )
                 self._did_warn_scalar_attention_shim = True
             alpha_vec = np.full(n, cue_alpha, dtype=float)
