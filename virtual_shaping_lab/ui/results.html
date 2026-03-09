@@ -4,56 +4,155 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Experiment Results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #0f172a;
+      --bg-2: #10253f;
+      --panel: #1e293b;
+      --panel-border: #334155;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --cs-plus: #22c55e;
+      --cs-minus: #ef4444;
+      --probe: #38bdf8;
+      --compound: #a78bfa;
+      --learning: #f59e0b;
+      --shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: system-ui, sans-serif;
-      margin: 2rem;
-      max-width: 1100px;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, #1d335d 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, var(--bg-2) 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 2rem 1.1rem 3rem;
     }
-    h1, h2 { margin-bottom: 0.4rem; }
+
+    #root {
+      max-width: 1160px;
+      margin: 0 auto;
+    }
+
+    h1, h2 {
+      margin-bottom: 0.4rem;
+      color: #f8fafc;
+    }
+
+    p {
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
     .summary {
-      border-left: 3px solid #eee;
-      padding-left: 1rem;
-      margin-bottom: 1.5rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem 1rem;
+      margin-bottom: 1.2rem;
+      background: linear-gradient(180deg, #1f2f46 0%, var(--panel) 100%);
+      box-shadow: var(--shadow);
     }
+
+    .summary > div {
+      color: var(--text-dim);
+      margin-bottom: 0.2rem;
+    }
+
+    .summary strong {
+      color: #dbeafe;
+    }
+
     .figures img {
       max-width: 100%;
       margin: 1rem 0;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      border: 1px solid #2e476d;
+      border-radius: 10px;
+      background: #111f34;
+      box-shadow: var(--shadow);
     }
+
     pre {
-      background: #f5f5f5;
+      background: #0b1628;
+      border: 1px solid #263852;
+      color: #dbeafe;
       padding: 1rem;
-      border-radius: 6px;
+      border-radius: 10px;
       overflow-x: auto;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
     }
+
     table {
       border-collapse: collapse;
       width: 100%;
       margin-top: 1rem;
       font-size: 0.9rem;
+      background: #111f34;
+      border: 1px solid #2e476d;
+      border-radius: 10px;
+      overflow: hidden;
     }
+
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #2e476d;
       padding: 0.4rem 0.6rem;
       text-align: left;
       vertical-align: top;
+      color: #dbeafe;
     }
+
     th {
-      background: #f0f0f0;
+      background: #172843;
+      color: #e2e8f0;
     }
+
     .btn {
-      padding: 0.4rem 0.8rem;
-      border: 1px solid #ccc;
-      background: #fff;
+      padding: 0.45rem 0.9rem;
+      border: 1px solid #1d7a41;
+      background: linear-gradient(180deg, #28cc5c 0%, var(--cs-plus) 100%);
+      color: #082610;
       cursor: pointer;
       margin-top: 0.6rem;
       margin-right: 0.5rem;
+      border-radius: 8px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
+
+    .btn:hover {
+      filter: brightness(1.07);
+    }
+
     .links a {
       display: inline-block;
       margin-right: 1rem;
+      color: var(--probe);
+      text-decoration: none;
+      margin-top: 0.35rem;
+      margin-bottom: 0.35rem;
+      border-bottom: 1px solid transparent;
+    }
+
+    .links a:hover {
+      border-bottom-color: var(--probe);
+    }
+
+    code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      background: #0b2740;
+      border: 1px solid #1f4a73;
+      color: var(--probe);
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
     }
   </style>
 </head>

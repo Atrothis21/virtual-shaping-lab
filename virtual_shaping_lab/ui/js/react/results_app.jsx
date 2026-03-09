@@ -26,6 +26,30 @@ const KNOWN_METRICS = [
   "action_counts.json",
 ];
 
+function inferFigureTags(fileName) {
+  const file = String(fileName || "").toLowerCase();
+  const tags = [];
+
+  if (file.includes("probe")) tags.push("Probe");
+  if (file.includes("compound") || file.includes("summation")) tags.push("Compound");
+  if (file.includes("discrimination")) tags.push("CS+ / CS-");
+  if (file.includes("extinction")) tags.push("Extinction");
+  if (file.includes("curve") || file.includes("time_series") || file.includes("line_plot")) tags.push("Learning");
+  if (file.includes("bar_plot") || file.includes("distribution")) tags.push("Distribution");
+  return tags;
+}
+
+function inferMetricTags(fileName) {
+  const file = String(fileName || "").toLowerCase();
+  const tags = [];
+  if (file.includes("time_series")) tags.push("Time Series");
+  if (file.includes("counts")) tags.push("Counts");
+  if (file.includes("summary")) tags.push("Summary");
+  if (file.includes("reward")) tags.push("Reward");
+  if (file.includes("prediction")) tags.push("Prediction");
+  return tags;
+}
+
 function getRunId() {
   const params = new URLSearchParams(window.location.search);
   return params.get("run_id");
@@ -88,6 +112,63 @@ function Summary({ payload, runId }) {
           <div><strong>Interpretation Note:</strong> v1.4 tracks consequence sign/class only.</div>
         </>
       )}
+    </div>
+  );
+}
+
+function FigureGallery({ runId, files }) {
+  if (!files.length) {
+    return <p>No figures found for this run.</p>;
+  }
+
+  return (
+    <div className="figures">
+      {files.map((file) => {
+        const tags = inferFigureTags(file);
+        return (
+          <div key={file} className="summary" style={{ marginBottom: "1rem" }}>
+            <div style={{ marginBottom: "0.45rem" }}>
+              <strong>Figure:</strong> <code>{file}</code>
+            </div>
+            {tags.length > 0 && (
+              <div className="links" style={{ marginBottom: "0.45rem" }}>
+                {tags.map((tag) => (
+                  <code key={`${file}-${tag}`} style={{ marginRight: "0.4rem" }}>{tag}</code>
+                ))}
+              </div>
+            )}
+            <img src={`/reports/${runId}/${file}`} alt={file} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MetricsList({ runId, files }) {
+  if (!files.length) {
+    return <p>No metric JSON files found for this run.</p>;
+  }
+
+  return (
+    <div className="links">
+      {files.map((file) => {
+        const tags = inferMetricTags(file);
+        return (
+          <div key={file} style={{ marginBottom: "0.45rem" }}>
+            <a href={`/reports/${runId}/metrics/${file}`} target="_blank" rel="noreferrer">
+              {file}
+            </a>
+            {tags.length > 0 && (
+              <span style={{ marginLeft: "0.45rem" }}>
+                {tags.map((tag) => (
+                  <code key={`${file}-${tag}`} style={{ marginRight: "0.35rem" }}>{tag}</code>
+                ))}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -223,32 +304,19 @@ function ResultsApp() {
       <h1>Experiment Results</h1>
       <Summary payload={payload} runId={runId} />
 
-      <button className="btn" onClick={() => window.history.back()}>Go back</button>
-
-      <div className="links">
-        <a href={pdfUrl} target="_blank" rel="noreferrer">Open PDF Report</a>
-        <a href={pdfUrl} download>Download PDF</a>
+      <div className="summary">
+        <button className="btn" onClick={() => window.history.back()}>Go back</button>
+        <div className="links">
+          <a href={pdfUrl} target="_blank" rel="noreferrer">Open PDF Report</a>
+          <a href={pdfUrl} download>Download PDF</a>
+        </div>
       </div>
 
       <h2>Figures</h2>
-      <div className="figures">
-        {figureFiles.map((file) => (
-          <img key={file} src={`/reports/${runId}/${file}`} alt={file} />
-        ))}
-      </div>
+      <FigureGallery runId={runId} files={figureFiles} />
 
       <h2>Metrics</h2>
-      {metricFiles.length ? (
-        <div className="links">
-          {metricFiles.map((file) => (
-            <a key={file} href={`/reports/${runId}/metrics/${file}`} target="_blank" rel="noreferrer">
-              {file}
-            </a>
-          ))}
-        </div>
-      ) : (
-        <p>No metric JSON files found for this run.</p>
-      )}
+      <MetricsList runId={runId} files={metricFiles} />
 
       <h2>Trial Records</h2>
       <button className="btn" onClick={() => setShowAll((v) => !v)}>
