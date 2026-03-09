@@ -4,10 +4,11 @@ const sections = window.VSLReact.presetSections || [];
 
 function PresetCard({ item }) {
   const mechanisms = Array.isArray(item.mechanisms) ? item.mechanisms : [];
+  const briefDescription = item.teaches || item.description || "";
   return (
     <div className="card">
       <h3>{item.name}</h3>
-      <p>{item.description}</p>
+      {briefDescription && <p>{briefDescription}</p>}
       {item.phaseSummary && (
         <p className="phase-summary">
           <strong>Phase Flow:</strong> {item.phaseSummary}
@@ -23,36 +24,19 @@ function PresetCard({ item }) {
           </div>
         </div>
       )}
-      {item.teaches && (
-        <p className="teaches">
-          <strong>What This Demonstrates:</strong> {item.teaches}
-        </p>
-      )}
-      {item.builderNext && (
-        <p className="builder-next">
-          <strong>Try Next In Builder:</strong> {item.builderNext}
-        </p>
-      )}
-      {item.nextPhenomenon && (
-        <p className="next-phenomenon">
-          <strong>Recommended Next Phenomenon:</strong> {item.nextPhenomenon}
-        </p>
-      )}
       <div className="card-actions">
         <a className="button" href={item.href}>Open Preset</a>
-        <a className="button secondary" href={item.builderHref || "/ui/builder.html"}>Open Builder</a>
       </div>
     </div>
   );
 }
 
-function PresetSection({ section }) {
+function PresetSection({ title, items }) {
   return (
     <section>
-      <h2>{section.title}</h2>
-      <p className="section-note">{section.note}</p>
+      <h2>{title}</h2>
       <div className="grid">
-        {section.items.map((item) => (
+        {items.map((item) => (
           <PresetCard key={item.href} item={item} />
         ))}
       </div>
@@ -60,7 +44,54 @@ function PresetSection({ section }) {
   );
 }
 
+function buildMechanismSections(rawSections) {
+  const grouped = new Map();
+  const BASELINE_ONLY_PRESETS = new Set([
+    "Acquisition",
+    "Compound Acquisition",
+    "Differential Acquisition",
+    "Extinction",
+  ]);
+
+  rawSections.forEach((section) => {
+    const items = Array.isArray(section.items) ? section.items : [];
+    items.forEach((item) => {
+      const mechanisms = Array.isArray(item.mechanisms) && item.mechanisms.length > 0
+        ? item.mechanisms
+        : ["Baseline"];
+      const mechanismSet = new Set(mechanisms.map((m) => String(m)));
+
+      // Only specific foundational phenomena should appear in Baseline.
+      if (BASELINE_ONLY_PRESETS.has(String(item.name || "").trim())) {
+        mechanismSet.add("Baseline");
+      }
+
+      Array.from(mechanismSet).forEach((mechanism) => {
+        const key = String(mechanism);
+        if (!grouped.has(key)) {
+          grouped.set(key, new Map());
+        }
+        const perMechanism = grouped.get(key);
+        perMechanism.set(item.href, item);
+      });
+    });
+  });
+
+  return Array.from(grouped.entries())
+    .sort((a, b) => {
+      if (a[0] === "Baseline" && b[0] !== "Baseline") return -1;
+      if (b[0] === "Baseline" && a[0] !== "Baseline") return 1;
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([mechanism, itemMap]) => ({
+      title: mechanism,
+      items: Array.from(itemMap.values()).sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+}
+
 function App() {
+  const mechanismSections = buildMechanismSections(sections);
+
   return (
     <>
       <h1>Experiment Presets</h1>
@@ -75,8 +106,8 @@ function App() {
         </button>
       </div>
 
-      {sections.map((section) => (
-        <PresetSection key={section.title} section={section} />
+      {mechanismSections.map((section) => (
+        <PresetSection key={section.title} title={section.title} items={section.items} />
       ))}
     </>
   );
