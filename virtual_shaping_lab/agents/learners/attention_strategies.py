@@ -1,4 +1,10 @@
-"""Learner-owned attention strategy contracts and baseline implementations."""
+"""Learner-owned attention strategy contracts and baseline implementations.
+
+Vector attention contract:
+- active associability state is cuewise (`A_t`) with values in [0, 1]
+- strategies compute per-feature attention values used by learner updates
+- canonical learner path consumes attended input `x'_t = A_t odot x_t`
+"""
 
 from __future__ import annotations
 

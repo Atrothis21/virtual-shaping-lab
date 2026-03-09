@@ -1,6 +1,12 @@
 # learners/base.py
 
-"""Base learner definitions for transition-based updates."""
+"""Base learner definitions for transition-based updates.
+
+Attention contract reference:
+- docs/core_engine_architecture.md (Agent Cognition Layer)
+- canonical attended input form: x'_t = A_t odot x_t
+- invariant target: shape(A_t) == shape(x_t)
+"""
 
 from __future__ import annotations
 
@@ -101,8 +107,10 @@ class BaseLearner(ILearner, ABC):
         feature_contributions: Mapping[str, float],
     ) -> np.ndarray:
         """
-        Canonical learner attention path:
-        use current attention to modulate input (A_t ⊙ x_t), then update attention state.
+        Canonical learner attention path contract:
+        - modulate input using current attention state before parameter update
+        - update attention state after computing current-trial sufficient statistics
+        - canonical math target is x'_t = A_t odot x_t
         """
         cue_labels = transition.metadata.get(META_CUE_LABELS)
         active_features = self._coerce_active_features(cue_labels, feature_contributions)
@@ -151,3 +159,4 @@ class BaseLearner(ILearner, ABC):
 
     def get_parameters(self) -> Dict[str, np.ndarray]:
         return {}
+

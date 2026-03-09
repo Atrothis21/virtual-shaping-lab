@@ -228,6 +228,13 @@ Attention mathematical contract (v2.17 target):
 - `cuewise_contributions` means per-feature prediction terms (for linear forms: `{ i -> w_i x_i }`)
 - protocol/phase/runtime layers must not mutate attention internals directly; they only provide transitions consumed by learner update.
 
+Vector attention invariants (canonical):
+- `A_t` is a cuewise associability vector over active input basis `x_t`.
+- attended input is defined as `x'_t = A_t odot x_t` with strict shape equality:
+  - `shape(A_t) == shape(x_t)`
+- learner updates consume `x'_t`; representation/runtime layers must not pre-apply attention mutation.
+- scalar-only attention application is non-canonical and must be treated as compatibility behavior only.
+
 ### Attention Conformance Crosswalk (V2.17)
 
 Operator mapping:
