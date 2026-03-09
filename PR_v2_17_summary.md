@@ -33,6 +33,15 @@ Primary outcomes:
 - parameter keys and bounds are validated per strategy with deterministic failures
 - legacy attention map input is preserved only as compatibility translation to explicit strategy config
 
+### Vectorization Closeout (V2.17.1)
+- learner base attention path now applies explicit vector modulation (`x'_t = A_t odot x_t`)
+- shape mismatch now fails fast with deterministic error:
+  - `attention vector shape mismatch: expected={n}, actual={m}`
+- legacy scalar cue-label attention path remains compatibility-only:
+  - scalar is expanded to uniform vector when cue basis is not aligned to state basis
+  - one-time `DeprecationWarning` is emitted per learner instance
+- RW / TD / Q learners now share canonical contribution construction via base helper path, eliminating per-learner duplicated fallback logic
+
 ---
 
 ## Strategy Contracts and Context Requirements
