@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Any, Mapping
+import warnings
 
 import numpy as np
 
@@ -35,6 +36,7 @@ class BaseLearner(ILearner, ABC):
         self.attention_map: Dict[str, float] = {}
         self._attention_strategy: AttentionStrategy = build_attention_strategy("none")
         self._last_attention_context: AttentionContext | None = None
+        self._did_warn_scalar_attention_shim = False
 
     def reset(self) -> None:
         self._attention_strategy.reset()
@@ -182,6 +184,17 @@ class BaseLearner(ILearner, ABC):
         # Compatibility vector path: contribution basis aligned to x; expand cue alpha uniformly.
         if contrib_features and len(contrib_features) == n and cue_features:
             cue_alpha = float(self.attention_multiplier(cue_labels))
+            if not self._did_warn_scalar_attention_shim:
+                warnings.warn(
+                    (
+                        "attention scalar compatibility shim applied: cue-label attention was "
+                        "expanded to a uniform vector because cue basis did not align to state basis; "
+                        "prefer aligned cuewise vectors."
+                    ),
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                self._did_warn_scalar_attention_shim = True
             alpha_vec = np.full(n, cue_alpha, dtype=float)
             return alpha_vec, cue_features
 
