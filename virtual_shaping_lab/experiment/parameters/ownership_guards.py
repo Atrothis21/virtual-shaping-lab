@@ -15,6 +15,25 @@ def _format_keys(keys: set[str]) -> str:
     return ", ".join(sorted(keys))
 
 
+def _validate_nested_learner_math_object(
+    value: Any,
+    *,
+    field: str,
+    rep_owned_keys: set[str],
+) -> None:
+    mapping = _require_mapping(value, field)
+    params = mapping.get("params", {})
+    if params is None:
+        params = {}
+    params = _require_mapping(params, f"{field}.params")
+    bad = rep_owned_keys & set(params.keys())
+    if bad:
+        raise ValueError(
+            f"Ownership contract violation: {field}.params must not contain representation-owned keys: "
+            f"{_format_keys(bad)}."
+        )
+
+
 def validate_composed_parameter_ownership(composed_parameters: Mapping[str, Any]) -> None:
     """
     Fail-fast contract guard for subsystem ownership boundaries.
@@ -23,6 +42,16 @@ def validate_composed_parameter_ownership(composed_parameters: Mapping[str, Any]
     plan settings cannot silently leak cross-concern fields.
     """
     composed = _require_mapping(composed_parameters, "composed_parameters")
+    rep_owned_keys = {
+        "salience",
+        "similarity",
+        "context",
+        "contexts",
+        "context_map",
+        "similarity_kernel",
+        "salience_operator",
+        "temporal_basis",
+    }
 
     rep = composed.get("representation", {})
     if rep is not None:
@@ -37,11 +66,25 @@ def validate_composed_parameter_ownership(composed_parameters: Mapping[str, Any]
     learner = composed.get("learner", {})
     if learner is not None:
         learner = _require_mapping(learner, "composed_parameters.learner")
-        bad = {"salience", "similarity", "context", "contexts"} & set(learner.keys())
+        bad = rep_owned_keys & set(learner.keys())
         if bad:
             raise ValueError(
                 "Ownership contract violation: learner object must not contain representation-owned keys: "
                 f"{_format_keys(bad)}."
+            )
+        attention_mechanism = learner.get("attention_mechanism")
+        if attention_mechanism is not None:
+            _validate_nested_learner_math_object(
+                attention_mechanism,
+                field="attention_mechanism",
+                rep_owned_keys=rep_owned_keys,
+            )
+        prediction_error_rule = learner.get("prediction_error_rule")
+        if prediction_error_rule is not None:
+            _validate_nested_learner_math_object(
+                prediction_error_rule,
+                field="prediction_error_rule",
+                rep_owned_keys=rep_owned_keys,
             )
 
     policy = composed.get("policy", {})

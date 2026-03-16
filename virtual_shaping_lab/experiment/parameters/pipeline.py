@@ -70,6 +70,16 @@ class ParameterValidatorPipeline:
     """Semantic and ownership-boundary validation for normalized payloads."""
 
     _LEAK_KEYS = {"attention", "attention_compound", "salience", "similarity"}
+    _REPRESENTATION_OWNED_KEYS = {
+        "salience",
+        "similarity",
+        "context",
+        "contexts",
+        "context_map",
+        "similarity_kernel",
+        "salience_operator",
+        "temporal_basis",
+    }
     _ALLOWED_ATTENTION_STRATEGIES = {"none", "static", "pearce_hall", "mackintosh"}
     _ATTENTION_CONFIG_ALLOWED_PARAM_KEYS = {
         "none": set(),
@@ -124,6 +134,10 @@ class ParameterValidatorPipeline:
         params = cfg.get("params")
         if not isinstance(params, Mapping):
             raise ValueError("experiment.attention_config.params must be an object")
+        cls._validate_no_representation_owned_keys(
+            params,
+            field="experiment.attention_config.params",
+        )
         strategy = name.strip().lower()
         allowed = cls._ATTENTION_CONFIG_ALLOWED_PARAM_KEYS[strategy]
         unknown = sorted(k for k in params.keys() if k not in allowed)
@@ -264,12 +278,29 @@ class ParameterValidatorPipeline:
             params = cfg.get("params", {})
             if not isinstance(params, Mapping):
                 raise ValueError("prediction_error.params must be an object")
+            cls._validate_no_representation_owned_keys(
+                params,
+                field="prediction_error.params",
+            )
         else:
             raise ValueError("prediction_error must be a string or object")
         if variant not in cls._ALLOWED_PREDICTION_ERROR_VARIANTS:
             raise ValueError(
                 "prediction_error variant must be one of: "
                 + ", ".join(sorted(cls._ALLOWED_PREDICTION_ERROR_VARIANTS))
+            )
+
+    @classmethod
+    def _validate_no_representation_owned_keys(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        field: str,
+    ) -> None:
+        bad = cls._REPRESENTATION_OWNED_KEYS & set(value.keys())
+        if bad:
+            raise ValueError(
+                f"{field} must not contain representation-owned keys: {', '.join(sorted(bad))}"
             )
 
     @classmethod

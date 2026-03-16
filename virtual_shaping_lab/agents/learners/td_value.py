@@ -6,6 +6,7 @@ from typing import Optional, Any
 
 import numpy as np
 
+from virtual_shaping_lab.agents.math_objects.prediction_error_objects import TD0PredictionError
 from virtual_shaping_lab.agents.learners.base import BaseLearner
 from virtual_shaping_lab.domain.types import EncodedState, Transition
 
@@ -26,19 +27,21 @@ class TDValueLearner(BaseLearner):
         super().__init__(alpha=alpha, gamma=gamma)
         self.weights = np.zeros(state_dim, dtype=float)
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
+        self.prediction_error_rule = TD0PredictionError(gamma=float(gamma))
 
     def value(self, state: EncodedState, action: Any = None) -> float:
         return float(np.dot(self.weights, state.x))
 
     def update(self, transition: Transition) -> None:
         v = self.value(transition.s)
-
-        if transition.s_next is None or transition.done:
-            v_next = 0.0
-        else:
-            v_next = self.value(transition.s_next)
-
-        delta = transition.r + self.gamma * v_next - v
+        next_state = None if transition.s_next is None or transition.done else transition.s_next.x
+        delta = self.prediction_error_rule.compute(
+            state=transition.s.x,
+            reward=transition.r,
+            next_state=next_state,
+            parameters=self.weights,
+            metadata=transition.metadata,
+        )
         x_mod = self.attention_modulated_state(
             transition,
             total_prediction=v,

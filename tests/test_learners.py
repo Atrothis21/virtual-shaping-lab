@@ -1,6 +1,12 @@
 import numpy as np
 import pytest
 
+from agents.math_objects.attention_objects import build_attention_mechanism
+from agents.math_objects.prediction_error_objects import (
+    RescorlaWagnerPredictionError,
+    TD0PredictionError,
+)
+from agents.learners.attention_strategies import AttentionContext
 from agents.learners.base import BaseLearner
 from agents.learners.q_learner import QLearner
 from agents.learners.rescorla_wagner import RescorlaWagnerLearner
@@ -60,6 +66,38 @@ def test_base_learner_hooks():
         bad.update(t(state, 1.0))
     with pytest.raises(NotImplementedError):
         bad.value(state)
+
+
+def test_prediction_error_rule_objects_match_expected_formulas():
+    rw = RescorlaWagnerPredictionError()
+    weights = np.asarray([0.2, 0.0], dtype=float)
+    state = np.asarray([1.0, 0.0], dtype=float)
+    assert rw.compute(state=state, reward=1.0, parameters=weights) == pytest.approx(0.8)
+
+    td0 = TD0PredictionError(gamma=0.5)
+    next_state = np.asarray([1.0, 0.0], dtype=float)
+    assert td0.compute(
+        state=state,
+        reward=1.0,
+        next_state=next_state,
+        parameters=weights,
+    ) == pytest.approx(0.9)
+
+
+def test_attention_mechanism_builder_returns_math_object_contract():
+    mechanism = build_attention_mechanism("pearce_hall", params={"default": 0.4, "eta": 0.5})
+    assert callable(getattr(mechanism, "current_alpha", None))
+    assert callable(getattr(mechanism, "update_state", None))
+    state = mechanism.update_state(
+        AttentionContext(
+            active_features=("tone",),
+            feature_contributions={"tone": 0.2},
+            total_prediction=0.2,
+            reward=1.0,
+            prediction_error=0.6,
+        )
+    )
+    assert 0.0 <= state.alpha_by_feature["tone"] <= 1.0
 
 
 def test_rescorla_wagner_update_paths():

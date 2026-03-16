@@ -154,6 +154,32 @@ def test_parameter_validator_rejects_invalid_prediction_error_variant():
         ParameterComposer.compose(payload)
 
 
+def test_parameter_validator_rejects_representation_owned_keys_in_prediction_error_params():
+    payload = _base_payload()
+    payload["experiment"]["prediction_error"] = {
+        "variant": "rescorla_wagner",
+        "params": {"salience_operator": {"variant": "diagonal"}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="prediction_error.params must not contain representation-owned keys",
+    ):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_representation_owned_keys_in_attention_config_params():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "mackintosh",
+        "params": {"kappa": 0.1, "temporal_basis": {"variant": "identity", "dimension": 1}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="experiment.attention_config.params must not contain representation-owned keys",
+    ):
+        ParameterComposer.compose(payload)
+
+
 def test_parameter_validator_rejects_salience_outside_unit_interval():
     payload = _base_payload()
     payload["experiment"]["salience"] = {"tone": 1.2}

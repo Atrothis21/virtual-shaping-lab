@@ -17,10 +17,10 @@ import logging
 import numpy as np
 
 from virtual_shaping_lab.agents.interfaces import ILearner
+from virtual_shaping_lab.agents.math_objects.interfaces import IAttentionMechanism
+from virtual_shaping_lab.agents.math_objects.attention_objects import build_attention_mechanism
 from virtual_shaping_lab.agents.learners.attention_strategies import (
     AttentionContext,
-    AttentionStrategy,
-    build_attention_strategy,
 )
 from virtual_shaping_lab.domain.types import EncodedState, META_CUE_LABELS, Transition
 
@@ -36,7 +36,7 @@ class BaseLearner(ILearner, ABC):
         self.alpha = float(alpha)
         self.gamma = float(gamma)
         self.attention_map: Dict[str, float] = {}
-        self._attention_strategy: AttentionStrategy = build_attention_strategy("none")
+        self._attention_strategy: IAttentionMechanism = build_attention_mechanism("none")
         self._last_attention_context: AttentionContext | None = None
         self._did_warn_scalar_attention_shim = False
 
@@ -55,7 +55,7 @@ class BaseLearner(ILearner, ABC):
         )
 
     def set_attention_config(self, *, name: str, params: Optional[Mapping[str, Any]] = None) -> None:
-        self._attention_strategy = build_attention_strategy(name=name, params=params)
+        self._attention_strategy = build_attention_mechanism(name=name, params=params)
 
     def attention_multiplier(self, cue_labels: Any) -> float:
         return float(self._attention_strategy.current_alpha_for_cues(cue_labels))

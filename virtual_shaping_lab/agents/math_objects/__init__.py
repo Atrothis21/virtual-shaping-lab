@@ -1,4 +1,8 @@
-"""Mathematical object contracts for the V2 cognitive architecture."""
+"""Mathematical object contracts for the V2 cognitive architecture.
+
+Concrete implementations live in sibling modules and should be imported from
+those modules directly to avoid unnecessary package-level import coupling.
+"""
 
 from .interfaces import (
     IAttentionMechanism,
@@ -8,14 +12,6 @@ from .interfaces import (
     ISimilarityKernel,
     ITemporalBasis,
 )
-from .representation_objects import DefaultContextMap, MatrixSimilarityKernel
-from .salience_objects import DiagonalSalienceOperator
-from .temporal_objects import (
-    BinnedTemporalBasis,
-    IdentityTemporalBasis,
-    TraceTemporalBasis,
-    build_temporal_basis,
-)
 
 __all__ = [
     "IAttentionMechanism",
@@ -24,11 +20,4 @@ __all__ = [
     "ISalienceOperator",
     "ISimilarityKernel",
     "ITemporalBasis",
-    "DefaultContextMap",
-    "MatrixSimilarityKernel",
-    "DiagonalSalienceOperator",
-    "IdentityTemporalBasis",
-    "BinnedTemporalBasis",
-    "TraceTemporalBasis",
-    "build_temporal_basis",
 ]

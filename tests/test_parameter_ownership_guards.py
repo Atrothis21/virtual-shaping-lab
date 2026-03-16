@@ -54,6 +54,32 @@ def test_validate_composed_parameter_ownership_rejects_learner_representation_ke
         validate_composed_parameter_ownership(composed)
 
 
+def test_validate_composed_parameter_ownership_rejects_attention_mechanism_representation_keys():
+    composed = _base_composed()
+    composed["learner"]["attention_mechanism"] = {
+        "name": "mackintosh",
+        "params": {"salience_operator": {"variant": "diagonal"}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="attention_mechanism.params must not contain representation-owned keys",
+    ):
+        validate_composed_parameter_ownership(composed)
+
+
+def test_validate_composed_parameter_ownership_rejects_prediction_error_rule_representation_keys():
+    composed = _base_composed()
+    composed["learner"]["prediction_error_rule"] = {
+        "variant": "rescorla_wagner",
+        "params": {"temporal_basis": {"variant": "identity", "dimension": 1}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="prediction_error_rule.params must not contain representation-owned keys",
+    ):
+        validate_composed_parameter_ownership(composed)
+
+
 def test_validate_composed_parameter_ownership_rejects_policy_non_policy_keys():
     composed = _base_composed()
     composed["policy"]["alpha"] = 0.1
