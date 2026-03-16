@@ -2,6 +2,17 @@ window.VSLReact = window.VSLReact || {};
 
 const sections = window.VSLReact.presetSections || [];
 
+function mechanismBadgeClass(name) {
+  const key = String(name || "").trim().toLowerCase();
+  if (key === "baseline") return "badge-mechanism-baseline";
+  if (key === "attention") return "badge-mechanism-attention";
+  if (key === "context") return "badge-mechanism-context";
+  if (key === "similarity") return "badge-mechanism-similarity";
+  if (key === "salience") return "badge-mechanism-salience";
+  if (key === "operant") return "badge-mechanism-operant";
+  return "badge-mechanism-default";
+}
+
 function PresetCard({ item }) {
   const mechanisms = Array.isArray(item.mechanisms) ? item.mechanisms : [];
   const briefDescription = item.teaches || item.description || "";
@@ -19,7 +30,12 @@ function PresetCard({ item }) {
           <div className="badge-label">Mechanisms</div>
           <div className="badge-row">
             {mechanisms.map((name) => (
-              <span key={`${item.href}-${name}`} className="badge">{name}</span>
+              <span
+                key={`${item.href}-${name}`}
+                className={`badge ${mechanismBadgeClass(name)}`}
+              >
+                {name}
+              </span>
             ))}
           </div>
         </div>

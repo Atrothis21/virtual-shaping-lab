@@ -4,15 +4,164 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Salience-Driven Competition Preset</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 900px; }
-    label { font-weight: 600; display: block; margin-top: 0.6rem; }
-    input[type="range"], select { width: 100%; margin-top: 0.4rem; }
-    .panel { border-left: 3px solid #eee; padding-left: 1rem; margin-top: 1.5rem; }
-    .actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-    button, .btn { margin-top: 0.6rem; padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; text-decoration: none; color: #111; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 6px; overflow-x: auto; }
-    .error { background: #ffe6e6; color: #900; padding: 0.6rem; border-radius: 6px; }
+    :root {
+      --bg: #0f172a;
+      --bg-2: #10253f;
+      --panel: #1e293b;
+      --panel-border: #334155;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --cs-plus: #22c55e;
+      --cs-minus: #ef4444;
+      --probe: #38bdf8;
+      --compound: #a78bfa;
+      --learning: #f59e0b;
+      --shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, #1d335d 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, var(--bg-2) 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 2rem 1.1rem 3rem;
+    }
+
+    #root {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3, h4 {
+      color: #f8fafc;
+      margin-top: 0;
+    }
+
+    p {
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    label {
+      display: block;
+      margin-top: 0.55rem;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+      color: #dbeafe;
+      font-size: 0.93rem;
+    }
+
+    .panel {
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 0.9rem 1rem 1rem;
+      margin-top: 1.25rem;
+      background: linear-gradient(180deg, #1f2f46 0%, var(--panel) 100%);
+      box-shadow: var(--shadow);
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, .btn {
+      margin-top: 0.6rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: 1px solid #1d7a41;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #28cc5c 0%, var(--cs-plus) 100%);
+      color: #082610;
+      text-decoration: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .btn.secondary, button.secondary {
+      background: #16243a;
+      border-color: #2d466b;
+      color: #dbeafe;
+    }
+
+    button:hover, .btn:hover { filter: brightness(1.07); }
+
+    select,
+    input[type="number"],
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      background: #111f34;
+      border: 1px solid #2e476d;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 0.45rem 0.6rem;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+    }
+
+    select[multiple] {
+      min-height: 8rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cs-plus);
+      margin-top: 0.35rem;
+    }
+
+    pre {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
+      background: #0b1628;
+      border: 1px solid #263852;
+      border-radius: 10px;
+      color: #dbeafe;
+      padding: 0.8rem;
+      overflow-x: auto;
+      margin-top: 0.8rem;
+    }
+
+    .error {
+      border-color: #7f1d1d;
+      background: #2b1016;
+      color: #fecaca;
+      padding: 0.6rem;
+      border-radius: 8px;
+    }
+
+    a {
+      color: var(--probe);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      background: #0b2740;
+      border: 1px solid #1f4a73;
+      color: var(--probe);
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
+    }
   </style>
 </head>
 <body>
