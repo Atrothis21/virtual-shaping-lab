@@ -124,11 +124,71 @@ def _compose_prediction_error_rule(exp: Mapping[str, Any], algorithm: str) -> Pr
     return PredictionErrorRuleParams(variant=algorithm or "rescorla_wagner")
 
 
+def _flatten_canonical_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    exp = payload.get("experiment", {})
+    if not isinstance(exp, Mapping):
+        return dict(payload)
+    if not (
+        isinstance(exp.get("program"), Mapping)
+        and isinstance(exp.get("agent"), Mapping)
+        and isinstance(exp.get("runtime"), Mapping)
+    ):
+        return dict(payload)
+
+    agent = exp.get("agent", {})
+    learning = agent.get("learning", {}) if isinstance(agent, Mapping) else {}
+    attention = learning.get("attention", {}) if isinstance(learning, Mapping) else {}
+    attention_initial = attention.get("initial", {}) if isinstance(attention, Mapping) else {}
+    attention_config = attention.get("config") if isinstance(attention, Mapping) else None
+    if isinstance(attention_config, Mapping) and not attention_config:
+        attention_config = None
+    representation = agent.get("representation")
+    runtime = dict(exp.get("runtime", {}))
+    context_inference = runtime.pop("context_inference", {})
+
+    phases: list[dict[str, Any]] = []
+    for phase in exp.get("program", {}).get("phases", []):
+        if not isinstance(phase, Mapping):
+            continue
+        params = dict(phase.get("params", {})) if isinstance(phase.get("params"), Mapping) else {}
+        if "trials" in phase and "n_trials" not in params:
+            params["n_trials"] = phase.get("trials")
+        phases.append(
+            {
+                "name": phase.get("name"),
+                "protocol": phase.get("protocol"),
+                "stimuli": phase.get("stimuli"),
+                "params": params,
+            }
+        )
+
+    return {
+        "experiment": {
+            "learner": learning.get("rule"),
+            "agent": agent.get("name"),
+            "representation": representation,
+            "policy": agent.get("policy"),
+            "prediction_error": learning.get("prediction_error"),
+            "runtime": runtime,
+            "salience": (
+                representation.get("salience", representation.get("params", {}).get("salience", {}))
+                if isinstance(representation, Mapping)
+                else {}
+            ),
+            "attention": attention_initial if isinstance(attention_initial, Mapping) else {},
+            "attention_config": attention_config,
+            "context_inference": context_inference if isinstance(context_inference, Mapping) else {},
+            "phases": phases,
+        }
+    }
+
+
 class ParameterComposer:
     """Compose validated payloads into immutable typed parameter objects."""
 
     @classmethod
     def compose(cls, payload: Mapping[str, Any], *, normalize_and_validate: bool = True) -> ExperimentParameters:
+        payload = _flatten_canonical_payload(payload)
         if normalize_and_validate:
             normalized = ParameterNormalizerPipeline.normalize(payload)
             ParameterValidatorPipeline.validate(normalized)

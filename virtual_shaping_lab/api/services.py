@@ -13,7 +13,6 @@ from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
 )
-from experiment.payload_contract import to_canonical_payload
 
 
 _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
@@ -133,7 +132,7 @@ class PlanService:
 
     @staticmethod
     def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
-        plan = build_plan(to_canonical_payload(payload))
+        plan = build_plan(payload)
         return {
             "plan": plan.to_dict(),
             "stable_hash": plan.stable_hash(),
@@ -256,8 +255,7 @@ class RunService:
         status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
-        canonical_payload = to_canonical_payload(payload)
-        plan = build_plan(canonical_payload)
+        plan = build_plan(payload)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
             raise ValueError(
