@@ -47,7 +47,35 @@ def test_run_preset_report_from_public_facade(tmp_path):
     out_dir = run_preset_report(
         records=_trial_records(),
         preset="acquisition",
-        payload={"report": {"preset": "acquisition"}},
+        payload={
+            "experiment": {
+                "program": {
+                    "phases": [
+                        {
+                            "name": "Acquisition",
+                            "protocol": "acquisition",
+                            "stimuli": {"cs_plus": ["tone"]},
+                            "params": {"n_trials": 1},
+                            "trials": 1,
+                        }
+                    ]
+                },
+                "agent": {
+                    "name": "classical_agent",
+                    "representation": {
+                        "name": "vector_elemental",
+                        "params": {"stimuli": ["tone"]},
+                    },
+                    "learning": {
+                        "rule": "rescorla_wagner",
+                        "params": {},
+                    },
+                    "policy": None,
+                },
+                "runtime": {},
+            },
+            "report": {"preset": "acquisition"},
+        },
         output_dir=str(tmp_path),
     )
     assert Path(out_dir).exists()
