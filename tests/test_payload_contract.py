@@ -73,6 +73,15 @@ def test_canonical_payload_passthrough():
     assert canonical["report"]["preset"] == "acquisition"
 
 
+def test_legacy_payload_rejected_at_runtime_contract():
+    try:
+        to_canonical_payload(_legacy_payload())
+    except ValueError as exc:
+        assert "Legacy payload shape is no longer accepted at runtime" in str(exc)
+    else:
+        raise AssertionError("Expected legacy payload rejection.")
+
+
 def test_mixed_payload_rejected():
     payload = _legacy_payload()
     payload["experiment"]["program"] = {"phases": []}
@@ -99,8 +108,7 @@ def test_missing_trials_without_compat_backfill_rejected():
 def test_legacy_detection_and_roundtrip():
     payload = _legacy_payload()
     assert is_legacy_payload(payload) is True
-    canonical = to_canonical_payload(payload)
+    canonical = from_legacy_payload(payload)
     legacy_roundtrip = to_legacy_payload(canonical)
     assert legacy_roundtrip["experiment"]["learner"] == "rescorla_wagner"
     assert legacy_roundtrip["experiment"]["phases"][0]["params"]["n_trials"] == 10
-

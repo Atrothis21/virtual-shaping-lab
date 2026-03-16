@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from ui.contracts.builder_draft import BuilderExperimentDraft
-from experiment.payload_contract import to_canonical_payload
+from experiment.payload_contract import from_legacy_payload
 
 _KNOWN_REPORT_PRESETS = {
     "aab_renewal",
@@ -104,4 +104,4 @@ def draft_to_payload(
         "experiment": experiment,
         "report": {"preset": preset},
     }
-    return to_canonical_payload(legacy_payload)
+    return from_legacy_payload(legacy_payload)
