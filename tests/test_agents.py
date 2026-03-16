@@ -123,6 +123,23 @@ def test_null_policy_distribution_exposes_zero_mass():
     assert distribution == {"press": 0.0}
 
 
+def test_uniform_static_attention_matches_none_attention_baseline():
+    state = EncodedState(x=np.asarray([1.0, 0.0], dtype=float))
+    transition = Transition(s=state, r=1.0, metadata={"cue_labels": ["tone"]})
+
+    none_attention = RescorlaWagnerLearner(state_dim=2, alpha=0.5)
+    uniform_attention = RescorlaWagnerLearner(state_dim=2, alpha=0.5)
+    uniform_attention.set_attention_config(
+        name="static",
+        params={"default": 1.0, "overrides": {"tone": 1.0}},
+    )
+
+    none_attention.update(transition)
+    uniform_attention.update(transition)
+
+    np.testing.assert_allclose(none_attention.weights, uniform_attention.weights)
+
+
 def test_composed_agent_normalizes_raw_state_vectors():
     learner = DummyLearner()
     rep = DummyRepresentation()

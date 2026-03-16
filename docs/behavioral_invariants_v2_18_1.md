@@ -160,3 +160,34 @@ These baseline reductions must remain true:
 - `NullPolicy` == no action emission
 
 These baseline equivalences are required so that "feature off" and "mechanism absent" remain scientifically interpretable.
+
+Locked default/no-op cases:
+- absent time fields with enabled temporal basis must emit the neutral/default temporal encoding and must not fail
+- identity/off-diagonal-zero similarity must match the no-similarity baseline
+- uniform/static attention with all weights `1.0` must match the no-attention baseline
+- `NullPolicy` must remain passive in both action selection and exposed policy-distribution semantics
+
+---
+
+## Representation Composition Order
+
+The V2 representation chain is order-sensitive and must remain:
+
+1. `ContextMap`
+2. `SimilarityKernel`
+3. encoder projection into the feature basis
+4. `SalienceOperator`
+5. optional temporal basis append after the non-temporal representation block
+
+### Must
+- Context normalization must occur before similarity spread.
+- Similarity spread must be resolved before salience scaling.
+- Salience must scale the encoded vector, not the raw observation.
+- Temporal basis augmentation must occur after the non-temporal representation vector is formed.
+
+### Must Not
+- Salience must not be applied before similarity spread.
+- Temporal basis must not be inserted inside the non-temporal feature block.
+- Implementations must not silently reorder these mechanisms while preserving interface compatibility.
+
+This order is normative because the mechanisms are not commutative in general.

@@ -13,6 +13,7 @@ from agents.math_objects.temporal_objects import (
 from agents.representations.identity import IdentityRepresentation
 from agents.representations.observation import make_observation, DEFAULT_CONTEXT
 from agents.representations.observation_encoder import ObservationVectorEncoder
+from agents.representations.mechanisms import encode_with_mechanisms
 from agents.representations.similarity import parse_similarity_matrix, build_similarity_weights
 from agents.representations.vector_encoder import (
     VectorEncoder,
@@ -440,6 +441,33 @@ def test_temporal_basis_preserves_compatibility_when_time_fields_absent():
     assert vec[-1] == pytest.approx(0.0)
 
 
+def test_disabled_temporal_basis_matches_no_temporal_augmentation_baseline():
+    base = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+        }
+    )
+    disabled = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+            "temporal_basis": {
+                "enabled": False,
+                "variant": "identity",
+                "dimension": 2,
+            },
+        }
+    )
+
+    obs = make_observation(["tone"], "A")
+    np.testing.assert_allclose(base.encode(obs).x, disabled.encode(obs).x)
+
+
 def test_parse_similarity_matrix_happy_path():
     sim = {
         "type": "matrix",
@@ -559,3 +587,77 @@ def test_similarity_then_salience_order_is_deterministic():
     assert vec[idx_global_tone] == pytest.approx(0.5)
     # similarity spread to noise: 0.4 then salience 0.25 -> 0.1
     assert vec[idx_global_noise] == pytest.approx(0.1)
+
+
+def test_representation_mechanism_chain_order_is_context_similarity_encoder_then_salience():
+    calls = []
+
+    class TracingContextMap:
+        def apply(self, observation, context):
+            calls.append("context")
+            return observation
+
+    class TracingSimilarityKernel:
+        def spread_weights(self, present):
+            calls.append("similarity")
+            return {str(item): 1.0 for item in present}
+
+    class TracingSalienceOperator:
+        def apply(self, vector):
+            calls.append("salience")
+            return vector
+
+    class TracingEncoder:
+        mode = "elemental"
+        dimension = 2
+
+        def add_elemental_features(self, vec, features, context, weights=None):
+            calls.append("encoder")
+            vec[0] = 1.0
+
+        def add_compound_feature(self, vec, features, context):
+            calls.append("compound")
+
+    encode_with_mechanisms(
+        TracingEncoder(),
+        make_observation(["tone"], "A"),
+        similarity_map={},
+        salience=np.asarray([1.0, 1.0], dtype=float),
+        context_map=TracingContextMap(),
+        similarity_kernel=TracingSimilarityKernel(),
+        salience_operator=TracingSalienceOperator(),
+    )
+
+    assert calls == ["context", "similarity", "encoder", "salience"]
+
+
+def test_similarity_then_salience_order_is_not_equivalent_to_salience_then_similarity():
+    observation = make_observation(["tone"], "A", compound=False)
+    encoder = ObservationVectorEncoder(
+        feature_vocab=["global:tone", "ctx:A|tone", "global:noise", "ctx:A|noise"],
+        mode="elemental",
+    )
+    similarity_kernel = MatrixSimilarityKernel({"tone": {"noise": 0.4}})
+    salience_operator = DiagonalSalienceOperator(np.asarray([0.5, 0.5, 0.25, 0.25], dtype=float))
+
+    ordered = encode_with_mechanisms(
+        encoder,
+        observation,
+        similarity_map={},
+        salience=np.asarray([0.5, 0.5, 0.25, 0.25], dtype=float),
+        context_map=DefaultContextMap(),
+        similarity_kernel=similarity_kernel,
+        salience_operator=salience_operator,
+    )
+
+    # Forbidden alternative: salience on the direct observation vector before similarity spread.
+    pre_scaled = np.zeros(encoder.dimension, dtype=float)
+    encoder.add_elemental_features(pre_scaled, ["tone"], "A", weights={"tone": 1.0})
+    pre_scaled = salience_operator.apply(pre_scaled)
+    reordered = pre_scaled.copy()
+    reordered[encoder._index["global:noise"]] += 0.4
+    reordered[encoder._index["ctx:A|noise"]] += 0.4
+
+    assert ordered[encoder._index["global:noise"]] == pytest.approx(0.1)
+    assert reordered[encoder._index["global:noise"]] == pytest.approx(0.4)
+    assert not np.allclose(ordered, reordered)
