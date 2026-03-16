@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
+from virtual_shaping_lab.agents.math_objects.interfaces import IAttentionMechanism
 
 @dataclass(frozen=True)
 class AttentionContext:
@@ -74,7 +75,7 @@ class AttentionStrategy(Protocol):
         ...
 
 
-class BaseAttentionStrategy:
+class BaseAttentionStrategy(IAttentionMechanism):
     """Shared mechanics for stateful attention strategies."""
 
     name = "none"

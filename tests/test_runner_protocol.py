@@ -170,6 +170,80 @@ class TimedRunnableUnit:
         )
 
 
+class ClassicalPolicyTrackingAgent:
+    def __init__(self):
+        self.observe_calls = 0
+        self.act_calls = 0
+
+    def reset(self):
+        return None
+
+    def observe(self, observation):
+        self.observe_calls += 1
+        return observation
+
+    def act(self, state, actions=None, rng=None):
+        self.act_calls += 1
+        return None
+
+    def value(self, state, action=None):
+        return 0.0
+
+
+class OperantPolicyTrackingAgent(ClassicalPolicyTrackingAgent):
+    def __init__(self):
+        super().__init__()
+        self.last_actions = None
+
+    def act(self, state, actions=None, rng=None):
+        self.act_calls += 1
+        self.last_actions = list(actions) if actions is not None else []
+        return self.last_actions[0] if self.last_actions else None
+
+
+class ActionlessTimedRunnableUnit:
+    def __init__(self, agent):
+        self.agent = agent
+
+    def reset(self, ctx):
+        return None
+
+    def iter_steps(self, ctx):
+        spec = TrialTimeSpec(duration_s=1.0, dt_s=0.5, events=[])
+        yield StepResult(
+            observation=Observation(stimuli=["tone"], context="A"),
+            reward=0.0,
+            done=True,
+            metadata={
+                "record": {"phase": "classical_timed", "trial": 0},
+                "trial_schedule": TrialSchedule(time=spec, available_actions=[]),
+            },
+        )
+
+
+class ActionTimedRunnableUnit:
+    def __init__(self, agent):
+        self.agent = agent
+
+    def reset(self, ctx):
+        return None
+
+    def iter_steps(self, ctx):
+        spec = TrialTimeSpec(duration_s=1.0, dt_s=0.5, events=[])
+        yield StepResult(
+            observation=Observation(stimuli=["lever"], context="A"),
+            reward=0.0,
+            done=True,
+            metadata={
+                "record": {"phase": "operant_timed", "trial": 0},
+                "trial_schedule": TrialSchedule(
+                    time=spec,
+                    available_actions=["press", "withhold"],
+                ),
+            },
+        )
+
+
 class CapturingHooks:
     def __init__(self):
         self.events = []
@@ -345,6 +419,27 @@ def test_runner_hooks_emit_tick_events_for_timed_schedule():
     assert len(tick_events) == 2
     assert tick_events[0][3] == 0
     assert tick_events[1][4] == 1.0
+
+
+def test_runner_classical_timed_flow_does_not_call_policy_without_available_actions():
+    agent = ClassicalPolicyTrackingAgent()
+    records = Runner(ActionlessTimedRunnableUnit(agent), settings={"record_mode": "tick"}).run()
+
+    assert len(records) == 2
+    assert agent.observe_calls == 2
+    assert agent.act_calls == 0
+    assert all(record["action"] is None for record in records)
+
+
+def test_runner_operant_timed_flow_calls_policy_when_actions_are_available():
+    agent = OperantPolicyTrackingAgent()
+    records = Runner(ActionTimedRunnableUnit(agent), settings={"record_mode": "tick"}).run()
+
+    assert len(records) == 2
+    assert agent.observe_calls == 2
+    assert agent.act_calls == 2
+    assert agent.last_actions == ["press", "withhold"]
+    assert all(record["action"] == "press" for record in records)
 
 
 def test_runner_jsonl_sink_writes_append_only_records(tmp_path):

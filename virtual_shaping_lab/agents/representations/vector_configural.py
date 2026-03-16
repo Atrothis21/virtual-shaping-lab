@@ -6,6 +6,9 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
+from virtual_shaping_lab.agents.math_objects.representation_objects import DefaultContextMap, MatrixSimilarityKernel
+from virtual_shaping_lab.agents.math_objects.salience_objects import DiagonalSalienceOperator
+from virtual_shaping_lab.agents.math_objects.temporal_objects import build_temporal_basis
 from virtual_shaping_lab.agents.representations.base import RepresentationBase
 from virtual_shaping_lab.agents.representations.mechanisms import encode_with_mechanisms
 from virtual_shaping_lab.agents.representations.observation_encoder import ObservationVectorEncoder
@@ -58,6 +61,10 @@ class VectorConfiguralRepresentation(RepresentationBase):
 
         self.salience = np.asarray(salience_vector, dtype=float)
         self.similarity_map = parse_similarity_matrix(similarity, stimuli) if similarity else {}
+        self.context_map = self.params.get("context_map") or DefaultContextMap()
+        self.similarity_kernel = self.params.get("similarity_kernel") or MatrixSimilarityKernel(self.similarity_map)
+        self.salience_operator = self.params.get("salience_operator") or DiagonalSalienceOperator(self.salience)
+        self.temporal_basis = self.params.get("temporal_basis_object") or build_temporal_basis(self.params.get("temporal_basis"))
 
     def encode(self, observation: Observation) -> EncodedState:
         vec = encode_with_mechanisms(
@@ -65,10 +72,18 @@ class VectorConfiguralRepresentation(RepresentationBase):
             observation,
             similarity_map=self.similarity_map,
             salience=self.salience,
+            context_map=self.context_map,
+            similarity_kernel=self.similarity_kernel,
+            salience_operator=self.salience_operator,
         )
+        if self.temporal_basis is not None:
+            t_s = 0.0 if observation.t_s is None else float(observation.t_s)
+            dt_s = None if observation.dt_s is None else float(observation.dt_s)
+            vec = np.concatenate([vec, self.temporal_basis.encode(t_s=t_s, dt_s=dt_s)])
         return EncodedState(x=vec)
 
     @property
     def dimension(self) -> int:
-        return self._encoder.dimension
+        temporal_dim = self.temporal_basis.dimension if self.temporal_basis is not None else 0
+        return self._encoder.dimension + temporal_dim
 

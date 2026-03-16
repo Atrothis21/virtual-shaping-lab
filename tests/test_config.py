@@ -122,6 +122,71 @@ def test_similarity_matrix_validation_rejects_bad_size():
         ExperimentConfig.from_payload(payload)
 
 
+def test_parameter_validator_rejects_similarity_values_outside_unit_interval():
+    payload = _base_payload()
+    payload["experiment"]["representation"]["params"]["similarity"] = {
+        "type": "matrix",
+        "stimuli": ["tone", "noise"],
+        "values": [
+            [1.0, 1.2],
+            [1.2, 1.0],
+        ],
+    }
+    with pytest.raises(ValueError, match="similarity.values entries must be in \\[0,1\\]"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_invalid_temporal_basis_dimension():
+    payload = _base_payload()
+    payload["experiment"]["representation"]["params"]["temporal_basis"] = {
+        "enabled": True,
+        "variant": "identity",
+        "dimension": 0,
+    }
+    with pytest.raises(ValueError, match="temporal_basis.dimension must be > 0"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_invalid_prediction_error_variant():
+    payload = _base_payload()
+    payload["experiment"]["prediction_error"] = {"variant": "unknown_rule", "params": {}}
+    with pytest.raises(ValueError, match="prediction_error variant must be one of"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_representation_owned_keys_in_prediction_error_params():
+    payload = _base_payload()
+    payload["experiment"]["prediction_error"] = {
+        "variant": "rescorla_wagner",
+        "params": {"salience_operator": {"variant": "diagonal"}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="prediction_error.params must not contain representation-owned keys",
+    ):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_representation_owned_keys_in_attention_config_params():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "mackintosh",
+        "params": {"kappa": 0.1, "temporal_basis": {"variant": "identity", "dimension": 1}},
+    }
+    with pytest.raises(
+        ValueError,
+        match="experiment.attention_config.params must not contain representation-owned keys",
+    ):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_rejects_salience_outside_unit_interval():
+    payload = _base_payload()
+    payload["experiment"]["salience"] = {"tone": 1.2}
+    with pytest.raises(ValueError, match="salience\\['tone'\\] must be in \\[0,1\\]"):
+        ParameterComposer.compose(payload)
+
+
 def test_runtime_constraints_require_prior_learning():
     payload = _base_payload()
     payload["experiment"]["phases"] = [

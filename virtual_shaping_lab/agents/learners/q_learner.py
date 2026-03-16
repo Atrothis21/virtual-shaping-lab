@@ -6,6 +6,7 @@ from typing import Dict, Optional, Sequence, Any
 
 import numpy as np
 
+from virtual_shaping_lab.agents.math_objects.interfaces import IAttentionMechanism, IPredictionErrorRule
 from virtual_shaping_lab.agents.learners.base import BaseLearner
 from virtual_shaping_lab.domain.types import EncodedState, Transition
 
@@ -23,12 +24,15 @@ class QLearner(BaseLearner):
         alpha: float = 0.1,
         gamma: float = 0.9,
         salience: Optional[np.ndarray] = None,
+        attention_mechanism: IAttentionMechanism | None = None,
+        prediction_error_rule: IPredictionErrorRule | None = None,
     ):
-        super().__init__(alpha=alpha, gamma=gamma)
+        super().__init__(alpha=alpha, gamma=gamma, attention_mechanism=attention_mechanism)
         self.actions = list(actions)
         self.action_index = {a: i for i, a in enumerate(self.actions)}
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
         self.weights = np.zeros((len(self.actions), state_dim), dtype=float)
+        self.prediction_error_rule = prediction_error_rule
 
     def _action_index(self, action: Any) -> int:
         if action not in self.action_index:

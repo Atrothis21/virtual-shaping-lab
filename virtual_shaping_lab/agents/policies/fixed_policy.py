@@ -26,3 +26,14 @@ class FixedPolicy(Policy):
         rng: np.random.Generator,
     ) -> Any:
         return self.action
+
+    def action_distribution(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+    ) -> dict[Any, float]:
+        pool = list(actions) if actions else [self.action]
+        if self.action not in pool:
+            pool.append(self.action)
+        return {action: 1.0 if action == self.action else 0.0 for action in pool}

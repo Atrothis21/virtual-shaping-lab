@@ -16,6 +16,11 @@ def _payload():
                 "params": {
                     "stimuli": ["tone", "noise"],
                     "contexts": ["A", "B"],
+                    "temporal_basis": {
+                        "enabled": True,
+                        "variant": "identity",
+                        "dimension": 1,
+                    },
                     "similarity": {
                         "type": "matrix",
                         "stimuli": ["tone", "noise"],
@@ -26,6 +31,7 @@ def _payload():
                     },
                 },
             },
+            "prediction_error": {"variant": "rescorla_wagner", "params": {}},
             "attention": {"tone": {"attention": 0.8}, "noise": 0.5},
             "salience": {"tone": 0.9, "noise": 0.6},
             "policy": {"name": "epsilon-greedy", "params": {"epsilon": 0.2, "actions": ["left", "right"]}},
@@ -52,6 +58,9 @@ def test_parameter_composer_produces_typed_parameters():
     params = ParameterComposer.compose(_payload())
     assert isinstance(params, ExperimentParameters)
     assert params.learner.algorithm == "rescorla_wagner"
+    assert params.learner.prediction_error_rule.variant == "rescorla_wagner"
+    assert params.representation.temporal_basis.enabled is True
+    assert params.representation.temporal_basis.dimension == 1
     assert params.runtime.update_mode == "tick"
     assert params.units[0].unit_key == "acquisition"
     assert isinstance(params.policy, EpsilonGreedyPolicyParams)
@@ -75,4 +84,11 @@ def test_parameters_to_dict_is_deterministic():
     composed_1 = ParameterComposer.compose(p1)
     composed_2 = ParameterComposer.compose(p2)
     assert parameters_to_dict(composed_1) == parameters_to_dict(composed_2)
+
+
+def test_parameter_composer_defaults_prediction_error_rule_to_algorithm():
+    payload = _payload()
+    payload["experiment"].pop("prediction_error")
+    params = ParameterComposer.compose(payload)
+    assert params.learner.prediction_error_rule.variant == "rescorla_wagner"
 

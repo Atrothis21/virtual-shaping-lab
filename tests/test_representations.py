@@ -2,6 +2,14 @@ import numpy as np
 import pytest
 
 from agents.representations.base import RepresentationBase
+from agents.math_objects.representation_objects import DefaultContextMap, MatrixSimilarityKernel
+from agents.math_objects.salience_objects import DiagonalSalienceOperator
+from agents.math_objects.temporal_objects import (
+    BinnedTemporalBasis,
+    IdentityTemporalBasis,
+    TraceTemporalBasis,
+    build_temporal_basis,
+)
 from agents.representations.identity import IdentityRepresentation
 from agents.representations.observation import make_observation, DEFAULT_CONTEXT
 from agents.representations.observation_encoder import ObservationVectorEncoder
@@ -70,6 +78,60 @@ def test_make_observation_defaults():
     obs = make_observation(["tone"], None)
     assert obs.context == DEFAULT_CONTEXT
     assert obs.compound is False
+
+
+def test_default_context_map_normalizes_missing_context():
+    ctx_map = DefaultContextMap()
+    obs = make_observation(["tone"], None)
+    normalized = ctx_map.apply(obs, obs.context)
+    assert normalized.context == DEFAULT_CONTEXT
+
+
+def test_matrix_similarity_kernel_contract_and_spread():
+    kernel = MatrixSimilarityKernel({"tone": {"noise": 0.4}})
+    assert kernel.similarity("tone", "tone") == pytest.approx(1.0)
+    assert kernel.similarity("tone", "noise") == pytest.approx(0.4)
+    assert kernel.similarity("noise", "tone") == pytest.approx(0.0)
+
+    weights = kernel.spread_weights(["tone"])
+    assert weights["tone"] == pytest.approx(1.0)
+    assert weights["noise"] == pytest.approx(0.4)
+
+
+def test_diagonal_salience_operator_scales_and_handles_short_vectors():
+    operator = DiagonalSalienceOperator(np.asarray([0.5, 0.25], dtype=float))
+    np.testing.assert_allclose(
+        operator.apply(np.asarray([1.0, 2.0], dtype=float)),
+        np.asarray([0.5, 0.5], dtype=float),
+    )
+
+    np.testing.assert_allclose(
+        operator.apply(np.asarray([1.0, 2.0, 3.0], dtype=float)),
+        np.asarray([0.5, 0.5, 3.0], dtype=float),
+    )
+
+
+def test_temporal_basis_objects_encode_fixed_dimension_vectors():
+    identity = IdentityTemporalBasis(dimension=2, scale=2.0)
+    np.testing.assert_allclose(identity.encode(t_s=1.0, dt_s=0.5), np.asarray([0.5, 0.5]))
+
+    bins = BinnedTemporalBasis(dimension=4, max_time_s=2.0)
+    assert bins.encode(t_s=0.6).shape == (4,)
+    assert bins.encode(t_s=0.6).sum() == pytest.approx(1.0)
+
+    traces = TraceTemporalBasis(dimension=3, decay=1.0)
+    out = traces.encode(t_s=1.0)
+    assert out.shape == (3,)
+    assert out[0] > out[1] > out[2]
+
+
+def test_build_temporal_basis_from_representation_config():
+    basis = build_temporal_basis(
+        {"enabled": True, "variant": "identity", "dimension": 1, "params": {"scale": 2.0}}
+    )
+    assert isinstance(basis, IdentityTemporalBasis)
+
+    assert build_temporal_basis({"enabled": False, "variant": "identity", "dimension": 1}) is None
 
 
 def test_observation_vector_encoder_errors_and_encode():
@@ -335,6 +397,47 @@ def test_salience_applies_in_representation_encoding():
     assert vec[idx_global_tone] == pytest.approx(0.5)
     assert vec[idx_ctx_tone] == pytest.approx(0.5)
     assert vec[idx_global_noise] == pytest.approx(0.0)
+
+
+def test_temporal_basis_augments_representation_dimension_and_uses_time_fields():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+            "temporal_basis": {
+                "enabled": True,
+                "variant": "identity",
+                "dimension": 2,
+                "params": {"scale": 2.0},
+            },
+        }
+    )
+
+    obs = make_observation(["tone"], "A", t_s=1.0, dt_s=0.25)
+    vec = rep.encode(obs).x
+    assert rep.dimension == vec.shape[0]
+    np.testing.assert_allclose(vec[-2:], np.asarray([0.5, 0.25]))
+
+
+def test_temporal_basis_preserves_compatibility_when_time_fields_absent():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+            "temporal_basis": {
+                "enabled": True,
+                "variant": "identity",
+                "dimension": 1,
+            },
+        }
+    )
+
+    vec = rep.encode(make_observation(["tone"], "A")).x
+    assert vec[-1] == pytest.approx(0.0)
 
 
 def test_parse_similarity_matrix_happy_path():

@@ -1,3 +1,4 @@
+from virtual_shaping_lab.agents.math_objects.attention_objects import build_attention_mechanism
 from virtual_shaping_lab.agents.learners.attention_strategies import (
     AttentionContext,
     build_attention_strategy,
@@ -24,6 +25,16 @@ def test_static_attention_strategy_current_alpha_and_state_update():
         )
     )
     assert state.alpha_by_feature == {"tone": 0.6, "noise": 1.0}
+
+
+def test_attention_mechanism_builder_returns_contract_implementation():
+    mechanism = build_attention_mechanism(
+        "static",
+        params={"default": 1.0, "overrides": {"tone": 0.6}},
+    )
+    assert callable(getattr(mechanism, "current_alpha", None))
+    assert callable(getattr(mechanism, "update_state", None))
+    assert mechanism.current_alpha(("tone",))["tone"] == 0.6
 
 
 def test_none_attention_strategy_is_unity():

@@ -24,3 +24,12 @@ class NullPolicy(IPolicy):
         rng: np.random.Generator,
     ) -> Any:
         return None
+
+    def action_distribution(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+    ) -> dict[Any, float]:
+        pool = list(actions) if actions else []
+        return {action: 0.0 for action in pool}

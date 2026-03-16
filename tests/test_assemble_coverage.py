@@ -477,6 +477,81 @@ def test_assemble_plan_injects_typed_similarity_into_representation_params(monke
     similarity = captured["params"]["similarity"]
     assert similarity["type"] == "matrix"
     assert similarity["stimuli"] == ["tone", "noise"]
+    assert captured["params"]["context_map"] is not None
+    assert captured["params"]["similarity_kernel"] is not None
+
+
+def test_assemble_plan_injects_math_objects_into_learner_stack(monkeypatch):
+    captured = {}
+
+    class DummyRep:
+        dimension = 2
+        salience = [1.0, 1.0]
+
+    def fake_build_rep(name, **params):
+        return DummyRep()
+
+    def fake_build_learner(name, **kwargs):
+        captured["name"] = name
+        captured["kwargs"] = kwargs
+        return type("DummyLearner", (), {"attention_map": {}})()
+
+    monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
+    monkeypatch.setattr("experiment.assemble.build_learner", fake_build_learner)
+    monkeypatch.setattr("experiment.assemble.build_agent", lambda *_args, **_kwargs: object())
+
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Acq",
+                "protocol": "acquisition",
+                "stimuli": {"cs_plus": ["tone"]},
+                "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.5},
+            }
+        ],
+        settings={
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "context_inference": {},
+            "attention_config": {
+                "name": "mackintosh",
+                "params": {"default": 1.0, "overrides": {"tone": 0.8}, "kappa": 0.1},
+            },
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "td_value",
+                    "alpha": 0.2,
+                    "gamma": 0.5,
+                    "attention": {"mode": "mackintosh", "default": 1.0, "overrides": {"tone": 0.8}},
+                    "attention_mechanism": {
+                        "variant": "mackintosh",
+                        "default": 1.0,
+                        "overrides": {"tone": 0.8},
+                        "params": {"kappa": 0.1},
+                    },
+                    "prediction_error_rule": {
+                        "variant": "td_value",
+                        "params": {},
+                    },
+                },
+                "policy": {"name": "null"},
+            },
+        },
+    )
+
+    runtime_units, _agent, _rep = assemble_experiment(plan)
+    assert runtime_units
+    assert captured["name"] == "td_value"
+    assert captured["kwargs"]["prediction_error_rule"] is not None
+    assert captured["kwargs"]["attention_mechanism"] is not None
 
 
 def test_assemble_respects_typed_unit_context_over_inferred_context():

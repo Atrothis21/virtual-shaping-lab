@@ -42,7 +42,12 @@ class ILearner(ABC):
 
 
 class IPolicy(ABC):
-    """Selects actions without mutating learner state."""
+    """Selects actions without mutating learner state.
+
+    Mathematically, a policy implements a decision kernel `pi(a | x, theta)`.
+    `select_action(...)` samples from that kernel, while `action_distribution(...)`
+    optionally exposes the kernel directly for diagnostics and replay inspection.
+    """
 
     @abstractmethod
     def reset(self) -> None:
@@ -57,3 +62,12 @@ class IPolicy(ABC):
         rng: np.random.Generator,
     ) -> Any:
         raise NotImplementedError
+
+    def action_distribution(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+    ) -> dict[Any, float] | None:
+        """Return the policy kernel over the provided action set when available."""
+        return None

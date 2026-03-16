@@ -5,15 +5,21 @@ import pytest
 from experiment.domain.types import TrialTimeSpec
 from experiment.parameters.types import (
     AttentionParams,
+    AttentionMechanismParams,
     ContextParams,
+    ContextMapParams,
     EpsilonGreedyPolicyParams,
     ExperimentParameters,
     LearnerParams,
+    PredictionErrorRuleParams,
     RepresentationParams,
     RuntimeParams,
     SalienceParams,
+    SalienceOperatorParams,
     SimilarityParams,
+    SimilarityKernelParams,
     SoftmaxPolicyParams,
+    TemporalBasisParams,
     UnitParams,
 )
 
@@ -23,12 +29,23 @@ def _sample_params(policy):
         context=ContextParams(mode="gated", contexts=("A", "B"), inference_enabled=True),
         salience=SalienceParams(default=1.0, overrides={"tone": 0.7}),
         similarity=SimilarityParams(enabled=True, matrix={"tone": {"tone": 1.0}}),
+        context_map=ContextMapParams(variant="gated", contexts=("A", "B"), inference_enabled=True),
+        salience_operator=SalienceOperatorParams(variant="diagonal", default=1.0, overrides={"tone": 0.7}),
+        similarity_kernel=SimilarityKernelParams(variant="matrix", enabled=True, matrix={"tone": {"tone": 1.0}}),
+        temporal_basis=TemporalBasisParams(enabled=True, variant="identity", dimension=1, params={}),
     )
     learner = LearnerParams(
         algorithm="rescorla_wagner",
         alpha=0.2,
         gamma=0.0,
         attention=AttentionParams(mode="static", default=1.0, overrides={"tone": 0.9}),
+        attention_mechanism=AttentionMechanismParams(
+            variant="static",
+            default=1.0,
+            overrides={"tone": 0.9},
+            params={},
+        ),
+        prediction_error_rule=PredictionErrorRuleParams(variant="rescorla_wagner", params={}),
     )
     runtime = RuntimeParams(seed=7, update_mode="tick", record_mode="tick", strict_records=True)
     unit = UnitParams(
@@ -54,6 +71,7 @@ def _sample_params(policy):
 def test_parameter_types_smoke_with_epsilon_greedy_policy():
     params = _sample_params(EpsilonGreedyPolicyParams(epsilon=0.2, actions=("left", "right")))
     assert params.learner.algorithm == "rescorla_wagner"
+    assert params.learner.prediction_error_rule.variant == "rescorla_wagner"
     assert params.runtime.update_mode == "tick"
     assert params.units[0].name == "Acquisition"
     assert params.policy.name == "epsilon_greedy"
