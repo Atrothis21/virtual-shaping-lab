@@ -24,6 +24,41 @@ assemble_experiment = assemble_from_plan
 run_report = run_preset_report
 
 
+def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
+    settings = dict(plan.settings or {})
+    composed = settings.get("composed_parameters")
+    if not isinstance(composed, dict):
+        return {}
+
+    representation = composed.get("representation", {}) if isinstance(composed.get("representation"), dict) else {}
+    learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
+    policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
+
+    temporal_basis = representation.get("temporal_basis", {})
+    if not isinstance(temporal_basis, dict):
+        temporal_basis = {}
+    temporal_variant = temporal_basis.get("variant", "identity")
+    if not temporal_basis.get("enabled", False):
+        temporal_variant = "none"
+
+    similarity_kernel = representation.get("similarity_kernel", {})
+    if not isinstance(similarity_kernel, dict):
+        similarity_kernel = {}
+    similarity_variant = similarity_kernel.get("variant", "matrix")
+    if not similarity_kernel.get("enabled", False):
+        similarity_variant = "identity"
+
+    return {
+        "context_map": {"variant": representation.get("context_map", {}).get("variant", "gated")},
+        "similarity_kernel": {"variant": similarity_variant},
+        "salience_operator": {"variant": representation.get("salience_operator", {}).get("variant", "diagonal")},
+        "temporal_basis": {"variant": temporal_variant},
+        "prediction_error_rule": {"variant": learner.get("prediction_error_rule", {}).get("variant", learner.get("algorithm"))},
+        "attention_mechanism": {"variant": learner.get("attention_mechanism", {}).get("variant", learner.get("attention", {}).get("mode", "none"))},
+        "policy": {"variant": policy.get("name", "null")},
+    }
+
+
 def _set_status_with_lifecycle(
     store: RunStatusStoreProtocol,
     run_id: str,
@@ -161,6 +196,9 @@ class RunService:
             "report": {
                 "preset": settings.get("report_preset", "verification_report"),
             },
+            "provenance": {
+                "mechanisms": _build_mechanism_provenance(plan),
+            },
             "plan": plan.to_dict(),
         }
 
@@ -204,6 +242,7 @@ class RunService:
         artifacts = {
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
+            "provenance": str(report_dir / "mechanism_provenance.json"),
         }
         return records, report_dir, artifacts
 
@@ -231,6 +270,7 @@ class RunService:
             "plan_hash": plan_hash,
             "record_schema_version": plan.record_schema_version,
             "template_version_used": 1,
+            "mechanism_provenance": _build_mechanism_provenance(plan),
         }
         _set_status_with_lifecycle(
             store,
@@ -336,6 +376,7 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -353,6 +394,7 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
                 "regeneration_mode": "from_artifacts",

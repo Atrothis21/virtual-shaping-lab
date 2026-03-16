@@ -22,6 +22,53 @@ def _to_jsonable(value):
     return value
 
 
+def _extract_mechanism_provenance(payload):
+    if not isinstance(payload, dict):
+        return None
+
+    provenance = payload.get("provenance")
+    if isinstance(provenance, dict) and isinstance(provenance.get("mechanisms"), dict):
+        return provenance.get("mechanisms")
+
+    plan = payload.get("plan")
+    if not isinstance(plan, dict):
+        return None
+    settings = plan.get("settings")
+    if not isinstance(settings, dict):
+        return None
+    composed = settings.get("composed_parameters")
+    if not isinstance(composed, dict):
+        return None
+
+    representation = composed.get("representation", {}) if isinstance(composed.get("representation"), dict) else {}
+    learner = composed.get("learner", {}) if isinstance(composed.get("learner"), dict) else {}
+    policy = composed.get("policy", {}) if isinstance(composed.get("policy"), dict) else {}
+
+    temporal_basis = representation.get("temporal_basis", {})
+    if not isinstance(temporal_basis, dict):
+        temporal_basis = {}
+    temporal_variant = temporal_basis.get("variant", "identity")
+    if not temporal_basis.get("enabled", False):
+        temporal_variant = "none"
+
+    similarity_kernel = representation.get("similarity_kernel", {})
+    if not isinstance(similarity_kernel, dict):
+        similarity_kernel = {}
+    similarity_variant = similarity_kernel.get("variant", "matrix")
+    if not similarity_kernel.get("enabled", False):
+        similarity_variant = "identity"
+
+    return {
+        "context_map": {"variant": representation.get("context_map", {}).get("variant", "gated")},
+        "similarity_kernel": {"variant": similarity_variant},
+        "salience_operator": {"variant": representation.get("salience_operator", {}).get("variant", "diagonal")},
+        "temporal_basis": {"variant": temporal_variant},
+        "prediction_error_rule": {"variant": learner.get("prediction_error_rule", {}).get("variant", learner.get("algorithm"))},
+        "attention_mechanism": {"variant": learner.get("attention_mechanism", {}).get("variant", learner.get("attention", {}).get("mode", "none"))},
+        "policy": {"variant": policy.get("name", "null")},
+    }
+
+
 @dataclass(frozen=True)
 class ReportRunContext:
     report_dir: Path
@@ -46,6 +93,10 @@ class ReportArtifactWriter:
             if isinstance(attention, dict):
                 with open(ctx.report_dir / "attention_summary.json", "w") as f:
                     json.dump(attention, f, indent=2)
+            mechanism_provenance = _extract_mechanism_provenance(payload)
+            if isinstance(mechanism_provenance, dict):
+                with open(ctx.report_dir / "mechanism_provenance.json", "w") as f:
+                    json.dump(mechanism_provenance, f, indent=2)
 
         with open(ctx.report_dir / "records.json", "w") as f:
             json.dump(records, f, indent=2)

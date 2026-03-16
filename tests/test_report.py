@@ -135,7 +135,10 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     monkeypatch.setattr(report_module, "METRIC_REGISTRY", {"dummy_metric": DummyMetric})
     monkeypatch.setattr(report_module, "VISUALIZATION_REGISTRY", {"dummy_viz": DummyViz})
 
-    payload = {"experiment": {"attention": {"tone": 0.7}}}
+    payload = {
+        "experiment": {"attention": {"tone": 0.7}},
+        "provenance": {"mechanisms": {"attention_mechanism": {"variant": "static"}}},
+    }
     records = [{"prediction": 0.1, "trial": 0}]
 
     report_dir = report_module.run_report(
@@ -148,11 +151,14 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     assert (report_dir / "records.json").exists()
     assert (report_dir / "payload.json").exists()
     assert (report_dir / "attention_summary.json").exists()
+    assert (report_dir / "mechanism_provenance.json").exists()
     assert (report_dir / "report.pdf").exists()
     assert (report_dir / "metrics" / "dummy_metric.json").exists()
 
     attention = json.loads((report_dir / "attention_summary.json").read_text())
     assert attention == {"tone": 0.7}
+    mechanism_provenance = json.loads((report_dir / "mechanism_provenance.json").read_text())
+    assert mechanism_provenance == {"attention_mechanism": {"variant": "static"}}
 
     fig_path = report_dir / "dummy_viz.png"
     assert fig_path.exists()
