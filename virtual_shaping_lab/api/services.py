@@ -9,6 +9,7 @@ from analysis.public import (
 )
 from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
+from experiment.payload_contract import to_canonical_payload
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -324,7 +325,7 @@ class ReportService:
         with records_path.open("r", encoding="utf-8") as f:
             records = json.load(f)
         with payload_path.open("r", encoding="utf-8") as f:
-            payload = json.load(f)
+            payload = to_canonical_payload(json.load(f))
 
         preset = preset_override or payload.get("report", {}).get("preset")
         if not preset:
@@ -339,10 +340,6 @@ class ReportService:
                 phases = program.get("phases")
                 if isinstance(phases, list) and phases:
                     protocol_name = str(phases[0].get("protocol", "") or "")
-            elif isinstance(exp.get("phases"), list) and exp["phases"]:
-                protocol_name = str(exp["phases"][0].get("protocol", "") or "")
-            else:
-                protocol_name = str(exp.get("protocol", "") or "")
         template_version = get_protocol_default_template(protocol_name).template_version if protocol_name else 1
 
         regen_root = Path(reports_dir) / "regenerated"

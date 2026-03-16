@@ -1,4 +1,5 @@
 import copy
+import json
 
 import pytest
 from fastapi import HTTPException
@@ -200,6 +201,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert (run_dir / "payload.json").exists()
     assert (run_dir / "records.json").exists()
     assert (run_dir / "mechanism_provenance.json").exists()
+    stored_payload = json.loads((run_dir / "payload.json").read_text())
+    assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -311,6 +314,37 @@ def test_run_report_endpoint_flags_missing_source_metadata(monkeypatch, tmp_path
         "record_schema_version",
         "template_version_used",
     }
+
+
+def test_run_report_endpoint_rejects_legacy_payload_artifact(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    fixture_output_dir = tmp_path / "report_regen_legacy_payload_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(output_dir),
+        )
+
+    monkeypatch.setattr(api_run, "reports_dir", fixture_output_dir)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    run_body = api_run.run_api(payload)
+    source_run_id = run_body["run_id"]
+    run_dir = fixture_output_dir / source_run_id
+    bad_payload = json.loads((run_dir / "payload.json").read_text())
+    experiment = bad_payload["experiment"]
+    experiment["learner"] = experiment["agent"]["learning"]["rule"]
+    experiment.pop("program", None)
+    experiment.pop("agent", None)
+    experiment.pop("runtime", None)
+    (run_dir / "payload.json").write_text(json.dumps(bad_payload, indent=2), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Legacy payload shape is no longer accepted at runtime"):
+        api_services.ReportService.create_default(source_run_id, reports_dir=fixture_output_dir)
 
 
 def test_run_report_endpoint_404_for_missing_run():
