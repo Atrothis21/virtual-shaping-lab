@@ -2,6 +2,8 @@
 
 from typing import Dict, Iterable, List, Any
 
+from virtual_shaping_lab.agents.math_objects.representation_objects import MatrixSimilarityKernel
+
 
 def parse_similarity_matrix(similarity: Dict[str, Any] | None, stimuli: Iterable[str]) -> Dict[str, Dict[str, float]]:
     """
@@ -55,16 +57,4 @@ def build_similarity_weights(
     Each presented stimulus starts at weight 1.0.
     Similar stimuli inherit weights using max aggregation.
     """
-    weights: Dict[str, float] = {str(s): 1.0 for s in present}
-    for stim in present:
-        for other, w in similarity_map.get(str(stim), {}).items():
-            try:
-                weight = float(w)
-            except (TypeError, ValueError):
-                continue
-            if weight < 0:
-                weight = 0.0
-            if weight > 1:
-                weight = 1.0
-            weights[other] = max(weights.get(other, 0.0), weight)
-    return weights
+    return MatrixSimilarityKernel(similarity_map).spread_weights(present)

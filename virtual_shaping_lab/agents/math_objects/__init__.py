@@ -8,6 +8,14 @@ from .interfaces import (
     ISimilarityKernel,
     ITemporalBasis,
 )
+from .representation_objects import DefaultContextMap, MatrixSimilarityKernel
+from .salience_objects import DiagonalSalienceOperator
+from .temporal_objects import (
+    BinnedTemporalBasis,
+    IdentityTemporalBasis,
+    TraceTemporalBasis,
+    build_temporal_basis,
+)
 
 __all__ = [
     "IAttentionMechanism",
@@ -16,4 +24,11 @@ __all__ = [
     "ISalienceOperator",
     "ISimilarityKernel",
     "ITemporalBasis",
+    "DefaultContextMap",
+    "MatrixSimilarityKernel",
+    "DiagonalSalienceOperator",
+    "IdentityTemporalBasis",
+    "BinnedTemporalBasis",
+    "TraceTemporalBasis",
+    "build_temporal_basis",
 ]
