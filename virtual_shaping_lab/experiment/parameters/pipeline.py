@@ -77,6 +77,8 @@ class ParameterValidatorPipeline:
         "pearce_hall": {"default", "overrides", "eta"},
         "mackintosh": {"default", "overrides", "kappa"},
     }
+    _ALLOWED_TEMPORAL_BASIS_VARIANTS = {"identity", "bins", "traces"}
+    _ALLOWED_PREDICTION_ERROR_VARIANTS = {"rescorla_wagner", "td_value", "td_0", "q_learner"}
 
     @classmethod
     def validate(cls, payload: Mapping[str, Any]) -> None:
@@ -92,6 +94,7 @@ class ParameterValidatorPipeline:
 
         cls._validate_representation(rep, exp)
         cls._validate_attention_config(exp)
+        cls._validate_prediction_error_config(exp)
         cls._validate_attention_keys(exp, rep)
         cls._validate_runtime(exp)
         cls._validate_phases(exp)
@@ -187,9 +190,45 @@ class ParameterValidatorPipeline:
             raise ValueError("representation.params must be an object")
         if "attention" in params or "attention_compound" in params:
             raise ValueError("representation.params must not include attention fields")
+        temporal_basis = params.get("temporal_basis")
+        if temporal_basis is not None:
+            cls._validate_temporal_basis(temporal_basis)
         similarity = params.get("similarity")
         if similarity is not None:
             cls._validate_similarity(similarity)
+        cls._validate_salience(exp.get("salience"))
+
+    @classmethod
+    def _validate_temporal_basis(cls, temporal_basis: Any) -> None:
+        if not isinstance(temporal_basis, Mapping):
+            raise ValueError("temporal_basis must be an object")
+        variant = str(temporal_basis.get("variant", temporal_basis.get("name", "identity"))).strip().lower()
+        if variant not in cls._ALLOWED_TEMPORAL_BASIS_VARIANTS:
+            raise ValueError(
+                "temporal_basis.variant must be one of: "
+                + ", ".join(sorted(cls._ALLOWED_TEMPORAL_BASIS_VARIANTS))
+            )
+        enabled = bool(temporal_basis.get("enabled", True))
+        if not enabled:
+            return
+        dimension = temporal_basis.get("dimension")
+        try:
+            parsed_dimension = int(dimension)
+        except (TypeError, ValueError):
+            raise ValueError("temporal_basis.dimension must be an integer")
+        if parsed_dimension <= 0:
+            raise ValueError("temporal_basis.dimension must be > 0 when temporal_basis is enabled")
+
+    @classmethod
+    def _validate_salience(cls, salience: Any) -> None:
+        if salience is None:
+            return
+        if isinstance(salience, Mapping):
+            for key, value in salience.items():
+                raw = value.get("salience") if isinstance(value, Mapping) and "salience" in value else value
+                cls._validate_unit_interval(raw, f"salience['{key}']")
+            return
+        cls._validate_unit_interval(salience, "salience")
 
     @staticmethod
     def _validate_similarity(similarity: Any) -> None:
@@ -206,8 +245,32 @@ class ParameterValidatorPipeline:
                 raise ValueError("similarity.values must be a square matrix")
         for i in range(n):
             for j in range(n):
-                if abs(float(values[i][j]) - float(values[j][i])) > 1e-9:
+                left = float(values[i][j])
+                right = float(values[j][i])
+                if abs(left - right) > 1e-9:
                     raise ValueError("similarity.values must be symmetric")
+                if left < 0.0 or left > 1.0:
+                    raise ValueError("similarity.values entries must be in [0,1]")
+
+    @classmethod
+    def _validate_prediction_error_config(cls, exp: Mapping[str, Any]) -> None:
+        cfg = exp.get("prediction_error")
+        if cfg is None:
+            return
+        if isinstance(cfg, str):
+            variant = cfg.strip().lower()
+        elif isinstance(cfg, Mapping):
+            variant = str(cfg.get("variant", cfg.get("name", ""))).strip().lower()
+            params = cfg.get("params", {})
+            if not isinstance(params, Mapping):
+                raise ValueError("prediction_error.params must be an object")
+        else:
+            raise ValueError("prediction_error must be a string or object")
+        if variant not in cls._ALLOWED_PREDICTION_ERROR_VARIANTS:
+            raise ValueError(
+                "prediction_error variant must be one of: "
+                + ", ".join(sorted(cls._ALLOWED_PREDICTION_ERROR_VARIANTS))
+            )
 
     @classmethod
     def _validate_attention_keys(cls, exp: Mapping[str, Any], rep: Any) -> None:

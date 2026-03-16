@@ -9,16 +9,22 @@ from experiment.domain.types import TrialTimeSpec
 from experiment.parameters.pipeline import ParameterNormalizerPipeline, ParameterValidatorPipeline
 from experiment.parameters.types import (
     AttentionParams,
+    AttentionMechanismParams,
     ContextParams,
+    ContextMapParams,
     EpsilonGreedyPolicyParams,
     ExperimentParameters,
     LearnerParams,
     NullPolicyParams,
+    PredictionErrorRuleParams,
     RepresentationParams,
     RuntimeParams,
     SalienceParams,
+    SalienceOperatorParams,
     SimilarityParams,
+    SimilarityKernelParams,
     SoftmaxPolicyParams,
+    TemporalBasisParams,
     UnitParams,
 )
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
@@ -82,6 +88,42 @@ def _similarity_to_nested_dict(similarity: Any) -> dict[str, dict[str, float]]:
     return matrix
 
 
+def _compose_temporal_basis(rep_params: Mapping[str, Any]) -> TemporalBasisParams:
+    temporal_basis = rep_params.get("temporal_basis")
+    if not isinstance(temporal_basis, Mapping):
+        return TemporalBasisParams()
+    variant = str(temporal_basis.get("variant", temporal_basis.get("name", "identity")))
+    dimension = temporal_basis.get("dimension", 0)
+    try:
+        dimension = int(dimension)
+    except (TypeError, ValueError):
+        dimension = 0
+    params = temporal_basis.get("params", {})
+    if not isinstance(params, Mapping):
+        params = {}
+    return TemporalBasisParams(
+        enabled=bool(temporal_basis.get("enabled", True)),
+        variant=variant,
+        dimension=dimension,
+        params=dict(params),
+    )
+
+
+def _compose_prediction_error_rule(exp: Mapping[str, Any], algorithm: str) -> PredictionErrorRuleParams:
+    cfg = exp.get("prediction_error")
+    if isinstance(cfg, str):
+        return PredictionErrorRuleParams(variant=str(cfg))
+    if isinstance(cfg, Mapping):
+        params = cfg.get("params", {})
+        if not isinstance(params, Mapping):
+            params = {}
+        return PredictionErrorRuleParams(
+            variant=str(cfg.get("variant", cfg.get("name", algorithm or "rescorla_wagner"))),
+            params=dict(params),
+        )
+    return PredictionErrorRuleParams(variant=algorithm or "rescorla_wagner")
+
+
 class ParameterComposer:
     """Compose validated payloads into immutable typed parameter objects."""
 
@@ -140,7 +182,27 @@ class ParameterComposer:
             enabled=sim is not None,
             matrix=_similarity_to_nested_dict(sim),
         )
-        return RepresentationParams(context=context, salience=salience, similarity=similarity)
+        return RepresentationParams(
+            context=context,
+            salience=salience,
+            similarity=similarity,
+            context_map=ContextMapParams(
+                variant=str(rep_params.get("context_mode", "gated")),
+                contexts=context_values,
+                inference_enabled=bool(context_inference.get("enabled", False)),
+            ),
+            salience_operator=SalienceOperatorParams(
+                variant="diagonal",
+                default=salience_default,
+                overrides=salience_overrides,
+            ),
+            similarity_kernel=SimilarityKernelParams(
+                variant=str(sim.get("type", "matrix")) if isinstance(sim, Mapping) else "matrix",
+                enabled=sim is not None,
+                matrix=_similarity_to_nested_dict(sim),
+            ),
+            temporal_basis=_compose_temporal_basis(rep_params),
+        )
 
     @staticmethod
     def _compose_learner(exp: Mapping[str, Any]) -> LearnerParams:
@@ -175,6 +237,13 @@ class ParameterComposer:
             alpha=alpha,
             gamma=gamma,
             attention=attention,
+            attention_mechanism=AttentionMechanismParams(
+                variant=mode,
+                default=default,
+                overrides=overrides,
+                params=dict(cfg_params) if isinstance(attention_config, Mapping) and isinstance(cfg_params, Mapping) else {},
+            ),
+            prediction_error_rule=_compose_prediction_error_rule(exp, str(exp.get("learner", ""))),
         )
 
     @staticmethod
