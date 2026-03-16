@@ -1,6 +1,8 @@
 STIMULI = ["tone", "noise", "light", "click"]
 STIMULI_WITH_LEVER = ["lever", "tone", "noise", "light", "click"]
 
+from experiment.payload_contract import from_legacy_payload
+
 
 def _attention_for(stimuli):
     return {s: {"attention": 1.0} for s in stimuli}
@@ -494,6 +496,34 @@ def overexpectation_payload():
         },
         "report": {"preset": "custom_protocol"},
     }
+
+
+def _canonicalize_factory(factory):
+    def _wrapped():
+        return from_legacy_payload(factory())
+
+    return _wrapped
+
+
+acquisition_payload = _canonicalize_factory(acquisition_payload)
+compound_acquisition_payload = _canonicalize_factory(compound_acquisition_payload)
+differential_acquisition_payload = _canonicalize_factory(differential_acquisition_payload)
+extinction_payload = _canonicalize_factory(extinction_payload)
+blocking_payload = _canonicalize_factory(blocking_payload)
+conditioned_inhibition_payload = _canonicalize_factory(conditioned_inhibition_payload)
+occasion_setting_payload = _canonicalize_factory(occasion_setting_payload)
+rapid_reacquisition_payload = _canonicalize_factory(rapid_reacquisition_payload)
+aab_renewal_payload = _canonicalize_factory(aab_renewal_payload)
+aba_renewal_payload = _canonicalize_factory(aba_renewal_payload)
+abc_renewal_payload = _canonicalize_factory(abc_renewal_payload)
+operant_conditioning_payload = _canonicalize_factory(operant_conditioning_payload)
+matching_law_payload = _canonicalize_factory(matching_law_payload)
+shaping_payload = _canonicalize_factory(shaping_payload)
+resurgence_payload = _canonicalize_factory(resurgence_payload)
+superextinction_payload = _canonicalize_factory(superextinction_payload)
+spontaneous_recovery_payload = _canonicalize_factory(spontaneous_recovery_payload)
+overshadowing_payload = _canonicalize_factory(overshadowing_payload)
+overexpectation_payload = _canonicalize_factory(overexpectation_payload)
 
 
 PRESET_PAYLOADS = [

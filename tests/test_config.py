@@ -14,10 +14,11 @@ from experiment.config import (
 )
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import ParameterComposer, parameters_to_dict
+from experiment.payload_contract import from_legacy_payload
 
 
 def _base_payload():
-    return {
+    return from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -38,14 +39,17 @@ def _base_payload():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
 
 
 def test_attention_normalization_accepts_object():
     payload = _base_payload()
-    payload["experiment"]["attention"] = {
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {},
+        "initial": {
         "tone": {"attention": 0.8},
         "noise": 0.4,
+        },
     }
     cfg = ExperimentConfig.from_payload(payload)
     assert cfg.attention["tone"] == 0.8
@@ -54,9 +58,9 @@ def test_attention_normalization_accepts_object():
 
 def test_attention_config_accepts_strategy_object():
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {
-        "name": "pearce_hall",
-        "params": {"eta": 0.2},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {"name": "pearce_hall", "params": {"eta": 0.2}},
+        "initial": {},
     }
     cfg = ExperimentConfig.from_payload(payload)
     assert cfg.attention_config["name"] == "pearce_hall"
@@ -65,9 +69,8 @@ def test_attention_config_accepts_strategy_object():
 
 def test_attention_strategy_form_in_attention_field_is_supported():
     payload = _base_payload()
-    payload["experiment"]["attention"] = {
-        "name": "mackintosh",
-        "params": {"kappa": 0.1},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "initial": {"name": "mackintosh", "params": {"kappa": 0.1}}
     }
     cfg = ExperimentConfig.from_payload(payload)
     assert cfg.attention == {}
@@ -77,32 +80,32 @@ def test_attention_strategy_form_in_attention_field_is_supported():
 
 def test_attention_config_invalid_contract_rejected():
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {"name": "pearce_hall"}
+    payload["experiment"]["agent"]["learning"]["attention"] = {"config": {"name": "pearce_hall"}, "initial": {}}
     with pytest.raises(ValueError, match="must include 'name' and 'params'"):
         ExperimentConfig.from_payload(payload)
 
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {"name": "unknown_model", "params": {}}
+    payload["experiment"]["agent"]["learning"]["attention"] = {"config": {"name": "unknown_model", "params": {}}, "initial": {}}
     with pytest.raises(ValueError, match="Unsupported experiment.attention_config.name"):
         ExperimentConfig.from_payload(payload)
 
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {"name": "none", "params": "bad"}
+    payload["experiment"]["agent"]["learning"]["attention"] = {"config": {"name": "none", "params": "bad"}, "initial": {}}
     with pytest.raises(ValueError, match="experiment.attention_config.params must be an object"):
         ExperimentConfig.from_payload(payload)
 
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {
-        "name": "mackintosh",
-        "params": {"kappa": 1.2},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {"name": "mackintosh", "params": {"kappa": 1.2}},
+        "initial": {},
     }
     with pytest.raises(ValueError, match="kappa must be in \\[0,1\\]"):
         ExperimentConfig.from_payload(payload)
 
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {
-        "name": "pearce_hall",
-        "params": {"eta": 0.2, "unknown": 1},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {"name": "pearce_hall", "params": {"eta": 0.2, "unknown": 1}},
+        "initial": {},
     }
     with pytest.raises(ValueError, match="contains unsupported keys"):
         ExperimentConfig.from_payload(payload)
@@ -110,7 +113,7 @@ def test_attention_config_invalid_contract_rejected():
 
 def test_similarity_matrix_validation_rejects_bad_size():
     payload = _base_payload()
-    payload["experiment"]["representation"]["params"]["similarity"] = {
+    payload["experiment"]["agent"]["representation"]["params"]["similarity"] = {
         "type": "matrix",
         "values": [
             [1.0, 0.2],
@@ -124,7 +127,7 @@ def test_similarity_matrix_validation_rejects_bad_size():
 
 def test_parameter_validator_rejects_similarity_values_outside_unit_interval():
     payload = _base_payload()
-    payload["experiment"]["representation"]["params"]["similarity"] = {
+    payload["experiment"]["agent"]["representation"]["params"]["similarity"] = {
         "type": "matrix",
         "stimuli": ["tone", "noise"],
         "values": [
@@ -138,7 +141,7 @@ def test_parameter_validator_rejects_similarity_values_outside_unit_interval():
 
 def test_parameter_validator_rejects_invalid_temporal_basis_dimension():
     payload = _base_payload()
-    payload["experiment"]["representation"]["params"]["temporal_basis"] = {
+    payload["experiment"]["agent"]["representation"]["params"]["temporal_basis"] = {
         "enabled": True,
         "variant": "identity",
         "dimension": 0,
@@ -149,14 +152,14 @@ def test_parameter_validator_rejects_invalid_temporal_basis_dimension():
 
 def test_parameter_validator_rejects_invalid_prediction_error_variant():
     payload = _base_payload()
-    payload["experiment"]["prediction_error"] = {"variant": "unknown_rule", "params": {}}
+    payload["experiment"]["agent"]["learning"]["prediction_error"] = {"variant": "unknown_rule", "params": {}}
     with pytest.raises(ValueError, match="prediction_error variant must be one of"):
         ParameterComposer.compose(payload)
 
 
 def test_parameter_validator_rejects_representation_owned_keys_in_prediction_error_params():
     payload = _base_payload()
-    payload["experiment"]["prediction_error"] = {
+    payload["experiment"]["agent"]["learning"]["prediction_error"] = {
         "variant": "rescorla_wagner",
         "params": {"salience_operator": {"variant": "diagonal"}},
     }
@@ -169,9 +172,9 @@ def test_parameter_validator_rejects_representation_owned_keys_in_prediction_err
 
 def test_parameter_validator_rejects_representation_owned_keys_in_attention_config_params():
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {
-        "name": "mackintosh",
-        "params": {"kappa": 0.1, "temporal_basis": {"variant": "identity", "dimension": 1}},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {"name": "mackintosh", "params": {"kappa": 0.1, "temporal_basis": {"variant": "identity", "dimension": 1}}},
+        "initial": {},
     }
     with pytest.raises(
         ValueError,
@@ -182,15 +185,15 @@ def test_parameter_validator_rejects_representation_owned_keys_in_attention_conf
 
 def test_parameter_validator_rejects_salience_outside_unit_interval():
     payload = _base_payload()
-    payload["experiment"]["salience"] = {"tone": 1.2}
+    payload["experiment"]["agent"]["representation"]["salience"] = {"tone": 1.2}
     with pytest.raises(ValueError, match="salience\\['tone'\\] must be in \\[0,1\\]"):
         ParameterComposer.compose(payload)
 
 
 def test_parameter_validator_warns_on_over_broad_similarity_kernel():
     payload = _base_payload()
-    payload["experiment"]["representation"]["params"]["stimuli"] = ["tone", "noise", "light"]
-    payload["experiment"]["representation"]["params"]["similarity"] = {
+    payload["experiment"]["agent"]["representation"]["params"]["stimuli"] = ["tone", "noise", "light"]
+    payload["experiment"]["agent"]["representation"]["params"]["similarity"] = {
         "type": "matrix",
         "stimuli": ["tone", "noise", "light"],
         "values": [
@@ -205,14 +208,14 @@ def test_parameter_validator_warns_on_over_broad_similarity_kernel():
 
 def test_parameter_validator_warns_on_near_zero_salience_vector():
     payload = _base_payload()
-    payload["experiment"]["salience"] = {"tone": 0.01, "noise": 0.03}
+    payload["experiment"]["agent"]["representation"]["salience"] = {"tone": 0.01, "noise": 0.03}
     with pytest.warns(UserWarning, match="salience configuration is near-zero"):
         ParameterComposer.compose(payload)
 
 
 def test_parameter_validator_warns_on_behaviorally_inert_temporal_basis():
     payload = _base_payload()
-    payload["experiment"]["representation"]["params"]["temporal_basis"] = {
+    payload["experiment"]["agent"]["representation"]["params"]["temporal_basis"] = {
         "enabled": True,
         "variant": "traces",
         "dimension": 3,
@@ -224,9 +227,9 @@ def test_parameter_validator_warns_on_behaviorally_inert_temporal_basis():
 
 def test_parameter_validator_warns_on_frozen_attention_dynamics():
     payload = _base_payload()
-    payload["experiment"]["attention_config"] = {
-        "name": "pearce_hall",
-        "params": {"eta": 0.0},
+    payload["experiment"]["agent"]["learning"]["attention"] = {
+        "config": {"name": "pearce_hall", "params": {"eta": 0.0}},
+        "initial": {},
     }
     with pytest.warns(UserWarning, match="attention dynamics are frozen"):
         ParameterComposer.compose(payload)
@@ -234,8 +237,8 @@ def test_parameter_validator_warns_on_frozen_attention_dynamics():
 
 def test_parameter_validator_warns_on_extreme_policy_parameters():
     payload = _base_payload()
-    payload["experiment"]["agent"] = "operant_agent"
-    payload["experiment"]["policy"] = {
+    payload["experiment"]["agent"]["name"] = "operant_agent"
+    payload["experiment"]["agent"]["policy"] = {
         "name": "epsilon_greedy",
         "params": {"actions": ["left", "right"], "epsilon": 0.99},
     }
@@ -245,7 +248,7 @@ def test_parameter_validator_warns_on_extreme_policy_parameters():
 
 def test_runtime_constraints_require_prior_learning():
     payload = _base_payload()
-    payload["experiment"]["phases"] = [
+    payload["experiment"]["program"]["phases"] = [
         {
             "name": "Phase 1",
             "protocol": "nonreinforcement",
@@ -323,60 +326,60 @@ def test_validate_similarity_matrix_branches():
 
 
 def test_parse_representation_errors():
-    exp = {"representation": {"params": {}}}
+    exp = {"agent": {"representation": {"params": {}}}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_representation(exp)
-    exp = {"representation": {"name": "vector_elemental", "params": "bad"}}
+    exp = {"agent": {"representation": {"name": "vector_elemental", "params": "bad"}}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_representation(exp)
-    exp = {"representation": {"name": "bad", "params": {}}}
+    exp = {"agent": {"representation": {"name": "bad", "params": {}}}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_representation(exp)
-    exp = {"representation": 123}
+    exp = {"agent": {"representation": 123}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_representation(exp)
-    exp = {"representation": {"name": "vector_elemental", "params": {"attention": {"tone": 0.8}}}}
+    exp = {"agent": {"representation": {"name": "vector_elemental", "params": {"attention": {"tone": 0.8}}}}}
     with pytest.raises(ValueError, match="must not include attention"):
         ExperimentConfig._parse_representation(exp)
 
 
 def test_parse_policy_errors():
-    exp = {"policy": {"params": {}}}
+    exp = {"agent": {"policy": {"params": {}}}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_policy(exp)
-    exp = {"policy": {"name": "epsilon_greedy", "params": "bad"}}
+    exp = {"agent": {"policy": {"name": "epsilon_greedy", "params": "bad"}}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_policy(exp)
-    exp = {"policy": 123}
+    exp = {"agent": {"policy": 123}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_policy(exp)
 
 
 def test_parse_phases_errors():
-    exp = {"phases": [{"params": {}}]}
+    exp = {"program": {"phases": [{"params": {}}]}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_phases(exp)
-    exp = {"phases": [{"protocol": "acquisition", "params": "bad"}]}
+    exp = {"program": {"phases": [{"protocol": "acquisition", "params": "bad"}]}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_phases(exp)
-    exp = {"protocol": "acquisition", "stimuli": {}, "params": "bad"}
+    exp = {"program": {"phases": [{"protocol": "acquisition", "stimuli": {}, "params": "bad"}]}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_phases(exp)
-    exp = {"protocol": "acquisition", "stimuli": {}}
+    exp = {"program": {"phases": [{"protocol": "acquisition", "stimuli": {}}]}}
     with pytest.raises(ValueError):
         ExperimentConfig._parse_phases(exp)
 
 
 def test_parse_phases_rejects_template_param_ownership_leaks():
     exp = {
-        "phases": [
+        "program": {"phases": [
             {
                 "name": "Template Acquisition",
                 "protocol": "acquisition_template",
                 "stimuli": {"cs_plus": ["tone"]},
                 "params": {"n_trials": 1, "attention": {"tone": 0.8}},
             }
-        ]
+        ]}
     }
     with pytest.raises(ValueError, match="template params must not include"):
         ExperimentConfig._parse_phases(exp)
@@ -395,14 +398,14 @@ def test_parse_phases_rejects_template_param_ownership_leaks():
 )
 def test_parse_phases_rejects_canonical_template_backed_param_ownership_leaks(protocol_name, stimuli):
     exp = {
-        "phases": [
+        "program": {"phases": [
             {
                 "name": "Canonical Template-Backed Phase",
                 "protocol": protocol_name,
                 "stimuli": stimuli,
                 "params": {"n_trials": 1, "salience": {"tone": 0.5}},
             }
-        ]
+        ]}
     }
     with pytest.raises(ValueError, match="template params must not include"):
         ExperimentConfig._parse_phases(exp)
@@ -410,11 +413,13 @@ def test_parse_phases_rejects_canonical_template_backed_param_ownership_leaks(pr
 
 def test_parse_single_protocol_rejects_template_backed_param_ownership_leaks():
     exp = {
-        "protocol": "acquisition",
-        "stimuli": {"cs_plus": ["tone"]},
-        "params": {"n_trials": 1, "attention": {"tone": 0.7}},
+        "program": {"phases": [{
+            "protocol": "acquisition",
+            "stimuli": {"cs_plus": ["tone"]},
+            "params": {"n_trials": 1, "attention": {"tone": 0.7}},
+        }]},
     }
-    with pytest.raises(ValueError, match="Experiment template params must not include"):
+    with pytest.raises(ValueError, match="template params must not include"):
         ExperimentConfig._parse_phases(exp)
 
 
@@ -436,8 +441,8 @@ def test_from_payload_rejects_invalid_section_shapes():
 
 def test_from_payload_rejects_non_list_phases():
     payload = _base_payload()
-    payload["experiment"]["phases"] = {"protocol": "acquisition"}
-    with pytest.raises(ValueError, match="experiment.phases must be an array"):
+    payload["experiment"]["program"]["phases"] = {"protocol": "acquisition"}
+    with pytest.raises(ValueError, match="Canonical payload requires non-empty experiment.program.phases."):
         ExperimentConfig.from_payload(payload)
 
 
@@ -470,20 +475,20 @@ def test_from_payload_runtime_debug_defaults_and_validation():
 
 def test_from_payload_rejects_invalid_experiment_identity_fields():
     payload = _base_payload()
-    payload["experiment"]["learner"] = "  "
-    with pytest.raises(ValueError, match="experiment.learner must be a non-empty string"):
+    payload["experiment"]["agent"]["learning"]["rule"] = "  "
+    with pytest.raises(ValueError, match="experiment.agent.learning.rule must be a non-empty string"):
         ExperimentConfig.from_payload(payload)
 
     payload = _base_payload()
-    payload["experiment"]["agent"] = 123
-    with pytest.raises(ValueError, match="experiment.agent must be a non-empty string"):
+    payload["experiment"]["agent"]["name"] = 123
+    with pytest.raises(ValueError, match="experiment.agent.name must be a non-empty string"):
         ExperimentConfig.from_payload(payload)
 
 
 def test_from_payload_normalizes_experiment_identity_fields():
     payload = _base_payload()
-    payload["experiment"]["learner"] = "  rescorla_wagner  "
-    payload["experiment"]["agent"] = "  classical_agent  "
+    payload["experiment"]["agent"]["learning"]["rule"] = "  rescorla_wagner  "
+    payload["experiment"]["agent"]["name"] = "  classical_agent  "
     cfg = ExperimentConfig.from_payload(payload)
     assert cfg.learner == "rescorla_wagner"
     assert cfg.agent == "classical_agent"
@@ -573,7 +578,7 @@ def test_config_normalization_edge_cases():
     assert ExperimentConfig._normalize_phase_stimuli(["tone"]) == ["tone"]
     assert ExperimentConfig._normalize_phase_stimuli("tone") == "tone"
 
-    rep = ExperimentConfig._parse_representation({"representation": "vector_elemental"})
+    rep = ExperimentConfig._parse_representation({"agent": {"representation": "vector_elemental"}})
     assert rep == "vector_elemental"
 
 
@@ -698,7 +703,7 @@ def test_config_pipeline_build_plan_propagates_validation_errors():
     from experiment.plan_builder import build_experiment_plan
 
     bad_payload = {"experiment": {}, "report": {}}
-    with pytest.raises(ValueError, match="Missing required experiment fields"):
+    with pytest.raises(ValueError, match="Payload experiment must use canonical keys"):
         ConfigPipeline(ExperimentConfig).build_plan(
             bad_payload,
             build_experiment_plan=build_experiment_plan,
@@ -720,7 +725,7 @@ def test_config_pipeline_supports_injected_components():
         @staticmethod
         def validate_required_fields(require_fields, exp, rep):
             calls.append("validate_required_fields")
-            require_fields(exp, ["learner", "agent", "representation"], "experiment")
+            require_fields(exp, ["program", "agent", "runtime"], "experiment")
             require_fields(rep, ["preset"], "report")
 
         @staticmethod
@@ -795,8 +800,8 @@ def test_config_pipeline_supports_partial_component_overrides():
 
 def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
     payload = _base_payload()
-    payload["experiment"]["context_inference"] = {"enabled": True, "max_contexts": 2}
-    payload["experiment"]["phases"] = [
+    payload["experiment"]["runtime"]["context_inference"] = {"enabled": True, "max_contexts": 2}
+    payload["experiment"]["program"]["phases"] = [
         {
             "name": "Acq",
             "protocol": "acquisition",

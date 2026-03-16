@@ -12,6 +12,7 @@ from analysis.report import io as report_io
 from analysis.report.pdf import ReportPDF
 from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
+from experiment.payload_contract import from_legacy_payload
 
 
 class DummyMetric:
@@ -135,10 +136,29 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     monkeypatch.setattr(report_module, "METRIC_REGISTRY", {"dummy_metric": DummyMetric})
     monkeypatch.setattr(report_module, "VISUALIZATION_REGISTRY", {"dummy_viz": DummyViz})
 
-    payload = {
-        "experiment": {"attention": {"tone": 0.7}},
-        "provenance": {"mechanisms": {"attention_mechanism": {"variant": "static"}}},
-    }
+    payload = from_legacy_payload(
+        {
+            "experiment": {
+                "learner": "rescorla_wagner",
+                "agent": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": ["tone"]},
+                },
+                "attention": {"tone": 0.7},
+                "attention_config": {"name": "static", "params": {"default": 1.0}},
+                "phases": [
+                    {
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 1},
+                    }
+                ],
+            },
+            "report": {"preset": "dummy"},
+        }
+    )
+    payload["provenance"] = {"mechanisms": {"attention_mechanism": {"variant": "static"}}}
     records = [{"prediction": 0.1, "trial": 0}]
 
     report_dir = report_module.run_report(
@@ -155,6 +175,8 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     assert (report_dir / "report.pdf").exists()
     assert (report_dir / "metrics" / "dummy_metric.json").exists()
 
+    stored_payload = json.loads((report_dir / "payload.json").read_text())
+    assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
     attention = json.loads((report_dir / "attention_summary.json").read_text())
     assert attention == {"tone": 0.7}
     mechanism_provenance = json.loads((report_dir / "mechanism_provenance.json").read_text())

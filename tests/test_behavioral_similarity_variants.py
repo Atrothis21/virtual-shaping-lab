@@ -38,14 +38,14 @@ def _tail_mean_prediction(records: list[dict], n: int = 10) -> float:
 
 def _with_similarity(payload: dict, offdiag: float) -> dict:
     out = copy.deepcopy(payload)
-    stimuli = out["experiment"]["representation"]["params"]["stimuli"]
+    stimuli = out["experiment"]["agent"]["representation"]["params"]["stimuli"]
     values = []
     for i in range(len(stimuli)):
         row = []
         for j in range(len(stimuli)):
             row.append(1.0 if i == j else offdiag)
         values.append(row)
-    out["experiment"]["representation"]["params"]["similarity"] = {
+    out["experiment"]["agent"]["representation"]["params"]["similarity"] = {
         "type": "matrix",
         "stimuli": stimuli,
         "values": values,
@@ -55,8 +55,8 @@ def _with_similarity(payload: dict, offdiag: float) -> dict:
 
 def test_similarity_identity_matrix_matches_zero_offdiag_behavior():
     base = differential_acquisition_payload()
-    base["experiment"]["representation"]["params"]["stimuli"] = ["tone", "noise"]
-    base["experiment"]["salience"] = {
+    base["experiment"]["agent"]["representation"]["params"]["stimuli"] = ["tone", "noise"]
+    base["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 1.0},
         "noise": {"salience": 1.0},
     }
@@ -79,8 +79,8 @@ def test_similarity_identity_matrix_matches_zero_offdiag_behavior():
 
 def test_similarity_non_identity_increases_cs_minus_generalization():
     base = differential_acquisition_payload()
-    base["experiment"]["representation"]["params"]["stimuli"] = ["tone", "noise"]
-    base["experiment"]["salience"] = {
+    base["experiment"]["agent"]["representation"]["params"]["stimuli"] = ["tone", "noise"]
+    base["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 1.0},
         "noise": {"salience": 1.0},
     }

@@ -91,8 +91,11 @@ def mean(values: list[float]) -> float:
 
 def operant_payload(schedule_type: str, schedule_value: int, n_trials: int = 120) -> dict:
     payload = operant_conditioning_payload()
-    payload["experiment"]["params"]["n_trials"] = n_trials
-    payload["experiment"]["params"]["reward_schedule"] = {
+    phase = payload["experiment"]["program"]["phases"][0]
+    phase["trials"] = n_trials
+    phase.setdefault("params", {})
+    phase["params"]["n_trials"] = n_trials
+    phase["params"]["reward_schedule"] = {
         "type": schedule_type,
         "value": schedule_value,
     }

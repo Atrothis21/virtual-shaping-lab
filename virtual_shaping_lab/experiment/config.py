@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any, List, Union, Tuple, Optional
-from experiment.payload_contract import to_canonical_payload, to_legacy_payload
+from experiment.payload_contract import to_canonical_payload
 
 OPERANT_PROTOCOLS = {
     "operant_conditioning",
@@ -90,9 +90,11 @@ class PayloadNormalizer:
 
     @staticmethod
     def normalize_experiment_identity(exp: Dict[str, Any]) -> Dict[str, str]:
+        agent = exp.get("agent", {})
+        learning = agent.get("learning", {}) if isinstance(agent, dict) else {}
         return {
-            "learner": exp["learner"].strip(),
-            "agent": exp["agent"].strip(),
+            "learner": str(learning["rule"]).strip(),
+            "agent": str(agent["name"]).strip(),
         }
 
 
@@ -114,20 +116,29 @@ class PayloadValidator:
 
     @staticmethod
     def validate_phase_shape(exp: Dict[str, Any]) -> None:
-        if "phases" in exp and not isinstance(exp["phases"], list):
-            raise ValueError("experiment.phases must be an array")
+        program = exp.get("program")
+        if not isinstance(program, dict):
+            raise ValueError("experiment.program must be an object")
+        if "phases" not in program or not isinstance(program["phases"], list):
+            raise ValueError("experiment.program.phases must be an array")
 
     @staticmethod
     def validate_required_fields(require_fields, exp: Dict[str, Any], rep: Dict[str, Any]) -> None:
-        require_fields(exp, ["learner", "agent", "representation"], "experiment")
+        require_fields(exp, ["program", "agent", "runtime"], "experiment")
         require_fields(rep, ["preset"], "report")
 
     @staticmethod
     def validate_experiment_identity_fields(exp: Dict[str, Any]) -> None:
-        if not isinstance(exp.get("learner"), str) or not exp["learner"].strip():
-            raise ValueError("experiment.learner must be a non-empty string")
-        if not isinstance(exp.get("agent"), str) or not exp["agent"].strip():
-            raise ValueError("experiment.agent must be a non-empty string")
+        agent = exp.get("agent")
+        if not isinstance(agent, dict):
+            raise ValueError("experiment.agent must be an object")
+        if not isinstance(agent.get("name"), str) or not agent["name"].strip():
+            raise ValueError("experiment.agent.name must be a non-empty string")
+        learning = agent.get("learning")
+        if not isinstance(learning, dict):
+            raise ValueError("experiment.agent.learning must be an object")
+        if not isinstance(learning.get("rule"), str) or not learning["rule"].strip():
+            raise ValueError("experiment.agent.learning.rule must be a non-empty string")
 
     @staticmethod
     def validate_runtime(validate_runtime_constraints, phases: List["PhaseConfig"]) -> None:
@@ -234,17 +245,9 @@ class ConfigPipeline:
         )
 
         validate_payload_shape(payload)
-        try:
-            canonical_payload = to_canonical_payload(payload)
-        except ValueError as exc:
-            message = str(exc)
-            if "canonical keys" in message:
-                raise ValueError("Missing required experiment fields: learner, agent, representation")
-            raise
-        legacy_payload = to_legacy_payload(canonical_payload)
-
-        exp = legacy_payload["experiment"]
-        rep = legacy_payload["report"]
+        canonical_payload = to_canonical_payload(payload)
+        exp = canonical_payload["experiment"]
+        rep = canonical_payload["report"]
 
         validate_phase_shape(exp)
         validate_required_fields(self._config_cls._require_fields, exp, rep)
@@ -567,16 +570,19 @@ class ExperimentConfig:
 
     @classmethod
     def _parse_representation(cls, exp: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
-        representation = exp["representation"]
+        agent = exp.get("agent")
+        if not isinstance(agent, dict):
+            raise ValueError("experiment.agent must be an object")
+        representation = agent.get("representation")
         if isinstance(representation, dict):
             if "name" not in representation:
-                raise ValueError("representation object must include 'name'")
+                raise ValueError("experiment.agent.representation must include 'name'")
             if "params" in representation and not isinstance(representation["params"], dict):
-                raise ValueError("representation.params must be an object")
+                raise ValueError("experiment.agent.representation.params must be an object")
             params = representation.get("params", {}) or {}
             if "attention" in params or "attention_compound" in params:
                 raise ValueError(
-                    "representation.params must not include attention fields; use experiment.attention (learner-owned)."
+                    "experiment.agent.representation.params must not include attention fields; use experiment.agent.learning.attention."
                 )
             if "similarity" in params:
                 cls._validate_similarity_matrix(
@@ -587,23 +593,26 @@ class ExperimentConfig:
             return representation
 
         if not isinstance(representation, str):
-            raise ValueError("representation must be a string or object")
+            raise ValueError("experiment.agent.representation must be a string or object")
         cls._validate_representation_name(representation)
         return representation
 
     @staticmethod
     def _parse_policy(exp: Dict[str, Any]) -> Optional[Union[str, Dict[str, Any]]]:
-        policy = exp.get("policy")
+        agent = exp.get("agent")
+        if not isinstance(agent, dict):
+            raise ValueError("experiment.agent must be an object")
+        policy = agent.get("policy")
         if policy is None:
             return None
         if isinstance(policy, dict):
             if "name" not in policy:
-                raise ValueError("policy object must include 'name'")
+                raise ValueError("experiment.agent.policy must include 'name'")
             if "params" in policy and not isinstance(policy["params"], dict):
-                raise ValueError("policy.params must be an object")
+                raise ValueError("experiment.agent.policy.params must be an object")
             return policy
         if not isinstance(policy, str):
-            raise ValueError("policy must be a string or object")
+            raise ValueError("experiment.agent.policy must be a string or object")
         return policy
 
     @staticmethod
@@ -630,67 +639,37 @@ class ExperimentConfig:
     @classmethod
     def _parse_phases(cls, exp: Dict[str, Any]) -> List[PhaseConfig]:
         phases: List[PhaseConfig] = []
-        if "phases" in exp:
-            for i, phase in enumerate(exp["phases"]):
-                for key in ["protocol", "params"]:
-                    if key not in phase:
-                        raise ValueError(
-                            f"Phase {i} missing required field '{key}'"
-                        )
-
-                params = phase.get("params") or {}
-                if not isinstance(params, dict):
+        program = exp.get("program")
+        if not isinstance(program, dict):
+            raise ValueError("experiment.program must be an object")
+        raw_phases = program.get("phases")
+        if not isinstance(raw_phases, list) or not raw_phases:
+            raise ValueError("experiment.program.phases must be a non-empty array")
+        for i, phase in enumerate(raw_phases):
+            if not isinstance(phase, dict):
+                raise ValueError(f"Phase {i} must be an object")
+            for key in ["protocol", "params"]:
+                if key not in phase:
+                    raise ValueError(f"Phase {i} missing required field '{key}'")
+            params = phase.get("params") or {}
+            if not isinstance(params, dict):
+                raise ValueError(f"Phase {i} params must be an object")
+            protocol_name = phase["protocol"]
+            if _is_template_param_guard_protocol(protocol_name):
+                leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
+                if leaked:
                     raise ValueError(
-                        f"Phase {i} params must be an object"
+                        f"Phase {i} template params must not include representation/learner-owned keys: {', '.join(leaked)}"
                     )
-                protocol_name = phase["protocol"]
-                if _is_template_param_guard_protocol(protocol_name):
-                    leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
-                    if leaked:
-                        raise ValueError(
-                            f"Phase {i} template params must not include representation/learner-owned keys: {', '.join(leaked)}"
-                        )
-                stimuli = phase.get("stimuli")
-
-                phases.append(
-                    PhaseConfig(
-                        name=phase.get("name", f"Phase {i}"),
-                        protocol=protocol_name,
-                        stimuli=cls._normalize_phase_stimuli(stimuli) if stimuli is not None else None,
-                        params=params,
-                    )
+            stimuli = phase.get("stimuli")
+            phases.append(
+                PhaseConfig(
+                    name=phase.get("name", f"Phase {i}"),
+                    protocol=protocol_name,
+                    stimuli=cls._normalize_phase_stimuli(stimuli) if stimuli is not None else None,
+                    params=params,
                 )
-            return phases
-
-        required = ["protocol", "params"]
-        missing = [k for k in required if k not in exp]
-        if missing:
-            raise ValueError(
-                f"Missing required experiment fields: {', '.join(missing)}"
             )
-
-        protocol_name = exp["protocol"]
-        if protocol_name not in OPERANT_PROTOCOLS and "stimuli" not in exp:
-            raise ValueError("Missing required experiment fields: stimuli")
-
-        params = exp.get("params") or {}
-        if not isinstance(params, dict):
-            raise ValueError("experiment.params must be an object")
-        if _is_template_param_guard_protocol(protocol_name):
-            leaked = sorted(k for k in _FORBIDDEN_TEMPLATE_PHASE_PARAM_KEYS if k in params)
-            if leaked:
-                raise ValueError(
-                    "Experiment template params must not include representation/learner-owned keys: "
-                    + ", ".join(leaked)
-                )
-        phases.append(
-            PhaseConfig(
-                name="Phase 0",
-                protocol=protocol_name,
-                stimuli=cls._normalize_phase_stimuli(exp["stimuli"]) if "stimuli" in exp else None,
-                params=params,
-            )
-        )
         return phases
 
     @classmethod
@@ -702,22 +681,43 @@ class ExperimentConfig:
         exp_attention: Dict[str, float] = {}
         exp_context_inference: Dict[str, Any] = {}
         exp_attention_config: Dict[str, Any] = {"name": "none", "params": {}}
+        agent = exp.get("agent", {})
+        if not isinstance(agent, dict):
+            raise ValueError("experiment.agent must be an object")
+        representation = agent.get("representation", {})
+        if isinstance(representation, dict):
+            rep_params = representation.get("params", {})
+            if isinstance(rep_params, dict):
+                if "stimuli" in rep_params:
+                    exp_stimuli = list(rep_params.get("stimuli", []))
+                salience_field = rep_params.get("salience", representation.get("salience"))
+                if salience_field is not None:
+                    if isinstance(salience_field, dict):
+                        try:
+                            exp_salience = {
+                                str(k): float(v.get("salience") if isinstance(v, dict) and "salience" in v else v)
+                                for k, v in salience_field.items()
+                            }
+                        except (TypeError, ValueError):
+                            _, exp_salience = cls._normalize_stimuli(salience_field)
 
-        if "stimuli" in exp:
-            exp_stimuli, exp_salience = cls._normalize_stimuli(exp["stimuli"])
+        learning = agent.get("learning", {})
+        attention_block = learning.get("attention", {}) if isinstance(learning, dict) else {}
+        if isinstance(attention_block, dict):
+            exp_attention = cls._normalize_attention(attention_block.get("initial"))
+            exp_attention_config = cls._normalize_attention_config(
+                attention_field=attention_block.get("initial"),
+                attention_config_field=(
+                    attention_block.get("config")
+                    if isinstance(attention_block.get("config"), dict) and attention_block.get("config")
+                    else None
+                ),
+            )
 
-        if "salience" in exp:
-            _, exp_salience = cls._normalize_stimuli(exp["salience"])
-
-        if "attention" in exp:
-            exp_attention = cls._normalize_attention(exp["attention"])
-        exp_attention_config = cls._normalize_attention_config(
-            attention_field=exp.get("attention"),
-            attention_config_field=exp.get("attention_config"),
-        )
-
-        if "context_inference" in exp and isinstance(exp["context_inference"], dict):
-            exp_context_inference = exp["context_inference"]
+        if "runtime" in exp and isinstance(exp["runtime"], dict):
+            context_inference = exp["runtime"].get("context_inference")
+            if isinstance(context_inference, dict):
+                exp_context_inference = context_inference
 
         return (
             exp_stimuli,

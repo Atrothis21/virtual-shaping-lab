@@ -27,34 +27,43 @@ def _run_records(payload: dict) -> list[dict]:
 def _base_payload() -> dict:
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_hybrid",
-                "params": {
-                    "stimuli": ["tone", "noise"],
-                    "max_compound_size": 2,
-                    "include_global": True,
-                    "include_context": True,
-                },
+            "program": {
+                "phases": [
+                    {
+                        "name": "Acquisition",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0},
+                        "trials": 60,
+                    },
+                    {
+                        "name": "Extinction",
+                        "protocol": "nonreinforcement",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0},
+                        "trials": 60,
+                    },
+                ]
             },
-            "attention": {"tone": {"attention": 1.0}},
-            "salience": {"tone": {"salience": 1.0}},
-            "context_inference": {"enabled": False, "max_contexts": 3},
-            "phases": [
-                {
-                    "name": "Acquisition",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0},
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_hybrid",
+                    "params": {
+                        "stimuli": ["tone", "noise"],
+                        "max_compound_size": 2,
+                        "include_global": True,
+                        "include_context": True,
+                    },
                 },
-                {
-                    "name": "Extinction",
-                    "protocol": "nonreinforcement",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0},
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {"initial": {"tone": {"attention": 1.0}}, "config": {}},
                 },
-            ],
+                "policy": None,
+            },
+            "runtime": {"context_inference": {"enabled": False, "max_contexts": 3}},
         },
         "report": {"preset": "custom_protocol"},
     }
@@ -63,7 +72,7 @@ def _base_payload() -> dict:
 def test_context_inference_assigns_distinct_phase_contexts_when_enabled():
     base = _base_payload()
     inferred = copy.deepcopy(base)
-    inferred["experiment"]["context_inference"] = {"enabled": True, "max_contexts": 2}
+    inferred["experiment"]["runtime"]["context_inference"] = {"enabled": True, "max_contexts": 2}
 
     rec_base = _run_records(base)
     rec_inferred = _run_records(inferred)
@@ -83,34 +92,43 @@ def test_context_inference_assigns_distinct_phase_contexts_when_enabled():
 def test_explicit_context_is_preserved_when_inference_enabled():
     payload = {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_hybrid",
-                "params": {
-                    "stimuli": ["tone"],
-                    "max_compound_size": 2,
-                    "include_global": True,
-                    "include_context": True,
-                },
+            "program": {
+                "phases": [
+                    {
+                        "name": "Acquisition",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 20, "alpha": 0.2, "gamma": 0.0},
+                        "trials": 20,
+                    },
+                    {
+                        "name": "Probe",
+                        "protocol": "probe",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 10, "context": "C"},
+                        "trials": 10,
+                    },
+                ]
             },
-            "attention": {"tone": {"attention": 1.0}},
-            "salience": {"tone": {"salience": 1.0}},
-            "context_inference": {"enabled": True, "max_contexts": 2},
-            "phases": [
-                {
-                    "name": "Acquisition",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 20, "alpha": 0.2, "gamma": 0.0},
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_hybrid",
+                    "params": {
+                        "stimuli": ["tone"],
+                        "max_compound_size": 2,
+                        "include_global": True,
+                        "include_context": True,
+                    },
                 },
-                {
-                    "name": "Probe",
-                    "protocol": "probe",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 10, "context": "C"},
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {"initial": {"tone": {"attention": 1.0}}, "config": {}},
                 },
-            ],
+                "policy": None,
+            },
+            "runtime": {"context_inference": {"enabled": True, "max_contexts": 2}},
         },
         "report": {"preset": "custom_protocol"},
     }

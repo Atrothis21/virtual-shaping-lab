@@ -1,4 +1,4 @@
-"""Canonical payload contract helpers with legacy compatibility adapters."""
+"""Canonical payload contract helpers with explicit legacy adapters."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def _is_non_empty_dict(value: Any) -> bool:
 
 
 def _is_canonical_experiment(exp: dict[str, Any]) -> bool:
-    return isinstance(exp.get("program"), dict) and isinstance(exp.get("agent"), dict)
+    return all(key in exp for key in ("program", "agent", "runtime"))
 
 
 def _is_legacy_experiment(exp: dict[str, Any]) -> bool:
@@ -265,12 +265,15 @@ def to_canonical_payload(payload: dict[str, Any]) -> dict[str, Any]:
     _assert_no_mixed_shape(exp)
 
     if _is_legacy_experiment(exp):
-        return from_legacy_payload(src)
+        raise ValueError(
+            "Legacy payload shape is no longer accepted at runtime; "
+            "provide canonical experiment.program/experiment.agent/experiment.runtime."
+        )
 
     if not _is_canonical_experiment(exp):
         raise ValueError(
             "Payload experiment must use canonical keys "
-            "(program, agent, runtime) or a supported legacy flat shape."
+            "(program, agent, runtime)."
         )
 
     phases = _canonical_phases(exp)

@@ -5,20 +5,30 @@ from experiment.public import assemble_from_plan, build_plan, run_from_plan, val
 def _classical_payload():
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            "program": {
+                "phases": [
+                    {
+                        "name": "Acquisition",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 2, "alpha": 0.2, "gamma": 0.0},
+                        "trials": 2,
+                    }
+                ],
             },
-            "phases": [
-                {
-                    "name": "Acquisition",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 2, "alpha": 0.2, "gamma": 0.0},
-                }
-            ],
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": ["tone"], "max_compound_size": 2},
+                },
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                },
+                "policy": None,
+            },
+            "runtime": {},
         },
         "report": {"preset": "acquisition"},
     }

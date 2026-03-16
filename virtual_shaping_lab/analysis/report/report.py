@@ -8,6 +8,7 @@ from analysis.metrics.registry import METRIC_REGISTRY
 from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
+from experiment.payload_contract import to_canonical_payload
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 
@@ -69,6 +70,27 @@ def _extract_mechanism_provenance(payload):
     }
 
 
+def _extract_attention_summary(payload):
+    if not isinstance(payload, dict):
+        return None
+    experiment = payload.get("experiment")
+    if not isinstance(experiment, dict):
+        return None
+    agent = experiment.get("agent")
+    if not isinstance(agent, dict):
+        return None
+    learning = agent.get("learning")
+    if not isinstance(learning, dict):
+        return None
+    attention = learning.get("attention")
+    if not isinstance(attention, dict):
+        return None
+    initial = attention.get("initial")
+    if isinstance(initial, dict):
+        return initial
+    return None
+
+
 @dataclass(frozen=True)
 class ReportRunContext:
     report_dir: Path
@@ -87,9 +109,10 @@ class ReportArtifactWriter:
 
     def write_provenance(self, *, records, payload, ctx: ReportRunContext) -> None:
         if payload is not None:
+            canonical_payload = to_canonical_payload(payload)
             with open(ctx.report_dir / "payload.json", "w") as f:
-                json.dump(payload, f, indent=2)
-            attention = payload.get("experiment", {}).get("attention")
+                json.dump(canonical_payload, f, indent=2)
+            attention = _extract_attention_summary(canonical_payload)
             if isinstance(attention, dict):
                 with open(ctx.report_dir / "attention_summary.json", "w") as f:
                     json.dump(attention, f, indent=2)

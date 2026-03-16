@@ -55,28 +55,36 @@ def _phase_index_records(records: list[dict], phase_index: int) -> list[dict]:
 def _differential_payload(*, strategy_name: str, params: dict) -> dict:
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": STIMULI, "max_compound_size": 2},
+            "program": {
+                "phases": [
+                    {
+                        "name": "predictiveness",
+                        "protocol": "differential_acquisition",
+                        "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
+                        "params": {
+                            "n_trials": 120,
+                            "alpha": 0.2,
+                            "reinforced_outcome": 1.0,
+                            "nonreinforced_outcome": 0.0,
+                        },
+                        "trials": 120,
+                    }
+                ]
             },
-            "context_inference": {"enabled": False, "max_contexts": 3},
-            "runtime": {"seed": 11},
-            "phases": [
-                {
-                    "name": "predictiveness",
-                    "protocol": "differential_acquisition",
-                    "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
-                    "params": {
-                        "n_trials": 120,
-                        "alpha": 0.2,
-                        "reinforced_outcome": 1.0,
-                        "nonreinforced_outcome": 0.0,
-                    },
-                }
-            ],
-            "attention_config": {"name": strategy_name, "params": params},
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": STIMULI, "max_compound_size": 2},
+                },
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {"config": {"name": strategy_name, "params": params}, "initial": {}},
+                },
+                "policy": None,
+            },
+            "runtime": {"seed": 11, "context_inference": {"enabled": False, "max_contexts": 3}},
         },
         "report": {"preset": "custom_protocol"},
     }
@@ -104,19 +112,38 @@ def _hall_pearce_payload(*, include_weak_phase: bool) -> dict:
 
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": STIMULI, "max_compound_size": 2},
+            "program": {
+                "phases": [
+                    {
+                        "name": phase["name"],
+                        "protocol": phase["protocol"],
+                        "stimuli": phase["stimuli"],
+                        "params": phase["params"],
+                        "trials": phase["params"]["n_trials"],
+                    }
+                    for phase in phases
+                ]
             },
-            "context_inference": {"enabled": False, "max_contexts": 3},
-            "runtime": {"seed": 17},
-            "phases": phases,
-            "attention_config": {
-                "name": "pearce_hall",
-                "params": {"default": 0.4, "overrides": {"tone": 0.4}, "eta": 0.2},
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": STIMULI, "max_compound_size": 2},
+                },
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {
+                        "config": {
+                            "name": "pearce_hall",
+                            "params": {"default": 0.4, "overrides": {"tone": 0.4}, "eta": 0.2},
+                        },
+                        "initial": {},
+                    },
+                },
+                "policy": None,
             },
+            "runtime": {"seed": 17, "context_inference": {"enabled": False, "max_contexts": 3}},
         },
         "report": {"preset": "custom_protocol"},
     }
@@ -125,29 +152,38 @@ def _hall_pearce_payload(*, include_weak_phase: bool) -> dict:
 def _reversal_payload(*, strategy_name: str, params: dict) -> dict:
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": STIMULI, "max_compound_size": 2},
+            "program": {
+                "phases": [
+                    {
+                        "name": "acq",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0, "outcome": 1.0},
+                        "trials": 60,
+                    },
+                    {
+                        "name": "ext",
+                        "protocol": "nonreinforcement",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 40, "alpha": 0.2, "gamma": 0.0, "outcome": 0.0},
+                        "trials": 40,
+                    },
+                ]
             },
-            "context_inference": {"enabled": False, "max_contexts": 3},
-            "runtime": {"seed": 23},
-            "phases": [
-                {
-                    "name": "acq",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 60, "alpha": 0.2, "gamma": 0.0, "outcome": 1.0},
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": STIMULI, "max_compound_size": 2},
                 },
-                {
-                    "name": "ext",
-                    "protocol": "nonreinforcement",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 40, "alpha": 0.2, "gamma": 0.0, "outcome": 0.0},
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {"config": {"name": strategy_name, "params": params}, "initial": {}},
                 },
-            ],
-            "attention_config": {"name": strategy_name, "params": params},
+                "policy": None,
+            },
+            "runtime": {"seed": 23, "context_inference": {"enabled": False, "max_contexts": 3}},
         },
         "report": {"preset": "custom_protocol"},
     }
@@ -222,10 +258,14 @@ def test_shared_latent_inhibition_style_low_attention_slows_early_acquisition():
     high_attention = acquisition_payload()
     low_attention = copy.deepcopy(high_attention)
 
-    high_attention["experiment"]["phases"][0]["params"]["n_trials"] = 20
-    low_attention["experiment"]["phases"][0]["params"]["n_trials"] = 20
-    high_attention["experiment"]["attention"] = {"tone": {"attention": 1.0}}
-    low_attention["experiment"]["attention"] = {"tone": {"attention": 0.2}}
+    high_phase = high_attention["experiment"]["program"]["phases"][0]
+    low_phase = low_attention["experiment"]["program"]["phases"][0]
+    high_phase["trials"] = 20
+    high_phase["params"]["n_trials"] = 20
+    low_phase["trials"] = 20
+    low_phase["params"]["n_trials"] = 20
+    high_attention["experiment"]["agent"]["learning"]["attention"] = {"initial": {"tone": {"attention": 1.0}}, "config": {}}
+    low_attention["experiment"]["agent"]["learning"]["attention"] = {"initial": {"tone": {"attention": 0.2}}, "config": {}}
 
     high_records = _run_records(high_attention)
     low_records = _run_records(low_attention)

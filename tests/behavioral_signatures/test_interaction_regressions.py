@@ -26,29 +26,33 @@ def _run_records(payload: dict, *, seed: int = 7) -> list[dict]:
 
 def test_policy_and_prediction_error_interaction_changes_operant_outcomes():
     exploit_payload = matching_law_payload()
-    exploit_payload["experiment"]["policy"] = {
+    exploit_payload["experiment"]["agent"]["policy"] = {
         "name": "fixed",
         "params": {"action": "left"},
     }
-    exploit_payload["experiment"]["params"]["schedule_left"] = {
+    exploit_phase = exploit_payload["experiment"]["program"]["phases"][0]
+    exploit_phase.setdefault("params", {})
+    exploit_phase["params"]["schedule_left"] = {
         "type": "fixed_ratio",
         "value": 1,
     }
-    exploit_payload["experiment"]["params"]["schedule_right"] = {
+    exploit_phase["params"]["schedule_right"] = {
         "type": "fixed_ratio",
         "value": 10,
     }
 
     poor_policy_payload = matching_law_payload()
-    poor_policy_payload["experiment"]["policy"] = {
+    poor_policy_payload["experiment"]["agent"]["policy"] = {
         "name": "fixed",
         "params": {"action": "right"},
     }
-    poor_policy_payload["experiment"]["params"]["schedule_left"] = {
+    poor_phase = poor_policy_payload["experiment"]["program"]["phases"][0]
+    poor_phase.setdefault("params", {})
+    poor_phase["params"]["schedule_left"] = {
         "type": "fixed_ratio",
         "value": 1,
     }
-    poor_policy_payload["experiment"]["params"]["schedule_right"] = {
+    poor_phase["params"]["schedule_right"] = {
         "type": "fixed_ratio",
         "value": 10,
     }
