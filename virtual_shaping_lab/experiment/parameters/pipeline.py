@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import warnings
 from typing import Any, Mapping
 
 from virtual_shaping_lab.domain.naming import normalize_protocol_key
@@ -109,6 +110,11 @@ class ParameterValidatorPipeline:
         cls._validate_runtime(exp)
         cls._validate_phases(exp)
         cls._validate_contexts(exp, rep)
+        cls._warn_on_degenerate_similarity(rep)
+        cls._warn_on_near_zero_salience(exp)
+        cls._warn_on_inert_temporal_basis(rep)
+        cls._warn_on_frozen_attention(exp)
+        cls._warn_on_extreme_policy(exp)
 
     @classmethod
     def _validate_attention_config(cls, exp: Mapping[str, Any]) -> None:
@@ -289,6 +295,135 @@ class ParameterValidatorPipeline:
                 "prediction_error variant must be one of: "
                 + ", ".join(sorted(cls._ALLOWED_PREDICTION_ERROR_VARIANTS))
             )
+
+    @classmethod
+    def _warn_on_degenerate_similarity(cls, rep: Any) -> None:
+        if not isinstance(rep, Mapping):
+            return
+        params = rep.get("params", {})
+        if not isinstance(params, Mapping):
+            return
+        similarity = params.get("similarity")
+        if not isinstance(similarity, Mapping):
+            return
+        values = similarity.get("values")
+        if not isinstance(values, list) or len(values) < 2:
+            return
+
+        off_diagonal: list[float] = []
+        for i, row in enumerate(values):
+            if not isinstance(row, list):
+                continue
+            for j, value in enumerate(row):
+                if i == j:
+                    continue
+                off_diagonal.append(float(value))
+        if off_diagonal and sum(off_diagonal) / len(off_diagonal) >= 0.95:
+            warnings.warn(
+                "similarity kernel is over-broad; mean off-diagonal similarity >= 0.95 can collapse cue discrimination",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    @classmethod
+    def _warn_on_near_zero_salience(cls, exp: Mapping[str, Any]) -> None:
+        salience = exp.get("salience")
+        if salience is None:
+            return
+        values: list[float] = []
+        if isinstance(salience, Mapping):
+            for value in salience.values():
+                raw = value.get("salience") if isinstance(value, Mapping) and "salience" in value else value
+                values.append(float(raw))
+        else:
+            values.append(float(salience))
+        if values and max(values) <= 0.05:
+            warnings.warn(
+                "salience configuration is near-zero; all active salience weights <= 0.05 can suppress observable learning",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    @classmethod
+    def _warn_on_inert_temporal_basis(cls, rep: Any) -> None:
+        if not isinstance(rep, Mapping):
+            return
+        params = rep.get("params", {})
+        if not isinstance(params, Mapping):
+            return
+        temporal_basis = params.get("temporal_basis")
+        if not isinstance(temporal_basis, Mapping) or not bool(temporal_basis.get("enabled", True)):
+            return
+
+        variant = str(temporal_basis.get("variant", temporal_basis.get("name", "identity"))).strip().lower()
+        extra = temporal_basis.get("params", {})
+        if not isinstance(extra, Mapping):
+            extra = {}
+
+        if variant == "bins" and float(extra.get("max_time_s", 1.0)) <= 0.0:
+            warnings.warn(
+                "temporal basis is behaviorally inert; bins.max_time_s <= 0 collapses time encoding to a single bin",
+                UserWarning,
+                stacklevel=2,
+            )
+        if variant == "traces" and float(extra.get("decay", 1.0)) <= 1e-6:
+            warnings.warn(
+                "temporal basis is behaviorally inert; traces.decay near zero yields almost static temporal features",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    @classmethod
+    def _warn_on_frozen_attention(cls, exp: Mapping[str, Any]) -> None:
+        cfg = exp.get("attention_config")
+        if cfg is None:
+            attn = exp.get("attention")
+            if isinstance(attn, Mapping) and ("name" in attn or "params" in attn):
+                cfg = attn
+            else:
+                return
+        if not isinstance(cfg, Mapping):
+            return
+        strategy = str(cfg.get("name", "")).strip().lower()
+        params = cfg.get("params", {})
+        if not isinstance(params, Mapping):
+            return
+        if strategy == "pearce_hall" and float(params.get("eta", 0.2)) <= 1e-6:
+            warnings.warn(
+                "attention dynamics are frozen; pearce_hall eta near zero prevents meaningful attentional adaptation",
+                UserWarning,
+                stacklevel=2,
+            )
+        if strategy == "mackintosh" and float(params.get("kappa", 0.1)) <= 1e-6:
+            warnings.warn(
+                "attention dynamics are frozen; mackintosh kappa near zero prevents meaningful attentional adaptation",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    @classmethod
+    def _warn_on_extreme_policy(cls, exp: Mapping[str, Any]) -> None:
+        policy = exp.get("policy")
+        if not isinstance(policy, Mapping):
+            return
+        name = str(policy.get("name", "")).strip().lower()
+        params = policy.get("params", {})
+        if not isinstance(params, Mapping):
+            return
+        if name == "epsilon_greedy" and float(params.get("epsilon", 0.1)) >= 0.95:
+            warnings.warn(
+                "policy epsilon is extreme; epsilon >= 0.95 makes action selection almost purely exploratory",
+                UserWarning,
+                stacklevel=2,
+            )
+        if name == "softmax":
+            temperature = float(params.get("temperature", 1.0))
+            if temperature <= 1e-6 or temperature >= 100.0:
+                warnings.warn(
+                    "policy temperature is extreme; very low or very high softmax temperature can collapse meaningful action discrimination",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     @classmethod
     def _validate_no_representation_owned_keys(

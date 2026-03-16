@@ -6,6 +6,8 @@ from agents.learners.rescorla_wagner import RescorlaWagnerLearner
 from agents.policies.epsilon_greedy import EpsilonGreedyPolicy
 from agents.policies.null_policy import NullPolicy
 from agents.policies.softmax import SoftmaxPolicy
+from agents.representations.observation import make_observation
+from agents.representations.vector_elemental import VectorElementalRepresentation
 from domain.types import EncodedState, Observation, Transition
 
 
@@ -151,3 +153,62 @@ def test_composed_agent_normalizes_raw_state_vectors():
     tr = Transition(s=EncodedState(x=raw), r=0.5, a="a")
     agent.learn(tr)
     assert learner.last_transition.a == "a"
+
+
+def test_context_and_similarity_interaction_stays_context_local():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone", "noise"],
+            "contexts": ["A", "B"],
+            "include_global": False,
+            "include_context": True,
+            "similarity": {
+                "type": "matrix",
+                "stimuli": ["tone", "noise"],
+                "values": [
+                    [1.0, 0.4],
+                    [0.4, 1.0],
+                ],
+            },
+        }
+    )
+
+    vec = rep.encode(make_observation(["tone"], "A")).x
+
+    idx_a_tone = rep._encoder._index["ctx:A|tone"]
+    idx_a_noise = rep._encoder._index["ctx:A|noise"]
+    idx_b_tone = rep._encoder._index["ctx:B|tone"]
+    idx_b_noise = rep._encoder._index["ctx:B|noise"]
+
+    assert vec[idx_a_tone] == pytest.approx(1.0)
+    assert vec[idx_a_noise] == pytest.approx(0.4)
+    assert vec[idx_b_tone] == pytest.approx(0.0)
+    assert vec[idx_b_noise] == pytest.approx(0.0)
+
+
+def test_salience_and_attention_interaction_compose_multiplicatively():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "include_global": True,
+            "include_context": False,
+            "salience": {"tone": 0.5},
+        }
+    )
+    learner = RescorlaWagnerLearner(state_dim=rep.dimension, alpha=1.0)
+    learner.set_attention_config(
+        name="static",
+        params={"default": 0.5, "overrides": {"tone": 0.5}},
+    )
+    agent = ComposedAgent(learner=learner, representation=rep, policy=NullPolicy())
+
+    state = agent.observe(make_observation(["tone"], "A"))
+    agent.learn(
+        Transition(
+            s=state,
+            r=1.0,
+            metadata={"cue_labels": ["tone"]},
+        )
+    )
+
+    assert learner.weights[0] == pytest.approx(0.25)

@@ -187,6 +187,62 @@ def test_parameter_validator_rejects_salience_outside_unit_interval():
         ParameterComposer.compose(payload)
 
 
+def test_parameter_validator_warns_on_over_broad_similarity_kernel():
+    payload = _base_payload()
+    payload["experiment"]["representation"]["params"]["stimuli"] = ["tone", "noise", "light"]
+    payload["experiment"]["representation"]["params"]["similarity"] = {
+        "type": "matrix",
+        "stimuli": ["tone", "noise", "light"],
+        "values": [
+            [1.0, 0.98, 0.97],
+            [0.98, 1.0, 0.96],
+            [0.97, 0.96, 1.0],
+        ],
+    }
+    with pytest.warns(UserWarning, match="similarity kernel is over-broad"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_warns_on_near_zero_salience_vector():
+    payload = _base_payload()
+    payload["experiment"]["salience"] = {"tone": 0.01, "noise": 0.03}
+    with pytest.warns(UserWarning, match="salience configuration is near-zero"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_warns_on_behaviorally_inert_temporal_basis():
+    payload = _base_payload()
+    payload["experiment"]["representation"]["params"]["temporal_basis"] = {
+        "enabled": True,
+        "variant": "traces",
+        "dimension": 3,
+        "params": {"decay": 0.0},
+    }
+    with pytest.warns(UserWarning, match="temporal basis is behaviorally inert"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_warns_on_frozen_attention_dynamics():
+    payload = _base_payload()
+    payload["experiment"]["attention_config"] = {
+        "name": "pearce_hall",
+        "params": {"eta": 0.0},
+    }
+    with pytest.warns(UserWarning, match="attention dynamics are frozen"):
+        ParameterComposer.compose(payload)
+
+
+def test_parameter_validator_warns_on_extreme_policy_parameters():
+    payload = _base_payload()
+    payload["experiment"]["agent"] = "operant_agent"
+    payload["experiment"]["policy"] = {
+        "name": "epsilon_greedy",
+        "params": {"actions": ["left", "right"], "epsilon": 0.99},
+    }
+    with pytest.warns(UserWarning, match="policy epsilon is extreme"):
+        ParameterComposer.compose(payload)
+
+
 def test_runtime_constraints_require_prior_learning():
     payload = _base_payload()
     payload["experiment"]["phases"] = [

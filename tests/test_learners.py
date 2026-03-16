@@ -11,6 +11,8 @@ from agents.learners.base import BaseLearner
 from agents.learners.q_learner import QLearner
 from agents.learners.rescorla_wagner import RescorlaWagnerLearner
 from agents.learners.td_value import TDValueLearner
+from agents.representations.observation import make_observation
+from agents.representations.vector_elemental import VectorElementalRepresentation
 from domain.types import EncodedState, Transition
 
 
@@ -200,3 +202,32 @@ def test_td_value_deterministic_update_fixture():
 
     learner.update(t(state, reward=0.0, next_state=next_state, done=False))
     assert learner.value(state) == pytest.approx(0.375, abs=1e-12)
+
+
+def test_temporal_basis_and_prediction_error_rule_interact_via_bootstrap():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "include_global": True,
+            "include_context": False,
+            "temporal_basis": {
+                "enabled": True,
+                "variant": "identity",
+                "dimension": 1,
+            },
+        }
+    )
+    current = rep.encode(make_observation(["tone"], "A", t_s=0.0))
+    next_state = rep.encode(make_observation(["tone"], "A", t_s=1.0))
+
+    rw = RescorlaWagnerLearner(state_dim=rep.dimension, alpha=0.5)
+    td = TDValueLearner(state_dim=rep.dimension, alpha=0.5, gamma=0.5)
+    rw.weights = np.asarray([0.0, 2.0], dtype=float)
+    td.weights = np.asarray([0.0, 2.0], dtype=float)
+
+    transition = t(current, reward=0.0, next_state=next_state, done=False)
+    rw.update(transition)
+    td.update(transition)
+
+    assert rw.weights[0] == pytest.approx(0.0)
+    assert td.weights[0] > rw.weights[0]
