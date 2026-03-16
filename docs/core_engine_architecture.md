@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.14)
+# Core Engine Architecture (V2.18.0)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.14), including runtime control flow, object boundaries, extension points, test governance, and known gaps.
+This document describes the current core engine architecture for Virtual Shaping Lab (V2.18.0), including runtime control flow, object boundaries, mathematical-object formalization, extension points, test governance, and known gaps.
 
 UI/browser contract authority:
 - `docs/ui_contract_manifest.md`
@@ -285,6 +285,99 @@ Design intent:
 - learners own value state and update equations
 - policies are read-only selectors
 
+### Formal Mathematical Object Map (V2.18.0)
+
+The cognition layer now treats the remaining weak-link mechanisms as first-class mathematical objects routed through assembly rather than helper-only local construction.
+
+Representation objects:
+- `ContextMap`
+  - implementation: `DefaultContextMap`
+  - mapping: `C : O x K -> O_c`
+- `SimilarityKernel`
+  - implementation: `MatrixSimilarityKernel`
+  - mapping: `S : X x X -> R`
+- `SalienceOperator`
+  - implementation: `DiagonalSalienceOperator`
+  - mapping: `Sigma : X -> X`
+- `TemporalBasis`
+  - implementations:
+    - `IdentityTemporalBasis`
+    - `BinnedTemporalBasis`
+    - `TraceTemporalBasis`
+  - mapping: `T : Time -> R^d_t`
+
+Learning objects:
+- `PredictionErrorRule`
+  - implementations:
+    - `RescorlaWagnerPredictionError`
+    - `TD0PredictionError`
+  - mapping: `delta : (X_t, R_t, X_{t+1}, Theta_t) -> R`
+- `AttentionMechanism`
+  - implementations:
+    - `none`
+    - `static`
+    - `pearce_hall`
+    - `mackintosh`
+  - mapping:
+    - current state/readout: `A_t : Features -> [0,1]`
+    - state update: `A_{t+1} = G(A_t, x_t, r_t, y_hat_t, cuewise_stats)`
+
+Control objects:
+- `Policy`
+  - implementations:
+    - `NullPolicy`
+    - `FixedPolicy`
+    - `EpsilonGreedyPolicy`
+    - `SoftmaxPolicy`
+  - mapping: `pi(a | x, theta) in Delta(A)`
+
+### Composition Graph
+
+The current composition graph is:
+
+1. `observation`
+2. `ContextMap`
+3. `SimilarityKernel`
+4. `SalienceOperator`
+5. optional `TemporalBasis` augmentation
+6. `EncodedState`
+7. `PredictionErrorRule` + `AttentionMechanism` inside learner update path
+8. `Policy` as decision kernel over actions
+
+Operationally:
+- `R(observation) -> EncodedState`
+- `L(transition, state) -> updated learner parameters`
+- `pi(state, actions) -> action or distribution`
+
+### Ownership Boundaries
+
+Representation-owned:
+- context normalization/gating
+- similarity spreading
+- salience scaling
+- temporal basis expansion
+
+Learner-owned:
+- prediction-error computation
+- attention state/update
+- value parameters and update rules
+
+Policy-owned:
+- action selection
+- optional action-distribution inspection
+
+Runtime-owned:
+- RNG
+- execution order
+- trial/tick scheduling
+- record emission
+
+Protocols/phases-owned:
+- behavioral program structure
+- local contingencies
+- availability/reward schedules
+- phase/protocol ordering
+
 ---
 
 ## 7) Runtime Record + Analysis Boundary
@@ -361,13 +454,18 @@ Template phase authoring reference:
 
 ---
 
-## Test + CI Governance (V2.14)
+## Test + CI Governance (V2.18.0)
 
 CI truth is now architecture-first and ordered by risk:
 1. guard bucket (`tests/v2_11_guards`)
 2. contract bucket (`tests/v2_11_contract`)
 3. behavioral bucket (`tests/behavioral_signatures`)
 4. selected unit slices (`tests/test_run_api_contract.py`, `tests/test_api_contract_snapshots.py`, `tests/test_visualizations.py`)
+
+Math-object closeout gates added in V2.18.0:
+- `tests/test_math_object_interfaces.py`
+- `tests/test_math_object_contracts.py`
+- direct ownership/config gates for nested learner math objects
 
 Transitional compare mode:
 - full-suite run is retained as a temporary non-blocking compare job (`full_suite_compare`) for parity monitoring during migration.
@@ -433,12 +531,12 @@ Impact:
 Recommendation:
 - remove the shim in the next hard-cut cycle after import migration window closes.
 
-### Gap 8: Template strategy governance is key-based and local
+### Gap 8: Extension metadata is descriptive rather than fully runtime-bound
 Impact:
-- strategy-key validation now prevents silent drift, but strategy registration remains in module-local maps.
+- extension/catalog surfaces expose math-object family metadata, but not run-specific instantiated object identity.
 
 Recommendation:
-- promote strategy registries to explicit extension seams with facade-level discovery/introspection.
+- attach instantiated mechanism provenance to run artifacts as part of closeout/runtime reproducibility work.
 
 ---
 

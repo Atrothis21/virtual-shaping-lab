@@ -218,13 +218,29 @@ def _build_context_map(config, rep_params: dict[str, Any]):
     return DefaultContextMap(default_context=default_context)
 
 
-def _build_similarity_kernel(config):
+def _build_similarity_kernel(config, rep_params: dict[str, Any]):
     composed_rep = _get_composed_representation(config)
     kernel_cfg = composed_rep.get("similarity_kernel", {})
-    if not isinstance(kernel_cfg, dict) or not kernel_cfg.get("enabled"):
-        return MatrixSimilarityKernel({})
-    matrix = kernel_cfg.get("matrix", {})
-    return MatrixSimilarityKernel(matrix if isinstance(matrix, dict) else {})
+    if isinstance(kernel_cfg, dict) and kernel_cfg.get("enabled"):
+        matrix = kernel_cfg.get("matrix", {})
+        return MatrixSimilarityKernel(matrix if isinstance(matrix, dict) else {})
+
+    similarity = rep_params.get("similarity")
+    if isinstance(similarity, dict) and similarity.get("type") == "matrix":
+        labels = similarity.get("stimuli", [])
+        values = similarity.get("values", [])
+        if isinstance(labels, list) and isinstance(values, list) and len(labels) == len(values):
+            matrix: dict[str, dict[str, float]] = {}
+            for i, label in enumerate(labels):
+                row = values[i]
+                if not isinstance(row, list):
+                    continue
+                matrix[str(label)] = {}
+                for j, inner_label in enumerate(labels):
+                    if j < len(row):
+                        matrix[str(label)][str(inner_label)] = float(row[j])
+            return MatrixSimilarityKernel(matrix)
+    return None
 
 
 def _build_temporal_basis_object(config):
@@ -239,7 +255,10 @@ def _build_salience_operator_for_representation(representation):
     salience = getattr(representation, "salience", None)
     if salience is None:
         return None
-    return DiagonalSalienceOperator(salience)
+    try:
+        return DiagonalSalienceOperator(salience)
+    except (TypeError, ValueError):
+        return None
 
 
 def _build_prediction_error_rule(config):
@@ -476,7 +495,9 @@ class AgentAssembler:
             if typed_similarity:
                 rep_params["similarity"] = typed_similarity
         rep_params.setdefault("context_map", _build_context_map(self.config, rep_params))
-        rep_params.setdefault("similarity_kernel", _build_similarity_kernel(self.config))
+        similarity_kernel = _build_similarity_kernel(self.config, rep_params)
+        if similarity_kernel is not None:
+            rep_params.setdefault("similarity_kernel", similarity_kernel)
         rep_params.setdefault("temporal_basis_object", _build_temporal_basis_object(self.config))
 
         resolved_plan = bool(getattr(self.config, "resolved_plan", False))
