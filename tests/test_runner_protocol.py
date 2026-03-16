@@ -202,6 +202,16 @@ class OperantPolicyTrackingAgent(ClassicalPolicyTrackingAgent):
         return self.last_actions[0] if self.last_actions else None
 
 
+class PerformanceOnlyTrackingAgent(OperantPolicyTrackingAgent):
+    def __init__(self):
+        super().__init__()
+        self.learn_calls = 0
+
+    def learn(self, transition):
+        self.learn_calls += 1
+        return None
+
+
 class ActionlessTimedRunnableUnit:
     def __init__(self, agent):
         self.agent = agent
@@ -449,6 +459,18 @@ def test_runner_operant_timed_flow_calls_policy_when_actions_are_available():
     assert agent.act_calls == 2
     assert agent.last_actions == ["press", "withhold"]
     assert all(record["action"] == "press" for record in records)
+
+
+def test_runner_policy_path_does_not_imply_learning_without_update_mode_tick():
+    agent = PerformanceOnlyTrackingAgent()
+    records = Runner(
+        ActionTimedRunnableUnit(agent),
+        settings={"record_mode": "tick", "update_mode": "trial"},
+    ).run()
+
+    assert len(records) == 2
+    assert agent.act_calls == 2
+    assert agent.learn_calls == 0
 
 
 def test_runner_jsonl_sink_writes_append_only_records(tmp_path):

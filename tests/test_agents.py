@@ -52,6 +52,47 @@ class DummyPolicy:
         return actions[0] if actions else None
 
 
+class TrackingLearner(DummyLearner):
+    def __init__(self):
+        super().__init__()
+        self.value_calls = []
+        self.update_calls = 0
+
+    def value(self, state: EncodedState, action=None):
+        self.value_calls.append((tuple(np.asarray(state.x, dtype=float)), action))
+        return super().value(state, action=action)
+
+    def update(self, transition: Transition):
+        self.update_calls += 1
+        super().update(transition)
+
+
+class OffsetRepresentation:
+    def __init__(self, offset: float):
+        self.offset = float(offset)
+
+    def encode(self, observation: Observation) -> EncodedState:
+        return EncodedState(x=np.asarray([1.0 + self.offset, 2.0 + self.offset], dtype=float), key="offset")
+
+    @property
+    def dimension(self) -> int:
+        return 2
+
+
+class TrackingPolicy:
+    def __init__(self):
+        self.select_calls = 0
+        self.dist_calls = 0
+
+    def select_action(self, state, actions, value_fn, rng):
+        self.select_calls += 1
+        return actions[0] if actions else None
+
+    def action_distribution(self, state, actions, value_fn):
+        self.dist_calls += 1
+        return {action: 1.0 / len(actions) for action in actions} if actions else {}
+
+
 def test_composed_agent_observe_value_learn_paths():
     learner = DummyLearner()
     rep = DummyRepresentation()
@@ -212,3 +253,49 @@ def test_salience_and_attention_interaction_compose_multiplicatively():
     )
 
     assert learner.weights[0] == pytest.approx(0.25)
+
+
+def test_policy_distribution_queries_performance_without_triggering_learning():
+    learner = TrackingLearner()
+    rep = DummyRepresentation()
+    policy = EpsilonGreedyPolicy(epsilon=0.2)
+    agent = ComposedAgent(learner=learner, representation=rep, policy=policy)
+
+    state = agent.observe(Observation(stimuli=["tone"], context="A"))
+    distribution = agent.policy_distribution(state, actions=["left", "right"])
+
+    assert distribution is not None
+    assert learner.update_calls == 0
+    assert learner.last_transition is None
+    assert len(learner.value_calls) == 2
+
+
+def test_representation_changes_affect_value_readout_without_mutating_learning_state():
+    learner = TrackingLearner()
+    agent_a = ComposedAgent(learner=learner, representation=OffsetRepresentation(0.0), policy=NullPolicy())
+    agent_b = ComposedAgent(learner=learner, representation=OffsetRepresentation(1.0), policy=NullPolicy())
+
+    state_a = agent_a.observe(Observation(stimuli=["tone"], context="A"))
+    state_b = agent_b.observe(Observation(stimuli=["tone"], context="A"))
+
+    value_a = agent_a.value(state_a)
+    value_b = agent_b.value(state_b)
+
+    assert value_b > value_a
+    assert learner.update_calls == 0
+    assert learner.last_transition is None
+
+
+def test_policy_action_selection_does_not_mutate_learner_state():
+    learner = TrackingLearner()
+    rep = DummyRepresentation()
+    policy = TrackingPolicy()
+    agent = ComposedAgent(learner=learner, representation=rep, policy=policy)
+
+    state = agent.observe(Observation(stimuli=["tone"], context="A"))
+    action = agent.act(state, actions=["left", "right"], rng=np.random.default_rng(7))
+
+    assert action == "left"
+    assert policy.select_calls == 1
+    assert learner.update_calls == 0
+    assert learner.last_transition is None

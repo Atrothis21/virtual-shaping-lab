@@ -27,7 +27,8 @@
     "metadata_required_keys": [
       "plan_hash",
       "record_schema_version",
-      "template_version_used"
+      "template_version_used",
+      "mechanism_provenance"
     ],
     "lifecycle_keys": [
       "state",
@@ -47,7 +48,8 @@
     "metadata_required_keys": [
       "plan_hash",
       "record_schema_version",
-      "template_version_used"
+      "template_version_used",
+      "mechanism_provenance"
     ],
     "lifecycle_keys": [
       "state",
@@ -65,7 +67,8 @@
     "metadata_required_keys": [
       "source_run_id",
       "regenerated",
-      "regeneration_mode"
+      "regeneration_mode",
+      "mechanism_provenance"
     ],
     "lifecycle_keys": [
       "state",

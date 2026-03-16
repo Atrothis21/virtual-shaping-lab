@@ -95,6 +95,20 @@ class DummyLearner:
         return None
 
 
+class TrackingProtocolLearner(DummyLearner):
+    def __init__(self):
+        self.value_calls = 0
+        self.update_calls = 0
+
+    def value(self, state: EncodedState, action=None):
+        self.value_calls += 1
+        return super().value(state, action=action)
+
+    def update(self, transition):
+        self.update_calls += 1
+        return None
+
+
 class DummyProtocol(BaseProtocol):
     name = "dummy_protocol"
 
@@ -321,6 +335,22 @@ def test_composed_agent_operant_policy_satisfies_action_driven_control_contract(
     assert agent.act(state, actions=["left", "right"], rng=np.random.default_rng(7)) == "right"
     distribution = agent.policy_distribution(state, actions=["left", "right"])
     assert distribution == {"left": 0.0, "right": 1.0}
+
+
+def test_control_path_queries_value_without_triggering_learning_updates():
+    learner = TrackingProtocolLearner()
+    agent = ComposedAgent(
+        learner=learner,
+        representation=DummyRepresentation(),
+        policy=EpsilonGreedyPolicy(epsilon=0.0),
+    )
+    state = agent.observe(Observation(stimuli=["lever"], context="A"))
+
+    action = agent.act(state, actions=["left", "right"], rng=np.random.default_rng(7))
+
+    assert action == "right"
+    assert learner.value_calls >= 2
+    assert learner.update_calls == 0
 
 
 def test_reward_schedules():

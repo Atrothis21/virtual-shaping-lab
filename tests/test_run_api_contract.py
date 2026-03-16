@@ -23,7 +23,7 @@ def test_api_response_dto_required_fields_smoke():
         run_id="r1",
         state="completed",
         artifacts={"pdf": "p"},
-        metadata={"plan_hash": "abc", "record_schema_version": "v1", "template_version_used": 1},
+        metadata={"plan_hash": "abc", "record_schema_version": "v1", "template_version_used": 1, "mechanism_provenance": {}},
     ).to_dict()
     assert set(("status", "run_id", "state", "artifacts", "metadata", "lifecycle")).issubset(run_create.keys())
 
@@ -191,6 +191,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"].get("plan_hash"), str) and body["metadata"]["plan_hash"]
     assert body["metadata"].get("record_schema_version") == "v1"
     assert isinstance(body["metadata"].get("template_version_used"), int)
+    assert isinstance(body["metadata"].get("mechanism_provenance"), dict)
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
 
@@ -198,6 +199,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert run_dir.exists()
     assert (run_dir / "payload.json").exists()
     assert (run_dir / "records.json").exists()
+    assert (run_dir / "mechanism_provenance.json").exists()
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -224,6 +226,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("plan_hash"), str) and status["metadata"]["plan_hash"]
     assert status["metadata"].get("record_schema_version") == "v1"
     assert isinstance(status["metadata"].get("template_version_used"), int)
+    assert isinstance(status["metadata"].get("mechanism_provenance"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
 
@@ -265,6 +268,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("plan_hash"), str) and report_body["metadata"]["plan_hash"]
     assert report_body["metadata"].get("record_schema_version") == "v1"
     assert isinstance(report_body["metadata"].get("template_version_used"), int)
+    assert isinstance(report_body["metadata"].get("mechanism_provenance"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
     assert report_body["metadata"]["missing_source_metadata"] == []
