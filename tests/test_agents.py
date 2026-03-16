@@ -5,6 +5,7 @@ from agents.composed_agent import ComposedAgent
 from agents.learners.rescorla_wagner import RescorlaWagnerLearner
 from agents.policies.epsilon_greedy import EpsilonGreedyPolicy
 from agents.policies.null_policy import NullPolicy
+from agents.policies.softmax import SoftmaxPolicy
 from domain.types import EncodedState, Observation, Transition
 
 
@@ -85,6 +86,41 @@ def test_composed_agent_reset_delegates():
     assert learner.reset_called is True
     assert rep.reset_called is True
     assert policy.reset_called is True
+
+
+def test_composed_agent_exposes_policy_distribution():
+    learner = RescorlaWagnerLearner(state_dim=2, alpha=0.1)
+    rep = DummyRepresentation()
+    policy = EpsilonGreedyPolicy(epsilon=0.2)
+    agent = ComposedAgent(learner=learner, representation=rep, policy=policy)
+
+    state = agent.observe(Observation(stimuli=["tone"], context="A"))
+    distribution = agent.policy_distribution(state, actions=["left", "right"])
+
+    assert distribution is not None
+    assert set(distribution.keys()) == {"left", "right"}
+    assert distribution["left"] == pytest.approx(0.9)
+    assert distribution["right"] == pytest.approx(0.1)
+    assert sum(distribution.values()) == pytest.approx(1.0)
+
+
+def test_softmax_policy_distribution_is_normalized():
+    policy = SoftmaxPolicy(temperature=1.0)
+    state = EncodedState(x=np.asarray([1.0, 2.0], dtype=float))
+
+    def value_fn(_state, action):
+        return {"left": 1.0, "right": 2.0}[action]
+
+    distribution = policy.action_distribution(state, ["left", "right"], value_fn)
+
+    assert distribution["right"] > distribution["left"]
+    assert sum(distribution.values()) == pytest.approx(1.0)
+
+
+def test_null_policy_distribution_exposes_zero_mass():
+    state = EncodedState(x=np.asarray([1.0], dtype=float))
+    distribution = NullPolicy().action_distribution(state, ["press"], lambda *_args, **_kwargs: 0.0)
+    assert distribution == {"press": 0.0}
 
 
 def test_composed_agent_normalizes_raw_state_vectors():

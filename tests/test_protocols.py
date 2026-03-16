@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 
+from agents.composed_agent import ComposedAgent
+from agents.policies.epsilon_greedy import EpsilonGreedyPolicy
+from agents.policies.null_policy import NullPolicy
 from experiment.domain.types import ExperimentContext, StepResult
 from protocols.base import BaseProtocol
 from protocols.blocking import BlockingProtocol
@@ -24,7 +27,7 @@ from virtual_shaping_lab.experiment.world.schedules import (
 )
 from experiment.phases.base import PhaseBase
 from experiment.phases.templates import PhaseTemplate
-from domain.types import Observation
+from domain.types import EncodedState, Observation
 
 
 class DummyPhase(PhaseBase):
@@ -69,6 +72,27 @@ class DummyPhase(PhaseBase):
 class DummyAgent:
     def reset(self):
         self.was_reset = True
+
+
+class DummyRepresentation:
+    def reset(self):
+        return None
+
+    def encode(self, observation: Observation) -> EncodedState:
+        return EncodedState(x=np.asarray([1.0], dtype=float), key="dummy")
+
+
+class DummyLearner:
+    def reset(self):
+        return None
+
+    def value(self, state: EncodedState, action=None):
+        if action == "right":
+            return 1.0
+        return 0.0
+
+    def update(self, transition):
+        return None
 
 
 class DummyProtocol(BaseProtocol):
@@ -272,6 +296,31 @@ def test_matching_law_requires_operant():
     proto = MatchingLawProtocol(agent=Agent())
     with pytest.raises(ValueError):
         proto.validate()
+
+
+def test_composed_agent_null_policy_satisfies_actionless_control_contract():
+    agent = ComposedAgent(
+        learner=DummyLearner(),
+        representation=DummyRepresentation(),
+        policy=NullPolicy(),
+    )
+    state = agent.observe(Observation(stimuli=["tone"], context="A"))
+
+    assert agent.act(state, actions=[], rng=np.random.default_rng(7)) is None
+    assert agent.policy_distribution(state, actions=[]) == {}
+
+
+def test_composed_agent_operant_policy_satisfies_action_driven_control_contract():
+    agent = ComposedAgent(
+        learner=DummyLearner(),
+        representation=DummyRepresentation(),
+        policy=EpsilonGreedyPolicy(epsilon=0.0),
+    )
+    state = agent.observe(Observation(stimuli=["lever"], context="A"))
+
+    assert agent.act(state, actions=["left", "right"], rng=np.random.default_rng(7)) == "right"
+    distribution = agent.policy_distribution(state, actions=["left", "right"])
+    assert distribution == {"left": 0.0, "right": 1.0}
 
 
 def test_reward_schedules():

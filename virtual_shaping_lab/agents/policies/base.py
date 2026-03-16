@@ -19,6 +19,14 @@ class Policy(IPolicy):
     def reset(self) -> None:
         return None
 
+    def action_distribution(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+    ) -> dict[Any, float] | None:
+        return None
+
     @abstractmethod
     def select_action(
         self,

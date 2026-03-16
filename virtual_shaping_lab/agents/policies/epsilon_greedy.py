@@ -41,3 +41,21 @@ class EpsilonGreedyPolicy(Policy):
         values = [value_fn(state, action=a) for a in pool]
         best_idx = int(np.argmax(values))
         return pool[best_idx]
+
+    def action_distribution(
+        self,
+        state: EncodedState,
+        actions: Sequence[Any],
+        value_fn: ValueFn,
+    ) -> dict[Any, float]:
+        pool = list(actions) if actions else list(self.actions)
+        if not pool:
+            return {}
+
+        values = [value_fn(state, action=a) for a in pool]
+        best_idx = int(np.argmax(values))
+        n_actions = len(pool)
+        base = self.epsilon / n_actions
+        distribution = {action: base for action in pool}
+        distribution[pool[best_idx]] += 1.0 - self.epsilon
+        return distribution

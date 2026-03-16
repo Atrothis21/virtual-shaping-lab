@@ -62,6 +62,17 @@ class ComposedAgent:
         generator = rng if rng is not None else np.random.default_rng()
         return self.policy.select_action(encoded, pool, self.value, generator)
 
+    def policy_distribution(
+        self,
+        state: EncodedState,
+        actions: Optional[Sequence[Any]] = None,
+    ) -> dict[Any, float] | None:
+        encoded = self._ensure_state(state)
+        pool = list(actions) if actions is not None else []
+        if hasattr(self.policy, "action_distribution"):
+            return self.policy.action_distribution(encoded, pool, self.value)
+        return None
+
     def value(self, state: EncodedState, action: Any = None) -> float:
         encoded = self._ensure_state(state)
         return float(self.learner.value(encoded, action=action))
