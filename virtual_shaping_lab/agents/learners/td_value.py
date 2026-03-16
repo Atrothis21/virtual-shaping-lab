@@ -6,6 +6,7 @@ from typing import Optional, Any
 
 import numpy as np
 
+from virtual_shaping_lab.agents.math_objects.interfaces import IAttentionMechanism, IPredictionErrorRule
 from virtual_shaping_lab.agents.math_objects.prediction_error_objects import TD0PredictionError
 from virtual_shaping_lab.agents.learners.base import BaseLearner
 from virtual_shaping_lab.domain.types import EncodedState, Transition
@@ -23,11 +24,13 @@ class TDValueLearner(BaseLearner):
         alpha: float = 0.1,
         gamma: float = 0.9,
         salience: Optional[np.ndarray] = None,
+        prediction_error_rule: IPredictionErrorRule | None = None,
+        attention_mechanism: IAttentionMechanism | None = None,
     ):
-        super().__init__(alpha=alpha, gamma=gamma)
+        super().__init__(alpha=alpha, gamma=gamma, attention_mechanism=attention_mechanism)
         self.weights = np.zeros(state_dim, dtype=float)
         self.salience = None if salience is None else np.asarray(salience, dtype=float)
-        self.prediction_error_rule = TD0PredictionError(gamma=float(gamma))
+        self.prediction_error_rule = prediction_error_rule or TD0PredictionError(gamma=float(gamma))
 
     def value(self, state: EncodedState, action: Any = None) -> float:
         return float(np.dot(self.weights, state.x))

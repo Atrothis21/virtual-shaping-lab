@@ -41,6 +41,9 @@ def test_build_representation_smoke():
         max_compound_size=2,
     )
     assert rep is not None
+    assert getattr(rep, "context_map", None) is not None
+    assert getattr(rep, "similarity_kernel", None) is not None
+    assert getattr(rep, "salience_operator", None) is not None
 
 
 class DummyLearner:

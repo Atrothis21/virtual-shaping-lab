@@ -84,6 +84,7 @@
       "learners",
       "policies",
       "representations",
+      "math_objects",
       "report_templates"
     ],
     "versions_keys": [

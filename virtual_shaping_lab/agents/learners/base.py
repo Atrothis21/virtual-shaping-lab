@@ -32,11 +32,17 @@ class BaseLearner(ILearner, ABC):
 
     learner_type: str = "pavlovian"  # "pavlovian" | "operant" | "both"
 
-    def __init__(self, alpha: float, gamma: float):
+    def __init__(
+        self,
+        alpha: float,
+        gamma: float,
+        *,
+        attention_mechanism: IAttentionMechanism | None = None,
+    ):
         self.alpha = float(alpha)
         self.gamma = float(gamma)
         self.attention_map: Dict[str, float] = {}
-        self._attention_strategy: IAttentionMechanism = build_attention_mechanism("none")
+        self._attention_strategy: IAttentionMechanism = attention_mechanism or build_attention_mechanism("none")
         self._last_attention_context: AttentionContext | None = None
         self._did_warn_scalar_attention_shim = False
 

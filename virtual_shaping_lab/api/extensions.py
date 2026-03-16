@@ -35,6 +35,40 @@ class ExtensionCatalog:
         return sorted(REPRESENTATION_REGISTRY.keys())
 
     @staticmethod
+    def math_objects() -> dict[str, list[dict[str, Any]]]:
+        return {
+            "representation": [
+                {"key": "context_map", "variant": "default", "module": "representation_objects"},
+                {"key": "similarity_kernel", "variant": "matrix", "module": "representation_objects"},
+                {"key": "salience_operator", "variant": "diagonal", "module": "salience_objects"},
+                {
+                    "key": "temporal_basis",
+                    "variant": "identity|bins|traces",
+                    "module": "temporal_objects",
+                },
+            ],
+            "learning": [
+                {
+                    "key": "prediction_error_rule",
+                    "variant": "rescorla_wagner|td_value",
+                    "module": "prediction_error_objects",
+                },
+                {
+                    "key": "attention_mechanism",
+                    "variant": "none|static|pearce_hall|mackintosh",
+                    "module": "attention_objects",
+                },
+            ],
+            "control": [
+                {
+                    "key": "policy_kernel",
+                    "variant": "null|fixed|epsilon_greedy|softmax",
+                    "module": "policies",
+                },
+            ],
+        }
+
+    @staticmethod
     def report_templates() -> dict[str, dict[str, Any]]:
         return list_protocol_default_templates()
 
@@ -65,6 +99,7 @@ class ExtensionCatalog:
             "learners": cls.learners(),
             "policies": cls.policies(),
             "representations": cls.representations(),
+            "math_objects": cls.math_objects(),
             "report_templates": cls.report_templates(),
         }
 

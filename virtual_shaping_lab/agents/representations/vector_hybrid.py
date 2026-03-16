@@ -61,10 +61,10 @@ class VectorHybridRepresentation(RepresentationBase):
 
         self.salience = np.asarray(salience_vector, dtype=float)
         self.similarity_map = parse_similarity_matrix(similarity, stimuli) if similarity else {}
-        self.context_map = DefaultContextMap()
-        self.similarity_kernel = MatrixSimilarityKernel(self.similarity_map)
-        self.salience_operator = DiagonalSalienceOperator(self.salience)
-        self.temporal_basis = build_temporal_basis(self.params.get("temporal_basis"))
+        self.context_map = self.params.get("context_map") or DefaultContextMap()
+        self.similarity_kernel = self.params.get("similarity_kernel") or MatrixSimilarityKernel(self.similarity_map)
+        self.salience_operator = self.params.get("salience_operator") or DiagonalSalienceOperator(self.salience)
+        self.temporal_basis = self.params.get("temporal_basis_object") or build_temporal_basis(self.params.get("temporal_basis"))
 
     def encode(self, observation: Observation) -> EncodedState:
         vec = encode_with_mechanisms(

@@ -358,6 +358,7 @@ def test_extensions_api_contract_shape():
         "learners",
         "policies",
         "representations",
+        "math_objects",
         "report_templates",
     }
     assert isinstance(ext["protocols"], list)
@@ -365,4 +366,5 @@ def test_extensions_api_contract_shape():
     assert isinstance(ext["learners"], list)
     assert isinstance(ext["policies"], list)
     assert isinstance(ext["representations"], list)
+    assert isinstance(ext["math_objects"], dict)
     assert isinstance(ext["report_templates"], dict)

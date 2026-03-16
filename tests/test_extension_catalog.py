@@ -9,6 +9,7 @@ def test_extension_catalog_snapshot_has_expected_keys():
         "learners",
         "policies",
         "representations",
+        "math_objects",
         "report_templates",
     }
 
@@ -33,5 +34,11 @@ def test_extension_catalog_contains_known_entries():
     assert "rescorla_wagner" in snap["learners"]
     assert "epsilon_greedy" in snap["policies"]
     assert "vector_elemental" in snap["representations"]
+    assert "representation" in snap["math_objects"]
+    assert "learning" in snap["math_objects"]
+    assert "control" in snap["math_objects"]
+    assert any(item["key"] == "context_map" for item in snap["math_objects"]["representation"])
+    assert any(item["key"] == "prediction_error_rule" for item in snap["math_objects"]["learning"])
+    assert any(item["key"] == "policy_kernel" for item in snap["math_objects"]["control"])
     assert "operant_conditioning" in snap["report_templates"]
 

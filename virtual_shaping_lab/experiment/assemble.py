@@ -4,6 +4,17 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
+from virtual_shaping_lab.agents.math_objects.attention_objects import build_attention_mechanism
+from virtual_shaping_lab.agents.math_objects.prediction_error_objects import (
+    RescorlaWagnerPredictionError,
+    TD0PredictionError,
+)
+from virtual_shaping_lab.agents.math_objects.representation_objects import (
+    DefaultContextMap,
+    MatrixSimilarityKernel,
+)
+from virtual_shaping_lab.agents.math_objects.salience_objects import DiagonalSalienceOperator
+from virtual_shaping_lab.agents.math_objects.temporal_objects import build_temporal_basis
 from experiment.factories.learner_factory import build_learner
 from experiment.factories.agent_factory import build_agent
 from experiment.factories.protocol_factory import build_protocol, PROTOCOL_REGISTRY
@@ -198,6 +209,78 @@ def _extract_learner_params(config, representation, policy_actions):
     return learner_params
 
 
+def _build_context_map(config, rep_params: dict[str, Any]):
+    composed_rep = _get_composed_representation(config)
+    context_cfg = composed_rep.get("context_map", {})
+    default_context = rep_params.get("default_context", None)
+    if isinstance(context_cfg, dict):
+        default_context = context_cfg.get("default_context", default_context)
+    return DefaultContextMap(default_context=default_context)
+
+
+def _build_similarity_kernel(config):
+    composed_rep = _get_composed_representation(config)
+    kernel_cfg = composed_rep.get("similarity_kernel", {})
+    if not isinstance(kernel_cfg, dict) or not kernel_cfg.get("enabled"):
+        return MatrixSimilarityKernel({})
+    matrix = kernel_cfg.get("matrix", {})
+    return MatrixSimilarityKernel(matrix if isinstance(matrix, dict) else {})
+
+
+def _build_temporal_basis_object(config):
+    composed_rep = _get_composed_representation(config)
+    basis_cfg = composed_rep.get("temporal_basis")
+    if isinstance(basis_cfg, dict):
+        return build_temporal_basis(basis_cfg)
+    return None
+
+
+def _build_salience_operator_for_representation(representation):
+    salience = getattr(representation, "salience", None)
+    if salience is None:
+        return None
+    return DiagonalSalienceOperator(salience)
+
+
+def _build_prediction_error_rule(config):
+    composed_learner = _get_composed_learner(config)
+    rule_cfg = composed_learner.get("prediction_error_rule", {})
+    if not isinstance(rule_cfg, dict):
+        return None
+    variant = str(rule_cfg.get("variant", "")).strip().lower()
+    params = rule_cfg.get("params", {})
+    params = params if isinstance(params, dict) else {}
+    if variant in {"rescorla_wagner", "rw"}:
+        return RescorlaWagnerPredictionError()
+    if variant in {"td_value", "td_0", "td0"}:
+        gamma = composed_learner.get("gamma", params.get("gamma", 0.0))
+        return TD0PredictionError(gamma=float(gamma or 0.0))
+    return None
+
+
+def _build_attention_mechanism_object(config):
+    composed_learner = _get_composed_learner(config)
+    mech_cfg = composed_learner.get("attention_mechanism", {})
+    if isinstance(mech_cfg, dict):
+        variant = str(mech_cfg.get("variant", "none")).strip().lower()
+        params = mech_cfg.get("params", {})
+        params = dict(params) if isinstance(params, dict) else {}
+        if "default" in mech_cfg and "default" not in params:
+            params["default"] = mech_cfg.get("default")
+        if "overrides" in mech_cfg and "overrides" not in params:
+            params["overrides"] = mech_cfg.get("overrides")
+        return build_attention_mechanism(variant, params=params)
+
+    attention_cfg = getattr(config, "attention_config", None)
+    if isinstance(attention_cfg, dict) and isinstance(attention_cfg.get("name"), str):
+        params = attention_cfg.get("params", {})
+        return build_attention_mechanism(
+            attention_cfg["name"],
+            params=params if isinstance(params, dict) else {},
+        )
+    return None
+
+
 def _assign_attention_map(config, learner):
     attention_cfg = getattr(config, "attention_config", None)
     if isinstance(attention_cfg, dict):
@@ -264,6 +347,8 @@ def _build_classical_stack(config, representation):
         raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
 
     learner_params = _extract_learner_params(config, representation, policy_actions=None)
+    learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
+    learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
     learner = build_learner(
         _resolve_learner_name(config),
         state_dim=representation.dimension,
@@ -286,6 +371,8 @@ def _build_operant_stack(config, representation):
         raise ValueError("Operant assembly path requires an explicit policy.")
 
     learner_params = _extract_learner_params(config, representation, policy_actions)
+    learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
+    learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
     learner = build_learner(
         _resolve_learner_name(config),
         state_dim=representation.dimension,
@@ -388,6 +475,9 @@ class AgentAssembler:
             typed_similarity = _typed_similarity_to_matrix(composed_similarity["matrix"], rep_stimuli)
             if typed_similarity:
                 rep_params["similarity"] = typed_similarity
+        rep_params.setdefault("context_map", _build_context_map(self.config, rep_params))
+        rep_params.setdefault("similarity_kernel", _build_similarity_kernel(self.config))
+        rep_params.setdefault("temporal_basis_object", _build_temporal_basis_object(self.config))
 
         resolved_plan = bool(getattr(self.config, "resolved_plan", False))
         if resolved_plan:
@@ -401,6 +491,8 @@ class AgentAssembler:
                 rep_params["contexts"] = sorted(contexts)
 
         representation = build_representation(rep_name, **rep_params)
+        if getattr(representation, "salience_operator", None) is None:
+            representation.salience_operator = _build_salience_operator_for_representation(representation)
         return representation, inferred_contexts
 
     def build_agent(self, representation):
