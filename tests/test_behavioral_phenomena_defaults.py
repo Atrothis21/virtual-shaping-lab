@@ -32,6 +32,7 @@ from preset_payloads import (
     superextinction_payload,
     spontaneous_recovery_payload,
 )
+from golden_behavior_fixtures import GOLDEN_BEHAVIOR_FIXTURES
 
 
 def _run_records(payload: dict) -> list[dict]:
@@ -77,13 +78,15 @@ def test_phenomena_catalog_validates_against_protocol_registry():
 
 
 def test_acquisition_shows_learning_gain_default_payload():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["acquisition_rise"]
     records = _run_records(acquisition_payload())
     early, late = _first_last_n(records, n=10)
 
-    assert _mean_prediction(late) > _mean_prediction(early) + 0.1
+    assert _mean_prediction(late) > _mean_prediction(early) + fixture.thresholds["min_prediction_gain"]
 
 
 def test_extinction_shows_response_loss_after_acquisition_default_payload():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["extinction_decline"]
     records = _run_records(extinction_payload())
 
     acquisition_records = [r for r in records if r.get("subphase_name") == "acquisition"]
@@ -94,11 +97,12 @@ def test_extinction_shows_response_loss_after_acquisition_default_payload():
 
     ext_early, ext_late = _head_tail(extinction_records, ratio=0.2)
 
-    assert _mean_prediction(ext_late) < _mean_prediction(ext_early) - 0.2
-    assert _mean_prediction(ext_late) < _mean_prediction(acquisition_records[-10:]) - 0.2
+    assert _mean_prediction(ext_late) < _mean_prediction(ext_early) - fixture.thresholds["min_extinction_drop_vs_early"]
+    assert _mean_prediction(ext_late) < _mean_prediction(acquisition_records[-10:]) - fixture.thresholds["min_extinction_drop_vs_acquisition"]
 
 
 def test_differential_acquisition_separates_cs_plus_and_cs_minus_default_payload():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["generalization_gradient_decline"]
     records = _run_records(differential_acquisition_payload())
 
     plus_records = [r for r in records if r.get("stimulus_type") == "cs_plus"]
@@ -110,7 +114,7 @@ def test_differential_acquisition_separates_cs_plus_and_cs_minus_default_payload
     plus_tail = _head_tail(plus_records, ratio=0.2)[1]
     minus_tail = _head_tail(minus_records, ratio=0.2)[1]
 
-    assert _mean_prediction(plus_tail) > _mean_prediction(minus_tail) + 0.2
+    assert _mean_prediction(plus_tail) > _mean_prediction(minus_tail) + fixture.thresholds["min_cs_plus_minus_gap"]
 
 
 def test_compound_acquisition_shows_learning_gain_default_payload():
@@ -124,6 +128,7 @@ def test_compound_acquisition_shows_learning_gain_default_payload():
 
 
 def test_overshadowing_default_payload_retains_non_reversed_cue_ordering():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["overshadowing_salience_sensitivity"]
     records = _run_records(overshadowing_payload())
     compound_records = [r for r in records if r.get("phase_name") == "compound_acquisition"]
 
@@ -144,7 +149,7 @@ def test_overshadowing_default_payload_retains_non_reversed_cue_ordering():
 
     # Under the v2 transition-unified update flow, overshadowing in this default
     # payload is weaker than the historical threshold but should not invert.
-    assert _mean_prediction(tone_tail) >= _mean_prediction(noise_tail)
+    assert _mean_prediction(tone_tail) >= _mean_prediction(noise_tail) + fixture.thresholds["min_dominance_margin"]
 
 
 def test_overexpectation_shows_compound_exceeds_single_cue_default_payload():
@@ -196,6 +201,7 @@ def test_blocking_default_payload_retains_primary_cue_dominance_signal():
 
 
 def test_aba_renewal_probe_recovers_from_extinction_context_default_payload():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["renewal_recovery_context_switch_aba"]
     records = _run_records(aba_renewal_payload())
     ext_records = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
     probe_records = [r for r in records if r.get("subphase_name") == "probe"]
@@ -206,10 +212,11 @@ def test_aba_renewal_probe_recovers_from_extinction_context_default_payload():
     ext_tail = _first_last_n(ext_records, n=10)[1]
     probe_tail = _first_last_n(probe_records, n=10)[1]
 
-    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + 0.2
+    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + fixture.thresholds["min_probe_recovery"]
 
 
 def test_abc_renewal_probe_recovers_above_extinction_default_payload():
+    fixture = GOLDEN_BEHAVIOR_FIXTURES["renewal_recovery_context_switch_abc"]
     records = _run_records(abc_renewal_payload())
     ext_records = [r for r in records if r.get("subphase_name") == "nonreinforcement"]
     probe_records = [r for r in records if r.get("subphase_name") == "probe"]
@@ -220,7 +227,7 @@ def test_abc_renewal_probe_recovers_above_extinction_default_payload():
     ext_tail = _first_last_n(ext_records, n=10)[1]
     probe_tail = _first_last_n(probe_records, n=10)[1]
 
-    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + 0.1
+    assert _mean_prediction(probe_tail) > _mean_prediction(ext_tail) + fixture.thresholds["min_probe_recovery"]
 
 
 def test_aab_renewal_probe_stays_near_extinction_level_default_payload():
