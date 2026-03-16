@@ -143,7 +143,7 @@ def test_operant_payload_policy_guard_accepts_operant_and_rejects_classical():
     validate_payload(operant_payload)
 
     classical_payload = acquisition_payload()
-    classical_payload["experiment"]["policy"] = {
+    classical_payload["experiment"]["agent"]["policy"] = {
         "name": "epsilon_greedy",
         "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
     }
@@ -155,7 +155,7 @@ def test_operant_payload_policy_guard_accepts_operant_and_rejects_classical():
 
 def test_operant_payload_requires_policy_at_validation():
     payload = operant_conditioning_payload()
-    payload["experiment"].pop("policy", None)
+    payload["experiment"]["agent"]["policy"] = None
     validate_payload(payload)
     cfg = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):

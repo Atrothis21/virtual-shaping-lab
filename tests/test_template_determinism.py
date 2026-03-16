@@ -6,32 +6,42 @@ from experiment.public import build_plan, run_from_plan
 def _template_backed_payload() -> dict:
     return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": ["tone", "noise"], "max_compound_size": 2},
-            },
-            "context_inference": {"enabled": False, "max_contexts": 3},
-            "phases": [
-                {
-                    "name": "Acquisition",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 6, "alpha": 0.2, "gamma": 0.0},
-                },
-                {
-                    "name": "Differential Acquisition",
-                    "protocol": "differential_acquisition",
-                    "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
-                    "params": {
-                        "n_trials": 12,
-                        "reinforced_outcome": 1.0,
-                        "nonreinforced_outcome": 0.0,
-                        "alpha": 0.2,
+            "program": {
+                "phases": [
+                    {
+                        "name": "Acquisition",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 6, "alpha": 0.2, "gamma": 0.0},
+                        "trials": 6,
                     },
+                    {
+                        "name": "Differential Acquisition",
+                        "protocol": "differential_acquisition",
+                        "stimuli": {"cs_plus": ["tone"], "cs_minus": ["noise"]},
+                        "params": {
+                            "n_trials": 12,
+                            "reinforced_outcome": 1.0,
+                            "nonreinforced_outcome": 0.0,
+                            "alpha": 0.2,
+                        },
+                        "trials": 12,
+                    },
+                ]
+            },
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {"stimuli": ["tone", "noise"], "max_compound_size": 2},
                 },
-            ],
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                },
+                "policy": None,
+            },
+            "runtime": {"context_inference": {"enabled": False, "max_contexts": 3}},
         },
         "report": {"preset": "acquisition"},
     }

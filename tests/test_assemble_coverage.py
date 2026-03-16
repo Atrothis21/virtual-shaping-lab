@@ -10,6 +10,7 @@ from experiment.assemble import (
 )
 from experiment.config import ExperimentConfig, PhaseConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.payload_contract import from_legacy_payload
 from experiment.public import assemble_from_plan, build_plan, validate_plan
 from experiment.phases.catalog import CUSTOM_PHASE_CLASS_ALLOWLIST
 
@@ -67,7 +68,7 @@ def test_assemble_inferred_contexts_extend_representation_vocab(monkeypatch):
 
     monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
 
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -79,7 +80,7 @@ def test_assemble_inferred_contexts_extend_representation_vocab(monkeypatch):
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     cfg = ExperimentConfig.from_payload(payload)
     assemble_experiment(cfg)
     assert captured["contexts"] == ["A", "B"]
@@ -102,7 +103,7 @@ def test_protocol_phase_helpers():
 
 
 def test_assemble_experiment_phase_mode_with_reward_schedule():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -123,7 +124,7 @@ def test_assemble_experiment_phase_mode_with_reward_schedule():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, rep = assemble_experiment(config)
     assert runtime_units
@@ -131,7 +132,7 @@ def test_assemble_experiment_phase_mode_with_reward_schedule():
 
 
 def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "td_value",
             "agent": "operant_agent",
@@ -149,7 +150,7 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
             },
         },
         "report": {"preset": "matching_law"},
-    }
+    })
 
     def _fake_build_policy(name, **params):
         return object()
@@ -162,7 +163,7 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
 
 
 def test_assemble_classical_path_rejects_policy():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -181,14 +182,14 @@ def test_assemble_classical_path_rejects_policy():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
         assemble_experiment(config)
 
 
 def test_assemble_operant_path_requires_policy():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
@@ -204,14 +205,14 @@ def test_assemble_operant_path_requires_policy():
             },
         },
         "report": {"preset": "operant_conditioning"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
         assemble_experiment(config)
 
 
 def test_assemble_assigns_attention_to_learner():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -230,7 +231,7 @@ def test_assemble_assigns_attention_to_learner():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, _rep = assemble_experiment(config)
     assert runtime_units
@@ -238,7 +239,7 @@ def test_assemble_assigns_attention_to_learner():
 
 
 def test_assemble_accepts_attention_config_strategy_form():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -260,7 +261,7 @@ def test_assemble_accepts_attention_config_strategy_form():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     runtime_units, agent, _rep = assemble_experiment(config)
     assert runtime_units
@@ -268,7 +269,7 @@ def test_assemble_accepts_attention_config_strategy_form():
 
 
 def test_assemble_does_not_override_explicit_phase_context():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -293,7 +294,7 @@ def test_assemble_does_not_override_explicit_phase_context():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     config = ExperimentConfig.from_payload(payload)
     runtime_units, _agent, _rep = assemble_experiment(config)
     assert runtime_units[0].context == "C"
@@ -618,7 +619,7 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
 
 
 def test_assemble_experiment_supports_template_phase_key():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -636,7 +637,7 @@ def test_assemble_experiment_supports_template_phase_key():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     cfg = ExperimentConfig.from_payload(payload)
     runtime_units, _agent, _rep = assemble_experiment(cfg)
     assert runtime_units
@@ -693,7 +694,7 @@ def test_custom_phase_policy_allowlist_contains_control_flow_phases():
 
 
 def test_experiment_public_facade_builds_and_validates_plan():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -711,13 +712,13 @@ def test_experiment_public_facade_builds_and_validates_plan():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     plan = build_plan(payload)
     assert validate_plan(plan) is plan
 
 
 def test_experiment_public_facade_assembles_from_plan():
-    payload = {
+    payload = from_legacy_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -735,7 +736,7 @@ def test_experiment_public_facade_assembles_from_plan():
             ],
         },
         "report": {"preset": "acquisition"},
-    }
+    })
     plan = build_plan(payload)
     runtime_units, agent, representation = assemble_from_plan(plan)
     assert runtime_units

@@ -39,7 +39,7 @@ def _tail_mean_prediction(records: list[dict], n: int = 10) -> float:
 def test_attention_invariance_defaults_match_attention_one():
     base = acquisition_payload()
     attn_one = copy.deepcopy(base)
-    attn_one["experiment"]["attention"] = {"tone": {"attention": 1.0}}
+    attn_one["experiment"]["agent"]["learning"]["attention"] = {"initial": {"tone": {"attention": 1.0}}, "config": {}}
 
     base_records = _run_records(base)
     attn_records = _run_records(attn_one)
@@ -55,11 +55,13 @@ def test_attention_variant_acquisition_short_horizon_high_exceeds_low():
     low = copy.deepcopy(high)
 
     # Shorter horizon exposes attention-driven learning-rate differences.
-    high["experiment"]["phases"][0]["params"]["n_trials"] = 20
-    low["experiment"]["phases"][0]["params"]["n_trials"] = 20
+    high["experiment"]["program"]["phases"][0]["trials"] = 20
+    high["experiment"]["program"]["phases"][0]["params"]["n_trials"] = 20
+    low["experiment"]["program"]["phases"][0]["trials"] = 20
+    low["experiment"]["program"]["phases"][0]["params"]["n_trials"] = 20
 
-    high["experiment"]["attention"] = {"tone": {"attention": 1.0}}
-    low["experiment"]["attention"] = {"tone": {"attention": 0.2}}
+    high["experiment"]["agent"]["learning"]["attention"] = {"initial": {"tone": {"attention": 1.0}}, "config": {}}
+    low["experiment"]["agent"]["learning"]["attention"] = {"initial": {"tone": {"attention": 0.2}}, "config": {}}
 
     high_records = _run_records(high)
     low_records = _run_records(low)
@@ -71,13 +73,13 @@ def test_attention_variant_compound_high_exceeds_low():
     high = compound_acquisition_payload()
     low = copy.deepcopy(high)
 
-    high["experiment"]["attention"] = {
-        "tone": {"attention": 1.0},
-        "noise": {"attention": 1.0},
+    high["experiment"]["agent"]["learning"]["attention"] = {
+        "initial": {"tone": {"attention": 1.0}, "noise": {"attention": 1.0}},
+        "config": {},
     }
-    low["experiment"]["attention"] = {
-        "tone": {"attention": 0.2},
-        "noise": {"attention": 0.2},
+    low["experiment"]["agent"]["learning"]["attention"] = {
+        "initial": {"tone": {"attention": 0.2}, "noise": {"attention": 0.2}},
+        "config": {},
     }
 
     high_records = _run_records(high)

@@ -42,8 +42,8 @@ def test_salience_variant_acquisition_high_exceeds_low():
     high = acquisition_payload()
     low = copy.deepcopy(high)
 
-    high["experiment"]["salience"] = {"tone": {"salience": 1.0}}
-    low["experiment"]["salience"] = {"tone": {"salience": 0.2}}
+    high["experiment"]["agent"]["representation"]["salience"] = {"tone": {"salience": 1.0}}
+    low["experiment"]["agent"]["representation"]["salience"] = {"tone": {"salience": 0.2}}
 
     high_records = _run_records(high)
     low_records = _run_records(low)
@@ -55,11 +55,11 @@ def test_salience_variant_compound_high_exceeds_low():
     high = compound_acquisition_payload()
     low = copy.deepcopy(high)
 
-    high["experiment"]["salience"] = {
+    high["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 1.0},
         "noise": {"salience": 1.0},
     }
-    low["experiment"]["salience"] = {
+    low["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 0.2},
         "noise": {"salience": 0.2},
     }
@@ -74,11 +74,11 @@ def test_salience_variant_differential_cs_plus_high_exceeds_low():
     high = differential_acquisition_payload()
     low = copy.deepcopy(high)
 
-    high["experiment"]["salience"] = {
+    high["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 1.0},
         "noise": {"salience": 1.0},
     }
-    low["experiment"]["salience"] = {
+    low["experiment"]["agent"]["representation"]["salience"] = {
         "tone": {"salience": 0.2},
         "noise": {"salience": 1.0},
     }
