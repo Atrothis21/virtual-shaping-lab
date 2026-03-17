@@ -29,6 +29,11 @@ def test_report_catalog_falls_back_to_verification_report():
     assert get_default_report_for_protocol("missing_protocol") == "verification_report"
 
 
+def test_report_catalog_strict_report_lookup_rejects_missing_mapping():
+    with pytest.raises(KeyError, match="Available mappings:"):
+        get_default_report_for_protocol("missing_protocol", strict=True)
+
+
 def test_report_catalog_returns_compositional_template():
     template = get_default_template_for_protocol("extinction")
     assert template.report_name == "verification_report"
@@ -43,6 +48,11 @@ def test_report_template_fallback_is_stable():
     assert template.report_name == "verification_report"
     assert template.template_version == 1
     assert "trial_curve" in template.figure_names
+
+
+def test_report_template_strict_mode_rejects_missing_mapping():
+    with pytest.raises(KeyError, match="Available mappings:"):
+        get_default_template_for_protocol("missing_protocol", strict=True)
 
 
 def test_report_catalog_normalizes_protocol_keys():

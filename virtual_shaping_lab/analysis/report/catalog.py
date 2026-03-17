@@ -168,8 +168,14 @@ validate_ui_metadata_map(
 )
 
 
-def get_default_report_for_protocol(protocol_name: str) -> str:
+def get_default_report_for_protocol(protocol_name: str, *, strict: bool = False) -> str:
     normalized = normalize_protocol_key(protocol_name)
+    if strict and normalized not in DEFAULT_REPORT_BY_PROTOCOL:
+        available = ", ".join(sorted(DEFAULT_REPORT_BY_PROTOCOL.keys()))
+        raise KeyError(
+            f"No default report mapping for protocol '{protocol_name}' "
+            f"(normalized='{normalized}'). Available mappings: {available}"
+        )
     return DEFAULT_REPORT_BY_PROTOCOL.get(normalized, "verification_report")
 
 
@@ -187,10 +193,19 @@ def get_report_template_metadata(protocol_name: str) -> UICatalogMetadata:
     )
 
 
-def get_default_template_for_protocol(protocol_name: str) -> ReportTemplateSpec:
+def get_default_template_for_protocol(
+    protocol_name: str,
+    *,
+    strict: bool = False,
+) -> ReportTemplateSpec:
     normalized = normalize_protocol_key(protocol_name)
     if normalized not in DEFAULT_TEMPLATE_BY_PROTOCOL:
         available = ", ".join(sorted(DEFAULT_TEMPLATE_BY_PROTOCOL.keys()))
+        if strict:
+            raise KeyError(
+                f"No default report template mapping for protocol '{protocol_name}' "
+                f"(normalized='{normalized}'). Available mappings: {available}"
+            )
         warnings.warn(
             f"No default report template mapping for protocol '{protocol_name}' "
             f"(normalized='{normalized}'). Using fallback verification template. "
