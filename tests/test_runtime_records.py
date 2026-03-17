@@ -169,3 +169,49 @@ def test_debug_telemetry_schema_validator_rejects_unknown_fields():
         assert False, "Expected unknown debug telemetry field to fail."
     except ValueError as exc:
         assert "Unknown debug telemetry field" in str(exc)
+
+
+def test_finalize_record_is_deterministic_for_identical_inputs():
+    rec_a = {
+        "phase": "timed",
+        "trial": 2,
+        "tick": 1,
+        "t_s": 0.5,
+        "dt_s": 0.5,
+        "trial_step": 1,
+        "reward": 1.0,
+        "debug": {
+            "value": 0.25,
+            "prediction_error": 0.75,
+            "active_features": ["tone"],
+            "attention_effective": {"tone": 1.0},
+            "alpha_by_stimulus": {"tone": 1.0},
+            "mean_alpha": 1.0,
+            "cuewise_contributions": {"tone": 0.25},
+            "salience_effective": {"tone": 1.0},
+        },
+    }
+    rec_b = {
+        "phase": "timed",
+        "trial": 2,
+        "tick": 1,
+        "t_s": 0.5,
+        "dt_s": 0.5,
+        "trial_step": 1,
+        "reward": 1.0,
+        "debug": {
+            "value": 0.25,
+            "prediction_error": 0.75,
+            "active_features": ["tone"],
+            "attention_effective": {"tone": 1.0},
+            "alpha_by_stimulus": {"tone": 1.0},
+            "mean_alpha": 1.0,
+            "cuewise_contributions": {"tone": 0.25},
+            "salience_effective": {"tone": 1.0},
+        },
+    }
+
+    out_a = finalize_record(rec_a, phase_name="timed", protocol_phase_index=0, protocol_phase_name="timed")
+    out_b = finalize_record(rec_b, phase_name="timed", protocol_phase_index=0, protocol_phase_name="timed")
+
+    assert out_a == out_b

@@ -269,6 +269,7 @@ class RunService:
             "plan_hash": plan_hash,
             "record_schema_version": plan.record_schema_version,
             "template_version_used": 1,
+            "seed_identity": plan.seed,
             "mechanism_provenance": _build_mechanism_provenance(plan),
         }
         _set_status_with_lifecycle(
@@ -371,6 +372,7 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "seed_identity": resolved_plan.seed,
                 "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
@@ -389,6 +391,7 @@ class ReportService:
                 "plan_hash": resolved_plan.stable_hash(),
                 "record_schema_version": resolved_plan.record_schema_version,
                 "template_version_used": template_version,
+                "seed_identity": resolved_plan.seed,
                 "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,

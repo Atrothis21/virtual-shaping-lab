@@ -192,6 +192,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"].get("plan_hash"), str) and body["metadata"]["plan_hash"]
     assert body["metadata"].get("record_schema_version") == "v1"
     assert isinstance(body["metadata"].get("template_version_used"), int)
+    assert "seed_identity" in body["metadata"]
     assert isinstance(body["metadata"].get("mechanism_provenance"), dict)
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
@@ -229,6 +230,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("plan_hash"), str) and status["metadata"]["plan_hash"]
     assert status["metadata"].get("record_schema_version") == "v1"
     assert isinstance(status["metadata"].get("template_version_used"), int)
+    assert "seed_identity" in status["metadata"]
     assert isinstance(status["metadata"].get("mechanism_provenance"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
@@ -271,12 +273,36 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("plan_hash"), str) and report_body["metadata"]["plan_hash"]
     assert report_body["metadata"].get("record_schema_version") == "v1"
     assert isinstance(report_body["metadata"].get("template_version_used"), int)
+    assert "seed_identity" in report_body["metadata"]
     assert isinstance(report_body["metadata"].get("mechanism_provenance"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
     assert report_body["metadata"]["missing_source_metadata"] == []
     assert report_body["lifecycle"]["state"] == "ReportComplete"
     assert "view_report" in report_body["lifecycle"]["next_actions"]
+
+
+def test_run_service_uses_plan_seed_as_runtime_seed_identity(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    payload["experiment"]["program"]["phases"][0]["params"]["rng_seed"] = 123
+    fixture_output_dir = tmp_path / "seed_identity_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    body = api_run.run_api(payload)
+
+    assert body["metadata"]["seed_identity"] == 123
+    status = api_run.run_status_api(body["run_id"])
+    assert status["metadata"]["seed_identity"] == 123
 
 
 def test_run_report_endpoint_flags_missing_source_metadata(monkeypatch, tmp_path):

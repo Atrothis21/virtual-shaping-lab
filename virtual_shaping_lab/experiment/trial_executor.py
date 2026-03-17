@@ -189,6 +189,8 @@ class TrialExecutor:
         if isinstance(getattr(schedule, "metadata", None), dict):
             schedule_runtime = schedule.metadata.get("schedule_runtime")
         if schedule_runtime is not None and hasattr(schedule_runtime, "reset"):
+            # Schedule stochasticity must be driven by the shared runtime RNG
+            # so seeded replays reproduce identical operant outcomes.
             schedule_runtime.reset(ctx.rng)
         if hooks is not None and hasattr(hooks, "on_trial_start"):
             hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
@@ -231,6 +233,8 @@ class TrialExecutor:
             if agent is not None and hasattr(agent, "observe"):
                 state = agent.observe(observation)
                 if actions and hasattr(agent, "act"):
+                    # Policy stochasticity is likewise centralized through the
+                    # runtime-owned RNG in ExperimentContext.
                     action = agent.act(state, actions=actions, rng=ctx.rng)
 
             runtime_reward = 0.0
