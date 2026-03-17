@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import random
 from typing import Dict, Type
+
+import numpy as np
 
 from virtual_shaping_lab.experiment.world.schedules import (
     AlwaysAvailable,
@@ -22,7 +23,7 @@ class RewardSchedule:
 
     name = "base"
 
-    def reset(self):
+    def reset(self, rng: np.random.Generator | None = None):
         return None
 
     def step(self, action, t) -> float:
@@ -40,7 +41,7 @@ class FixedRatioSchedule(RewardSchedule):
         self.reward = reward
         self._count = 0
 
-    def reset(self):
+    def reset(self, rng: np.random.Generator | None = None):
         self._count = 0
 
     def step(self, action, t):
@@ -66,11 +67,15 @@ class VariableRatioSchedule(RewardSchedule):
     def __init__(self, mean_n: int, reward: float = 1.0):
         self.mean_n = mean_n
         self.reward = reward
+        self._rng = np.random.default_rng()
+
+    def reset(self, rng: np.random.Generator | None = None):
+        self._rng = rng if rng is not None else np.random.default_rng()
 
     def step(self, action, t):
         if action is None:
             return 0.0
-        if random.random() < (1.0 / self.mean_n):
+        if float(self._rng.random()) < (1.0 / self.mean_n):
             return self.reward
         return 0.0
 
@@ -90,7 +95,7 @@ class FixedIntervalSchedule(RewardSchedule):
         self.reward = reward
         self._last_reinforcement = 0
 
-    def reset(self):
+    def reset(self, rng: np.random.Generator | None = None):
         self._last_reinforcement = 0
 
     def step(self, action, t):
@@ -118,12 +123,14 @@ class VariableIntervalSchedule(RewardSchedule):
         self.mean_interval = mean_interval
         self.reward = reward
         self._next_available = 0
+        self._rng = np.random.default_rng()
 
-    def reset(self):
+    def reset(self, rng: np.random.Generator | None = None):
+        self._rng = rng if rng is not None else np.random.default_rng()
         self._next_available = self._sample_interval()
 
     def _sample_interval(self):
-        return random.expovariate(1.0 / self.mean_interval)
+        return float(self._rng.exponential(scale=float(self.mean_interval)))
 
     def step(self, action, t):
         if action is None:

@@ -59,11 +59,13 @@ def run_from_plan(
 ) -> ExecutionResult:
     """Assemble and execute all runtime units declared by the plan."""
     runtime_units, agent, representation = assemble_from_plan(plan)
+    effective_seed = plan.seed if seed is None else seed
     runner_settings = dict((plan.runtime_spec or {}).get("runtime", {}) or {})
     composed = (plan.runtime_spec or {}).get("composed_parameters")
     if composed:
         runner_settings["composed_parameters"] = composed
     runner_settings.setdefault("record_schema_version", plan.record_schema_version)
+    runner_settings.setdefault("seed_identity", effective_seed)
     if settings:
         runner_settings.update(settings)
 
@@ -72,7 +74,7 @@ def run_from_plan(
     for unit in runtime_units:
         records_for_unit = Runner(
             unit,
-            seed=seed,
+            seed=effective_seed,
             context=context,
             settings=runner_settings,
             sink=sink,

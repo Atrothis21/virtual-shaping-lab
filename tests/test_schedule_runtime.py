@@ -6,10 +6,14 @@ from virtual_shaping_lab.experiment.world.schedules import (
     FirstResponseGate,
     FixedIntervalAvailability,
     FixedRatioGate,
+    FixedIntervalSchedule,
+    FixedRatioSchedule,
     ScheduleTickInput,
     TickScheduleRuntime,
     VariableIntervalAvailability,
+    VariableIntervalSchedule,
     VariableRatioGate,
+    VariableRatioSchedule,
 )
 
 
@@ -99,4 +103,41 @@ def test_variable_interval_is_deterministic_under_seed():
         for i in range(12)
     ]
     assert seq_a == seq_b
+
+
+def test_legacy_variable_ratio_schedule_is_deterministic_under_seeded_reset():
+    schedule_a = VariableRatioSchedule(mean_n=2.0, reward=1.0)
+    schedule_b = VariableRatioSchedule(mean_n=2.0, reward=1.0)
+
+    schedule_a.reset(np.random.default_rng(31))
+    schedule_b.reset(np.random.default_rng(31))
+
+    seq_a = [schedule_a.step("press", i) for i in range(10)]
+    seq_b = [schedule_b.step("press", i) for i in range(10)]
+
+    assert seq_a == seq_b
+
+
+def test_legacy_variable_interval_schedule_is_deterministic_under_seeded_reset():
+    schedule_a = VariableIntervalSchedule(mean_interval=2, reward=1.0)
+    schedule_b = VariableIntervalSchedule(mean_interval=2, reward=1.0)
+
+    schedule_a.reset(np.random.default_rng(41))
+    schedule_b.reset(np.random.default_rng(41))
+
+    seq_a = [schedule_a.step("press", float(i)) for i in range(10)]
+    seq_b = [schedule_b.step("press", float(i)) for i in range(10)]
+
+    assert seq_a == seq_b
+
+
+def test_deterministic_legacy_schedules_accept_seeded_reset_without_behavior_change():
+    fr = FixedRatioSchedule(n=2, reward=1.0)
+    fi = FixedIntervalSchedule(interval=2, reward=1.0)
+
+    fr.reset(np.random.default_rng(7))
+    fi.reset(np.random.default_rng(7))
+
+    assert [fr.step("press", i) for i in range(4)] == [0.0, 1.0, 0.0, 1.0]
+    assert [fi.step("press", i) for i in range(4)] == [0.0, 0.0, 1.0, 0.0]
 

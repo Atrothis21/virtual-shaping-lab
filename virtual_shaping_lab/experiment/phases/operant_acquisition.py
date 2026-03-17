@@ -56,7 +56,7 @@ class OperantAcquisitionPhase(PhaseBase):
         self.reward_schedule = reward_schedule
 
         if hasattr(self.reward_schedule, "reset"):
-            self.reward_schedule.reset()
+            self.reward_schedule.reset(self._rng)
 
         if hasattr(self.agent, "reset"):
             self.agent.reset()
@@ -152,7 +152,7 @@ class OperantAcquisitionPhase(PhaseBase):
         else:
             self._rng = np.random.default_rng(self.params.get("rng_seed"))
         if hasattr(self.reward_schedule, "reset"):
-            self.reward_schedule.reset()
+            self.reward_schedule.reset(self._rng)
 
     def iter_steps(self, ctx: ExperimentContext):
         if self.trial_index != 0:
