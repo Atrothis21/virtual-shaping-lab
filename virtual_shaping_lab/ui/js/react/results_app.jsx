@@ -78,33 +78,43 @@ function operantConsequenceClass(mode) {
 
 function Summary({ payload, runId }) {
   const exp = payload?.experiment || {};
+  const program = exp?.program || {};
+  const agent = exp?.agent || {};
+  const learning = agent?.learning || {};
+  const runtime = exp?.runtime || {};
   const report = payload?.report || {};
-  const representation = typeof exp.representation === "string"
-    ? exp.representation
-    : exp.representation?.name;
-  const policy = exp.policy || {};
+  const representation = typeof agent.representation === "string"
+    ? agent.representation
+    : agent.representation?.name;
+  const policy = agent.policy || {};
   const policyName = policy?.name || "unknown";
   const policyParams = policy?.params || {};
   const actions = Array.isArray(policyParams.actions)
     ? policyParams.actions.join(", ")
     : (policyParams.action ? String(policyParams.action) : "n/a");
-  const phases = Array.isArray(exp.phases)
-    ? exp.phases.map((p) => p.protocol).join(", ")
+  const phases = Array.isArray(program.phases)
+    ? program.phases.map((p) => p.protocol).join(", ")
     : "";
-  const consequenceMode = exp?.params?.consequence_mode || "n/a";
+  const consequenceMode = Array.isArray(program.phases) && program.phases.length > 0
+    ? (program.phases[0]?.params?.consequence_mode || "n/a")
+    : "n/a";
   const consequenceClass = operantConsequenceClass(consequenceMode);
-  const isOperantConditioning = exp?.protocol === "operant_conditioning";
+  const isOperantConditioning = Array.isArray(program.phases) && program.phases.length > 0
+    ? program.phases[0]?.protocol === "operant_conditioning"
+    : false;
 
   return (
     <div className="summary">
       <div><strong>Run ID:</strong> {runId}</div>
       <div><strong>Preset:</strong> {report.preset || "unknown"}</div>
-      <div><strong>Learner:</strong> {exp.learner || "unknown"}</div>
-      <div><strong>Agent:</strong> {exp.agent || "unknown"}</div>
+      <div><strong>Learner:</strong> {learning.rule || "unknown"}</div>
+      <div><strong>Agent:</strong> {agent.name || "unknown"}</div>
       <div><strong>Representation:</strong> {representation || "unknown"}</div>
       <div><strong>Policy:</strong> {policyName}</div>
       <div><strong>Actions:</strong> {actions}</div>
       <div><strong>Phases:</strong> {phases || "none"}</div>
+      {runtime?.update_mode && <div><strong>Update Mode:</strong> {runtime.update_mode}</div>}
+      {runtime?.record_mode && <div><strong>Record Mode:</strong> {runtime.record_mode}</div>}
       {isOperantConditioning && (
         <>
           <div><strong>Consequence Mode:</strong> {consequenceMode}</div>

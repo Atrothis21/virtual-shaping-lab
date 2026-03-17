@@ -17,6 +17,11 @@ def test_draft_to_payload_classical_protocol_mode_validates():
     )
     payload = draft_to_payload(draft)
     assert payload["report"]["preset"] == "acquisition"
+    assert set(payload["experiment"].keys()) == {"program", "agent", "runtime"}
+    assert payload["experiment"]["program"]["phases"][0]["protocol"] == "acquisition"
+    assert payload["experiment"]["program"]["phases"][0]["trials"] == 10
+    assert payload["experiment"]["agent"]["learning"]["rule"] == "rescorla_wagner"
+    assert payload["experiment"]["agent"]["representation"]["name"] == "vector_elemental"
     validate_payload(payload)
 
 
@@ -42,6 +47,10 @@ def test_draft_to_payload_operant_protocol_mode_validates():
     )
     payload = draft_to_payload(draft)
     assert payload["report"]["preset"] == "matching_law"
+    assert set(payload["experiment"].keys()) == {"program", "agent", "runtime"}
+    assert payload["experiment"]["program"]["phases"][0]["protocol"] == "matching_law"
+    assert payload["experiment"]["program"]["phases"][0]["trials"] == 30
+    assert payload["experiment"]["agent"]["policy"]["name"] == "epsilon_greedy"
     validate_payload(payload)
 
 
@@ -67,4 +76,8 @@ def test_draft_to_payload_phase_mode_defaults_to_custom_protocol_preset():
     )
     payload = draft_to_payload(draft)
     assert payload["report"]["preset"] == "custom_protocol"
+    assert set(payload["experiment"].keys()) == {"program", "agent", "runtime"}
+    assert len(payload["experiment"]["program"]["phases"]) == 2
+    assert payload["experiment"]["program"]["phases"][0]["trials"] == 10
+    assert payload["experiment"]["program"]["phases"][1]["trials"] == 5
     validate_payload(payload)
