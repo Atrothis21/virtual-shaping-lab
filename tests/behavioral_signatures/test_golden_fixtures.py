@@ -11,6 +11,7 @@ def test_golden_fixture_registry_contains_canonical_behavior_set():
         "renewal_recovery_context_switch_aba",
         "renewal_recovery_context_switch_abc",
         "fi_vs_fr_separation",
+        "rapid_reacquisition_recovery",
     }.issubset(GOLDEN_BEHAVIOR_FIXTURES.keys())
 
 
