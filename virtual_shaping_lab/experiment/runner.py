@@ -28,6 +28,12 @@ class Runner:
     - It does NOT control trial logic
     - It does NOT inspect internals beyond run/step
     - It simply delegates execution
+
+    Deterministic replay contract:
+    - identical runtime units + canonical plan inputs + seed must reproduce
+      identical context RNG streams and emitted record order
+    - stochastic policy and schedule paths must consume the shared runtime RNG
+      built here rather than creating independent generators
     """
 
     def __init__(

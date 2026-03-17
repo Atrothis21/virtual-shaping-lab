@@ -212,6 +212,35 @@ class PerformanceOnlyTrackingAgent(OperantPolicyTrackingAgent):
         return None
 
 
+class SeededPolicyLearningAgent:
+    def __init__(self):
+        self.weight = 0.0
+        self.prediction_errors = []
+        self.weights_after_update = []
+        self.actions = []
+
+    def observe(self, observation):
+        return observation
+
+    def act(self, state, actions=None, rng=None):
+        pool = list(actions or [])
+        if not pool:
+            return None
+        idx = int(rng.integers(0, len(pool)))
+        action = pool[idx]
+        self.actions.append(action)
+        return action
+
+    def learn(self, transition):
+        prediction_error = float(transition.r - self.weight)
+        self.prediction_errors.append(prediction_error)
+        self.weight += 0.5 * prediction_error
+        self.weights_after_update.append(self.weight)
+
+    def value(self, state, action=None):
+        return self.weight
+
+
 class ActionlessTimedRunnableUnit:
     def __init__(self, agent):
         self.agent = agent
@@ -471,6 +500,27 @@ def test_runner_policy_path_does_not_imply_learning_without_update_mode_tick():
     assert len(records) == 2
     assert agent.act_calls == 2
     assert agent.learn_calls == 0
+
+
+def test_runner_seed_replay_is_identical_for_policy_actions_and_learning_updates():
+    def execute(seed):
+        agent = SeededPolicyLearningAgent()
+        records = Runner(
+            ActionTimedRunnableUnit(agent),
+            seed=seed,
+            settings={"record_mode": "tick", "update_mode": "tick"},
+        ).run()
+        return records, list(agent.actions), list(agent.prediction_errors), list(agent.weights_after_update)
+
+    rec_a, actions_a, pe_a, weights_a = execute(11)
+    rec_b, actions_b, pe_b, weights_b = execute(11)
+    rec_c, actions_c, pe_c, weights_c = execute(19)
+
+    assert rec_a == rec_b
+    assert actions_a == actions_b
+    assert pe_a == pe_b
+    assert weights_a == weights_b
+    assert (rec_a, actions_a, pe_a, weights_a) != (rec_c, actions_c, pe_c, weights_c)
 
 
 def test_runner_jsonl_sink_writes_append_only_records(tmp_path):

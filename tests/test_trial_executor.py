@@ -7,6 +7,8 @@ from virtual_shaping_lab.experiment.world.schedules import (
     ConstantConsequenceMapper,
     FixedRatioGate,
     TickScheduleRuntime,
+    VariableIntervalAvailability,
+    VariableRatioGate,
 )
 from virtual_shaping_lab.domain.types import EncodedState, Observation
 
@@ -185,3 +187,45 @@ def test_trial_executor_debug_policy_samples_tick_debug_payload():
     assert "debug" not in records[1]
     assert "debug" in records[2]
     assert "debug" not in records[3]
+
+
+def test_trial_executor_seeded_schedule_runtime_replays_identically():
+    def execute(seed: int):
+        agent = DummyAgent()
+        ctx = ExperimentContext(agent=agent, rng=np.random.default_rng(seed))
+        spec = TrialTimeSpec(
+            duration_s=2.0,
+            dt_s=0.5,
+            response_windows=[WindowSpec(start_s=0.0, end_s=2.0, label="all")],
+        )
+        step = StepResult(
+            observation=Observation(stimuli=[], context="A"),
+            available_actions=["press"],
+            reward=0.0,
+        )
+        schedule_runtime = TickScheduleRuntime(
+            availability=VariableIntervalAvailability(mean_interval_s=0.4),
+            gate=VariableRatioGate(mean_n=2.0),
+            consequence_mapper=ConstantConsequenceMapper(reward=1.0),
+        )
+        schedule = TrialSchedule(
+            time=spec,
+            available_actions=["press"],
+            metadata={"schedule_runtime": schedule_runtime},
+        )
+        records = TrialExecutor(update_mode="tick", record_mode="tick").execute(
+            ctx=ctx,
+            step=step,
+            schedule=schedule,
+            base_record={"phase": "timed", "trial": 12},
+            trial_id=12,
+        )
+        return records, [t.r for t in agent.learn_calls]
+
+    records_a, rewards_a = execute(17)
+    records_b, rewards_b = execute(17)
+    records_c, rewards_c = execute(23)
+
+    assert records_a == records_b
+    assert rewards_a == rewards_b
+    assert (records_a, rewards_a) != (records_c, rewards_c)

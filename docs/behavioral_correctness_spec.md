@@ -206,6 +206,28 @@ This provenance is required because a behavioral signature is not scientifically
 
 ---
 
+## Runtime Determinism
+
+V2 runtime execution must satisfy the following replay guarantee:
+
+- identical canonical payload
+- identical version metadata
+- identical seed
+
+must reproduce identical:
+
+- record emission order
+- prediction-error trajectories
+- learner weight-update trajectories
+- policy action selection when policy stochasticity is seeded
+- schedule outcomes when schedule stochasticity is seeded
+
+Randomness used by runtime execution must therefore remain centralized in the runtime-owned RNG carried by `ExperimentContext`.
+
+This guarantee applies to runtime execution semantics. Broader randomness-governance cleanup outside the runtime-owned path remains part of closeout sequencing beyond the original V2.18.1 behavioral hardening pass.
+
+---
+
 ## Out of Scope
 
 The following are explicitly out of scope for V2.18.1 acceptance:
