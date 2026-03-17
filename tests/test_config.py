@@ -502,6 +502,18 @@ def test_from_payload_rejects_invalid_experiment_identity_fields():
         ExperimentConfig.from_payload(payload)
 
 
+def test_from_payload_rejects_classical_policy_and_missing_operant_policy():
+    payload = _base_payload()
+    payload["experiment"]["agent"]["policy"] = {"name": "fixed", "params": {"action": "left"}}
+    with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["agent"]["name"] = "operant_agent"
+    with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
+        ExperimentConfig.from_payload(payload)
+
+
 def test_from_payload_normalizes_experiment_identity_fields():
     payload = _base_payload()
     payload["experiment"]["agent"]["learning"]["rule"] = "  rescorla_wagner  "

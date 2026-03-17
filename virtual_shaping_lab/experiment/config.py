@@ -137,6 +137,20 @@ class PayloadValidator:
             raise ValueError("experiment.agent.learning.rule must be a non-empty string")
 
     @staticmethod
+    def validate_agent_policy_consistency(exp: Dict[str, Any]) -> None:
+        agent = exp.get("agent")
+        if not isinstance(agent, dict):
+            raise ValueError("experiment.agent must be an object")
+        agent_name = agent.get("name")
+        policy = agent.get("policy")
+        if agent_name == "classical_agent" and policy is not None:
+            raise ValueError(
+                "Classical assembly path does not accept policy; use operant_agent for policy-driven runs."
+            )
+        if agent_name == "operant_agent" and policy is None:
+            raise ValueError("Operant assembly path requires an explicit policy.")
+
+    @staticmethod
     def validate_runtime(validate_runtime_constraints, phases: List["PhaseConfig"]) -> None:
         validate_runtime_constraints(phases)
 
@@ -240,6 +254,11 @@ class ConfigPipeline:
             "validate_experiment_identity_fields",
             PayloadValidator,
         )
+        validate_agent_policy_consistency = self._resolve_component_method(
+            self._validator,
+            "validate_agent_policy_consistency",
+            PayloadValidator,
+        )
         validate_runtime = self._resolve_component_method(
             self._validator,
             "validate_runtime",
@@ -270,6 +289,7 @@ class ConfigPipeline:
         validate_phase_shape(exp)
         validate_required_fields(self._config_cls._require_fields, exp, rep)
         validate_experiment_identity_fields(exp)
+        validate_agent_policy_consistency(exp)
 
         normalized = normalize_experiment(
             exp,

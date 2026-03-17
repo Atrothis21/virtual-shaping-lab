@@ -183,9 +183,8 @@ def test_assemble_classical_path_rejects_policy():
         },
         "report": {"preset": "acquisition"},
     })
-    config = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
-        assemble_experiment(config)
+        ExperimentConfig.from_payload(payload)
 
 
 def test_assemble_operant_path_requires_policy():
@@ -206,9 +205,8 @@ def test_assemble_operant_path_requires_policy():
         },
         "report": {"preset": "operant_conditioning"},
     })
-    config = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
-        assemble_experiment(config)
+        ExperimentConfig.from_payload(payload)
 
 
 def test_assemble_assigns_attention_to_learner():
