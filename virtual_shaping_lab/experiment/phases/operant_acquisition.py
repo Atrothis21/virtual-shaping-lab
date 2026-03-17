@@ -31,6 +31,16 @@ class OperantAcquisitionPhase(PhaseBase):
     allows_learning = True
     requires_prior_learning = False
 
+    @staticmethod
+    def _reset_reward_schedule(schedule, rng) -> None:
+        reset = getattr(schedule, "reset", None)
+        if reset is None:
+            return
+        try:
+            reset(rng)
+        except TypeError:
+            reset()
+
     def __init__(
         self,
         agent,
@@ -55,8 +65,7 @@ class OperantAcquisitionPhase(PhaseBase):
 
         self.reward_schedule = reward_schedule
 
-        if hasattr(self.reward_schedule, "reset"):
-            self.reward_schedule.reset(self._rng)
+        self._reset_reward_schedule(self.reward_schedule, self._rng)
 
         if hasattr(self.agent, "reset"):
             self.agent.reset()
@@ -151,8 +160,7 @@ class OperantAcquisitionPhase(PhaseBase):
             self._rng = ctx.rng
         else:
             self._rng = np.random.default_rng(self.params.get("rng_seed"))
-        if hasattr(self.reward_schedule, "reset"):
-            self.reward_schedule.reset(self._rng)
+        self._reset_reward_schedule(self.reward_schedule, self._rng)
 
     def iter_steps(self, ctx: ExperimentContext):
         if self.trial_index != 0:
