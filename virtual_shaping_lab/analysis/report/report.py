@@ -11,6 +11,7 @@ from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
+_VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
 
 
 def _to_jsonable(value):
@@ -21,6 +22,64 @@ def _to_jsonable(value):
     if isinstance(value, tuple):
         return [_to_jsonable(v) for v in value]
     return value
+
+
+_ANALYSIS_RECORD_DEFAULTS = {
+    "phase": None,
+    "phase_name": None,
+    "protocol_name": None,
+    "unit_path": None,
+    "subphase": None,
+    "subphase_name": None,
+    "trial": None,
+    "step": None,
+    "tick": None,
+    "t_s": None,
+    "dt_s": None,
+    "trial_step": None,
+    "trial_id": None,
+    "context": None,
+    "stimulus": None,
+    "stimulus_type": None,
+    "action": None,
+    "policy_state": None,
+    "response": None,
+    "reward": None,
+    "prediction": None,
+    "prediction_error": None,
+    "outcome_type": None,
+    "schedule": None,
+    "done": None,
+    "learning_enabled": None,
+    "metadata": {},
+}
+
+
+def _normalize_record_for_artifact(record):
+    out = dict(record)
+    for key, default in _ANALYSIS_RECORD_DEFAULTS.items():
+        if key not in out:
+            out[key] = {} if key == "metadata" else default
+    if out.get("step") is None:
+        out["step"] = out.get("trial_step")
+        if out.get("step") is None:
+            out["step"] = out.get("tick")
+    debug = out.get("debug")
+    if out.get("prediction_error") is None and isinstance(debug, dict):
+        out["prediction_error"] = debug.get("prediction_error")
+    metadata = out.get("metadata")
+    if out.get("policy_state") is None and isinstance(metadata, dict):
+        candidate = metadata.get("policy_state")
+        if isinstance(candidate, dict):
+            out["policy_state"] = dict(candidate)
+    return out
+
+
+def _load_engine_version() -> str:
+    try:
+        return _VERSION_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
 
 
 def _extract_mechanism_provenance(payload):
@@ -70,6 +129,54 @@ def _extract_mechanism_provenance(payload):
     }
 
 
+def _extract_artifact_identity(payload):
+    identity = {
+        "engine_version": _load_engine_version(),
+        "record_schema_version": "v1",
+        "plan_hash": None,
+        "seed_identity": None,
+        "mechanism_identity": None,
+    }
+
+    mechanism_provenance = _extract_mechanism_provenance(payload)
+    if isinstance(mechanism_provenance, dict):
+        identity["mechanism_identity"] = mechanism_provenance
+
+    if not isinstance(payload, dict):
+        return identity
+
+    plan = payload.get("plan")
+    if isinstance(plan, dict):
+        if plan.get("record_schema_version"):
+            identity["record_schema_version"] = str(plan.get("record_schema_version"))
+        if plan.get("seed") is not None:
+            identity["seed_identity"] = plan.get("seed")
+        canonical_payload = plan.get("canonical_payload")
+        if isinstance(canonical_payload, dict):
+            identity_payload = {
+                "canonical_payload": canonical_payload,
+                "record_schema_version": identity["record_schema_version"],
+            }
+            import hashlib
+
+            encoded = json.dumps(identity_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            identity["plan_hash"] = hashlib.sha256(encoded).hexdigest()
+
+    experiment = payload.get("experiment")
+    if identity["seed_identity"] is None and isinstance(experiment, dict):
+        program = experiment.get("program")
+        if isinstance(program, dict):
+            phases = program.get("phases")
+            if isinstance(phases, list) and phases:
+                first = phases[0]
+                if isinstance(first, dict):
+                    params = first.get("params")
+                    if isinstance(params, dict) and params.get("rng_seed") is not None:
+                        identity["seed_identity"] = params.get("rng_seed")
+
+    return identity
+
+
 def _extract_attention_summary(payload):
     if not isinstance(payload, dict):
         return None
@@ -108,6 +215,7 @@ class ReportArtifactWriter:
         return ReportRunContext(report_dir=report_dir, metrics_dir=metrics_dir)
 
     def write_provenance(self, *, records, payload, ctx: ReportRunContext) -> None:
+        normalized_records = [_normalize_record_for_artifact(record) for record in records]
         if payload is not None:
             canonical_payload = to_canonical_payload(payload)
             with open(ctx.report_dir / "payload.json", "w") as f:
@@ -120,9 +228,11 @@ class ReportArtifactWriter:
             if isinstance(mechanism_provenance, dict):
                 with open(ctx.report_dir / "mechanism_provenance.json", "w") as f:
                     json.dump(mechanism_provenance, f, indent=2)
+            with open(ctx.report_dir / "artifact_identity.json", "w") as f:
+                json.dump(_extract_artifact_identity(payload), f, indent=2)
 
         with open(ctx.report_dir / "records.json", "w") as f:
-            json.dump(records, f, indent=2)
+            json.dump(normalized_records, f, indent=2)
 
     def write_metric_output(self, *, metric_name: str, result, ctx: ReportRunContext) -> None:
         with open(ctx.metrics_dir / f"{metric_name}.json", "w") as f:

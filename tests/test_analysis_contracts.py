@@ -46,3 +46,23 @@ def test_analysis_interfaces_contract_execution(tmp_path):
 def test_analysis_context_from_empty_records():
     ctx = AnalysisContext.from_records([])
     assert ctx == AnalysisContext()
+
+
+def test_analysis_context_accepts_minimum_record_schema_fields():
+    ctx = AnalysisContext.from_records(
+        [
+            {
+                "trial": 0,
+                "step": 0,
+                "tick": 0,
+                "stimulus": None,
+                "action": None,
+                "reward": 0.0,
+                "prediction": 0.1,
+                "prediction_error": -0.1,
+                "policy_state": None,
+                "metadata": {},
+            }
+        ]
+    )
+    assert ctx.record_mode == "tick"

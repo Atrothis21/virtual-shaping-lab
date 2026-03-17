@@ -1,3 +1,5 @@
+import pytest
+
 from experiment.runtime_records import (
     DebugTelemetrySchemaValidator,
     FinalizationContext,
@@ -34,6 +36,7 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
         "subphase",
         "subphase_name",
         "trial",
+        "step",
         "tick",
         "t_s",
         "dt_s",
@@ -43,9 +46,11 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
         "stimulus",
         "stimulus_type",
         "action",
+        "policy_state",
         "response",
         "reward",
         "prediction",
+        "prediction_error",
         "outcome_type",
         "schedule",
         "done",
@@ -54,6 +59,22 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
     ):
         assert key in out
     assert out["metadata"] == {}
+
+
+def test_finalize_record_derives_minimum_schema_fields_from_common_runtime_data():
+    record = {
+        "phase": "timed",
+        "trial": 0,
+        "tick": 2,
+        "trial_step": 2,
+        "metadata": {"policy_state": {"mode": "epsilon_greedy"}},
+        "debug": {"prediction_error": -0.25, "active_features": ["tone"]},
+    }
+    out = finalize_record(record)
+
+    assert out["step"] == 2
+    assert out["prediction_error"] == pytest.approx(-0.25)
+    assert out["policy_state"] == {"mode": "epsilon_greedy"}
 
 
 def test_record_finalization_pipeline_matches_finalize_record_contract():

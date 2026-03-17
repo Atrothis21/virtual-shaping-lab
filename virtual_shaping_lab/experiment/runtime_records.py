@@ -16,6 +16,7 @@ _TRIAL_RECORD_DEFAULTS: dict[str, Any] = {
     "subphase": None,
     "subphase_name": None,
     "trial": None,
+    "step": None,
     "tick": None,
     "t_s": None,
     "dt_s": None,
@@ -25,9 +26,11 @@ _TRIAL_RECORD_DEFAULTS: dict[str, Any] = {
     "stimulus": None,
     "stimulus_type": None,
     "action": None,
+    "policy_state": None,
     "response": None,
     "reward": None,
     "prediction": None,
+    "prediction_error": None,
     "outcome_type": None,
     "schedule": None,
     "done": None,
@@ -67,6 +70,21 @@ class SchemaDefaultsNormalizer:
         for key, default in _TRIAL_RECORD_DEFAULTS.items():
             if key not in record:
                 record[key] = {} if key == "metadata" else default
+        if record.get("step") is None:
+            if record.get("trial_step") is not None:
+                record["step"] = record.get("trial_step")
+            else:
+                record["step"] = record.get("tick")
+        if record.get("prediction_error") is None:
+            debug = record.get("debug")
+            if isinstance(debug, dict):
+                record["prediction_error"] = debug.get("prediction_error")
+        if record.get("policy_state") is None:
+            metadata = record.get("metadata")
+            if isinstance(metadata, dict):
+                candidate = metadata.get("policy_state")
+                if isinstance(candidate, dict):
+                    record["policy_state"] = dict(candidate)
 
 
 class ProtocolMetadataNormalizer:

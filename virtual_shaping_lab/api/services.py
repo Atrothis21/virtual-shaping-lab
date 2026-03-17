@@ -243,6 +243,7 @@ class RunService:
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
             "provenance": str(report_dir / "mechanism_provenance.json"),
+            "artifact_identity": str(report_dir / "artifact_identity.json"),
         }
         return records, report_dir, artifacts
 
@@ -355,6 +356,7 @@ class ReportService:
         artifacts = {
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
+            "artifact_identity": str(report_dir / "artifact_identity.json"),
         }
         source_status = store.get(run_id) or {}
         source_metadata = dict(source_status.get("metadata", {}))
