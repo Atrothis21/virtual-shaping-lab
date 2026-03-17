@@ -67,3 +67,37 @@ def test_policy_and_prediction_error_interaction_changes_operant_outcomes():
 
     assert exploit_reward > poor_reward
     assert exploit_prediction > poor_prediction
+
+
+def test_fixed_policy_localizes_behavior_change_without_representation_change():
+    left_payload = matching_law_payload()
+    right_payload = matching_law_payload()
+
+    left_payload["experiment"]["agent"]["policy"] = {
+        "name": "fixed",
+        "params": {"action": "left"},
+    }
+    right_payload["experiment"]["agent"]["policy"] = {
+        "name": "fixed",
+        "params": {"action": "right"},
+    }
+
+    left_phase = left_payload["experiment"]["program"]["phases"][0]
+    right_phase = right_payload["experiment"]["program"]["phases"][0]
+    left_phase.setdefault("params", {})
+    right_phase.setdefault("params", {})
+    left_phase["params"]["schedule_left"] = {"type": "fixed_ratio", "value": 1}
+    left_phase["params"]["schedule_right"] = {"type": "fixed_ratio", "value": 10}
+    right_phase["params"]["schedule_left"] = {"type": "fixed_ratio", "value": 1}
+    right_phase["params"]["schedule_right"] = {"type": "fixed_ratio", "value": 10}
+
+    left_records = _run_records(left_payload)
+    right_records = _run_records(right_payload)
+
+    left_actions = {record.get("action") for record in left_records if record.get("action") is not None}
+    right_actions = {record.get("action") for record in right_records if record.get("action") is not None}
+
+    assert len(left_actions) == 1
+    assert len(right_actions) == 1
+    assert left_actions != right_actions
+    assert left_records[0].get("stimulus") == right_records[0].get("stimulus")

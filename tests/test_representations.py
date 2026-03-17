@@ -661,3 +661,22 @@ def test_similarity_then_salience_order_is_not_equivalent_to_salience_then_simil
     assert ordered[encoder._index["global:noise"]] == pytest.approx(0.1)
     assert reordered[encoder._index["global:noise"]] == pytest.approx(0.4)
     assert not np.allclose(ordered, reordered)
+
+
+def test_near_zero_salience_degenerate_regime_suppresses_representation_magnitude():
+    rep = VectorElementalRepresentation(
+        params={
+            "stimuli": ["tone"],
+            "contexts": ["A"],
+            "include_global": True,
+            "include_context": True,
+            "salience": {"tone": 1e-6},
+        }
+    )
+
+    vec = rep.encode(make_observation(["tone"], "A")).x
+    tone_entries = [value for value in vec if value > 0.0]
+
+    assert rep.dimension == vec.shape[0]
+    assert tone_entries
+    assert max(tone_entries) == pytest.approx(1e-6)

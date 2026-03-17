@@ -231,3 +231,16 @@ def test_temporal_basis_and_prediction_error_rule_interact_via_bootstrap():
 
     assert rw.weights[0] == pytest.approx(0.0)
     assert td.weights[0] > rw.weights[0]
+
+
+def test_zero_attention_degenerate_regime_freezes_learning_update():
+    learner = RescorlaWagnerLearner(state_dim=2, alpha=0.5)
+    learner.set_attention_config(
+        name="static",
+        params={"default": 0.0, "overrides": {"tone": 0.0}},
+    )
+
+    state = s([1.0, 0.0])
+    learner.update(t(state, reward=1.0, metadata={"cue_labels": ["tone"]}))
+
+    np.testing.assert_allclose(learner.weights, np.asarray([0.0, 0.0], dtype=float))
