@@ -1,7 +1,7 @@
-# Core Engine Architecture (V2.18.0)
+# Core Engine Architecture (V2.19.2)
 
 ## Purpose
-This document describes the current core engine architecture for Virtual Shaping Lab (V2.18.0), including runtime control flow, object boundaries, mathematical-object formalization, extension points, test governance, and known gaps.
+This document describes the finalized V2 core engine architecture for Virtual Shaping Lab (V2.19.2), including runtime control flow, object boundaries, mathematical-object formalization, extension points, test governance, and known gaps.
 
 UI/browser contract authority:
 - `docs/ui_contract_manifest.md`
