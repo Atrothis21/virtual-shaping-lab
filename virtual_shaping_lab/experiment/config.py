@@ -59,26 +59,22 @@ class PayloadNormalizer:
         parser: "ConfigParser",
     ) -> Dict[str, Any]:
         representation = parser.parse_representation(exp)
+        program = parser.parse_program(exp)
+        learning = parser.parse_learning(exp)
         policy = parser.parse_policy(exp)
         runtime = parser.parse_runtime(exp)
-        (
-            exp_stimuli,
-            exp_salience,
-            exp_attention,
-            exp_context_inference,
-            exp_attention_config,
-        ) = parser.parse_experiment_fields(exp)
-        phases = parser.parse_phases(exp)
+        exp_stimuli, exp_salience = parser.parse_representation_fields(representation)
+        exp_context_inference = parser.parse_runtime_context(exp)
         return {
             "representation": representation,
             "policy": policy,
             "runtime": runtime,
             "stimuli": exp_stimuli,
             "salience": exp_salience,
-            "attention": exp_attention,
-            "attention_config": exp_attention_config,
+            "attention": learning["attention"],
+            "attention_config": learning["attention_config"],
             "context_inference": exp_context_inference,
-            "phases": phases,
+            "phases": program["phases"],
         }
 
     @staticmethod
@@ -162,20 +158,42 @@ class ConfigParser:
     def parse_representation(self, exp: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
         return self._config_cls._parse_representation(exp)
 
+    def parse_program(self, exp: Dict[str, Any]) -> Dict[str, Any]:
+        return self._config_cls._parse_program(exp)
+
+    def parse_learning(self, exp: Dict[str, Any]) -> Dict[str, Any]:
+        return self._config_cls._parse_learning(exp)
+
     def parse_policy(self, exp: Dict[str, Any]) -> Optional[Union[str, Dict[str, Any]]]:
         return self._config_cls._parse_policy(exp)
 
     def parse_runtime(self, exp: Dict[str, Any]) -> Dict[str, Any]:
         return self._config_cls._parse_runtime(exp)
 
+    def parse_representation_fields(
+        self,
+        representation: Union[str, Dict[str, Any]],
+    ) -> Tuple[List[str], Dict[str, float]]:
+        return self._config_cls._parse_representation_fields(representation)
+
+    def parse_runtime_context(self, exp: Dict[str, Any]) -> Dict[str, Any]:
+        return self._config_cls._parse_runtime_context(exp)
+
     def parse_experiment_fields(
         self,
         exp: Dict[str, Any],
     ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any], Dict[str, Any]]:
-        return self._config_cls._parse_experiment_fields(exp)
+        representation = self.parse_representation(exp)
+        learning = self.parse_learning(exp)
+        return (
+            *self.parse_representation_fields(representation),
+            learning["attention"],
+            self.parse_runtime_context(exp),
+            learning["attention_config"],
+        )
 
     def parse_phases(self, exp: Dict[str, Any]) -> List["PhaseConfig"]:
-        return self._config_cls._parse_phases(exp)
+        return self.parse_program(exp)["phases"]
 
 
 class ConfigPipeline:
@@ -637,6 +655,10 @@ class ExperimentConfig:
         return normalized
 
     @classmethod
+    def _parse_program(cls, exp: Dict[str, Any]) -> Dict[str, Any]:
+        return {"phases": cls._parse_phases(exp)}
+
+    @classmethod
     def _parse_phases(cls, exp: Dict[str, Any]) -> List[PhaseConfig]:
         phases: List[PhaseConfig] = []
         program = exp.get("program")
@@ -673,18 +695,37 @@ class ExperimentConfig:
         return phases
 
     @classmethod
-    def _parse_experiment_fields(
-        cls,
-        exp: Dict[str, Any],
-    ) -> Tuple[List[str], Dict[str, float], Dict[str, float], Dict[str, Any], Dict[str, Any]]:
-        exp_stimuli, exp_salience = [], {}
-        exp_attention: Dict[str, float] = {}
-        exp_context_inference: Dict[str, Any] = {}
-        exp_attention_config: Dict[str, Any] = {"name": "none", "params": {}}
+    def _parse_learning(cls, exp: Dict[str, Any]) -> Dict[str, Any]:
         agent = exp.get("agent", {})
         if not isinstance(agent, dict):
             raise ValueError("experiment.agent must be an object")
-        representation = agent.get("representation", {})
+        learning = agent.get("learning", {})
+        if not isinstance(learning, dict):
+            raise ValueError("experiment.agent.learning must be an object")
+        attention_block = learning.get("attention", {})
+        exp_attention: Dict[str, float] = {}
+        exp_attention_config: Dict[str, Any] = {"name": "none", "params": {}}
+        if isinstance(attention_block, dict):
+            exp_attention = cls._normalize_attention(attention_block.get("initial"))
+            exp_attention_config = cls._normalize_attention_config(
+                attention_field=attention_block.get("initial"),
+                attention_config_field=(
+                    attention_block.get("config")
+                    if isinstance(attention_block.get("config"), dict) and attention_block.get("config")
+                    else None
+                ),
+            )
+        return {
+            "attention": exp_attention,
+            "attention_config": exp_attention_config,
+        }
+
+    @classmethod
+    def _parse_representation_fields(
+        cls,
+        representation: Union[str, Dict[str, Any]],
+    ) -> Tuple[List[str], Dict[str, float]]:
+        exp_stimuli, exp_salience = [], {}
         if isinstance(representation, dict):
             rep_params = representation.get("params", {})
             if isinstance(rep_params, dict):
@@ -700,32 +741,16 @@ class ExperimentConfig:
                             }
                         except (TypeError, ValueError):
                             _, exp_salience = cls._normalize_stimuli(salience_field)
+        return exp_stimuli, exp_salience
 
-        learning = agent.get("learning", {})
-        attention_block = learning.get("attention", {}) if isinstance(learning, dict) else {}
-        if isinstance(attention_block, dict):
-            exp_attention = cls._normalize_attention(attention_block.get("initial"))
-            exp_attention_config = cls._normalize_attention_config(
-                attention_field=attention_block.get("initial"),
-                attention_config_field=(
-                    attention_block.get("config")
-                    if isinstance(attention_block.get("config"), dict) and attention_block.get("config")
-                    else None
-                ),
-            )
-
+    @staticmethod
+    def _parse_runtime_context(exp: Dict[str, Any]) -> Dict[str, Any]:
+        exp_context_inference: Dict[str, Any] = {}
         if "runtime" in exp and isinstance(exp["runtime"], dict):
             context_inference = exp["runtime"].get("context_inference")
             if isinstance(context_inference, dict):
                 exp_context_inference = context_inference
-
-        return (
-            exp_stimuli,
-            exp_salience,
-            exp_attention,
-            exp_context_inference,
-            exp_attention_config,
-        )
+        return exp_context_inference
 
     @classmethod
     def validate_runtime_constraints(cls, phases: List[PhaseConfig]) -> None:

@@ -355,6 +355,23 @@ def test_parse_policy_errors():
         ExperimentConfig._parse_policy(exp)
 
 
+def test_parse_learning_normalizes_attention_ownership():
+    exp = {
+        "agent": {
+            "learning": {
+                "rule": "rescorla_wagner",
+                "attention": {
+                    "initial": {"tone": {"attention": 0.6}},
+                    "config": {"name": "static", "params": {"default": 1.0}},
+                },
+            }
+        }
+    }
+    learning = ExperimentConfig._parse_learning(exp)
+    assert learning["attention"] == {"tone": 0.6}
+    assert learning["attention_config"]["name"] == "static"
+
+
 def test_parse_phases_errors():
     exp = {"program": {"phases": [{"params": {}}]}}
     with pytest.raises(ValueError):
@@ -676,6 +693,8 @@ def test_config_parser_composite_smoke():
     payload = _base_payload()
     exp = payload["experiment"]
     parser = ConfigParser(ExperimentConfig)
+    assert len(parser.parse_program(exp)["phases"]) == 1
+    assert parser.parse_learning(exp)["attention_config"]["name"] == "none"
     assert parser.parse_representation(exp)["name"] == "vector_elemental"
     assert parser.parse_policy(exp) is None
     assert len(parser.parse_phases(exp)) == 1
