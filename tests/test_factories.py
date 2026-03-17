@@ -5,12 +5,12 @@ from experiment.factories.learner_factory import build_learner, validate_learner
 from experiment.factories.policy_factory import build_policy, validate_policy
 from experiment.factories.representation_factory import build_representation, validate_representation
 from experiment.factories import learner_factory
-from experiment.factories import phase_factory
 from experiment.factories import policy_factory
 from experiment.factories import protocol_factory
 from experiment.factories import representation_factory
 from experiment.factories import reward_schedule_factory
 from experiment.domain.types import TrialTimeSpec
+from experiment.phases import catalog_runtime as phase_factory
 from experiment.phases.templates import PhaseTemplate
 
 
@@ -76,9 +76,9 @@ def test_learner_factory_unknown_and_build(monkeypatch):
 
 
 def test_phase_factory_branches(monkeypatch):
-    monkeypatch.setattr(phase_factory, "PHASE_REGISTRY", {"dummy": DummyPhase})
+    monkeypatch.setattr(phase_factory, "PHASE_BUILDERS", {"dummy": DummyPhase})
     with pytest.raises(KeyError):
-        phase_factory.validate_phase("missing")
+        phase_factory.validate_phase_key("missing")
 
     inst = phase_factory.build_phase("dummy", agent="agent")
     assert inst.kwargs == {"agent": "agent", "params": {}}
