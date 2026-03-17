@@ -3,75 +3,8 @@ window.VSLReact = window.VSLReact || {};
 window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload) {
   if (!payload || typeof payload !== "object") return payload;
   const experiment = payload.experiment || {};
-  if (experiment.program && experiment.agent) return payload;
-
-  const legacyPhases = Array.isArray(experiment.phases) && experiment.phases.length
-    ? experiment.phases
-    : (experiment.protocol
-      ? [{
-          name: "Phase 0",
-          protocol: experiment.protocol,
-          stimuli: experiment.stimuli || null,
-          params: (experiment.params && typeof experiment.params === "object") ? { ...experiment.params } : {},
-        }]
-      : []);
-
-  const phases = legacyPhases.map((phase, idx) => {
-    const params = (phase && typeof phase.params === "object") ? { ...phase.params } : {};
-    const trials = Number.isInteger(phase?.trials)
-      ? phase.trials
-      : Number.isInteger(params.n_trials)
-        ? params.n_trials
-        : 1;
-    params.n_trials = trials;
-    return {
-      name: phase?.name || `Phase ${idx}`,
-      protocol: phase?.protocol,
-      stimuli: phase?.stimuli || null,
-      params,
-      trials,
-    };
-  });
-
-  const representation = (experiment.representation && typeof experiment.representation === "object")
-    ? { ...experiment.representation, params: { ...(experiment.representation.params || {}) } }
-    : { name: experiment.representation, params: {} };
-
-  if (experiment.salience && typeof experiment.salience === "object") {
-    representation.salience = { ...experiment.salience };
-  }
-
-  const runtime = (experiment.runtime && typeof experiment.runtime === "object")
-    ? { ...experiment.runtime }
-    : {};
-  if (experiment.context_inference && typeof experiment.context_inference === "object") {
-    runtime.context_inference = { ...experiment.context_inference };
-  }
-
-  return {
-    experiment: {
-      program: { phases },
-      agent: {
-        name: experiment.agent,
-        representation,
-        learning: {
-          rule: experiment.learner,
-          params: {},
-          attention: {
-            config: (experiment.attention_config && typeof experiment.attention_config === "object")
-              ? { ...experiment.attention_config }
-              : {},
-            initial: (experiment.attention && typeof experiment.attention === "object")
-              ? { ...experiment.attention }
-              : {},
-          },
-        },
-        policy: experiment.policy ?? null,
-      },
-      runtime,
-    },
-    report: payload.report || {},
-  };
+  if (experiment.program && experiment.agent && experiment.runtime) return payload;
+  throw new Error("Teaching panel requires canonical payloads.");
 };
 
 const MECHANISM_HELP = {

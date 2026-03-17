@@ -36,7 +36,12 @@ function validateBeforeRun(payload) {
     throw new Error("Invalid payload.");
   }
 
-  const phases = payload.experiment.phases || [];
+  const phases =
+    payload.experiment &&
+    payload.experiment.program &&
+    Array.isArray(payload.experiment.program.phases)
+      ? payload.experiment.program.phases
+      : [];
   if (!Array.isArray(phases) || phases.length === 0) {
     throw new Error("At least one phase is required.");
   }

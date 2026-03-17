@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, ValidationError
-from experiment.payload_contract import is_legacy_payload, to_canonical_payload
+from experiment.payload_contract import to_canonical_payload
 
 
 SCHEMA_DIR = Path(__file__).parent / "schema"
@@ -93,11 +93,7 @@ def _validate_top_level(payload: dict) -> dict:
     if EXPERIMENT_V2_SCHEMA_PATH.exists():
         _validate_schema(canonical_exp, EXPERIMENT_V2_SCHEMA_PATH, "experiment")
     elif EXPERIMENT_SCHEMA_PATH.exists():
-        # Fallback: legacy schema still loaded in transition window.
-        _validate_schema(exp, EXPERIMENT_SCHEMA_PATH, "experiment")
-
-    # Compatibility is intentionally non-failing during transition.
-    _ = is_legacy_payload(payload)
+        _validate_schema(canonical_exp, EXPERIMENT_SCHEMA_PATH, "experiment")
 
     return canonical_exp
 
