@@ -9,7 +9,6 @@ from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
-from experiment.runtime_records import finalize_record
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
@@ -23,6 +22,57 @@ def _to_jsonable(value):
     if isinstance(value, tuple):
         return [_to_jsonable(v) for v in value]
     return value
+
+
+_ANALYSIS_RECORD_DEFAULTS = {
+    "phase": None,
+    "phase_name": None,
+    "protocol_name": None,
+    "unit_path": None,
+    "subphase": None,
+    "subphase_name": None,
+    "trial": None,
+    "step": None,
+    "tick": None,
+    "t_s": None,
+    "dt_s": None,
+    "trial_step": None,
+    "trial_id": None,
+    "context": None,
+    "stimulus": None,
+    "stimulus_type": None,
+    "action": None,
+    "policy_state": None,
+    "response": None,
+    "reward": None,
+    "prediction": None,
+    "prediction_error": None,
+    "outcome_type": None,
+    "schedule": None,
+    "done": None,
+    "learning_enabled": None,
+    "metadata": {},
+}
+
+
+def _normalize_record_for_artifact(record):
+    out = dict(record)
+    for key, default in _ANALYSIS_RECORD_DEFAULTS.items():
+        if key not in out:
+            out[key] = {} if key == "metadata" else default
+    if out.get("step") is None:
+        out["step"] = out.get("trial_step")
+        if out.get("step") is None:
+            out["step"] = out.get("tick")
+    debug = out.get("debug")
+    if out.get("prediction_error") is None and isinstance(debug, dict):
+        out["prediction_error"] = debug.get("prediction_error")
+    metadata = out.get("metadata")
+    if out.get("policy_state") is None and isinstance(metadata, dict):
+        candidate = metadata.get("policy_state")
+        if isinstance(candidate, dict):
+            out["policy_state"] = dict(candidate)
+    return out
 
 
 def _load_engine_version() -> str:
@@ -165,7 +215,7 @@ class ReportArtifactWriter:
         return ReportRunContext(report_dir=report_dir, metrics_dir=metrics_dir)
 
     def write_provenance(self, *, records, payload, ctx: ReportRunContext) -> None:
-        normalized_records = [finalize_record(dict(record)) for record in records]
+        normalized_records = [_normalize_record_for_artifact(record) for record in records]
         if payload is not None:
             canonical_payload = to_canonical_payload(payload)
             with open(ctx.report_dir / "payload.json", "w") as f:
