@@ -146,61 +146,19 @@ class RunService:
     @staticmethod
     @staticmethod
     def _build_report_payload_from_plan(plan: ExperimentPlan) -> Dict[str, Any]:
-        settings = dict(plan.settings or {})
-        units = list(plan.units or [])
-        phases: list[Dict[str, Any]] = []
-        for i, unit in enumerate(units):
-            if isinstance(unit, dict):
-                params = unit.get("params") or {}
-                trials = params.get("n_trials")
-                if trials is None:
-                    trials = 1
-                phases.append(
-                    {
-                        "name": unit.get("name", f"Phase {i}"),
-                        "protocol": unit.get("protocol"),
-                        "stimuli": unit.get("stimuli"),
-                        "params": params,
-                        "trials": int(trials),
-                    }
-                )
-        runtime = (
-            ((settings.get("composed_parameters") or {}).get("runtime") or {})
-            if isinstance(settings.get("composed_parameters"), dict)
-            else {}
+        payload = to_canonical_payload(
+            {
+                "experiment": dict(plan.canonical_payload.get("experiment", {}) or {}),
+                "report": dict(plan.canonical_payload.get("report", {}) or {}),
+            }
         )
-        runtime = dict(runtime) if isinstance(runtime, dict) else {}
-        if isinstance(settings.get("context_inference"), dict):
-            runtime.setdefault("context_inference", dict(settings.get("context_inference", {})))
-
-        return {
-            "experiment": {
-                "program": {
-                    "phases": phases,
-                },
-                "agent": {
-                    "name": settings.get("agent"),
-                    "representation": settings.get("representation"),
-                    "learning": {
-                        "rule": settings.get("learner"),
-                        "params": {},
-                        "attention": {
-                            "config": settings.get("attention_config", {}),
-                            "initial": settings.get("attention", {}),
-                        },
-                    },
-                    "policy": settings.get("policy"),
-                },
-                "runtime": runtime,
-            },
-            "report": {
-                "preset": settings.get("report_preset", "verification_report"),
-            },
-            "provenance": {
-                "mechanisms": _build_mechanism_provenance(plan),
-            },
-            "plan": plan.to_dict(),
+        if not payload.get("report"):
+            payload["report"] = {"preset": "verification_report"}
+        payload["provenance"] = {
+            "mechanisms": _build_mechanism_provenance(plan),
         }
+        payload["plan"] = plan.to_dict()
+        return payload
 
     @staticmethod
     def _run_experiment(*, plan: ExperimentPlan, reports_dir: Path):
