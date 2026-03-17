@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from ui.contracts.builder_draft import BuilderExperimentDraft
-from experiment.payload_contract import from_legacy_payload
 
 _KNOWN_REPORT_PRESETS = {
     "aab_renewal",
@@ -64,8 +63,70 @@ def _infer_representation_stimuli(experiment: dict[str, Any]) -> list[str]:
             _collect_stimuli(params.get("actions", []), stimuli)
     _collect_stimuli(experiment.get("params", {}).get("action_labels", []), stimuli)
 
-    ordered = sorted(stimuli)
-    return ordered
+    return sorted(stimuli)
+
+
+def _normalize_representation(experiment: dict[str, Any]) -> dict[str, Any]:
+    representation = experiment.get("representation")
+    if isinstance(representation, dict):
+        return representation
+    if isinstance(representation, str):
+        inferred_stimuli = _infer_representation_stimuli(experiment)
+        if not inferred_stimuli:
+            raise ValueError(
+                "Cannot infer representation.params.stimuli from builder draft; "
+                "add experiment/phase stimuli or operant action labels."
+            )
+        return {
+            "name": representation,
+            "params": {
+                "stimuli": inferred_stimuli,
+                "max_compound_size": 2,
+            },
+        }
+    raise ValueError("Builder draft representation must be a string or object.")
+
+
+def _resolve_trials(params: dict[str, Any]) -> int:
+    trials = params.get("n_trials", 1)
+    try:
+        trials = int(trials)
+    except (TypeError, ValueError):
+        raise ValueError("Builder draft phase params.n_trials must be an integer.")
+    if trials <= 0:
+        raise ValueError("Builder draft phase params.n_trials must be > 0.")
+    return trials
+
+
+def _canonical_phases(experiment: dict[str, Any]) -> list[dict[str, Any]]:
+    phases = experiment.get("phases")
+    if isinstance(phases, list) and phases:
+        out: list[dict[str, Any]] = []
+        for idx, phase in enumerate(phases):
+            if not isinstance(phase, dict):
+                raise ValueError(f"Builder phase[{idx}] must be an object.")
+            params = dict(phase.get("params", {}) or {})
+            out.append(
+                {
+                    "name": phase.get("name") or f"Phase {idx}",
+                    "protocol": phase.get("protocol"),
+                    "stimuli": dict(phase.get("stimuli", {}) or {}),
+                    "params": params,
+                    "trials": _resolve_trials(params),
+                }
+            )
+        return out
+
+    params = dict(experiment.get("params", {}) or {})
+    return [
+        {
+            "name": "Phase 0",
+            "protocol": experiment.get("protocol"),
+            "stimuli": dict(experiment.get("stimuli", {}) or {}),
+            "params": params,
+            "trials": _resolve_trials(params),
+        }
+    ]
 
 
 def draft_to_payload(
@@ -74,7 +135,7 @@ def draft_to_payload(
     report_preset: str | None = None,
 ) -> dict[str, Any]:
     """
-    Translate a typed builder draft into a run-ready API payload shape.
+    Translate a typed builder draft into a canonical run-ready API payload.
 
     Translation scope is intentionally minimal:
     - preserve builder-authored field values
@@ -83,25 +144,27 @@ def draft_to_payload(
     """
     typed = BuilderExperimentDraft.from_dict(draft) if isinstance(draft, dict) else draft
     experiment = typed.to_dict()
-    # UI draft keeps representation as a simple key; runtime payload expects object form.
-    representation_value = experiment.get("representation")
-    if isinstance(representation_value, str):
-        inferred_stimuli = _infer_representation_stimuli(experiment)
-        if not inferred_stimuli:
-            raise ValueError(
-                "Cannot infer representation.params.stimuli from builder draft; "
-                "add experiment/phase stimuli or operant action labels."
-            )
-        experiment["representation"] = {
-            "name": representation_value,
-            "params": {
-                "stimuli": inferred_stimuli,
-                "max_compound_size": 2,
-            },
-        }
     preset = report_preset if report_preset is not None else _default_report_preset(typed)
-    legacy_payload = {
-        "experiment": experiment,
+
+    return {
+        "experiment": {
+            "program": {
+                "phases": _canonical_phases(experiment),
+            },
+            "agent": {
+                "name": experiment.get("agent"),
+                "representation": _normalize_representation(experiment),
+                "learning": {
+                    "rule": experiment.get("learner"),
+                    "params": {},
+                    "attention": {
+                        "config": {"name": "none", "params": {}},
+                        "initial": {},
+                    },
+                },
+                "policy": experiment.get("policy"),
+            },
+            "runtime": dict(experiment.get("runtime", {}) or {}),
+        },
         "report": {"preset": preset},
     }
-    return from_legacy_payload(legacy_payload)
