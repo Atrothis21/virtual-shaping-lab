@@ -76,9 +76,9 @@ def test_learner_factory_unknown_and_build(monkeypatch):
 
 
 def test_phase_factory_branches(monkeypatch):
-    monkeypatch.setattr(phase_factory, "PHASE_REGISTRY", {"dummy": DummyPhase})
+    monkeypatch.setattr(phase_factory, "PHASE_BUILDERS", {"dummy": DummyPhase})
     with pytest.raises(KeyError):
-        phase_factory.validate_phase("missing")
+        phase_factory.validate_phase_key("missing")
 
     inst = phase_factory.build_phase("dummy", agent="agent")
     assert inst.kwargs == {"agent": "agent", "params": {}}
