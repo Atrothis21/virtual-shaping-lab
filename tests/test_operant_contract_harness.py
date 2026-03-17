@@ -148,18 +148,16 @@ def test_operant_payload_policy_guard_accepts_operant_and_rejects_classical():
         "params": {"actions": ["action_0", "action_1"], "epsilon": 0.1},
     }
     validate_payload(classical_payload)
-    cfg = ExperimentConfig.from_payload(classical_payload)
     with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
-        assemble_experiment(cfg)
+        ExperimentConfig.from_payload(classical_payload)
 
 
 def test_operant_payload_requires_policy_at_validation():
     payload = operant_conditioning_payload()
     payload["experiment"]["agent"]["policy"] = None
     validate_payload(payload)
-    cfg = ExperimentConfig.from_payload(payload)
     with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
-        assemble_experiment(cfg)
+        ExperimentConfig.from_payload(payload)
 
 
 def test_operant_fixture_assembles_composed_agent_and_action_learner():

@@ -355,6 +355,23 @@ def test_parse_policy_errors():
         ExperimentConfig._parse_policy(exp)
 
 
+def test_parse_learning_normalizes_attention_ownership():
+    exp = {
+        "agent": {
+            "learning": {
+                "rule": "rescorla_wagner",
+                "attention": {
+                    "initial": {"tone": {"attention": 0.6}},
+                    "config": {"name": "static", "params": {"default": 1.0}},
+                },
+            }
+        }
+    }
+    learning = ExperimentConfig._parse_learning(exp)
+    assert learning["attention"] == {"tone": 0.6}
+    assert learning["attention_config"]["name"] == "static"
+
+
 def test_parse_phases_errors():
     exp = {"program": {"phases": [{"params": {}}]}}
     with pytest.raises(ValueError):
@@ -482,6 +499,18 @@ def test_from_payload_rejects_invalid_experiment_identity_fields():
     payload = _base_payload()
     payload["experiment"]["agent"]["name"] = 123
     with pytest.raises(ValueError, match="experiment.agent.name must be a non-empty string"):
+        ExperimentConfig.from_payload(payload)
+
+
+def test_from_payload_rejects_classical_policy_and_missing_operant_policy():
+    payload = _base_payload()
+    payload["experiment"]["agent"]["policy"] = {"name": "fixed", "params": {"action": "left"}}
+    with pytest.raises(ValueError, match="Classical assembly path does not accept policy"):
+        ExperimentConfig.from_payload(payload)
+
+    payload = _base_payload()
+    payload["experiment"]["agent"]["name"] = "operant_agent"
+    with pytest.raises(ValueError, match="Operant assembly path requires an explicit policy"):
         ExperimentConfig.from_payload(payload)
 
 
@@ -676,6 +705,8 @@ def test_config_parser_composite_smoke():
     payload = _base_payload()
     exp = payload["experiment"]
     parser = ConfigParser(ExperimentConfig)
+    assert len(parser.parse_program(exp)["phases"]) == 1
+    assert parser.parse_learning(exp)["attention_config"]["name"] == "none"
     assert parser.parse_representation(exp)["name"] == "vector_elemental"
     assert parser.parse_policy(exp) is None
     assert len(parser.parse_phases(exp)) == 1
