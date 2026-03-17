@@ -18,6 +18,7 @@ from preset_payloads import (
     extinction_payload,
     operant_conditioning_payload,
     overshadowing_payload,
+    rapid_reacquisition_payload,
 )
 
 
@@ -160,5 +161,14 @@ GOLDEN_BEHAVIOR_FIXTURES: dict[str, GoldenBehaviorFixture] = {
         payload_factory=operant_conditioning_payload,
         qualitative_expectation="fixed ratio yields higher reinforcement density than fixed interval in the current operant path",
         thresholds={"min_reinforcement_density_gap": 0.6},
+    ),
+    "rapid_reacquisition_recovery": GoldenBehaviorFixture(
+        key="rapid_reacquisition_recovery",
+        payload_factory=rapid_reacquisition_payload,
+        qualitative_expectation="reacquisition returns above extinction and back toward high responding after prior extinction",
+        thresholds={
+            "min_reacquisition_vs_extinction_gain": 0.2,
+            "min_reacquisition_tail": 0.8,
+        },
     ),
 }
