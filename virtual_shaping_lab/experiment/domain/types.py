@@ -33,6 +33,7 @@ class TrialRecord(TypedDict, total=False):
     subphase_name: str | None
 
     trial: int | None
+    step: int | None
     tick: int | None
     t_s: float | None
     dt_s: float | None
@@ -43,9 +44,11 @@ class TrialRecord(TypedDict, total=False):
     stimulus: Any
     stimulus_type: str | None
     action: Any
+    policy_state: dict[str, Any] | None
     response: Any
     reward: float | None
     prediction: float | None
+    prediction_error: float | None
     outcome_type: str | None
     schedule: str | None
     done: bool | None

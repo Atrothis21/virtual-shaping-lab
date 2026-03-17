@@ -9,6 +9,7 @@ from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
+from experiment.runtime_records import finalize_record
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 
@@ -108,6 +109,7 @@ class ReportArtifactWriter:
         return ReportRunContext(report_dir=report_dir, metrics_dir=metrics_dir)
 
     def write_provenance(self, *, records, payload, ctx: ReportRunContext) -> None:
+        normalized_records = [finalize_record(dict(record)) for record in records]
         if payload is not None:
             canonical_payload = to_canonical_payload(payload)
             with open(ctx.report_dir / "payload.json", "w") as f:
@@ -122,7 +124,7 @@ class ReportArtifactWriter:
                     json.dump(mechanism_provenance, f, indent=2)
 
         with open(ctx.report_dir / "records.json", "w") as f:
-            json.dump(records, f, indent=2)
+            json.dump(normalized_records, f, indent=2)
 
     def write_metric_output(self, *, metric_name: str, result, ctx: ReportRunContext) -> None:
         with open(ctx.metrics_dir / f"{metric_name}.json", "w") as f:

@@ -177,6 +177,16 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
 
     stored_payload = json.loads((report_dir / "payload.json").read_text())
     assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
+    stored_records = json.loads((report_dir / "records.json").read_text())
+    assert stored_records[0]["trial"] == 0
+    assert "step" in stored_records[0]
+    assert "tick" in stored_records[0]
+    assert "stimulus" in stored_records[0]
+    assert "action" in stored_records[0]
+    assert "reward" in stored_records[0]
+    assert "prediction" in stored_records[0]
+    assert "prediction_error" in stored_records[0]
+    assert "policy_state" in stored_records[0]
     attention = json.loads((report_dir / "attention_summary.json").read_text())
     assert attention == {"tone": 0.7}
     mechanism_provenance = json.loads((report_dir / "mechanism_provenance.json").read_text())
