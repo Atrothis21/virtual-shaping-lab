@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
+from virtual_shaping_lab.agents.policies.null_policy import NullPolicy
 from virtual_shaping_lab.agents.math_objects.attention_objects import build_attention_mechanism
 from virtual_shaping_lab.agents.math_objects.prediction_error_objects import (
     RescorlaWagnerPredictionError,
@@ -63,6 +64,11 @@ def _get_composed_units(config) -> list[dict[str, Any]]:
 
 
 def _resolve_learner_name(config) -> str:
+    learning_config = getattr(config, "learning_config", None)
+    if isinstance(learning_config, dict):
+        rule = learning_config.get("rule")
+        if isinstance(rule, str) and rule:
+            return rule
     composed_learner = _get_composed_learner(config)
     algorithm = composed_learner.get("algorithm")
     if isinstance(algorithm, str) and algorithm:
@@ -302,6 +308,11 @@ def _build_attention_mechanism_object(config):
 
 def _assign_attention_map(config, learner):
     attention_cfg = getattr(config, "attention_config", None)
+    learning_config = getattr(config, "learning_config", None)
+    if isinstance(learning_config, dict):
+        attention_block = learning_config.get("attention", {})
+        if isinstance(attention_block, dict) and isinstance(attention_block.get("config"), dict):
+            attention_cfg = attention_block.get("config")
     if isinstance(attention_cfg, dict):
         cfg_name = attention_cfg.get("name")
         cfg_params = attention_cfg.get("params", {})
@@ -312,6 +323,10 @@ def _assign_attention_map(config, learner):
             )
 
     attention_map = dict(getattr(config, "attention", None) or {})
+    if isinstance(learning_config, dict):
+        attention_block = learning_config.get("attention", {})
+        if isinstance(attention_block, dict) and isinstance(attention_block.get("initial"), dict):
+            attention_map = dict(attention_block.get("initial", {}))
     if not attention_map:
         composed_learner = _get_composed_learner(config)
         composed_attention = composed_learner.get("attention", {}) if isinstance(composed_learner.get("attention"), dict) else {}
@@ -327,7 +342,11 @@ def _assign_attention_map(config, learner):
 
 
 def _build_policy_from_config(config):
-    if not (hasattr(config, "policy") and config.policy):
+    policy_config = getattr(config, "policy_config", None)
+    if policy_config is None:
+        policy_config = getattr(config, "policy", None)
+
+    if not policy_config:
         composed_policy = _get_composed_policy(config)
         policy_name = composed_policy.get("name")
         if isinstance(policy_name, str) and policy_name and policy_name != "null":
@@ -341,54 +360,29 @@ def _build_policy_from_config(config):
             if policy_actions is None and "action" in policy_params:
                 policy_actions = [policy_params.get("action")]
             return policy, policy_actions
-        return None, None
+        return NullPolicy(), None
 
-    if isinstance(config.policy, dict):
-        policy_name = config.policy.get("name")
-        policy_params = config.policy.get("params", {})
+    if isinstance(policy_config, dict):
+        policy_name = policy_config.get("name")
+        if policy_name == "null":
+            return NullPolicy(), None
+        policy_params = policy_config.get("params", {})
         policy = build_policy(policy_name, **policy_params)
         policy_actions = policy_params.get("actions")
         if policy_actions is None and "action" in policy_params:
             policy_actions = [policy_params.get("action")]
         return policy, policy_actions
 
-    if isinstance(config.policy, str):
-        return build_policy(config.policy), None
+    if isinstance(policy_config, str):
+        if policy_config == "null":
+            return NullPolicy(), None
+        return build_policy(policy_config), None
 
-    return None, None
-
-
-def _build_classical_stack(config, representation):
-    composed_policy = _get_composed_policy(config)
-    if getattr(config, "policy", None):
-        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
-    if isinstance(composed_policy.get("name"), str) and composed_policy.get("name") not in {"", "null"}:
-        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
-
-    learner_params = _extract_learner_params(config, representation, policy_actions=None)
-    learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
-    learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
-    learner = build_learner(
-        _resolve_learner_name(config),
-        state_dim=representation.dimension,
-        **learner_params,
-    )
-    _assign_attention_map(config, learner)
-
-    agent = build_agent(
-        config.agent,
-        learner=learner,
-        representation=representation,
-        policy=None,
-    )
-    return agent
+    return NullPolicy(), None
 
 
-def _build_operant_stack(config, representation):
+def _build_agent_stack(config, representation):
     policy, policy_actions = _build_policy_from_config(config)
-    if policy is None:
-        raise ValueError("Operant assembly path requires an explicit policy.")
-
     learner_params = _extract_learner_params(config, representation, policy_actions)
     learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
     learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
@@ -449,10 +443,17 @@ def _plan_to_config(plan: ExperimentPlan):
         )
 
     return SimpleNamespace(
-        learner=agent_spec.get("learner", settings["learner"]),
+        learner=(
+            ((agent_spec.get("learning") or {}).get("rule"))
+            if isinstance(agent_spec.get("learning"), dict)
+            else settings["learner"]
+        ),
         agent=agent_spec.get("agent", settings["agent"]),
         representation=agent_spec.get("representation", settings["representation"]),
         policy=agent_spec.get("policy", settings.get("policy")),
+        representation_config=agent_spec.get("representation", settings["representation"]),
+        learning_config=agent_spec.get("learning", {"rule": settings["learner"], "params": {}}),
+        policy_config=agent_spec.get("policy", settings.get("policy")),
         stimuli=agent_spec.get("stimuli", settings.get("stimuli", [])),
         salience=agent_spec.get("salience", settings.get("salience", {})),
         attention=agent_spec.get("attention", settings.get("attention", {})),
@@ -521,9 +522,7 @@ class AgentAssembler:
         return representation, inferred_contexts
 
     def build_agent(self, representation):
-        if self.config.agent == OPERANT_AGENT_NAME:
-            return _build_operant_stack(self.config, representation)
-        return _build_classical_stack(self.config, representation)
+        return _build_agent_stack(self.config, representation)
 
 
 @dataclass

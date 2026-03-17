@@ -110,9 +110,16 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "resolved_phase_contexts": list(inferred_phase_contexts),
     }
     agent_spec = {
-        "learner": config.learner,
         "agent": config.agent,
         "representation": _resolve_representation(config, inferred_phase_contexts),
+        "learning": {
+            "rule": config.learner,
+            "params": {},
+            "attention": {
+                "initial": dict(config.attention),
+                "config": dict(config.attention_config),
+            },
+        },
         "policy": deepcopy(config.policy),
         "stimuli": list(config.stimuli),
         "salience": dict(config.salience),

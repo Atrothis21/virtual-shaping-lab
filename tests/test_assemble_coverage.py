@@ -340,6 +340,32 @@ def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
     assert runtime_units
 
 
+def test_assemble_classical_path_uses_null_policy_semantics():
+    payload = from_legacy_payload({
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    })
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, agent, _rep = assemble_experiment(config)
+    assert runtime_units
+    assert agent.policy.__class__.__name__ == "NullPolicy"
+
+
 def test_assemble_plan_uses_composed_attention_when_settings_attention_missing():
     plan = ExperimentPlan(
         units=[
@@ -350,6 +376,38 @@ def test_assemble_plan_uses_composed_attention_when_settings_attention_missing()
                 "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "rescorla_wagner",
+                    "attention": {
+                        "mode": "static",
+                        "default": 1.0,
+                        "overrides": {"tone": 0.7},
+                    },
+                },
+                "policy": {"name": "null"},
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -389,6 +447,36 @@ def test_assemble_plan_prefers_typed_learner_algorithm_for_agent_stack():
                 "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.5},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "td_value",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "td_value",
+                    "alpha": 0.2,
+                    "gamma": 0.5,
+                    "attention": {"mode": "none", "default": 1.0, "overrides": {}},
+                },
+                "policy": {"name": "null"},
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -442,6 +530,44 @@ def test_assemble_plan_injects_typed_similarity_into_representation_params(monke
                 "params": {"n_trials": 1},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone", "noise"]},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone", "noise"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "representation": {
+                    "context": {"mode": "gated", "contexts": ["A"], "inference_enabled": False},
+                    "salience": {"default": 1.0, "overrides": {}},
+                    "similarity": {
+                        "enabled": True,
+                        "matrix": {
+                            "tone": {"tone": 1.0, "noise": 0.4},
+                            "noise": {"tone": 0.4, "noise": 1.0},
+                        },
+                    },
+                },
+                "learner": {
+                    "algorithm": "rescorla_wagner",
+                },
+                "policy": {"name": "null"},
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -508,6 +634,55 @@ def test_assemble_plan_injects_math_objects_into_learner_stack(monkeypatch):
                 "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.5},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "td_value",
+                "params": {},
+                "attention": {
+                    "initial": {"tone": 0.8},
+                    "config": {
+                        "name": "mackintosh",
+                        "params": {"default": 1.0, "overrides": {"tone": 0.8}, "kappa": 0.1},
+                    },
+                },
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {"tone": 0.8},
+            "attention_config": {
+                "name": "mackintosh",
+                "params": {"default": 1.0, "overrides": {"tone": 0.8}, "kappa": 0.1},
+            },
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "learner": {
+                    "algorithm": "td_value",
+                    "alpha": 0.2,
+                    "gamma": 0.5,
+                    "attention": {"mode": "mackintosh", "default": 1.0, "overrides": {"tone": 0.8}},
+                    "attention_mechanism": {
+                        "variant": "mackintosh",
+                        "default": 1.0,
+                        "overrides": {"tone": 0.8},
+                        "params": {"kappa": 0.1},
+                    },
+                    "prediction_error_rule": {
+                        "variant": "td_value",
+                        "params": {},
+                    },
+                },
+                "policy": {"name": "null"},
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
