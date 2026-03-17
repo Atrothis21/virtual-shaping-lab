@@ -426,8 +426,12 @@ def _is_atomic_phase(protocol_name: str) -> bool:
 # Assembly pipeline: build representation -> policy (optional) -> learner -> agent -> runtime units.
 def _plan_to_config(plan: ExperimentPlan):
     settings = plan.settings or {}
+    program_spec = plan.program_spec or {}
+    agent_spec = plan.agent_spec or {}
+    runtime_spec = plan.runtime_spec or {}
     phases = []
-    for i, unit in enumerate(plan.units):
+    phase_source = program_spec.get("phases") if isinstance(program_spec.get("phases"), list) else plan.units
+    for i, unit in enumerate(phase_source):
         if isinstance(unit, PhaseConfig):
             phases.append(unit)
             continue
@@ -445,19 +449,19 @@ def _plan_to_config(plan: ExperimentPlan):
         )
 
     return SimpleNamespace(
-        learner=settings["learner"],
-        agent=settings["agent"],
-        representation=settings["representation"],
-        policy=settings.get("policy"),
-        stimuli=settings.get("stimuli", []),
-        salience=settings.get("salience", {}),
-        attention=settings.get("attention", {}),
-        context_inference=settings.get("context_inference", {}),
-        attention_config=settings.get("attention_config", {}),
+        learner=agent_spec.get("learner", settings["learner"]),
+        agent=agent_spec.get("agent", settings["agent"]),
+        representation=agent_spec.get("representation", settings["representation"]),
+        policy=agent_spec.get("policy", settings.get("policy")),
+        stimuli=agent_spec.get("stimuli", settings.get("stimuli", [])),
+        salience=agent_spec.get("salience", settings.get("salience", {})),
+        attention=agent_spec.get("attention", settings.get("attention", {})),
+        context_inference=runtime_spec.get("context_inference", settings.get("context_inference", {})),
+        attention_config=agent_spec.get("attention_config", settings.get("attention_config", {})),
         phases=phases,
-        composed_parameters=settings.get("composed_parameters", {}),
-        resolved_plan=bool(settings.get("resolved_plan", False)),
-        resolved_phase_contexts=list(settings.get("resolved_phase_contexts", [])),
+        composed_parameters=runtime_spec.get("composed_parameters", settings.get("composed_parameters", {})),
+        resolved_plan=bool(runtime_spec.get("resolved_plan", settings.get("resolved_plan", False))),
+        resolved_phase_contexts=list(program_spec.get("resolved_phase_contexts", settings.get("resolved_phase_contexts", []))),
     )
 
 

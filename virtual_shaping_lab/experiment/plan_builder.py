@@ -102,8 +102,8 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "resolved_plan": True,
         "resolved_phase_contexts": inferred_phase_contexts,
         "composed_parameters": _compose_parameter_settings(config),
-        "canonical_payload": _build_canonical_payload_settings(config),
     }
+    canonical_payload = _build_canonical_payload_settings(config)
 
     program_spec = {
         "phases": deepcopy(units),
@@ -123,10 +123,10 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "runtime": dict(config.runtime),
         "context_inference": dict(config.context_inference),
         "resolved_plan": True,
+        "composed_parameters": deepcopy(settings["composed_parameters"]),
     }
     analysis_spec = {
         "report_preset": config.report_preset,
-        "canonical_payload": deepcopy(settings["canonical_payload"]),
     }
 
     return ExperimentPlan(
@@ -135,6 +135,7 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         agent_spec=agent_spec,
         runtime_spec=runtime_spec,
         analysis_spec=analysis_spec,
+        canonical_payload=canonical_payload,
         seed=seed,
         record_schema_version="v1",
         settings=settings,

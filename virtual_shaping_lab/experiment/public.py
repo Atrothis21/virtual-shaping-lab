@@ -23,8 +23,11 @@ def build_plan(payload: dict[str, Any]) -> ExperimentPlan:
 
 def validate_plan(plan: ExperimentPlan) -> ExperimentPlan:
     """Validate plan-level ownership constraints and return the same plan."""
-    settings = dict(plan.settings or {})
-    composed = settings.get("composed_parameters")
+    runtime_spec = dict(plan.runtime_spec or {})
+    composed = runtime_spec.get("composed_parameters")
+    if not composed:
+        settings = dict(plan.settings or {})
+        composed = settings.get("composed_parameters")
     if composed:
         validate_composed_parameter_ownership(composed)
     return plan
@@ -56,7 +59,11 @@ def run_from_plan(
 ) -> ExecutionResult:
     """Assemble and execute all runtime units declared by the plan."""
     runtime_units, agent, representation = assemble_from_plan(plan)
-    runner_settings = dict(plan.settings or {})
+    runner_settings = dict((plan.runtime_spec or {}).get("runtime", {}) or {})
+    composed = (plan.runtime_spec or {}).get("composed_parameters")
+    if composed:
+        runner_settings["composed_parameters"] = composed
+    runner_settings.setdefault("record_schema_version", plan.record_schema_version)
     if settings:
         runner_settings.update(settings)
 
