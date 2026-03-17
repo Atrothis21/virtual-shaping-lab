@@ -626,6 +626,11 @@ def test_experiment_config_to_plan_contains_units_and_settings():
     assert isinstance(plan, ExperimentPlan)
     assert len(plan.units) == 1
     assert plan.units[0]["protocol"] == "acquisition"
+    assert plan.program_spec["phases"][0]["protocol"] == "acquisition"
+    assert plan.agent_spec["learner"] == "rescorla_wagner"
+    assert plan.agent_spec["agent"] == "classical_agent"
+    assert plan.runtime_spec["runtime"]["debug"] is False
+    assert plan.analysis_spec["report_preset"] == "acquisition"
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
     assert plan.settings["runtime"]["debug"] is False
@@ -640,6 +645,8 @@ def test_plan_from_payload_contains_units_and_settings():
     plan = ExperimentConfig.plan_from_payload(payload)
     assert isinstance(plan, ExperimentPlan)
     assert len(plan.units) == 1
+    assert plan.program_spec["phases"][0]["protocol"] == "acquisition"
+    assert plan.agent_spec["learner"] == "rescorla_wagner"
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
     expected = parameters_to_dict(ParameterComposer.compose(payload))

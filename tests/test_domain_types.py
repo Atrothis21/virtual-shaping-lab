@@ -2,6 +2,7 @@ import pytest
 
 from domain.types import META_CUE_LABELS, META_EVENT_TYPE, Observation, Transition
 from experiment.domain.types import (
+    ExperimentPlan,
     LearningGateSpec,
     OperantContingencySpec,
     PavlovianContingencySpec,
@@ -95,3 +96,22 @@ def test_phase_spec_requires_valid_components():
             trial_types=[TrialTypeSpec(label="A", stimuli=["tone"])],
             contingency=PavlovianContingencySpec(),
         )
+
+
+def test_experiment_plan_typed_envelope_round_trips():
+    plan = ExperimentPlan(
+        units=[{"protocol": "acquisition"}],
+        program_spec={"phases": [{"protocol": "acquisition"}]},
+        agent_spec={"learner": "rescorla_wagner", "agent": "classical_agent"},
+        runtime_spec={"runtime": {"debug": False}},
+        analysis_spec={"report_preset": "acquisition"},
+        settings={"legacy": True},
+    )
+    blob = plan.to_dict()
+    rebuilt = ExperimentPlan.from_dict(blob)
+
+    assert rebuilt.program_spec == plan.program_spec
+    assert rebuilt.agent_spec == plan.agent_spec
+    assert rebuilt.runtime_spec == plan.runtime_spec
+    assert rebuilt.analysis_spec == plan.analysis_spec
+    assert rebuilt.stable_hash() == plan.stable_hash()

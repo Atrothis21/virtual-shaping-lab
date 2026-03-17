@@ -279,6 +279,10 @@ class ExperimentPlan:
     """
 
     units: list[Any]
+    program_spec: dict[str, Any] = field(default_factory=dict)
+    agent_spec: dict[str, Any] = field(default_factory=dict)
+    runtime_spec: dict[str, Any] = field(default_factory=dict)
+    analysis_spec: dict[str, Any] = field(default_factory=dict)
     seed: Optional[int] = None
     record_schema_version: str = "v1"
     settings: dict[str, Any] = field(default_factory=dict)
@@ -297,6 +301,10 @@ class ExperimentPlan:
         """Return a JSON-serializable deterministic dict representation."""
         return {
             "units": self._to_primitive(self.units),
+            "program_spec": self._to_primitive(self.program_spec),
+            "agent_spec": self._to_primitive(self.agent_spec),
+            "runtime_spec": self._to_primitive(self.runtime_spec),
+            "analysis_spec": self._to_primitive(self.analysis_spec),
             "seed": self.seed,
             "record_schema_version": self.record_schema_version,
             "settings": self._to_primitive(self.settings),
@@ -307,6 +315,10 @@ class ExperimentPlan:
         """Rebuild an ExperimentPlan from to_dict-compatible data."""
         return cls(
             units=list(data.get("units", [])),
+            program_spec=dict(data.get("program_spec", {}) or {}),
+            agent_spec=dict(data.get("agent_spec", {}) or {}),
+            runtime_spec=dict(data.get("runtime_spec", {}) or {}),
+            analysis_spec=dict(data.get("analysis_spec", {}) or {}),
             seed=data.get("seed"),
             record_schema_version=data.get("record_schema_version", "v1"),
             settings=dict(data.get("settings", {}) or {}),

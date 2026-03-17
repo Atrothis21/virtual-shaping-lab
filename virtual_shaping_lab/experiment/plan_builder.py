@@ -105,8 +105,36 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "canonical_payload": _build_canonical_payload_settings(config),
     }
 
+    program_spec = {
+        "phases": deepcopy(units),
+        "resolved_phase_contexts": list(inferred_phase_contexts),
+    }
+    agent_spec = {
+        "learner": config.learner,
+        "agent": config.agent,
+        "representation": _resolve_representation(config, inferred_phase_contexts),
+        "policy": deepcopy(config.policy),
+        "stimuli": list(config.stimuli),
+        "salience": dict(config.salience),
+        "attention": dict(config.attention),
+        "attention_config": dict(config.attention_config),
+    }
+    runtime_spec = {
+        "runtime": dict(config.runtime),
+        "context_inference": dict(config.context_inference),
+        "resolved_plan": True,
+    }
+    analysis_spec = {
+        "report_preset": config.report_preset,
+        "canonical_payload": deepcopy(settings["canonical_payload"]),
+    }
+
     return ExperimentPlan(
         units=units,
+        program_spec=program_spec,
+        agent_spec=agent_spec,
+        runtime_spec=runtime_spec,
+        analysis_spec=analysis_spec,
         seed=seed,
         record_schema_version="v1",
         settings=settings,
