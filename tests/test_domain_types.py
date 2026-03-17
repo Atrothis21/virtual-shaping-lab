@@ -2,6 +2,7 @@ import pytest
 
 from domain.types import META_CUE_LABELS, META_EVENT_TYPE, Observation, Transition
 from experiment.domain.types import (
+    ExperimentPlan,
     LearningGateSpec,
     OperantContingencySpec,
     PavlovianContingencySpec,
@@ -95,3 +96,31 @@ def test_phase_spec_requires_valid_components():
             trial_types=[TrialTypeSpec(label="A", stimuli=["tone"])],
             contingency=PavlovianContingencySpec(),
         )
+
+
+def test_experiment_plan_typed_envelope_round_trips():
+    plan = ExperimentPlan(
+        units=[{"protocol": "acquisition"}],
+        program_spec={"phases": [{"protocol": "acquisition"}]},
+        agent_spec={"learner": "rescorla_wagner", "agent": "classical_agent"},
+        runtime_spec={"runtime": {"debug": False}},
+        analysis_spec={"report_preset": "acquisition"},
+        canonical_payload={"experiment": {"program": {"phases": []}, "agent": {}, "runtime": {}}, "report": {}},
+        settings={"legacy": True},
+    )
+    blob = plan.to_dict()
+    rebuilt = ExperimentPlan.from_dict(blob)
+
+    assert rebuilt.program_spec == plan.program_spec
+    assert rebuilt.agent_spec == plan.agent_spec
+    assert rebuilt.runtime_spec == plan.runtime_spec
+    assert rebuilt.analysis_spec == plan.analysis_spec
+    assert rebuilt.canonical_payload == plan.canonical_payload
+    assert rebuilt.stable_hash() == plan.stable_hash()
+
+
+def test_experiment_plan_stable_hash_ignores_non_identity_settings():
+    base_payload = {"experiment": {"program": {"phases": []}, "agent": {}, "runtime": {}}, "report": {}}
+    p1 = ExperimentPlan(units=[], canonical_payload=base_payload, settings={"a": 1})
+    p2 = ExperimentPlan(units=[], canonical_payload=base_payload, settings={"a": 2, "b": 3})
+    assert p1.stable_hash() == p2.stable_hash()
