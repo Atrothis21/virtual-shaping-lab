@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import hashlib
 from typing import Any, Dict, Optional
 
 from api.stores import InMemoryRunStatusStore, RunStatusStoreProtocol
@@ -22,6 +23,18 @@ _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
 assemble_experiment = assemble_from_plan
 # Backward-compatible symbol for tests/patching; prefer run_preset_report.
 run_report = run_preset_report
+
+
+def _stable_hash_from_artifact_payload(payload: Dict[str, Any], record_schema_version: str) -> str:
+    identity = {
+        "canonical_payload": {
+            "experiment": dict(payload.get("experiment", {}) or {}),
+            "report": dict(payload.get("report", {}) or {}),
+        },
+        "record_schema_version": record_schema_version,
+    }
+    encoded = json.dumps(identity, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
@@ -56,6 +69,48 @@ def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
         "prediction_error_rule": {"variant": learner.get("prediction_error_rule", {}).get("variant", learner.get("algorithm"))},
         "attention_mechanism": {"variant": learner.get("attention_mechanism", {}).get("variant", learner.get("attention", {}).get("mode", "none"))},
         "policy": {"variant": policy.get("name", "null")},
+    }
+
+
+def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+    plan_data = payload.get("plan")
+    if isinstance(plan_data, dict):
+        record_schema_version = str(plan_data.get("record_schema_version", "v1"))
+        seed_identity = plan_data.get("seed")
+        canonical_payload = plan_data.get("canonical_payload")
+        if isinstance(canonical_payload, dict):
+            plan_hash = _stable_hash_from_artifact_payload(
+                {
+                    "experiment": dict(canonical_payload.get("experiment", payload.get("experiment", {})) or {}),
+                    "report": dict(canonical_payload.get("report", payload.get("report", {})) or {}),
+                },
+                record_schema_version,
+            )
+        else:
+            plan_hash = _stable_hash_from_artifact_payload(payload, record_schema_version)
+        return {
+            "plan_hash": plan_hash,
+            "record_schema_version": record_schema_version,
+            "seed_identity": seed_identity,
+        }
+
+    record_schema_version = "v1"
+    seed_identity = None
+    experiment = payload.get("experiment")
+    if isinstance(experiment, dict):
+        program = experiment.get("program")
+        if isinstance(program, dict):
+            phases = program.get("phases")
+            if isinstance(phases, list) and phases:
+                first = phases[0]
+                if isinstance(first, dict):
+                    params = first.get("params")
+                    if isinstance(params, dict):
+                        seed_identity = params.get("rng_seed")
+    return {
+        "plan_hash": _stable_hash_from_artifact_payload(payload, record_schema_version),
+        "record_schema_version": record_schema_version,
+        "seed_identity": seed_identity,
     }
 
 
@@ -291,7 +346,7 @@ class ReportService:
         if not preset:
             preset = "acquisition"
 
-        resolved_plan = build_plan(payload)
+        plan_meta = _artifact_plan_metadata(payload)
         protocol_name = ""
         if isinstance(payload.get("experiment"), dict):
             exp = payload["experiment"]
@@ -329,11 +384,11 @@ class ReportService:
             state="completed",
             artifacts=artifacts,
             metadata={
-                "plan_hash": resolved_plan.stable_hash(),
-                "record_schema_version": resolved_plan.record_schema_version,
+                "plan_hash": plan_meta["plan_hash"],
+                "record_schema_version": plan_meta["record_schema_version"],
                 "template_version_used": template_version,
-                "seed_identity": resolved_plan.seed,
-                "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
+                "seed_identity": plan_meta["seed_identity"],
+                "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -348,11 +403,11 @@ class ReportService:
                 "source_run_id": run_id,
                 "preset": preset,
                 "regenerated": True,
-                "plan_hash": resolved_plan.stable_hash(),
-                "record_schema_version": resolved_plan.record_schema_version,
+                "plan_hash": plan_meta["plan_hash"],
+                "record_schema_version": plan_meta["record_schema_version"],
                 "template_version_used": template_version,
-                "seed_identity": resolved_plan.seed,
-                "mechanism_provenance": _build_mechanism_provenance(resolved_plan),
+                "seed_identity": plan_meta["seed_identity"],
+                "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
                 "regeneration_mode": "from_artifacts",
