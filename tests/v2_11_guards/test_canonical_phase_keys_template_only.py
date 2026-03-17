@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from experiment.factories.phase_factory import PHASE_REGISTRY
-from experiment.factories.phase_factory import build_phase
+from experiment.phases.catalog_runtime import PHASE_BUILDERS
+from experiment.phases.public import build_phase
 from experiment.phases.templates import PhaseTemplate
 
 
@@ -53,4 +53,4 @@ def test_canonical_classical_phase_keys_resolve_to_template_only():
 
 def test_legacy_aliases_are_removed():
     for key in _REMOVED_LEGACY_KEYS:
-        assert key not in PHASE_REGISTRY
+        assert key not in PHASE_BUILDERS
