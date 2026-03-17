@@ -18,13 +18,14 @@ def _run_full_payload(payload: dict, output_dir: Path) -> None:
     assert isinstance(plan, ExperimentPlan)
     execution = run_from_plan(plan)
 
-    run_preset_report(
+    report_dir = run_preset_report(
         # Public facade remains the only analysis entrypoint for this integration test.
         records=execution.records,
         preset=str((plan.settings or {}).get("report_preset", "verification_report")),
         payload=payload,
         output_dir=str(output_dir),
     )
+    assert (Path(report_dir) / "artifact_identity.json").exists()
 
 
 def test_full_payloads(tmp_path):

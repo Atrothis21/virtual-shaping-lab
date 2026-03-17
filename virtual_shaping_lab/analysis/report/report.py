@@ -12,6 +12,7 @@ from experiment.payload_contract import to_canonical_payload
 from experiment.runtime_records import finalize_record
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
+_VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
 
 
 def _to_jsonable(value):
@@ -22,6 +23,13 @@ def _to_jsonable(value):
     if isinstance(value, tuple):
         return [_to_jsonable(v) for v in value]
     return value
+
+
+def _load_engine_version() -> str:
+    try:
+        return _VERSION_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
 
 
 def _extract_mechanism_provenance(payload):
@@ -69,6 +77,54 @@ def _extract_mechanism_provenance(payload):
         "attention_mechanism": {"variant": learner.get("attention_mechanism", {}).get("variant", learner.get("attention", {}).get("mode", "none"))},
         "policy": {"variant": policy.get("name", "null")},
     }
+
+
+def _extract_artifact_identity(payload):
+    identity = {
+        "engine_version": _load_engine_version(),
+        "record_schema_version": "v1",
+        "plan_hash": None,
+        "seed_identity": None,
+        "mechanism_identity": None,
+    }
+
+    mechanism_provenance = _extract_mechanism_provenance(payload)
+    if isinstance(mechanism_provenance, dict):
+        identity["mechanism_identity"] = mechanism_provenance
+
+    if not isinstance(payload, dict):
+        return identity
+
+    plan = payload.get("plan")
+    if isinstance(plan, dict):
+        if plan.get("record_schema_version"):
+            identity["record_schema_version"] = str(plan.get("record_schema_version"))
+        if plan.get("seed") is not None:
+            identity["seed_identity"] = plan.get("seed")
+        canonical_payload = plan.get("canonical_payload")
+        if isinstance(canonical_payload, dict):
+            identity_payload = {
+                "canonical_payload": canonical_payload,
+                "record_schema_version": identity["record_schema_version"],
+            }
+            import hashlib
+
+            encoded = json.dumps(identity_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            identity["plan_hash"] = hashlib.sha256(encoded).hexdigest()
+
+    experiment = payload.get("experiment")
+    if identity["seed_identity"] is None and isinstance(experiment, dict):
+        program = experiment.get("program")
+        if isinstance(program, dict):
+            phases = program.get("phases")
+            if isinstance(phases, list) and phases:
+                first = phases[0]
+                if isinstance(first, dict):
+                    params = first.get("params")
+                    if isinstance(params, dict) and params.get("rng_seed") is not None:
+                        identity["seed_identity"] = params.get("rng_seed")
+
+    return identity
 
 
 def _extract_attention_summary(payload):
@@ -122,6 +178,8 @@ class ReportArtifactWriter:
             if isinstance(mechanism_provenance, dict):
                 with open(ctx.report_dir / "mechanism_provenance.json", "w") as f:
                     json.dump(mechanism_provenance, f, indent=2)
+            with open(ctx.report_dir / "artifact_identity.json", "w") as f:
+                json.dump(_extract_artifact_identity(payload), f, indent=2)
 
         with open(ctx.report_dir / "records.json", "w") as f:
             json.dump(normalized_records, f, indent=2)

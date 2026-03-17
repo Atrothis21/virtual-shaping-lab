@@ -202,8 +202,14 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert (run_dir / "payload.json").exists()
     assert (run_dir / "records.json").exists()
     assert (run_dir / "mechanism_provenance.json").exists()
+    assert (run_dir / "artifact_identity.json").exists()
     stored_payload = json.loads((run_dir / "payload.json").read_text())
     assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
+    identity = json.loads((run_dir / "artifact_identity.json").read_text())
+    assert isinstance(identity.get("engine_version"), str) and identity["engine_version"]
+    assert identity.get("record_schema_version") == "v1"
+    assert isinstance(identity.get("mechanism_identity"), dict)
+    assert identity.get("seed_identity") == body["metadata"].get("seed_identity")
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -280,6 +286,8 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert report_body["metadata"]["missing_source_metadata"] == []
     assert report_body["lifecycle"]["state"] == "ReportComplete"
     assert "view_report" in report_body["lifecycle"]["next_actions"]
+    regenerated_dir = fixture_output_dir / "regenerated" / report_body["run_id"]
+    assert (regenerated_dir / "artifact_identity.json").exists()
 
 
 def test_run_service_uses_plan_seed_as_runtime_seed_identity(monkeypatch, tmp_path):
