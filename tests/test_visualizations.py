@@ -133,6 +133,43 @@ def test_dual_time_series_branches(tmp_path):
         plot2.save(tmp_path / "dual2.png")
 
 
+def test_dual_time_series_differential_mode_tracks_cs_plus_and_cs_minus_separately():
+    plot = DualTimeSeriesPlot()
+    records = [
+        {"stimulus_type": "cs_plus", "prediction": 0.7, "trial": 0},
+        {"stimulus_type": "cs_minus", "prediction": 0.2, "trial": 1},
+        {"stimulus_type": "cs_plus", "prediction": 0.8, "trial": 2},
+        {"stimulus_type": "cs_minus", "prediction": 0.3, "trial": 3},
+    ]
+
+    plot.render(records, {})
+    ax = plot.fig.axes[0]
+    lines = {line.get_label(): line for line in ax.lines}
+
+    assert set(lines.keys()) == {"CS+", "CS-"}
+    assert list(lines["CS+"].get_xdata()) == [0, 1]
+    assert list(lines["CS+"].get_ydata()) == [0.7, 0.8]
+    assert list(lines["CS-"].get_xdata()) == [0, 1]
+    assert list(lines["CS-"].get_ydata()) == [0.2, 0.3]
+
+
+def test_discrimination_plot_uses_running_cs_plus_minus_difference():
+    plot = DiscriminationCurvePlot()
+    records = [
+        {"trial": 0, "stimulus_type": "cs_plus", "response": 0.8},
+        {"trial": 1, "stimulus_type": "cs_minus", "response": 0.2},
+        {"trial": 2, "stimulus_type": "cs_plus", "response": 1.0},
+        {"trial": 3, "stimulus_type": "cs_minus", "response": 0.4},
+    ]
+
+    plot.render(records, {})
+    ax = plot.fig.axes[0]
+    line = ax.lines[0]
+
+    assert list(line.get_xdata()) == [1, 2, 3]
+    assert list(line.get_ydata()) == pytest.approx([0.6, 0.7, 0.6])
+
+
 def test_auto_time_series_paths(tmp_path):
     plot = AutoTimeSeriesPlot()
     records_single = [{"series_values": {"A": 0.1}, "prediction": 0.1}]

@@ -269,6 +269,11 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
 
     run_body = api_run.run_api(payload)
     source_run_id = run_body["run_id"]
+    monkeypatch.setattr(
+        api_services,
+        "build_plan",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("regeneration should not build a plan")),
+    )
 
     report_body = api_run.run_report_api(source_run_id)
     assert report_body["status"] == "success"

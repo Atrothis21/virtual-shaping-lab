@@ -33,3 +33,21 @@ def test_aggregate_ticks_to_trials_summarizes_reward_action_and_metadata():
     assert out[0]["tick_count"] == 2
     assert out[1]["trial"] == 3
     assert out[1]["context"] == "B"
+
+
+def test_aggregate_ticks_to_trials_uses_last_prediction_and_sorts_ticks():
+    ticks = [
+        {"trial": 4, "tick": 2, "reward": 0.2, "prediction": 0.9, "action": None, "phase_name": "acq"},
+        {"trial": 4, "tick": 0, "reward": 0.1, "prediction": 0.3, "action": "press", "phase_name": "acq"},
+        {"trial": 4, "tick": 1, "reward": 0.4, "prediction": 0.6, "action": None, "phase_name": "acq"},
+    ]
+
+    out = aggregate_ticks_to_trials(ticks)
+
+    assert len(out) == 1
+    assert out[0]["trial"] == 4
+    assert out[0]["reward"] == pytest.approx(0.7)
+    assert out[0]["prediction"] == 0.9
+    assert out[0]["action"] == "press"
+    assert out[0]["t_s_start"] is None
+    assert out[0]["t_s_end"] is None
