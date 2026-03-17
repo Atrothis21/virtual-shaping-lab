@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 
+from virtual_shaping_lab.agents.policies.null_policy import NullPolicy
 from virtual_shaping_lab.agents.math_objects.attention_objects import build_attention_mechanism
 from virtual_shaping_lab.agents.math_objects.prediction_error_objects import (
     RescorlaWagnerPredictionError,
@@ -359,10 +360,12 @@ def _build_policy_from_config(config):
             if policy_actions is None and "action" in policy_params:
                 policy_actions = [policy_params.get("action")]
             return policy, policy_actions
-        return None, None
+        return NullPolicy(), None
 
     if isinstance(policy_config, dict):
         policy_name = policy_config.get("name")
+        if policy_name == "null":
+            return NullPolicy(), None
         policy_params = policy_config.get("params", {})
         policy = build_policy(policy_name, **policy_params)
         policy_actions = policy_params.get("actions")
@@ -371,45 +374,15 @@ def _build_policy_from_config(config):
         return policy, policy_actions
 
     if isinstance(policy_config, str):
+        if policy_config == "null":
+            return NullPolicy(), None
         return build_policy(policy_config), None
 
-    return None, None
+    return NullPolicy(), None
 
 
-def _build_classical_stack(config, representation):
-    composed_policy = _get_composed_policy(config)
-    policy_config = getattr(config, "policy_config", None)
-    if policy_config is None:
-        policy_config = getattr(config, "policy", None)
-    if policy_config:
-        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
-    if isinstance(composed_policy.get("name"), str) and composed_policy.get("name") not in {"", "null"}:
-        raise ValueError("Classical assembly path does not accept policy; use operant_agent for policy-driven runs.")
-
-    learner_params = _extract_learner_params(config, representation, policy_actions=None)
-    learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
-    learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
-    learner = build_learner(
-        _resolve_learner_name(config),
-        state_dim=representation.dimension,
-        **learner_params,
-    )
-    _assign_attention_map(config, learner)
-
-    agent = build_agent(
-        config.agent,
-        learner=learner,
-        representation=representation,
-        policy=None,
-    )
-    return agent
-
-
-def _build_operant_stack(config, representation):
+def _build_agent_stack(config, representation):
     policy, policy_actions = _build_policy_from_config(config)
-    if policy is None:
-        raise ValueError("Operant assembly path requires an explicit policy.")
-
     learner_params = _extract_learner_params(config, representation, policy_actions)
     learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))
     learner_params.setdefault("attention_mechanism", _build_attention_mechanism_object(config))
@@ -549,9 +522,7 @@ class AgentAssembler:
         return representation, inferred_contexts
 
     def build_agent(self, representation):
-        if self.config.agent == OPERANT_AGENT_NAME:
-            return _build_operant_stack(self.config, representation)
-        return _build_classical_stack(self.config, representation)
+        return _build_agent_stack(self.config, representation)
 
 
 @dataclass

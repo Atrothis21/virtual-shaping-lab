@@ -340,6 +340,32 @@ def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
     assert runtime_units
 
 
+def test_assemble_classical_path_uses_null_policy_semantics():
+    payload = from_legacy_payload({
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    })
+    config = ExperimentConfig.from_payload(payload)
+    runtime_units, agent, _rep = assemble_experiment(config)
+    assert runtime_units
+    assert agent.policy.__class__.__name__ == "NullPolicy"
+
+
 def test_assemble_plan_uses_composed_attention_when_settings_attention_missing():
     plan = ExperimentPlan(
         units=[
