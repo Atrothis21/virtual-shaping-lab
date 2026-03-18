@@ -314,6 +314,34 @@ def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
                 },
             }
         ],
+        agent_spec={
+            "agent": "operant_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "q_learner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["lever"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "policy": {
+                    "name": "epsilon_greedy",
+                    "epsilon": 0.1,
+                    "actions": ["left", "right"],
+                },
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "q_learner",
             "agent": "operant_agent",
@@ -744,6 +772,51 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
                 "params": {"n_trials": 1},
             },
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition",
+                        "name": "Acq",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    },
+                    {
+                        "unit_key": "nonreinforcement",
+                        "name": "Ext",
+                        "context_id": None,
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 1},
+                    },
+                ],
+            },
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -827,6 +900,41 @@ def test_assemble_respects_typed_unit_context_over_inferred_for_template_phase()
                 "params": {"n_trials": 1},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition_template",
+                        "name": "Template Acquisition",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    }
+                ]
+            },
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",

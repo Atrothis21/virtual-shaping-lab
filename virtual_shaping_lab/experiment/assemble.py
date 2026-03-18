@@ -419,10 +419,55 @@ def _is_atomic_phase(protocol_name: str) -> bool:
 
 # Assembly pipeline: build representation -> policy (optional) -> learner -> agent -> runtime units.
 def _plan_to_config(plan: ExperimentPlan):
-    settings = plan.settings or {}
     program_spec = plan.program_spec or {}
     agent_spec = plan.agent_spec or {}
     runtime_spec = plan.runtime_spec or {}
+    canonical_experiment = (
+        (plan.canonical_payload or {}).get("experiment", {})
+        if isinstance(plan.canonical_payload, dict)
+        else {}
+    )
+    canonical_agent = canonical_experiment.get("agent", {}) if isinstance(canonical_experiment.get("agent"), dict) else {}
+    canonical_runtime = canonical_experiment.get("runtime", {}) if isinstance(canonical_experiment.get("runtime"), dict) else {}
+    canonical_learning = canonical_agent.get("learning", {}) if isinstance(canonical_agent.get("learning"), dict) else {}
+    canonical_representation = (
+        canonical_agent.get("representation")
+        if isinstance(canonical_agent.get("representation"), dict)
+        else {}
+    )
+
+    typed_learning = agent_spec.get("learning", {}) if isinstance(agent_spec.get("learning"), dict) else {}
+    typed_attention = typed_learning.get("attention", {}) if isinstance(typed_learning.get("attention"), dict) else {}
+    canonical_attention = canonical_learning.get("attention", {}) if isinstance(canonical_learning.get("attention"), dict) else {}
+
+    learner_rule = typed_learning.get("rule", canonical_learning.get("rule"))
+    agent_name = agent_spec.get("agent", canonical_agent.get("name"))
+    representation_cfg = agent_spec.get("representation", canonical_representation)
+    policy_cfg = agent_spec.get("policy", canonical_agent.get("policy"))
+    stimuli = agent_spec.get("stimuli")
+    if not isinstance(stimuli, list):
+        stimuli = canonical_representation.get("params", {}).get("stimuli", []) if isinstance(canonical_representation.get("params"), dict) else []
+
+    salience = agent_spec.get("salience")
+    if not isinstance(salience, dict):
+        salience = canonical_representation.get("salience", {}) if isinstance(canonical_representation.get("salience"), dict) else {}
+
+    attention = agent_spec.get("attention")
+    if not isinstance(attention, dict):
+        attention = typed_attention.get("initial", canonical_attention.get("initial", {}))
+    if not isinstance(attention, dict):
+        attention = {}
+
+    attention_config = agent_spec.get("attention_config")
+    if not isinstance(attention_config, dict):
+        attention_config = typed_attention.get("config", canonical_attention.get("config", {}))
+    if not isinstance(attention_config, dict):
+        attention_config = {}
+
+    context_inference = runtime_spec.get("context_inference")
+    if not isinstance(context_inference, dict):
+        context_inference = canonical_runtime.get("context_inference", {}) if isinstance(canonical_runtime.get("context_inference"), dict) else {}
+
     phases = []
     phase_source = program_spec.get("phases") if isinstance(program_spec.get("phases"), list) else plan.units
     for i, unit in enumerate(phase_source):
@@ -443,26 +488,22 @@ def _plan_to_config(plan: ExperimentPlan):
         )
 
     return SimpleNamespace(
-        learner=(
-            ((agent_spec.get("learning") or {}).get("rule"))
-            if isinstance(agent_spec.get("learning"), dict)
-            else settings["learner"]
-        ),
-        agent=agent_spec.get("agent", settings["agent"]),
-        representation=agent_spec.get("representation", settings["representation"]),
-        policy=agent_spec.get("policy", settings.get("policy")),
-        representation_config=agent_spec.get("representation", settings["representation"]),
-        learning_config=agent_spec.get("learning", {"rule": settings["learner"], "params": {}}),
-        policy_config=agent_spec.get("policy", settings.get("policy")),
-        stimuli=agent_spec.get("stimuli", settings.get("stimuli", [])),
-        salience=agent_spec.get("salience", settings.get("salience", {})),
-        attention=agent_spec.get("attention", settings.get("attention", {})),
-        context_inference=runtime_spec.get("context_inference", settings.get("context_inference", {})),
-        attention_config=agent_spec.get("attention_config", settings.get("attention_config", {})),
+        learner=learner_rule,
+        agent=agent_name,
+        representation=representation_cfg,
+        policy=policy_cfg,
+        representation_config=representation_cfg,
+        learning_config=typed_learning if typed_learning else {"rule": learner_rule, "params": {}},
+        policy_config=policy_cfg,
+        stimuli=stimuli if isinstance(stimuli, list) else [],
+        salience=salience,
+        attention=attention,
+        context_inference=context_inference,
+        attention_config=attention_config,
         phases=phases,
-        composed_parameters=runtime_spec.get("composed_parameters", settings.get("composed_parameters", {})),
-        resolved_plan=bool(runtime_spec.get("resolved_plan", settings.get("resolved_plan", False))),
-        resolved_phase_contexts=list(program_spec.get("resolved_phase_contexts", settings.get("resolved_phase_contexts", []))),
+        composed_parameters=runtime_spec.get("composed_parameters", {}),
+        resolved_plan=bool(runtime_spec.get("resolved_plan", False)),
+        resolved_phase_contexts=list(program_spec.get("resolved_phase_contexts", [])),
     )
 
 
