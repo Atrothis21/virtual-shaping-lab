@@ -1,7 +1,7 @@
 STIMULI = ["tone", "noise", "light", "click"]
 STIMULI_WITH_LEVER = ["lever", "tone", "noise", "light", "click"]
 
-from experiment.payload_contract import from_legacy_payload
+from legacy_payload_helpers import from_legacy_payload
 
 
 def _attention_for(stimuli):

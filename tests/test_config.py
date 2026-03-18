@@ -14,7 +14,7 @@ from experiment.config import (
 )
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import ParameterComposer, parameters_to_dict
-from experiment.payload_contract import from_legacy_payload
+from legacy_payload_helpers import from_legacy_payload
 
 
 def _base_payload():
@@ -848,12 +848,14 @@ def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
             "protocol": "acquisition",
             "stimuli": {"cs_plus": ["tone"]},
             "params": {"n_trials": 1},
+            "trials": 1,
         },
         {
             "name": "Ext",
             "protocol": "nonreinforcement",
             "stimuli": {"cs_plus": ["tone"]},
             "params": {"n_trials": 1},
+            "trials": 1,
         },
     ]
     cfg = ExperimentConfig.from_payload(payload)

@@ -10,7 +10,7 @@ from experiment.assemble import (
 )
 from experiment.config import ExperimentConfig, PhaseConfig
 from experiment.domain.types import ExperimentPlan
-from experiment.payload_contract import from_legacy_payload
+from legacy_payload_helpers import from_legacy_payload
 from experiment.public import assemble_from_plan, build_plan, validate_plan
 from experiment.phases.catalog import CUSTOM_PHASE_CLASS_ALLOWLIST
 

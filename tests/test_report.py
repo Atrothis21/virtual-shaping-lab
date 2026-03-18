@@ -12,7 +12,7 @@ from analysis.report import io as report_io
 from analysis.report.pdf import ReportPDF
 from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
-from experiment.payload_contract import from_legacy_payload
+from legacy_payload_helpers import from_legacy_payload
 
 
 class DummyMetric:
