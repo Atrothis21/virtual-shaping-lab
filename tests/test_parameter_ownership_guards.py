@@ -36,6 +36,38 @@ def _base_composed():
     }
 
 
+def _base_typed_plan(*, units: list[dict], composed_parameters: dict | None = None) -> ExperimentPlan:
+    runtime_spec = {
+        "runtime": {"update_mode": "trial", "record_mode": "trial", "strict_records": False, "debug": False},
+        "context_inference": {},
+        "resolved_plan": True,
+    }
+    if composed_parameters is not None:
+        runtime_spec["composed_parameters"] = composed_parameters
+
+    return ExperimentPlan(
+        units=units,
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone", "noise"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone", "noise"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec=runtime_spec,
+    )
+
+
 def test_validate_composed_parameter_ownership_accepts_valid_structure():
     validate_composed_parameter_ownership(_base_composed())
 
@@ -102,7 +134,7 @@ def test_validate_composed_parameter_ownership_rejects_unit_contingency_leaks():
 
 
 def test_assemble_experiment_fails_fast_on_invalid_composed_parameters():
-    plan = ExperimentPlan(
+    plan = _base_typed_plan(
         units=[
             {
                 "name": "Acq",
@@ -111,17 +143,7 @@ def test_assemble_experiment_fails_fast_on_invalid_composed_parameters():
                 "params": {"n_trials": 1},
             }
         ],
-        settings={
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": ["tone"], "max_compound_size": 2},
-            },
-            "composed_parameters": {
-                "representation": {"attention": {"tone": 0.8}},
-            },
-        },
+        composed_parameters={"representation": {"attention": {"tone": 0.8}}},
     )
     with pytest.raises(ValueError, match="Ownership contract violation"):
         assemble_experiment(plan)
@@ -140,7 +162,7 @@ def test_runner_fails_fast_on_invalid_composed_runtime_object():
 
 
 def test_assemble_experiment_rejects_template_phase_param_ownership_leaks():
-    plan = ExperimentPlan(
+    plan = _base_typed_plan(
         units=[
             {
                 "name": "Template Acquisition",
@@ -148,20 +170,7 @@ def test_assemble_experiment_rejects_template_phase_param_ownership_leaks():
                 "stimuli": {"cs_plus": ["tone"]},
                 "params": {"n_trials": 1, "salience": {"tone": 0.4}},
             }
-        ],
-        settings={
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": ["tone"], "max_compound_size": 2},
-            },
-            "policy": None,
-            "stimuli": ["tone"],
-            "salience": {},
-            "attention": {},
-            "context_inference": {},
-        },
+        ]
     )
     with pytest.raises(ValueError, match="must not include representation/learner-owned keys"):
         assemble_experiment(plan)
@@ -182,7 +191,7 @@ def test_assemble_experiment_rejects_canonical_template_backed_phase_param_owner
     protocol_name,
     stimuli,
 ):
-    plan = ExperimentPlan(
+    plan = _base_typed_plan(
         units=[
             {
                 "name": "Canonical Template-Backed Phase",
@@ -190,20 +199,7 @@ def test_assemble_experiment_rejects_canonical_template_backed_phase_param_owner
                 "stimuli": stimuli,
                 "params": {"n_trials": 1, "attention": {"tone": 0.8}},
             }
-        ],
-        settings={
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {"stimuli": ["tone", "noise"], "max_compound_size": 2},
-            },
-            "policy": None,
-            "stimuli": ["tone", "noise"],
-            "salience": {},
-            "attention": {},
-            "context_inference": {},
-        },
+        ]
     )
     with pytest.raises(ValueError, match="must not include representation/learner-owned keys"):
         assemble_experiment(plan)

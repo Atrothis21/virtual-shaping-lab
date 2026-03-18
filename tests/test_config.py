@@ -657,7 +657,7 @@ def test_plan_from_payload_contains_units_and_settings():
     assert plan.canonical_payload["report"]["preset"] == "acquisition"
     assert plan.settings["learner"] == "rescorla_wagner"
     assert plan.settings["agent"] == "classical_agent"
-    expected = parameters_to_dict(ParameterComposer.compose(payload))
+    expected = parameters_to_dict(ParameterComposer.compose(plan.canonical_payload))
     assert plan.settings["composed_parameters"] == expected
 
 
