@@ -15,7 +15,7 @@ def _dispatch_transition(agent: Any, transition: Transition) -> None:
         agent.update(transition.s, transition.r, transition.a)
         return
 
-    raise AttributeError("Agent must implement learn(Transition) or legacy update methods.")
+    raise AttributeError("Agent must implement learn(Transition) or update(state, reward, action).")
 
 
 def apply_attention_update(

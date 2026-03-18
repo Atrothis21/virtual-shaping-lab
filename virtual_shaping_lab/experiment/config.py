@@ -481,22 +481,15 @@ class ExperimentConfig:
     def _normalize_attention_config(
         cls,
         *,
-        attention_field: Any,
         attention_config_field: Any,
     ) -> Dict[str, Any]:
         """
         Normalize canonical attention strategy config.
 
-        Supported forms:
-          - experiment.attention_config = {"name": str, "params": {...}}
-          - strategy-form experiment.attention = {"name": str, "params": {...}}
-          - legacy experiment.attention map (normalized to static/none config)
+        Supported canonical form:
+          - experiment.agent.learning.attention.config = {"name": str, "params": {...}}
         """
         cfg = attention_config_field
-        if cfg is None and isinstance(attention_field, dict) and (
-            "name" in attention_field or "params" in attention_field
-        ):
-            cfg = attention_field
 
         if cfg is not None:
             if not isinstance(cfg, dict):
@@ -523,12 +516,6 @@ class ExperimentConfig:
                 ),
             }
 
-        legacy_overrides = cls._normalize_attention(attention_field)
-        if legacy_overrides:
-            return {
-                "name": "static",
-                "params": {"default": 1.0, "overrides": dict(legacy_overrides)},
-            }
         return {"name": "none", "params": {}}
 
     @staticmethod
@@ -728,7 +715,6 @@ class ExperimentConfig:
         if isinstance(attention_block, dict):
             exp_attention = cls._normalize_attention(attention_block.get("initial"))
             exp_attention_config = cls._normalize_attention_config(
-                attention_field=attention_block.get("initial"),
                 attention_config_field=(
                     attention_block.get("config")
                     if isinstance(attention_block.get("config"), dict) and attention_block.get("config")

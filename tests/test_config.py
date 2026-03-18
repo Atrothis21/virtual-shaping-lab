@@ -67,15 +67,14 @@ def test_attention_config_accepts_strategy_object():
     assert cfg.attention_config["params"]["eta"] == 0.2
 
 
-def test_attention_strategy_form_in_attention_field_is_supported():
+def test_attention_strategy_form_in_initial_field_is_not_supported():
     payload = _base_payload()
     payload["experiment"]["agent"]["learning"]["attention"] = {
         "initial": {"name": "mackintosh", "params": {"kappa": 0.1}}
     }
     cfg = ExperimentConfig.from_payload(payload)
-    assert cfg.attention == {}
-    assert cfg.attention_config["name"] == "mackintosh"
-    assert cfg.attention_config["params"]["kappa"] == 0.1
+    # Strategy configuration must be declared explicitly in attention.config.
+    assert cfg.attention_config["name"] == "none"
 
 
 def test_attention_config_invalid_contract_rejected():
