@@ -2,9 +2,85 @@ window.VSLReact = window.VSLReact || {};
 
 window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload) {
   if (!payload || typeof payload !== "object") return payload;
-  const experiment = payload.experiment || {};
-  if (experiment.program && experiment.agent && experiment.runtime) return payload;
-  throw new Error("Teaching panel requires canonical payloads.");
+  const source = JSON.parse(JSON.stringify(payload));
+  const experiment = source.experiment || {};
+  const report = source.report || {};
+
+  if (experiment.program && experiment.agent && experiment.runtime) return source;
+
+  const hasLegacyShape =
+    Object.prototype.hasOwnProperty.call(experiment, "learner") ||
+    Object.prototype.hasOwnProperty.call(experiment, "phases") ||
+    Object.prototype.hasOwnProperty.call(experiment, "protocol");
+
+  if (!hasLegacyShape) {
+    throw new Error("Teaching panel requires canonical payloads.");
+  }
+
+  const legacyPhases = Array.isArray(experiment.phases)
+    ? experiment.phases
+    : [{
+        name: "Phase 0",
+        protocol: experiment.protocol,
+        stimuli: experiment.stimuli || {},
+        params: experiment.params || {},
+      }];
+
+  const canonicalPhases = legacyPhases.map((phase, idx) => {
+    const params = { ...((phase && phase.params) || {}) };
+    const trialsRaw = phase && phase.trials != null ? phase.trials : (params.n_trials != null ? params.n_trials : 1);
+    const trials = Math.max(1, Number.parseInt(trialsRaw, 10) || 1);
+    params.n_trials = trials;
+    return {
+      name: (phase && phase.name) || `Phase ${idx}`,
+      protocol: phase && phase.protocol,
+      stimuli: (phase && phase.stimuli) || {},
+      params,
+      trials,
+    };
+  });
+
+  const representationInput = experiment.representation;
+  const representation =
+    typeof representationInput === "string"
+      ? { name: representationInput, params: {} }
+      : { ...(representationInput || {}) };
+  representation.params = { ...(representation.params || {}) };
+  if (experiment.salience && typeof experiment.salience === "object") {
+    representation.salience = { ...experiment.salience };
+  }
+
+  const learning = {
+    rule: experiment.learner,
+    params: {},
+  };
+  const hasAttentionInitial = experiment.attention && typeof experiment.attention === "object";
+  const hasAttentionConfig = experiment.attention_config && typeof experiment.attention_config === "object";
+  if (hasAttentionInitial || hasAttentionConfig) {
+    learning.attention = {
+      initial: hasAttentionInitial ? { ...experiment.attention } : {},
+      config: hasAttentionConfig ? { ...experiment.attention_config } : {},
+    };
+  }
+
+  const runtime = { ...((experiment.runtime && typeof experiment.runtime === "object") ? experiment.runtime : {}) };
+  if (experiment.context_inference && typeof experiment.context_inference === "object") {
+    runtime.context_inference = { ...experiment.context_inference };
+  }
+
+  return {
+    experiment: {
+      program: { phases: canonicalPhases },
+      agent: {
+        name: experiment.agent,
+        representation,
+        learning,
+        policy: experiment.policy || null,
+      },
+      runtime,
+    },
+    report,
+  };
 };
 
 const MECHANISM_HELP = {
