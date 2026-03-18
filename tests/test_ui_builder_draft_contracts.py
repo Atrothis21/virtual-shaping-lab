@@ -31,46 +31,57 @@ def test_builder_runtime_draft_rejects_invalid_modes():
 def test_builder_experiment_draft_protocol_mode_round_trip():
     draft = BuilderExperimentDraft.from_dict(
         {
-            "learner": "rescorla_wagner",
-            "agent": "classical",
-            "representation": "vector_elemental",
-            "protocol": "acquisition",
-            "params": {"n_trials": 10},
+            "program": {"protocol": "acquisition", "params": {"n_trials": 10}},
+            "agent": {
+                "name": "classical_agent",
+                "representation": "vector_elemental",
+                "learning": {"rule": "rescorla_wagner", "params": {}, "attention": {"config": {"name": "none", "params": {}}, "initial": {}}},
+                "policy": None,
+            },
             "runtime": {"update_mode": "trial", "record_mode": "trial"},
         }
     )
     as_dict = draft.to_dict()
-    assert as_dict["protocol"] == "acquisition"
-    assert as_dict["params"]["n_trials"] == 10
+    assert as_dict["program"]["phases"][0]["protocol"] == "acquisition"
+    assert as_dict["program"]["phases"][0]["params"]["n_trials"] == 10
 
 
 def test_builder_experiment_draft_phase_mode_round_trip():
     draft = BuilderExperimentDraft.from_dict(
         {
-            "learner": "rescorla_wagner",
-            "agent": "classical",
-            "representation": "vector_elemental",
-            "phases": [
-                {"protocol": "acquisition", "params": {"n_trials": 5}},
-                {"protocol": "nonreinforcement", "params": {"n_trials": 5}},
-            ],
+            "program": {
+                "phases": [
+                    {"protocol": "acquisition", "params": {"n_trials": 5}},
+                    {"protocol": "nonreinforcement", "params": {"n_trials": 5}},
+                ]
+            },
+            "agent": {
+                "name": "classical_agent",
+                "representation": "vector_elemental",
+                "learning": {"rule": "rescorla_wagner", "params": {}, "attention": {"config": {"name": "none", "params": {}}, "initial": {}}},
+                "policy": None,
+            },
         }
     )
     as_dict = draft.to_dict()
-    assert "protocol" not in as_dict
-    assert len(as_dict["phases"]) == 2
-    assert as_dict["phases"][0]["protocol"] == "acquisition"
+    assert len(as_dict["program"]["phases"]) == 2
+    assert as_dict["program"]["phases"][0]["protocol"] == "acquisition"
 
 
 def test_builder_experiment_draft_rejects_protocol_and_phases_both():
     try:
         BuilderExperimentDraft.from_dict(
             {
-                "learner": "rescorla_wagner",
-                "agent": "classical",
-                "representation": "vector_elemental",
-                "protocol": "acquisition",
-                "phases": [{"protocol": "acquisition", "params": {}}],
+                "program": {
+                    "protocol": "acquisition",
+                    "phases": [{"protocol": "acquisition", "params": {"n_trials": 1}}],
+                },
+                "agent": {
+                    "name": "classical_agent",
+                    "representation": "vector_elemental",
+                    "learning": {"rule": "rescorla_wagner", "params": {}, "attention": {"config": {"name": "none", "params": {}}, "initial": {}}},
+                    "policy": None,
+                },
             }
         )
         assert False, "Expected BuilderDraftValidationError for protocol/phases xor rule"

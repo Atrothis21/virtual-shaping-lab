@@ -39,8 +39,32 @@ function safeClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function getProgram(payload) {
+  if (!payload.experiment || typeof payload.experiment !== "object") payload.experiment = {};
+  if (!payload.experiment.program || typeof payload.experiment.program !== "object") {
+    payload.experiment.program = {};
+  }
+  return payload.experiment.program;
+}
+
+function getAgent(payload) {
+  if (!payload.experiment || typeof payload.experiment !== "object") payload.experiment = {};
+  if (!payload.experiment.agent || typeof payload.experiment.agent !== "object") {
+    payload.experiment.agent = {};
+  }
+  return payload.experiment.agent;
+}
+
+function getRuntime(payload) {
+  if (!payload.experiment || typeof payload.experiment !== "object") payload.experiment = {};
+  if (!payload.experiment.runtime || typeof payload.experiment.runtime !== "object") {
+    payload.experiment.runtime = {};
+  }
+  return payload.experiment.runtime;
+}
+
 function getAvailableStimuli(payload) {
-  const fromRep = payload?.experiment?.representation?.params?.stimuli;
+  const fromRep = payload?.experiment?.agent?.representation?.params?.stimuli;
   if (Array.isArray(fromRep) && fromRep.length) return fromRep;
   return [...STIMULI];
 }
@@ -211,16 +235,31 @@ function createInitialPayload() {
   const initialStimuli = [...STIMULI];
   return {
     experiment: {
-      learner: "rescorla_wagner",
-      agent: "classical_agent",
-      representation: {
-        name: "vector_elemental",
-        params: { stimuli: initialStimuli, max_compound_size: 2 },
+      program: {
+        phases: [buildDefaultPhase(0, initialStimuli)],
       },
-      context_inference: { enabled: false, max_contexts: 3 },
-      salience: {},
-      attention: {},
-      phases: [buildDefaultPhase(0, initialStimuli)],
+      agent: {
+        name: "classical_agent",
+        representation: {
+          name: "vector_elemental",
+          params: { stimuli: initialStimuli, max_compound_size: 2 },
+          salience: {},
+        },
+        learning: {
+          rule: "rescorla_wagner",
+          params: {},
+          attention: {
+            config: { name: "none", params: {} },
+            initial: {},
+          },
+        },
+        policy: null,
+      },
+      runtime: {
+        update_mode: "trial",
+        record_mode: "trial",
+        context_inference: { enabled: false, max_contexts: 3 },
+      },
     },
     report: { preset: "acquisition" },
   };
@@ -244,21 +283,59 @@ function normalizePayload(inputPayload) {
   const payload = safeClone(inputPayload);
   if (!payload.report) payload.report = { preset: "custom_protocol" };
 
-  if (payload?.experiment?.attention) {
-    Object.entries(payload.experiment.attention).forEach(([key, value]) => {
-      if (value == null) return;
-      if (typeof value === "number") {
-        payload.experiment.attention[key] = { attention: value };
-        return;
-      }
-      if (typeof value === "object" && typeof value.attention === "number") return;
-      if (typeof value === "object" && value.attention == null && value.value != null) {
-        payload.experiment.attention[key] = { attention: +value.value };
-      }
-    });
+  if (!payload.experiment || typeof payload.experiment !== "object") {
+    payload.experiment = {};
+  }
+  const exp = payload.experiment;
+
+  // Seed-payload compatibility: lift old flat shape into canonical UI draft.
+  if (!exp.program && Array.isArray(exp.phases)) {
+    exp.program = { phases: safeClone(exp.phases) };
+  }
+  if (!exp.agent || typeof exp.agent !== "object" || Array.isArray(exp.agent)) {
+    exp.agent = {};
+  }
+  if (!exp.runtime || typeof exp.runtime !== "object" || Array.isArray(exp.runtime)) {
+    exp.runtime = {};
+  }
+  if (typeof exp.learner === "string") {
+    if (!exp.agent.learning || typeof exp.agent.learning !== "object") exp.agent.learning = {};
+    exp.agent.learning.rule = exp.learner;
+    delete exp.learner;
+  }
+  if (typeof exp.agent === "string") {
+    exp.agent = { name: exp.agent };
+  }
+  if (exp.representation) {
+    exp.agent.representation = safeClone(exp.representation);
+    delete exp.representation;
+  }
+  if (Object.prototype.hasOwnProperty.call(exp, "policy")) {
+    exp.agent.policy = safeClone(exp.policy);
+    delete exp.policy;
+  }
+  if (exp.context_inference) {
+    exp.runtime.context_inference = safeClone(exp.context_inference);
+    delete exp.context_inference;
+  }
+  if (exp.salience) {
+    if (!exp.agent.representation || typeof exp.agent.representation !== "object") {
+      exp.agent.representation = { name: "vector_elemental", params: {} };
+    }
+    exp.agent.representation.salience = safeClone(exp.salience);
+    delete exp.salience;
+  }
+  if (exp.attention) {
+    if (!exp.agent.learning || typeof exp.agent.learning !== "object") exp.agent.learning = {};
+    if (!exp.agent.learning.attention || typeof exp.agent.learning.attention !== "object") {
+      exp.agent.learning.attention = { config: { name: "none", params: {} }, initial: {} };
+    }
+    exp.agent.learning.attention.initial = safeClone(exp.attention);
+    delete exp.attention;
   }
 
-  const phases = payload?.experiment?.phases || [];
+  const program = getProgram(payload);
+  const phases = Array.isArray(program.phases) ? program.phases : [];
   if (phases.length === 1) {
     const proto = phases[0].protocol;
     payload.report.preset = KNOWN_PRESETS.has(proto) ? proto : "custom_protocol";
@@ -270,7 +347,16 @@ function normalizePayload(inputPayload) {
     if (phase.protocol === "context_shift" && phase.stimuli) {
       delete phase.stimuli;
     }
+    if (!Number.isFinite(Number(phase.trials))) {
+      const nTrials = phase?.params?.n_trials;
+      phase.trials = Number.isFinite(Number(nTrials)) ? Number(nTrials) : 1;
+    }
+    if (!phase.params || typeof phase.params !== "object") {
+      phase.params = {};
+    }
+    phase.params.n_trials = phase.trials;
   });
+  program.phases = phases;
 
   return payload;
 }
@@ -294,8 +380,8 @@ function hasPriorLearning(phases, index) {
 
 function validateBeforeRun(inputPayload) {
   const payload = normalizePayload(inputPayload);
-  const phases = payload?.experiment?.phases || [];
-  const repStimuli = payload?.experiment?.representation?.params?.stimuli || [];
+  const phases = payload?.experiment?.program?.phases || [];
+  const repStimuli = payload?.experiment?.agent?.representation?.params?.stimuli || [];
   const repSet = new Set(Array.isArray(repStimuli) ? repStimuli : []);
 
   if (!Array.isArray(phases) || phases.length === 0) {
