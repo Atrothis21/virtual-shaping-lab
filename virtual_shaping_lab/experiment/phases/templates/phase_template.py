@@ -154,11 +154,11 @@ class PhaseTemplate:
             )
             record["prediction"] = prediction
             record["response"] = action if action is not None else prediction
-            # Preserve legacy classification field expected by behavioral/analysis tests.
+            # Emit stable classification field used by behavioral/analysis views.
             record["stimulus_type"] = (
                 str(trial_type.label).split(":", 1)[0] if trial_type.label else None
             )
-            # Preserve legacy inferred-context metadata behavior.
+            # Emit context-source metadata when context inference is active.
             if hasattr(self, "context_source"):
                 record["context_source"] = self.context_source
                 if self.context_source == "inferred":

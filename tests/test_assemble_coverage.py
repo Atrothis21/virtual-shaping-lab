@@ -10,7 +10,6 @@ from experiment.assemble import (
 )
 from experiment.config import ExperimentConfig, PhaseConfig
 from experiment.domain.types import ExperimentPlan
-from experiment.payload_contract import from_legacy_payload
 from experiment.public import assemble_from_plan, build_plan, validate_plan
 from experiment.phases.catalog import CUSTOM_PHASE_CLASS_ALLOWLIST
 
@@ -19,6 +18,71 @@ class DummyConfig:
     def __init__(self, phases=None, params=None):
         self.phases = phases or []
         self.params = params or {}
+
+
+def _canonical_fixture_payload(payload):
+    if not isinstance(payload, dict) or not isinstance(payload.get("experiment"), dict):
+        raise ValueError("Fixture payload must include experiment object.")
+
+    exp = payload["experiment"]
+    phases = exp.get("phases")
+    if phases is None:
+        phases = [
+            {
+                "name": "Phase 0",
+                "protocol": exp.get("protocol"),
+                "stimuli": exp.get("stimuli", {}),
+                "params": exp.get("params", {}),
+            }
+        ]
+
+    canonical_phases = []
+    for idx, phase in enumerate(phases):
+        params = dict(phase.get("params", {}) or {})
+        trials = int(params.get("n_trials", phase.get("trials", 1)))
+        params["n_trials"] = trials
+        canonical_phases.append(
+            {
+                "name": phase.get("name") or f"Phase {idx}",
+                "protocol": phase.get("protocol"),
+                "stimuli": phase.get("stimuli", {}),
+                "params": params,
+                "trials": trials,
+            }
+        )
+
+    representation = exp.get("representation")
+    if isinstance(representation, str):
+        representation = {"name": representation, "params": {}}
+    representation = dict(representation or {})
+    representation.setdefault("params", {})
+    if isinstance(exp.get("salience"), dict) and exp.get("salience"):
+        representation["salience"] = dict(exp["salience"])
+
+    learning = {"rule": exp.get("learner"), "params": {}}
+    if isinstance(exp.get("attention"), dict) or isinstance(exp.get("attention_config"), dict):
+        learning["attention"] = {
+            "initial": dict(exp.get("attention") or {}),
+            "config": dict(exp.get("attention_config") or {}),
+        }
+
+    runtime = dict(exp.get("runtime") or {})
+    if isinstance(exp.get("context_inference"), dict):
+        runtime["context_inference"] = dict(exp["context_inference"])
+
+    return {
+        "experiment": {
+            "program": {"phases": canonical_phases},
+            "agent": {
+                "name": exp.get("agent"),
+                "representation": representation,
+                "learning": learning,
+                "policy": exp.get("policy"),
+            },
+            "runtime": runtime,
+        },
+        "report": dict(payload.get("report", {})),
+    }
 
 
 def test_infer_contexts_from_phases_and_params():
@@ -68,7 +132,7 @@ def test_assemble_inferred_contexts_extend_representation_vocab(monkeypatch):
 
     monkeypatch.setattr("experiment.assemble.build_representation", fake_build_rep)
 
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -103,7 +167,7 @@ def test_protocol_phase_helpers():
 
 
 def test_assemble_experiment_phase_mode_with_reward_schedule():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -132,7 +196,7 @@ def test_assemble_experiment_phase_mode_with_reward_schedule():
 
 
 def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "td_value",
             "agent": "operant_agent",
@@ -163,7 +227,7 @@ def test_assemble_experiment_protocol_mode_with_policy_string(monkeypatch):
 
 
 def test_assemble_classical_path_rejects_policy():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -188,7 +252,7 @@ def test_assemble_classical_path_rejects_policy():
 
 
 def test_assemble_operant_path_requires_policy():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "q_learner",
             "agent": "operant_agent",
@@ -210,7 +274,7 @@ def test_assemble_operant_path_requires_policy():
 
 
 def test_assemble_assigns_attention_to_learner():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -237,7 +301,7 @@ def test_assemble_assigns_attention_to_learner():
 
 
 def test_assemble_accepts_attention_config_strategy_form():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -267,7 +331,7 @@ def test_assemble_accepts_attention_config_strategy_form():
 
 
 def test_assemble_does_not_override_explicit_phase_context():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -314,6 +378,34 @@ def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
                 },
             }
         ],
+        agent_spec={
+            "agent": "operant_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "q_learner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["lever"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {},
+            "composed_parameters": {
+                "policy": {
+                    "name": "epsilon_greedy",
+                    "epsilon": 0.1,
+                    "actions": ["left", "right"],
+                },
+            },
+            "resolved_plan": False,
+        },
         settings={
             "learner": "q_learner",
             "agent": "operant_agent",
@@ -341,7 +433,7 @@ def test_assemble_plan_uses_composed_policy_when_settings_policy_missing():
 
 
 def test_assemble_classical_path_uses_null_policy_semantics():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -744,6 +836,51 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
                 "params": {"n_trials": 1},
             },
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition",
+                        "name": "Acq",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    },
+                    {
+                        "unit_key": "nonreinforcement",
+                        "name": "Ext",
+                        "context_id": None,
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 1},
+                    },
+                ],
+            },
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -792,7 +929,7 @@ def test_assemble_respects_typed_unit_context_over_inferred_context():
 
 
 def test_assemble_experiment_supports_template_phase_key():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -827,6 +964,41 @@ def test_assemble_respects_typed_unit_context_over_inferred_for_template_phase()
                 "params": {"n_trials": 1},
             }
         ],
+        agent_spec={
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "learning": {
+                "rule": "rescorla_wagner",
+                "params": {},
+                "attention": {"initial": {}, "config": {"name": "none", "params": {}}},
+            },
+            "policy": None,
+            "stimuli": ["tone"],
+            "salience": {},
+            "attention": {},
+            "attention_config": {"name": "none", "params": {}},
+        },
+        runtime_spec={
+            "context_inference": {"enabled": True, "max_contexts": 2},
+            "resolved_plan": False,
+            "composed_parameters": {
+                "units": [
+                    {
+                        "unit_key": "acquisition_template",
+                        "name": "Template Acquisition",
+                        "context_id": "C",
+                        "n_trials": 1,
+                        "time": {"duration_s": 1.0, "dt_s": 1.0},
+                        "contingency": {},
+                        "learning_gate": {"enabled": True},
+                        "metadata": {"phase_index": 0},
+                    }
+                ]
+            },
+        },
         settings={
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -867,7 +1039,7 @@ def test_custom_phase_policy_allowlist_contains_control_flow_phases():
 
 
 def test_experiment_public_facade_builds_and_validates_plan():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",
@@ -891,7 +1063,7 @@ def test_experiment_public_facade_builds_and_validates_plan():
 
 
 def test_experiment_public_facade_assembles_from_plan():
-    payload = from_legacy_payload({
+    payload = _canonical_fixture_payload({
         "experiment": {
             "learner": "rescorla_wagner",
             "agent": "classical_agent",

@@ -25,9 +25,6 @@ def validate_plan(plan: ExperimentPlan) -> ExperimentPlan:
     """Validate plan-level ownership constraints and return the same plan."""
     runtime_spec = dict(plan.runtime_spec or {})
     composed = runtime_spec.get("composed_parameters")
-    if not composed:
-        settings = dict(plan.settings or {})
-        composed = settings.get("composed_parameters")
     if composed:
         validate_composed_parameter_ownership(composed)
     return plan

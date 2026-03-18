@@ -95,20 +95,34 @@ function createLifecycleStore(lifecycleState, transition) {
 const DEFAULT_PLAN_DRAFT = JSON.stringify(
   {
     experiment: {
-      learner: "rescorla_wagner",
-      agent: "classical_agent",
-      representation: {
-        name: "vector_elemental",
-        params: { stimuli: ["tone"], max_compound_size: 2 },
+      program: {
+        phases: [
+          {
+            name: "Acquisition",
+            protocol: "acquisition",
+            stimuli: { cs_plus: ["tone"] },
+            params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+            trials: 20,
+          },
+        ],
       },
-      phases: [
-        {
-          name: "Acquisition",
-          protocol: "acquisition",
-          stimuli: { cs_plus: ["tone"] },
-          params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+      agent: {
+        name: "classical_agent",
+        representation: {
+          name: "vector_elemental",
+          params: { stimuli: ["tone"], max_compound_size: 2 },
         },
-      ],
+        learning: {
+          rule: "rescorla_wagner",
+          params: {},
+          attention: {
+            config: { name: "none", params: {} },
+            initial: {},
+          },
+        },
+        policy: null,
+      },
+      runtime: { update_mode: "trial", record_mode: "trial" },
     },
     report: { preset: "acquisition" },
   },
@@ -125,26 +139,41 @@ const LIFECYCLE_PRESETS = {
     label: "Extinction Demo",
     payload: {
       experiment: {
-        learner: "rescorla_wagner",
-        agent: "classical_agent",
-        representation: {
-          name: "vector_elemental",
-          params: { stimuli: ["tone"], max_compound_size: 2 },
+        program: {
+          phases: [
+            {
+              name: "Acquisition",
+              protocol: "acquisition",
+              stimuli: { cs_plus: ["tone"] },
+              params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+              trials: 20,
+            },
+            {
+              name: "Extinction",
+              protocol: "extinction",
+              stimuli: { cs_plus: ["tone"] },
+              params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+              trials: 20,
+            },
+          ],
         },
-        phases: [
-          {
-            name: "Acquisition",
-            protocol: "acquisition",
-            stimuli: { cs_plus: ["tone"] },
-            params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+        agent: {
+          name: "classical_agent",
+          representation: {
+            name: "vector_elemental",
+            params: { stimuli: ["tone"], max_compound_size: 2 },
           },
-          {
-            name: "Extinction",
-            protocol: "extinction",
-            stimuli: { cs_plus: ["tone"] },
-            params: { n_trials: 20, alpha: 0.2, gamma: 0.0 },
+          learning: {
+            rule: "rescorla_wagner",
+            params: {},
+            attention: {
+              config: { name: "none", params: {} },
+              initial: {},
+            },
           },
-        ],
+          policy: null,
+        },
+        runtime: { update_mode: "trial", record_mode: "trial" },
       },
       report: { preset: "extinction" },
     },
@@ -239,13 +268,15 @@ function PlanPane({
     const updated = updateDraftField(draft, (payload) => {
       const next = { ...payload };
       const experiment = { ...(next.experiment || {}) };
-      const phases = Array.isArray(experiment.phases) ? [...experiment.phases] : [];
+      const program = { ...(experiment.program || {}) };
+      const phases = Array.isArray(program.phases) ? [...program.phases] : [];
       if (phases.length === 0) {
-        phases.push({ name: "Phase 1", protocol: protocolName, params: {}, stimuli: {} });
+        phases.push({ name: "Phase 1", protocol: protocolName, params: {}, stimuli: {}, trials: 20 });
       } else {
         phases[0] = { ...(phases[0] || {}), protocol: protocolName };
       }
-      experiment.phases = phases;
+      program.phases = phases;
+      experiment.program = program;
       next.experiment = experiment;
       return next;
     });
@@ -255,7 +286,11 @@ function PlanPane({
   function setLearner(learnerName) {
     const updated = updateDraftField(draft, (payload) => {
       const next = { ...payload };
-      const experiment = { ...(next.experiment || {}), learner: learnerName };
+      const experiment = { ...(next.experiment || {}) };
+      const agent = { ...(experiment.agent || {}) };
+      const learning = { ...(agent.learning || {}), rule: learnerName };
+      agent.learning = learning;
+      experiment.agent = agent;
       next.experiment = experiment;
       return next;
     });
@@ -265,7 +300,9 @@ function PlanPane({
   function setPolicy(policyName) {
     const updated = updateDraftField(draft, (payload) => {
       const next = { ...payload };
-      const experiment = { ...(next.experiment || {}), policy: policyName };
+      const experiment = { ...(next.experiment || {}) };
+      const agent = { ...(experiment.agent || {}), policy: policyName };
+      experiment.agent = agent;
       next.experiment = experiment;
       return next;
     });
@@ -276,8 +313,10 @@ function PlanPane({
     const updated = updateDraftField(draft, (payload) => {
       const next = { ...payload };
       const experiment = { ...(next.experiment || {}) };
-      const representation = { ...(experiment.representation || {}), name: reprName };
-      experiment.representation = representation;
+      const agent = { ...(experiment.agent || {}) };
+      const representation = { ...(agent.representation || {}), name: reprName };
+      agent.representation = representation;
+      experiment.agent = agent;
       next.experiment = experiment;
       return next;
     });
@@ -294,29 +333,35 @@ function PlanPane({
   const phaseRows =
     parsedDraft &&
     parsedDraft.experiment &&
-    Array.isArray(parsedDraft.experiment.phases)
-      ? parsedDraft.experiment.phases
+    parsedDraft.experiment.program &&
+    Array.isArray(parsedDraft.experiment.program.phases)
+      ? parsedDraft.experiment.program.phases
       : [];
 
   function mutatePhases(mutator) {
     const updated = updateDraftField(draft, (payload) => {
       const next = { ...payload };
       const experiment = { ...(next.experiment || {}) };
-      const phases = Array.isArray(experiment.phases) ? [...experiment.phases] : [];
+      const program = { ...(experiment.program || {}) };
+      const phases = Array.isArray(program.phases) ? [...program.phases] : [];
       const nextPhases = mutator(phases).map((phase, idx) => {
         const base = phase && typeof phase === "object" ? { ...phase } : {};
         const params = base.params && typeof base.params === "object" ? { ...base.params } : {};
         if (!Number.isFinite(Number(params.n_trials))) {
           params.n_trials = 20;
         }
+        const trials = Number.isFinite(Number(base.trials)) ? Number(base.trials) : Number(params.n_trials);
+        params.n_trials = trials;
         return {
           name: base.name || `Phase ${idx + 1}`,
           protocol: base.protocol || "acquisition",
           stimuli: base.stimuli && typeof base.stimuli === "object" ? base.stimuli : {},
           params,
+          trials,
         };
       });
-      experiment.phases = nextPhases;
+      program.phases = nextPhases;
+      experiment.program = program;
       next.experiment = experiment;
       return next;
     });
@@ -331,6 +376,7 @@ function PlanPane({
         protocol: "acquisition",
         stimuli: {},
         params: { n_trials: 20 },
+        trials: 20,
       },
     ]);
   }
@@ -363,8 +409,8 @@ function PlanPane({
   }
 
   const runtimeSettings =
-    parsedDraft && parsedDraft.settings && typeof parsedDraft.settings === "object"
-      ? parsedDraft.settings
+    parsedDraft && parsedDraft.experiment && parsedDraft.experiment.runtime && typeof parsedDraft.experiment.runtime === "object"
+      ? parsedDraft.experiment.runtime
       : {};
   const firstPhase = phaseRows.length ? phaseRows[0] : null;
   const firstPhaseParams =
@@ -375,16 +421,24 @@ function PlanPane({
   function setRuntimeMode(key, value) {
     patchPayload((payload) => {
       const next = { ...payload };
-      const settings = { ...(next.settings || {}) };
-      settings[key] = value;
-      next.settings = settings;
+      const experiment = { ...(next.experiment || {}) };
+      const runtime = { ...(experiment.runtime || {}) };
+      runtime[key] = value;
+      experiment.runtime = runtime;
+      next.experiment = experiment;
       return next;
     });
   }
 
   function setFirstPhaseContext(value) {
     if (!phaseRows.length) return;
-    patchPhase(0, (p) => ({ ...p, context: value }));
+    patchPhase(0, (p) => ({
+      ...p,
+      params: {
+        ...(p.params || {}),
+        context: value,
+      },
+    }));
   }
 
   function setFirstPhaseNumericParam(key, value) {
@@ -659,7 +713,7 @@ function PlanPane({
             }}
           >
             <label>
-              <div><strong>settings.update_mode</strong></div>
+              <div><strong>experiment.runtime.update_mode</strong></div>
               <select
                 value={runtimeSettings.update_mode || "trial"}
                 onChange={(e) => setRuntimeMode("update_mode", e.target.value)}
@@ -670,7 +724,7 @@ function PlanPane({
               </select>
             </label>
             <label>
-              <div><strong>settings.record_mode</strong></div>
+              <div><strong>experiment.runtime.record_mode</strong></div>
               <select
                 value={runtimeSettings.record_mode || "trial"}
                 onChange={(e) => setRuntimeMode("record_mode", e.target.value)}

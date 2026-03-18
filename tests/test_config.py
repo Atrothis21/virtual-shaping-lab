@@ -14,32 +14,38 @@ from experiment.config import (
 )
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import ParameterComposer, parameters_to_dict
-from experiment.payload_contract import from_legacy_payload
 
 
 def _base_payload():
-    return from_legacy_payload({
+    return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {
-                    "stimuli": ["tone", "noise"],
-                    "max_compound_size": 2,
-                },
+            "program": {
+                "phases": [
+                    {
+                        "name": "Phase 1",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0},
+                        "trials": 1,
+                    }
+                ],
             },
-            "phases": [
-                {
-                    "name": "Phase 1",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0},
-                }
-            ],
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {
+                        "stimuli": ["tone", "noise"],
+                        "max_compound_size": 2,
+                    },
+                },
+                "learning": {"rule": "rescorla_wagner", "params": {}},
+                "policy": None,
+            },
+            "runtime": {},
         },
         "report": {"preset": "acquisition"},
-    })
+    }
 
 
 def test_attention_normalization_accepts_object():
@@ -67,15 +73,14 @@ def test_attention_config_accepts_strategy_object():
     assert cfg.attention_config["params"]["eta"] == 0.2
 
 
-def test_attention_strategy_form_in_attention_field_is_supported():
+def test_attention_strategy_form_in_initial_field_is_not_supported():
     payload = _base_payload()
     payload["experiment"]["agent"]["learning"]["attention"] = {
         "initial": {"name": "mackintosh", "params": {"kappa": 0.1}}
     }
     cfg = ExperimentConfig.from_payload(payload)
-    assert cfg.attention == {}
-    assert cfg.attention_config["name"] == "mackintosh"
-    assert cfg.attention_config["params"]["kappa"] == 0.1
+    # Strategy configuration must be declared explicitly in attention.config.
+    assert cfg.attention_config["name"] == "none"
 
 
 def test_attention_config_invalid_contract_rejected():
@@ -848,12 +853,14 @@ def test_assemble_plan_does_not_require_runtime_context_inference(monkeypatch):
             "protocol": "acquisition",
             "stimuli": {"cs_plus": ["tone"]},
             "params": {"n_trials": 1},
+            "trials": 1,
         },
         {
             "name": "Ext",
             "protocol": "nonreinforcement",
             "stimuli": {"cs_plus": ["tone"]},
             "params": {"n_trials": 1},
+            "trials": 1,
         },
     ]
     cfg = ExperimentConfig.from_payload(payload)

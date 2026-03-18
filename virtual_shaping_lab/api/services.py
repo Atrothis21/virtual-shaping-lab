@@ -38,8 +38,8 @@ def _stable_hash_from_artifact_payload(payload: Dict[str, Any], record_schema_ve
 
 
 def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
-    settings = dict(plan.settings or {})
-    composed = settings.get("composed_parameters")
+    runtime_spec = dict(plan.runtime_spec or {})
+    composed = runtime_spec.get("composed_parameters")
     if not isinstance(composed, dict):
         return {}
 
@@ -242,7 +242,7 @@ class RunService:
 
             records.extend(phase_records)
 
-        report_preset = str((plan.settings or {}).get("report_preset", "verification_report"))
+        report_preset = str((plan.analysis_spec or {}).get("report_preset", "verification_report"))
         report_payload = RunService._build_report_payload_from_plan(plan)
         report_dir = run_report(
             records=records,

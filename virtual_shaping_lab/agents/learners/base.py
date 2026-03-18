@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Any, Mapping
-import logging
 
 import numpy as np
 
@@ -23,8 +22,6 @@ from virtual_shaping_lab.agents.learners.attention_strategies import (
     AttentionContext,
 )
 from virtual_shaping_lab.domain.types import EncodedState, META_CUE_LABELS, Transition
-
-logger = logging.getLogger(__name__)
 
 
 class BaseLearner(ILearner, ABC):
@@ -44,7 +41,6 @@ class BaseLearner(ILearner, ABC):
         self.attention_map: Dict[str, float] = {}
         self._attention_strategy: IAttentionMechanism = attention_mechanism or build_attention_mechanism("none")
         self._last_attention_context: AttentionContext | None = None
-        self._did_warn_scalar_attention_shim = False
 
     def reset(self) -> None:
         self._attention_strategy.reset()
@@ -187,19 +183,6 @@ class BaseLearner(ILearner, ABC):
         if cue_features and len(cue_features) == n:
             alpha_map = self._attention_strategy.current_alpha(cue_features)
             alpha_vec = np.asarray([float(alpha_map.get(f, 1.0)) for f in cue_features], dtype=float)
-            return alpha_vec, cue_features
-
-        # Compatibility vector path: contribution basis aligned to x; expand cue alpha uniformly.
-        if contrib_features and len(contrib_features) == n and cue_features:
-            cue_alpha = float(self.attention_multiplier(cue_labels))
-            if not self._did_warn_scalar_attention_shim:
-                logger.warning(
-                    "attention scalar compatibility shim applied: cue-label attention was "
-                    "expanded to a uniform vector because cue basis did not align to state basis; "
-                    "prefer aligned cuewise vectors."
-                )
-                self._did_warn_scalar_attention_shim = True
-            alpha_vec = np.full(n, cue_alpha, dtype=float)
             return alpha_vec, cue_features
 
         # Contribution-key cuewise path when labels are absent but contribution basis is aligned.

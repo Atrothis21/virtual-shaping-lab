@@ -76,38 +76,34 @@ def test_attention_shape_mismatch_error_includes_expected_and_actual_lengths():
         )
 
 
-def test_scalar_attention_compatibility_shim_expands_to_uniform_vector_with_warning_log(caplog):
+def test_misaligned_cue_labels_do_not_trigger_scalar_expansion():
     learner = _DummyLearner(alpha=0.1, gamma=0.0)
     learner.set_attention_map({"tone": 0.5})
     transition = _transition([2.0, 4.0], cue_labels=["tone"])
-    with caplog.at_level("WARNING"):
-        x_mod = learner.attention_modulated_state(
-            transition,
-            total_prediction=0.0,
-            prediction_error=1.0,
-            feature_contributions={"f0": 0.0, "f1": 0.0},
-        )
-    np.testing.assert_allclose(x_mod, np.asarray([1.0, 2.0], dtype=float), atol=1e-12)
-    scalar_shim = [r for r in caplog.records if "attention scalar compatibility shim applied" in r.getMessage()]
-    assert len(scalar_shim) == 1
+    x_mod = learner.attention_modulated_state(
+        transition,
+        total_prediction=0.0,
+        prediction_error=1.0,
+        feature_contributions={"f0": 0.0, "f1": 0.0},
+    )
+    # Without scalar shim, misaligned cue labels fall back to contribution basis.
+    np.testing.assert_allclose(x_mod, np.asarray([2.0, 4.0], dtype=float), atol=1e-12)
 
 
-def test_scalar_attention_shim_warning_is_emitted_once_per_learner_instance(caplog):
+def test_misaligned_cue_labels_remain_deterministic_across_calls():
     learner = _DummyLearner(alpha=0.1, gamma=0.0)
     learner.set_attention_map({"tone": 0.5})
     t = _transition([1.0, 1.0], cue_labels=["tone"])
-    with caplog.at_level("WARNING"):
-        learner.attention_modulated_state(
-            t,
-            total_prediction=0.0,
-            prediction_error=1.0,
-            feature_contributions={"f0": 0.0, "f1": 0.0},
-        )
-        learner.attention_modulated_state(
-            t,
-            total_prediction=0.0,
-            prediction_error=1.0,
-            feature_contributions={"f0": 0.0, "f1": 0.0},
-        )
-    scalar_shim = [r for r in caplog.records if "attention scalar compatibility shim applied" in r.getMessage()]
-    assert len(scalar_shim) == 1
+    x1 = learner.attention_modulated_state(
+        t,
+        total_prediction=0.0,
+        prediction_error=1.0,
+        feature_contributions={"f0": 0.0, "f1": 0.0},
+    )
+    x2 = learner.attention_modulated_state(
+        t,
+        total_prediction=0.0,
+        prediction_error=1.0,
+        feature_contributions={"f0": 0.0, "f1": 0.0},
+    )
+    np.testing.assert_allclose(x1, x2, atol=1e-12)

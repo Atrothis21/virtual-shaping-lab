@@ -94,7 +94,13 @@ function BuilderShellApp() {
   }, []);
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
-  const phases = payload.experiment.phases;
+  const phases =
+    payload &&
+    payload.experiment &&
+    payload.experiment.program &&
+    Array.isArray(payload.experiment.program.phases)
+      ? payload.experiment.program.phases
+      : [];
   const active = phases[activePhaseIndex] || phases[0];
 
   const protocol = active?.protocol || "acquisition";
@@ -123,10 +129,10 @@ function BuilderShellApp() {
   const trialsMax = protocol === "probe" ? 200 : 500;
 
   const baselineCompatible = React.useMemo(() => {
-    const salienceNeutral = isNeutralParamMap(payload?.experiment?.salience, "salience", 1.0);
-    const attentionNeutral = isNeutralParamMap(payload?.experiment?.attention, "attention", 1.0);
-    const similarityNeutral = isIdentitySimilarity(payload?.experiment?.representation?.params?.similarity || null);
-    const contextInferenceEnabled = Boolean(payload?.experiment?.context_inference?.enabled);
+    const salienceNeutral = isNeutralParamMap(payload?.experiment?.agent?.representation?.salience, "salience", 1.0);
+    const attentionNeutral = isNeutralParamMap(payload?.experiment?.agent?.learning?.attention?.initial, "attention", 1.0);
+    const similarityNeutral = isIdentitySimilarity(payload?.experiment?.agent?.representation?.params?.similarity || null);
+    const contextInferenceEnabled = Boolean(payload?.experiment?.runtime?.context_inference?.enabled);
     return salienceNeutral && attentionNeutral && similarityNeutral && !contextInferenceEnabled;
   }, [payload]);
 
@@ -134,7 +140,10 @@ function BuilderShellApp() {
     setPayload((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       const stim = getAvailableStimuli(next);
-      next.experiment.phases.push(buildDefaultPhase(next.experiment.phases.length, stim));
+      if (!next.experiment.program || !Array.isArray(next.experiment.program.phases)) {
+        next.experiment.program = { phases: [] };
+      }
+      next.experiment.program.phases.push(buildDefaultPhase(next.experiment.program.phases.length, stim));
       return next;
     });
     setActivePhaseIndex(phases.length);
@@ -143,8 +152,12 @@ function BuilderShellApp() {
   const updateActive = (updater) => {
     setPayload((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
-      const idx = Math.min(activePhaseIndex, next.experiment.phases.length - 1);
-      updater(next.experiment.phases[idx], getAvailableStimuli(next));
+      const phaseRows =
+        next.experiment && next.experiment.program && Array.isArray(next.experiment.program.phases)
+          ? next.experiment.program.phases
+          : [];
+      const idx = Math.min(activePhaseIndex, phaseRows.length - 1);
+      updater(phaseRows[idx], getAvailableStimuli(next));
       return next;
     });
   };
