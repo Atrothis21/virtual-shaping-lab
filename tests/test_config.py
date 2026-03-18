@@ -14,32 +14,38 @@ from experiment.config import (
 )
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import ParameterComposer, parameters_to_dict
-from legacy_payload_helpers import from_legacy_payload
 
 
 def _base_payload():
-    return from_legacy_payload({
+    return {
         "experiment": {
-            "learner": "rescorla_wagner",
-            "agent": "classical_agent",
-            "representation": {
-                "name": "vector_elemental",
-                "params": {
-                    "stimuli": ["tone", "noise"],
-                    "max_compound_size": 2,
-                },
+            "program": {
+                "phases": [
+                    {
+                        "name": "Phase 1",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0},
+                        "trials": 1,
+                    }
+                ],
             },
-            "phases": [
-                {
-                    "name": "Phase 1",
-                    "protocol": "acquisition",
-                    "stimuli": {"cs_plus": ["tone"]},
-                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0},
-                }
-            ],
+            "agent": {
+                "name": "classical_agent",
+                "representation": {
+                    "name": "vector_elemental",
+                    "params": {
+                        "stimuli": ["tone", "noise"],
+                        "max_compound_size": 2,
+                    },
+                },
+                "learning": {"rule": "rescorla_wagner", "params": {}},
+                "policy": None,
+            },
+            "runtime": {},
         },
         "report": {"preset": "acquisition"},
-    })
+    }
 
 
 def test_attention_normalization_accepts_object():

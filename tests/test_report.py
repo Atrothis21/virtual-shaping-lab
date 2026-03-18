@@ -12,7 +12,6 @@ from analysis.report import io as report_io
 from analysis.report.pdf import ReportPDF
 from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
-from legacy_payload_helpers import from_legacy_payload
 
 
 class DummyMetric:
@@ -136,28 +135,39 @@ def test_run_report_writes_outputs(monkeypatch, tmp_path):
     monkeypatch.setattr(report_module, "METRIC_REGISTRY", {"dummy_metric": DummyMetric})
     monkeypatch.setattr(report_module, "VISUALIZATION_REGISTRY", {"dummy_viz": DummyViz})
 
-    payload = from_legacy_payload(
-        {
-            "experiment": {
-                "learner": "rescorla_wagner",
-                "agent": "classical_agent",
+    payload = {
+        "experiment": {
+            "program": {
+                "phases": [
+                    {
+                        "name": "Phase 0",
+                        "protocol": "acquisition",
+                        "stimuli": {"cs_plus": ["tone"]},
+                        "params": {"n_trials": 1},
+                        "trials": 1,
+                    }
+                ]
+            },
+            "agent": {
+                "name": "classical_agent",
                 "representation": {
                     "name": "vector_elemental",
                     "params": {"stimuli": ["tone"]},
                 },
-                "attention": {"tone": 0.7},
-                "attention_config": {"name": "static", "params": {"default": 1.0}},
-                "phases": [
-                    {
-                        "protocol": "acquisition",
-                        "stimuli": {"cs_plus": ["tone"]},
-                        "params": {"n_trials": 1},
-                    }
-                ],
+                "learning": {
+                    "rule": "rescorla_wagner",
+                    "params": {},
+                    "attention": {
+                        "initial": {"tone": 0.7},
+                        "config": {"name": "static", "params": {"default": 1.0}},
+                    },
+                },
+                "policy": None,
             },
-            "report": {"preset": "dummy"},
-        }
-    )
+            "runtime": {},
+        },
+        "report": {"preset": "dummy"},
+    }
     payload["provenance"] = {"mechanisms": {"attention_mechanism": {"variant": "static"}}}
     records = [{"prediction": 0.1, "trial": 0}]
 

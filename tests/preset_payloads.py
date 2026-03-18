@@ -1,7 +1,7 @@
 STIMULI = ["tone", "noise", "light", "click"]
 STIMULI_WITH_LEVER = ["lever", "tone", "noise", "light", "click"]
 
-from legacy_payload_helpers import from_legacy_payload
+from copy import deepcopy
 
 
 def _attention_for(stimuli):
@@ -500,9 +500,91 @@ def overexpectation_payload():
 
 def _canonicalize_factory(factory):
     def _wrapped():
-        return from_legacy_payload(factory())
+        return _canonical_fixture_payload(factory())
 
     return _wrapped
+
+
+def _canonical_fixture_payload(payload):
+    if not isinstance(payload, dict) or not isinstance(payload.get("experiment"), dict):
+        raise ValueError("Fixture payload must include experiment object.")
+
+    src = deepcopy(payload)
+    exp = src["experiment"]
+
+    phases = exp.get("phases")
+    if phases is None:
+        phases = [
+            {
+                "name": "Phase 0",
+                "protocol": exp.get("protocol"),
+                "stimuli": deepcopy(exp.get("stimuli", {})),
+                "params": deepcopy(exp.get("params", {})),
+            }
+        ]
+    if not isinstance(phases, list) or not phases:
+        raise ValueError("Fixture payload must include at least one phase.")
+
+    canonical_phases = []
+    for idx, phase in enumerate(phases):
+        if not isinstance(phase, dict):
+            raise ValueError(f"phase[{idx}] must be an object.")
+        params = dict(phase.get("params", {}) or {})
+        trials = int(params.get("n_trials", phase.get("trials", 1)))
+        if trials <= 0:
+            raise ValueError(f"phase[{idx}] trials must be > 0.")
+        params["n_trials"] = trials
+        canonical_phases.append(
+            {
+                "name": phase.get("name") or f"Phase {idx}",
+                "protocol": phase.get("protocol"),
+                "stimuli": deepcopy(phase.get("stimuli", {})),
+                "params": params,
+                "trials": trials,
+            }
+        )
+
+    representation = exp.get("representation")
+    if isinstance(representation, str):
+        representation = {"name": representation, "params": {}}
+    if not isinstance(representation, dict):
+        raise ValueError("experiment.representation must be a string or object.")
+    representation = deepcopy(representation)
+    representation.setdefault("params", {})
+    if not isinstance(representation["params"], dict):
+        raise ValueError("representation.params must be an object.")
+    if isinstance(exp.get("salience"), dict) and exp.get("salience"):
+        representation["salience"] = deepcopy(exp["salience"])
+
+    learning = {
+        "rule": exp.get("learner"),
+        "params": {},
+    }
+    attention_initial = exp.get("attention", {})
+    attention_config = exp.get("attention_config", {})
+    if isinstance(attention_initial, dict) and attention_initial or isinstance(attention_config, dict) and attention_config:
+        learning["attention"] = {
+            "initial": deepcopy(attention_initial if isinstance(attention_initial, dict) else {}),
+            "config": deepcopy(attention_config if isinstance(attention_config, dict) else {}),
+        }
+
+    runtime = deepcopy(exp.get("runtime", {})) if isinstance(exp.get("runtime"), dict) else {}
+    if isinstance(exp.get("context_inference"), dict):
+        runtime["context_inference"] = deepcopy(exp["context_inference"])
+
+    return {
+        "experiment": {
+            "program": {"phases": canonical_phases},
+            "agent": {
+                "name": exp.get("agent"),
+                "representation": representation,
+                "learning": learning,
+                "policy": deepcopy(exp.get("policy")),
+            },
+            "runtime": runtime,
+        },
+        "report": deepcopy(src.get("report", {})),
+    }
 
 
 acquisition_payload = _canonicalize_factory(acquisition_payload)
