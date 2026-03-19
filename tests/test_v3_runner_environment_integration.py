@@ -124,6 +124,21 @@ def test_runner_environment_execution_rejects_pipeline_without_env_stage():
         assert "must declare an 'Env' stage" in str(exc)
 
 
+def test_runner_environment_execution_rejects_pipeline_without_measure_stage():
+    pipeline = OperatorPipeline(
+        stages=[OperatorStage(key="Policy"), OperatorStage(key="Env"), OperatorStage(key="Err")]
+    )
+    try:
+        Runner(
+            _compiled_classical_env(),
+            seed=5,
+            settings={"operator_pipeline": pipeline.to_dict()},
+        ).run()
+        assert False, "Expected runner to reject environment pipeline without Measure stage."
+    except ValueError as exc:
+        assert "must declare a 'Measure' stage" in str(exc)
+
+
 def test_runner_environment_pipeline_noncommutativity_guard_under_stage_order_mutation():
     class _PolicyAgent:
         def act(self, state=None, actions=None, rng=None):
@@ -175,10 +190,10 @@ def test_runner_environment_pipeline_noncommutativity_guard_under_stage_order_mu
             )
 
     pipeline_policy_first = OperatorPipeline(
-        stages=[OperatorStage(key="Policy"), OperatorStage(key="Env"), OperatorStage(key="Err")]
+        stages=[OperatorStage(key="Policy"), OperatorStage(key="Env"), OperatorStage(key="Err"), OperatorStage(key="Measure")]
     )
     pipeline_env_first = OperatorPipeline(
-        stages=[OperatorStage(key="Env"), OperatorStage(key="Policy"), OperatorStage(key="Err")]
+        stages=[OperatorStage(key="Env"), OperatorStage(key="Policy"), OperatorStage(key="Err"), OperatorStage(key="Measure")]
     )
 
     records_policy_first = Runner(

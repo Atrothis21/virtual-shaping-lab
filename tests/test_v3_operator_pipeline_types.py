@@ -7,6 +7,7 @@ from virtual_shaping_lab.vsl.operator import (
     NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,
     NORMATIVE_STAGE_ORDER,
+    PIPELINE_BASE_FIELDS,
     OperatorPipeline,
     OperatorStage,
     default_operator_pipeline,
@@ -123,6 +124,27 @@ def test_v3_operator_pipeline_normative_contracts_attach_to_stages():
         stage = stage_map[key]
         assert stage.required_fields == contract["required_fields"]
         assert stage.produced_fields == contract["produced_fields"]
+
+
+def test_v3_operator_pipeline_type_chain_gate_rejects_missing_required_field():
+    with pytest.raises(ValueError, match="type-chain violation"):
+        OperatorPipeline(
+            stages=[
+                OperatorStage(key="Phi", required_fields=("s",), produced_fields=("x",)),
+                OperatorStage(key="Policy", required_fields=("x", "w", "a"), produced_fields=("u",)),
+            ]
+        )
+
+
+def test_v3_operator_pipeline_type_chain_gate_accepts_base_fields():
+    pipeline = OperatorPipeline(
+        stages=[
+            OperatorStage(key="Phi", required_fields=("s",), produced_fields=("x",)),
+            OperatorStage(key="Policy", required_fields=("x", "a"), produced_fields=("u",)),
+        ]
+    )
+    assert pipeline.stage_keys() == ("Phi", "Policy")
+    assert "a" in PIPELINE_BASE_FIELDS
 
 
 def test_v3_operator_pipeline_normative_lookahead_attaches_to_err_stage():

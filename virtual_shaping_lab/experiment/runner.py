@@ -128,79 +128,117 @@ class Runner:
         unit.reset(ctx)
 
         records: List[Dict[str, Any]] = []
+        declared_stage_keys = self.operator_pipeline.stage_keys()
+        if "Env" not in declared_stage_keys:
+            raise ValueError("OperatorPipeline for runnable-unit execution must declare an 'Env' stage.")
+        if "Measure" not in declared_stage_keys:
+            raise ValueError("OperatorPipeline for runnable-unit execution must declare a 'Measure' stage.")
+        if declared_stage_keys[-1] != "Measure":
+            raise ValueError("OperatorPipeline for runnable-unit execution must declare 'Measure' as the final stage.")
+
         for step in unit.iter_steps(ctx):
-            record = None
-            schedule = None
-            metadata = getattr(step, "metadata", None)
-            if isinstance(metadata, dict):
-                candidate = metadata.get("record")
-                if isinstance(candidate, dict):
-                    record = candidate
-                schedule_candidate = metadata.get("trial_schedule")
-                if isinstance(schedule_candidate, TrialSchedule) or (
-                    schedule_candidate is not None and hasattr(schedule_candidate, "time")
-                ):
-                    schedule = schedule_candidate
-                elif isinstance(metadata.get("trial_time_spec"), TrialTimeSpec) or (
-                    metadata.get("trial_time_spec") is not None
-                    and hasattr(metadata.get("trial_time_spec"), "duration_s")
-                    and hasattr(metadata.get("trial_time_spec"), "dt_s")
-                ):
-                    schedule = TrialSchedule(
-                        time=metadata["trial_time_spec"],
-                        base_stimuli=list(getattr(step.observation, "stimuli", [])),
-                        available_actions=list(step.available_actions),
-                    )
+            emitted: List[Dict[str, Any]] | None = None
+            executed_stage_keys: list[str] = []
+            env_executed = False
+            measure_executed = False
+            for stage in self.operator_pipeline.stages:
+                executed_stage_keys.append(stage.key)
+                if stage.key == "Env":
+                    env_executed = True
+                    record = None
+                    schedule = None
+                    metadata = getattr(step, "metadata", None)
+                    if isinstance(metadata, dict):
+                        candidate = metadata.get("record")
+                        if isinstance(candidate, dict):
+                            record = candidate
+                        schedule_candidate = metadata.get("trial_schedule")
+                        if isinstance(schedule_candidate, TrialSchedule) or (
+                            schedule_candidate is not None and hasattr(schedule_candidate, "time")
+                        ):
+                            schedule = schedule_candidate
+                        elif isinstance(metadata.get("trial_time_spec"), TrialTimeSpec) or (
+                            metadata.get("trial_time_spec") is not None
+                            and hasattr(metadata.get("trial_time_spec"), "duration_s")
+                            and hasattr(metadata.get("trial_time_spec"), "dt_s")
+                        ):
+                            schedule = TrialSchedule(
+                                time=metadata["trial_time_spec"],
+                                base_stimuli=list(getattr(step.observation, "stimuli", [])),
+                                available_actions=list(step.available_actions),
+                            )
 
-            if record is None:
-                observation = getattr(step, "observation", None)
-                context = (
-                    observation.context
-                    if isinstance(observation, Observation)
-                    else "A"
-                )
-                record = {
-                    "phase": "runnable_unit",
-                    "trial": len(records),
-                    "reward": float(getattr(step, "reward", 0.0)),
-                    "context": context,
-                }
+                    if record is None:
+                        observation = getattr(step, "observation", None)
+                        context = (
+                            observation.context
+                            if isinstance(observation, Observation)
+                            else "A"
+                        )
+                        record = {
+                            "phase": "runnable_unit",
+                            "trial": len(records),
+                            "reward": float(getattr(step, "reward", 0.0)),
+                            "context": context,
+                        }
 
-            trial_id = record.get("trial", len(records))
-            if schedule is not None:
-                normalized_schedule = (
-                    schedule
-                    if isinstance(schedule, TrialSchedule)
-                    else TrialSchedule(
-                        time=schedule.time,
-                        base_stimuli=list(getattr(schedule, "base_stimuli", [])),
-                        available_actions=list(getattr(schedule, "available_actions", [])),
-                        metadata=dict(getattr(schedule, "metadata", {}) or {}),
-                    )
-                )
-                emitted = self._trial_executor.execute(
-                    ctx=ctx,
-                    step=step,
-                    schedule=normalized_schedule,
-                    base_record=record,
-                    trial_id=trial_id,
-                    hooks=self.hooks,
-                    unit=unit,
-                )
-            else:
-                self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
-                emitted = [record]
-                self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=emitted)
+                    trial_id = record.get("trial", len(records))
+                    if schedule is not None:
+                        normalized_schedule = (
+                            schedule
+                            if isinstance(schedule, TrialSchedule)
+                            else TrialSchedule(
+                                time=schedule.time,
+                                base_stimuli=list(getattr(schedule, "base_stimuli", [])),
+                                available_actions=list(getattr(schedule, "available_actions", [])),
+                                metadata=dict(getattr(schedule, "metadata", {}) or {}),
+                            )
+                        )
+                        emitted = self._trial_executor.execute(
+                            ctx=ctx,
+                            step=step,
+                            schedule=normalized_schedule,
+                            base_record=record,
+                            trial_id=trial_id,
+                            hooks=self.hooks,
+                            unit=unit,
+                        )
+                    else:
+                        self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=step)
+                        emitted = [record]
+                        self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=emitted)
+                    continue
 
-            for emitted_record in emitted:
-                finalize_record(
-                    emitted_record,
-                    phase_name=emitted_record.get("phase"),
-                    protocol_phase_index=emitted_record.get("subphase"),
-                    protocol_phase_name=emitted_record.get("subphase_name"),
-                )
-                self._emit_record(emitted_record)
-                records.append(emitted_record)
+                if stage.key == "Err" and emitted is None:
+                    raise ValueError("OperatorPipeline Err stage requires post-Env execution for runnable units.")
+
+                if stage.key == "Measure":
+                    measure_executed = True
+                    if emitted is None:
+                        raise ValueError("OperatorPipeline Measure stage requires prior Env execution.")
+                    for emitted_record in emitted:
+                        metadata = emitted_record.get("metadata")
+                        if not isinstance(metadata, dict):
+                            metadata = {}
+                            emitted_record["metadata"] = metadata
+                        metadata["operator_pipeline"] = {
+                            "declared_stage_keys": list(declared_stage_keys),
+                            "executed_stage_keys": list(executed_stage_keys),
+                            "pipeline_hash": self.operator_pipeline.stable_hash(),
+                        }
+                        finalize_record(
+                            emitted_record,
+                            phase_name=emitted_record.get("phase"),
+                            protocol_phase_index=emitted_record.get("subphase"),
+                            protocol_phase_name=emitted_record.get("subphase_name"),
+                        )
+                        self._emit_record(emitted_record)
+                        records.append(emitted_record)
+
+            if not env_executed:
+                raise ValueError("OperatorPipeline execution did not execute an Env stage for runnable unit step.")
+            if not measure_executed:
+                raise ValueError("OperatorPipeline execution did not execute a Measure stage for runnable unit step.")
 
         return records
 
@@ -215,12 +253,17 @@ class Runner:
         declared_stage_keys = self.operator_pipeline.stage_keys()
         if "Env" not in declared_stage_keys:
             raise ValueError("OperatorPipeline for environment execution must declare an 'Env' stage.")
+        if "Measure" not in declared_stage_keys:
+            raise ValueError("OperatorPipeline for environment execution must declare a 'Measure' stage.")
+        if declared_stage_keys[-1] != "Measure":
+            raise ValueError("OperatorPipeline for environment execution must declare 'Measure' as the final stage.")
 
         while not unit.done:
             self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=None)
             action = None
             step = None
             executed_stage_keys: list[str] = []
+            measure_executed = False
             for stage in self.operator_pipeline.stages:
                 executed_stage_keys.append(stage.key)
                 if stage.key == "Policy":
@@ -235,47 +278,54 @@ class Runner:
                             "OperatorPipeline Err stage requires post-Env lookahead; Env stage has not executed."
                         )
                     continue
+                if stage.key == "Measure":
+                    measure_executed = True
+                    if step is None:
+                        raise ValueError("OperatorPipeline Measure stage requires prior Env execution.")
+                    if not isinstance(step.trial_state, TrialState):
+                        raise TypeError("Environment step must provide typed TrialState.")
+                    trial_state = step.trial_state.to_dict()
+                    context_value = None
+                    z = trial_state.get("z")
+                    if isinstance(z, dict):
+                        context_value = z.get("context")
+
+                    record = {
+                        "phase": step.protocol,
+                        "trial": step.step_index,
+                        "tick": step.step_index,
+                        "stimulus": dict(step.stimulus),
+                        "action": step.action,
+                        "reward": float(step.reward),
+                        "done": step.done,
+                        "context": context_value,
+                        "metadata": {
+                            "trial_state": trial_state,
+                            "termination": step.termination.to_dict(),
+                            "segment_key": step.segment_key,
+                            "trial_type": step.trial_type,
+                            "trial_index": step.trial_index,
+                            "operator_pipeline": {
+                                "declared_stage_keys": list(declared_stage_keys),
+                                "executed_stage_keys": list(executed_stage_keys),
+                                "pipeline_hash": self.operator_pipeline.stable_hash(),
+                            },
+                        },
+                    }
+
+                    finalize_record(
+                        record,
+                        phase_name=step.protocol,
+                    )
+                    self._emit_record(record)
+                    records.append(record)
+                    self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=[record])
+                    trial_id += 1
+
             if step is None:
                 raise ValueError("OperatorPipeline execution did not execute an Env stage step.")
-            if not isinstance(step.trial_state, TrialState):
-                raise TypeError("Environment step must provide typed TrialState.")
-            trial_state = step.trial_state.to_dict()
-            context_value = None
-            z = trial_state.get("z")
-            if isinstance(z, dict):
-                context_value = z.get("context")
-
-            record = {
-                "phase": step.protocol,
-                "trial": step.step_index,
-                "tick": step.step_index,
-                "stimulus": dict(step.stimulus),
-                "action": step.action,
-                "reward": float(step.reward),
-                "done": step.done,
-                "context": context_value,
-                "metadata": {
-                    "trial_state": trial_state,
-                    "termination": step.termination.to_dict(),
-                    "segment_key": step.segment_key,
-                    "trial_type": step.trial_type,
-                    "trial_index": step.trial_index,
-                    "operator_pipeline": {
-                        "declared_stage_keys": list(declared_stage_keys),
-                        "executed_stage_keys": list(executed_stage_keys),
-                        "pipeline_hash": self.operator_pipeline.stable_hash(),
-                    },
-                },
-            }
-
-            finalize_record(
-                record,
-                phase_name=step.protocol,
-            )
-            self._emit_record(record)
-            records.append(record)
-            self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=[record])
-            trial_id += 1
+            if not measure_executed:
+                raise ValueError("OperatorPipeline execution did not execute a Measure stage for environment step.")
 
         return records
 

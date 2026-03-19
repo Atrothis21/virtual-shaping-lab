@@ -194,6 +194,9 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"].get("template_version_used"), int)
     assert "seed_identity" in body["metadata"]
     assert isinstance(body["metadata"].get("mechanism_provenance"), dict)
+    assert isinstance(body["metadata"].get("operator_pipeline_identity"), dict)
+    assert isinstance(body["metadata"]["operator_pipeline_identity"].get("stage_keys"), list)
+    assert isinstance(body["metadata"]["operator_pipeline_identity"].get("pipeline_hash"), str)
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
 
@@ -210,6 +213,9 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert identity.get("record_schema_version") == "v1"
     assert isinstance(identity.get("mechanism_identity"), dict)
     assert identity.get("seed_identity") == body["metadata"].get("seed_identity")
+    assert isinstance(identity.get("operator_pipeline_identity"), dict)
+    assert identity["operator_pipeline_identity"].get("stage_keys") == body["metadata"]["operator_pipeline_identity"].get("stage_keys")
+    assert identity["operator_pipeline_identity"].get("pipeline_hash") == body["metadata"]["operator_pipeline_identity"].get("pipeline_hash")
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -238,6 +244,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("template_version_used"), int)
     assert "seed_identity" in status["metadata"]
     assert isinstance(status["metadata"].get("mechanism_provenance"), dict)
+    assert isinstance(status["metadata"].get("operator_pipeline_identity"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
 
@@ -286,6 +293,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("template_version_used"), int)
     assert "seed_identity" in report_body["metadata"]
     assert isinstance(report_body["metadata"].get("mechanism_provenance"), dict)
+    assert isinstance(report_body["metadata"].get("operator_pipeline_identity"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
     assert report_body["metadata"]["missing_source_metadata"] == []
@@ -316,6 +324,39 @@ def test_run_service_uses_plan_seed_as_runtime_seed_identity(monkeypatch, tmp_pa
     assert body["metadata"]["seed_identity"] == 123
     status = api_run.run_status_api(body["run_id"])
     assert status["metadata"]["seed_identity"] == 123
+
+
+def test_run_api_propagates_custom_operator_pipeline_identity(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    payload["experiment"]["runtime"]["operator_pipeline"] = {
+        "stages": [
+            {"key": "Env"},
+            {"key": "Err"},
+            {"key": "Measure"},
+        ]
+    }
+    fixture_output_dir = tmp_path / "custom_pipeline_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    body = api_run.run_api(payload)
+    identity = body["metadata"]["operator_pipeline_identity"]
+    assert identity["stage_keys"] == ["Env", "Err", "Measure"]
+    assert isinstance(identity["pipeline_hash"], str) and identity["pipeline_hash"]
+
+    run_id = body["run_id"]
+    artifact_identity = json.loads((fixture_output_dir / run_id / "artifact_identity.json").read_text())
+    assert artifact_identity["operator_pipeline_identity"]["stage_keys"] == ["Env", "Err", "Measure"]
+    assert artifact_identity["operator_pipeline_identity"]["pipeline_hash"] == identity["pipeline_hash"]
 
 
 def test_run_report_endpoint_flags_missing_source_metadata(monkeypatch, tmp_path):

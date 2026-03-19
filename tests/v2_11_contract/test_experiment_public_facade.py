@@ -55,3 +55,20 @@ def test_run_from_plan_via_public_facade():
     assert isinstance(result.records, list)
     assert isinstance(result.unit_records, list)
     assert result.runtime_units
+
+
+def test_run_from_plan_uses_declared_operator_pipeline_from_runtime_settings():
+    payload = _classical_payload()
+    payload["experiment"]["runtime"]["operator_pipeline"] = {
+        "stages": [
+            {"key": "Env"},
+            {"key": "Err"},
+            {"key": "Measure"},
+        ]
+    }
+    plan = build_plan(payload)
+    result = run_from_plan(plan, seed=123)
+    assert result.records
+    pipeline_meta = result.records[0].get("metadata", {}).get("operator_pipeline", {})
+    assert pipeline_meta.get("declared_stage_keys") == ["Env", "Err", "Measure"]
+    assert pipeline_meta.get("executed_stage_keys") == ["Env", "Err", "Measure"]

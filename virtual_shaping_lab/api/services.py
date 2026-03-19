@@ -11,6 +11,7 @@ from analysis.public import (
 from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.payload_contract import to_canonical_payload
+from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -72,7 +73,65 @@ def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
     }
 
 
+def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
+    runtime_spec = dict(plan.runtime_spec or {})
+    runtime_settings = runtime_spec.get("runtime")
+    raw = None
+    if isinstance(runtime_settings, dict):
+        raw = runtime_settings.get("operator_pipeline")
+    if raw is None:
+        raw = runtime_spec.get("operator_pipeline")
+    if raw is None and isinstance(plan.canonical_payload, dict):
+        experiment = plan.canonical_payload.get("experiment")
+        if isinstance(experiment, dict):
+            runtime_from_payload = experiment.get("runtime")
+            if isinstance(runtime_from_payload, dict):
+                raw = runtime_from_payload.get("operator_pipeline")
+    pipeline: OperatorPipeline
+    if isinstance(raw, OperatorPipeline):
+        pipeline = raw
+    elif isinstance(raw, dict):
+        pipeline = OperatorPipeline.from_dict(raw)
+    else:
+        pipeline = default_operator_pipeline()
+    return {
+        "stage_keys": list(pipeline.stage_keys()),
+        "pipeline_hash": pipeline.stable_hash(),
+    }
+
+
 def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+    provenance = payload.get("provenance")
+    operator_pipeline_identity = None
+    if isinstance(provenance, dict):
+        candidate = provenance.get("operator_pipeline")
+        if isinstance(candidate, dict):
+            operator_pipeline_identity = candidate
+
+    if not isinstance(operator_pipeline_identity, dict):
+        runtime = None
+        experiment = payload.get("experiment")
+        if isinstance(experiment, dict):
+            runtime = experiment.get("runtime")
+        raw_pipeline = runtime.get("operator_pipeline") if isinstance(runtime, dict) else None
+        if isinstance(raw_pipeline, OperatorPipeline):
+            operator_pipeline_identity = {
+                "stage_keys": list(raw_pipeline.stage_keys()),
+                "pipeline_hash": raw_pipeline.stable_hash(),
+            }
+        elif isinstance(raw_pipeline, dict):
+            parsed = OperatorPipeline.from_dict(raw_pipeline)
+            operator_pipeline_identity = {
+                "stage_keys": list(parsed.stage_keys()),
+                "pipeline_hash": parsed.stable_hash(),
+            }
+        else:
+            parsed = default_operator_pipeline()
+            operator_pipeline_identity = {
+                "stage_keys": list(parsed.stage_keys()),
+                "pipeline_hash": parsed.stable_hash(),
+            }
+
     plan_data = payload.get("plan")
     if isinstance(plan_data, dict):
         record_schema_version = str(plan_data.get("record_schema_version", "v1"))
@@ -92,6 +151,7 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             "plan_hash": plan_hash,
             "record_schema_version": record_schema_version,
             "seed_identity": seed_identity,
+            "operator_pipeline_identity": operator_pipeline_identity,
         }
 
     record_schema_version = "v1"
@@ -111,6 +171,7 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
         "plan_hash": _stable_hash_from_artifact_payload(payload, record_schema_version),
         "record_schema_version": record_schema_version,
         "seed_identity": seed_identity,
+        "operator_pipeline_identity": operator_pipeline_identity,
     }
 
 
@@ -199,7 +260,6 @@ class RunService:
     """Application-layer facade for plan execution and run-status tracking."""
 
     @staticmethod
-    @staticmethod
     def _build_report_payload_from_plan(plan: ExperimentPlan) -> Dict[str, Any]:
         payload = to_canonical_payload(
             {
@@ -211,6 +271,7 @@ class RunService:
             payload["report"] = {"preset": "verification_report"}
         payload["provenance"] = {
             "mechanisms": _build_mechanism_provenance(plan),
+            "operator_pipeline": _build_operator_pipeline_identity(plan),
         }
         payload["plan"] = plan.to_dict()
         return payload
@@ -285,6 +346,7 @@ class RunService:
             "template_version_used": 1,
             "seed_identity": plan.seed,
             "mechanism_provenance": _build_mechanism_provenance(plan),
+            "operator_pipeline_identity": _build_operator_pipeline_identity(plan),
         }
         _set_status_with_lifecycle(
             store,
@@ -340,7 +402,13 @@ class ReportService:
         with records_path.open("r", encoding="utf-8") as f:
             records = json.load(f)
         with payload_path.open("r", encoding="utf-8") as f:
-            payload = to_canonical_payload(json.load(f))
+            raw_payload = json.load(f)
+        payload = to_canonical_payload(raw_payload)
+        if isinstance(raw_payload, dict):
+            if isinstance(raw_payload.get("provenance"), dict):
+                payload["provenance"] = dict(raw_payload["provenance"])
+            if isinstance(raw_payload.get("plan"), dict):
+                payload["plan"] = dict(raw_payload["plan"])
 
         preset = preset_override or payload.get("report", {}).get("preset")
         if not preset:
@@ -389,6 +457,11 @@ class ReportService:
                 "template_version_used": template_version,
                 "seed_identity": plan_meta["seed_identity"],
                 "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
+                "operator_pipeline_identity": (
+                    plan_meta.get("operator_pipeline_identity")
+                    if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
+                    else payload.get("provenance", {}).get("operator_pipeline")
+                ),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -408,6 +481,11 @@ class ReportService:
                 "template_version_used": template_version,
                 "seed_identity": plan_meta["seed_identity"],
                 "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
+                "operator_pipeline_identity": (
+                    plan_meta.get("operator_pipeline_identity")
+                    if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
+                    else payload.get("provenance", {}).get("operator_pipeline")
+                ),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
                 "regeneration_mode": "from_artifacts",

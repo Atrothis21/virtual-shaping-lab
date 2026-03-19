@@ -43,6 +43,12 @@ NORMATIVE_STAGE_LOOKAHEAD: dict[str, dict[str, str | tuple[str, ...]]] = {
     },
 }
 
+PIPELINE_BASE_FIELDS: tuple[str, ...] = (
+    "s",
+    "a",
+    "m",
+)
+
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -193,11 +199,24 @@ class OperatorPipeline:
                     f"OperatorPipeline stage '{stage.key}' requires post-lookahead from '{source_stage}', "
                     "but source stage is not declared before it."
                 )
+        self._validate_type_chain()
         if not isinstance(self.metadata, dict):
             raise ValueError("OperatorPipeline.metadata must be an object.")
 
     def stage_keys(self) -> tuple[str, ...]:
         return tuple(stage.key for stage in self.stages)
+
+    def _validate_type_chain(self) -> None:
+        available = set(PIPELINE_BASE_FIELDS)
+        for stage in self.stages:
+            missing = sorted(set(stage.required_fields) - available)
+            if missing:
+                joined = ", ".join(missing)
+                raise ValueError(
+                    f"OperatorPipeline type-chain violation at stage '{stage.key}': "
+                    f"missing required fields from prior stages/base context: {joined}"
+                )
+            available.update(stage.produced_fields)
 
     def to_dict(self) -> dict[str, Any]:
         return {

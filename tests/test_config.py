@@ -495,6 +495,22 @@ def test_from_payload_runtime_debug_defaults_and_validation():
         ExperimentConfig.from_payload(payload)
 
 
+def test_from_payload_runtime_preserves_operator_pipeline_declaration():
+    payload = _base_payload()
+    payload["experiment"]["runtime"] = {
+        "operator_pipeline": {
+            "stages": [
+                {"key": "Env"},
+                {"key": "Err"},
+                {"key": "Measure"},
+            ]
+        }
+    }
+    cfg = ExperimentConfig.from_payload(payload)
+    assert isinstance(cfg.runtime.get("operator_pipeline"), dict)
+    assert cfg.runtime["operator_pipeline"]["stages"][0]["key"] == "Env"
+
+
 def test_from_payload_rejects_invalid_experiment_identity_fields():
     payload = _base_payload()
     payload["experiment"]["agent"]["learning"]["rule"] = "  "
