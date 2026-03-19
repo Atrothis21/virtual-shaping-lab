@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from virtual_shaping_lab.vsl.operator import (
+    NORMATIVE_STAGE_CONTRACTS,
     NORMATIVE_STAGE_ORDER,
     OperatorPipeline,
     OperatorStage,
@@ -50,6 +51,25 @@ def test_v3_operator_pipeline_stage_names_default_to_key():
     assert stage.name == "Update"
 
 
+def test_v3_operator_stage_contract_metadata_roundtrip():
+    stage = OperatorStage(
+        key="Err",
+        required_fields=("x", "y"),
+        produced_fields=("z",),
+    )
+    rebuilt = OperatorStage.from_dict(stage.to_dict())
+    assert rebuilt == stage
+
+
+def test_v3_operator_stage_contract_metadata_validation():
+    with pytest.raises(ValueError, match="required_fields must be unique"):
+        OperatorStage(key="Err", required_fields=("x", "x"))
+    with pytest.raises(ValueError, match="produced_fields must be unique"):
+        OperatorStage(key="Err", produced_fields=("z", "z"))
+    with pytest.raises(ValueError, match="required_fields must contain non-empty strings"):
+        OperatorStage(key="Err", required_fields=("x", ""))
+
+
 def test_v3_operator_pipeline_normative_stage_order_contract():
     expected = (
         "Phi",
@@ -71,3 +91,13 @@ def test_v3_operator_pipeline_default_declaration_uses_normative_order():
     pipeline = default_operator_pipeline()
     assert pipeline.stage_keys() == NORMATIVE_STAGE_ORDER
     assert pipeline.metadata.get("normative") is True
+
+
+def test_v3_operator_pipeline_normative_contracts_attach_to_stages():
+    pipeline = default_operator_pipeline()
+    stage_map = {stage.key: stage for stage in pipeline.stages}
+    assert set(stage_map.keys()) == set(NORMATIVE_STAGE_CONTRACTS.keys())
+    for key, contract in NORMATIVE_STAGE_CONTRACTS.items():
+        stage = stage_map[key]
+        assert stage.required_fields == contract["required_fields"]
+        assert stage.produced_fields == contract["produced_fields"]

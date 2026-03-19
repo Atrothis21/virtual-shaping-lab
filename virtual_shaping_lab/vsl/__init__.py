@@ -10,7 +10,13 @@ from .environment import (
     RolloutHarness,
     TrialState,
 )
-from .operator import NORMATIVE_STAGE_ORDER, OperatorPipeline, OperatorStage, default_operator_pipeline
+from .operator import (
+    NORMATIVE_STAGE_CONTRACTS,
+    NORMATIVE_STAGE_ORDER,
+    OperatorPipeline,
+    OperatorStage,
+    default_operator_pipeline,
+)
 
 __all__ = [
     "ActionSpace",
@@ -19,6 +25,7 @@ __all__ = [
     "NullPolicy",
     "OperatorStage",
     "OperatorPipeline",
+    "NORMATIVE_STAGE_CONTRACTS",
     "NORMATIVE_STAGE_ORDER",
     "default_operator_pipeline",
     "IEnvironment",

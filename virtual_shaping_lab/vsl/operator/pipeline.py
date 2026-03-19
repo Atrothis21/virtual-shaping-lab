@@ -21,6 +21,20 @@ NORMATIVE_STAGE_ORDER: tuple[str, ...] = (
     "Measure",
 )
 
+NORMATIVE_STAGE_CONTRACTS: dict[str, dict[str, tuple[str, ...]]] = {
+    "Phi": {"required_fields": ("s",), "produced_fields": ("x",)},
+    "C": {"required_fields": ("x",), "produced_fields": ("x",)},
+    "G": {"required_fields": ("x",), "produced_fields": ("x",)},
+    "E": {"required_fields": ("x",), "produced_fields": ("x",)},
+    "P": {"required_fields": ("x",), "produced_fields": ("w",)},
+    "Policy": {"required_fields": ("x", "w", "a"), "produced_fields": ("u",)},
+    "Env": {"required_fields": ("u",), "produced_fields": ("y", "z")},
+    "Err": {"required_fields": ("x", "y"), "produced_fields": ("z",)},
+    "A": {"required_fields": ("x", "z"), "produced_fields": ("x",)},
+    "Update": {"required_fields": ("x", "z"), "produced_fields": ("x",)},
+    "Measure": {"required_fields": ("s", "x", "z", "w", "a", "u", "y", "m"), "produced_fields": ("m",)},
+}
+
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -40,6 +54,8 @@ class OperatorStage:
 
     key: str
     name: str | None = None
+    required_fields: tuple[str, ...] = ()
+    produced_fields: tuple[str, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -47,6 +63,20 @@ class OperatorStage:
             raise ValueError("OperatorStage.key must be a non-empty string.")
         if self.name is not None and (not isinstance(self.name, str) or not self.name.strip()):
             raise ValueError("OperatorStage.name must be a non-empty string when provided.")
+        if not isinstance(self.required_fields, tuple):
+            raise ValueError("OperatorStage.required_fields must be a tuple of strings.")
+        if not isinstance(self.produced_fields, tuple):
+            raise ValueError("OperatorStage.produced_fields must be a tuple of strings.")
+        for field_name in self.required_fields:
+            if not isinstance(field_name, str) or not field_name.strip():
+                raise ValueError("OperatorStage.required_fields must contain non-empty strings.")
+        for field_name in self.produced_fields:
+            if not isinstance(field_name, str) or not field_name.strip():
+                raise ValueError("OperatorStage.produced_fields must contain non-empty strings.")
+        if len(set(self.required_fields)) != len(self.required_fields):
+            raise ValueError("OperatorStage.required_fields must be unique.")
+        if len(set(self.produced_fields)) != len(self.produced_fields):
+            raise ValueError("OperatorStage.produced_fields must be unique.")
         if not isinstance(self.metadata, dict):
             raise ValueError("OperatorStage.metadata must be an object.")
         if self.name is None:
@@ -56,14 +86,22 @@ class OperatorStage:
         return {
             "key": self.key,
             "name": self.name,
+            "required_fields": list(self.required_fields),
+            "produced_fields": list(self.produced_fields),
             "metadata": _to_primitive(self.metadata),
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "OperatorStage":
+        raw_required = data.get("required_fields", ())
+        raw_produced = data.get("produced_fields", ())
+        required_fields = tuple(raw_required) if isinstance(raw_required, list | tuple) else ()
+        produced_fields = tuple(raw_produced) if isinstance(raw_produced, list | tuple) else ()
         return cls(
             key=str(data.get("key", "")).strip(),
             name=data.get("name"),
+            required_fields=required_fields,
+            produced_fields=produced_fields,
             metadata=dict(data.get("metadata", {}) or {}),
         )
 
@@ -117,6 +155,13 @@ def default_operator_pipeline() -> OperatorPipeline:
     """Return the normative V3 operator pipeline declaration."""
 
     return OperatorPipeline(
-        stages=[OperatorStage(key=stage_key) for stage_key in NORMATIVE_STAGE_ORDER],
+        stages=[
+            OperatorStage(
+                key=stage_key,
+                required_fields=NORMATIVE_STAGE_CONTRACTS.get(stage_key, {}).get("required_fields", ()),
+                produced_fields=NORMATIVE_STAGE_CONTRACTS.get(stage_key, {}).get("produced_fields", ()),
+            )
+            for stage_key in NORMATIVE_STAGE_ORDER
+        ],
         metadata={"normative": True, "version": "3.4.5"},
     )
