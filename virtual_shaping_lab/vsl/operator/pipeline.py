@@ -7,6 +7,20 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+NORMATIVE_STAGE_ORDER: tuple[str, ...] = (
+    "Phi",
+    "C",
+    "G",
+    "E",
+    "P",
+    "Policy",
+    "Env",
+    "Err",
+    "A",
+    "Update",
+    "Measure",
+)
+
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -98,3 +112,11 @@ class OperatorPipeline:
             metadata=dict(data.get("metadata", {}) or {}),
         )
 
+
+def default_operator_pipeline() -> OperatorPipeline:
+    """Return the normative V3 operator pipeline declaration."""
+
+    return OperatorPipeline(
+        stages=[OperatorStage(key=stage_key) for stage_key in NORMATIVE_STAGE_ORDER],
+        metadata={"normative": True, "version": "3.4.5"},
+    )

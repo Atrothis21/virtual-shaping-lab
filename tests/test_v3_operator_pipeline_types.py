@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from virtual_shaping_lab.vsl.operator import OperatorPipeline, OperatorStage
+from virtual_shaping_lab.vsl.operator import (
+    NORMATIVE_STAGE_ORDER,
+    OperatorPipeline,
+    OperatorStage,
+    default_operator_pipeline,
+)
 
 
 def _sample_pipeline() -> OperatorPipeline:
@@ -44,3 +49,25 @@ def test_v3_operator_pipeline_stage_names_default_to_key():
     stage = OperatorStage(key="Update")
     assert stage.name == "Update"
 
+
+def test_v3_operator_pipeline_normative_stage_order_contract():
+    expected = (
+        "Phi",
+        "C",
+        "G",
+        "E",
+        "P",
+        "Policy",
+        "Env",
+        "Err",
+        "A",
+        "Update",
+        "Measure",
+    )
+    assert NORMATIVE_STAGE_ORDER == expected
+
+
+def test_v3_operator_pipeline_default_declaration_uses_normative_order():
+    pipeline = default_operator_pipeline()
+    assert pipeline.stage_keys() == NORMATIVE_STAGE_ORDER
+    assert pipeline.metadata.get("normative") is True
