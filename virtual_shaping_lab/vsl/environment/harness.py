@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from virtual_shaping_lab.vsl.environment.contracts import EnvironmentStep, IEnvironment
+from virtual_shaping_lab.vsl.environment.contracts import (
+    EnvironmentReset,
+    EnvironmentStep,
+    EnvironmentTermination,
+    IEnvironment,
+)
 from virtual_shaping_lab.vsl.program.types import EnvironmentProgram
 
 
@@ -53,11 +58,16 @@ class CompiledProgramTestEnvironment(IEnvironment):
     def done(self) -> bool:
         return self._done
 
-    def reset(self, *, seed: int | None = None) -> None:
+    def reset(self, *, seed: int | None = None) -> EnvironmentReset:
         # Deterministic test-mode environment does not consume randomness yet.
-        _ = seed
+        normalized_seed = int(seed) if seed is not None else None
         self._cursor = 0
         self._done = len(self._timeline) == 0
+        return EnvironmentReset(
+            seed=normalized_seed,
+            done=self._done,
+            metadata={"source": "compiled_program_test_environment"},
+        )
 
     def step(self, action: Any = None) -> EnvironmentStep:
         if self._done:
@@ -66,6 +76,11 @@ class CompiledProgramTestEnvironment(IEnvironment):
         step_index = self._cursor
         self._cursor += 1
         self._done = self._cursor >= len(self._timeline)
+        termination = EnvironmentTermination(
+            done=self._done,
+            reason="terminal" if self._done else "running",
+            metadata={"cursor": self._cursor},
+        )
         return EnvironmentStep(
             step_index=step_index,
             segment_key=segment_key,
@@ -76,6 +91,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
             stimulus=stimulus,
             reward=reward,
             done=self._done,
+            termination=termination,
             metadata={"trial": trial_meta},
         )
 

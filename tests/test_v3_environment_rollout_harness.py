@@ -61,6 +61,9 @@ def test_test_mode_rollout_harness_respects_max_steps():
 def test_compiled_environment_raises_when_stepping_after_terminal():
     program = _compiled_fixture()
     env = CompiledProgramTestEnvironment(program)
+    reset = env.reset(seed=5)
+    assert reset.to_dict()["seed"] == 5
+    assert reset.to_dict()["done"] is False
     harness = RolloutHarness()
     _ = harness.run(env)
     with pytest.raises(StopIteration):
