@@ -12,6 +12,7 @@ from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
+from virtual_shaping_lab.vsl.environment import IEnvironment, TrialState
 
 
 @runtime_checkable
@@ -177,6 +178,55 @@ class Runner:
 
         return records
 
+    def _run_environment_unit(self, unit: IEnvironment, ctx: ExperimentContext) -> List[Dict[str, Any]]:
+        """
+        V3 path for environment-contract units implementing reset/step/done.
+        """
+        reset_result = unit.reset(seed=self.seed)
+        _ = reset_result
+        records: List[Dict[str, Any]] = []
+        trial_id = 0
+
+        while not unit.done:
+            self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=None)
+            step = unit.step(action=None)
+            if not isinstance(step.trial_state, TrialState):
+                raise TypeError("Environment step must provide typed TrialState.")
+            trial_state = step.trial_state.to_dict()
+            context_value = None
+            z = trial_state.get("z")
+            if isinstance(z, dict):
+                context_value = z.get("context")
+
+            record = {
+                "phase": step.protocol,
+                "trial": step.step_index,
+                "tick": step.step_index,
+                "stimulus": dict(step.stimulus),
+                "action": step.action,
+                "reward": float(step.reward),
+                "done": step.done,
+                "context": context_value,
+                "metadata": {
+                    "trial_state": trial_state,
+                    "termination": step.termination.to_dict(),
+                    "segment_key": step.segment_key,
+                    "trial_type": step.trial_type,
+                    "trial_index": step.trial_index,
+                },
+            }
+
+            finalize_record(
+                record,
+                phase_name=step.protocol,
+            )
+            self._emit_record(record)
+            records.append(record)
+            self.hooks.on_trial_end(unit=unit, ctx=ctx, trial_id=trial_id, records=[record])
+            trial_id += 1
+
+        return records
+
     def run(self) -> List[Dict[str, Any]]:
         """
         Run protocols/phases to completion.
@@ -202,13 +252,17 @@ class Runner:
                     ctx.agent = candidate_agent
             self.hooks.on_unit_start(unit=unit, ctx=ctx)
 
-            if isinstance(unit, RunnableUnitLike):
+            if isinstance(unit, IEnvironment):
+                unit_records = self._run_environment_unit(unit, ctx)
+                records.extend(unit_records)
+                self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
+            elif isinstance(unit, RunnableUnitLike):
                 unit_records = self._run_runnable_unit(unit, ctx)
                 records.extend(unit_records)
                 self.hooks.on_unit_end(unit=unit, ctx=ctx, records=unit_records)
             else:
                 raise TypeError(
-                    f"Unsupported runtime unit: {type(unit).__name__} must implement iter_steps(context)."
+                    f"Unsupported runtime unit: {type(unit).__name__} must implement iter_steps(context) or IEnvironment."
                 )
 
         if self._owns_sink:
