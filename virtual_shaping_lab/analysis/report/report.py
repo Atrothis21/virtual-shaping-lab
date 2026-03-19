@@ -9,6 +9,7 @@ from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
+from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
@@ -136,11 +137,43 @@ def _extract_artifact_identity(payload):
         "plan_hash": None,
         "seed_identity": None,
         "mechanism_identity": None,
+        "operator_pipeline_identity": None,
     }
 
     mechanism_provenance = _extract_mechanism_provenance(payload)
     if isinstance(mechanism_provenance, dict):
         identity["mechanism_identity"] = mechanism_provenance
+
+    if isinstance(payload, dict):
+        provenance = payload.get("provenance")
+        if isinstance(provenance, dict):
+            operator_pipeline = provenance.get("operator_pipeline")
+            if isinstance(operator_pipeline, dict):
+                identity["operator_pipeline_identity"] = {
+                    "stage_keys": list(operator_pipeline.get("stage_keys", []) or []),
+                    "pipeline_hash": operator_pipeline.get("pipeline_hash"),
+                }
+        if identity["operator_pipeline_identity"] is None:
+            experiment = payload.get("experiment")
+            runtime = experiment.get("runtime") if isinstance(experiment, dict) else None
+            raw = runtime.get("operator_pipeline") if isinstance(runtime, dict) else None
+            if isinstance(raw, OperatorPipeline):
+                identity["operator_pipeline_identity"] = {
+                    "stage_keys": list(raw.stage_keys()),
+                    "pipeline_hash": raw.stable_hash(),
+                }
+            elif isinstance(raw, dict):
+                parsed = OperatorPipeline.from_dict(raw)
+                identity["operator_pipeline_identity"] = {
+                    "stage_keys": list(parsed.stage_keys()),
+                    "pipeline_hash": parsed.stable_hash(),
+                }
+            else:
+                parsed = default_operator_pipeline()
+                identity["operator_pipeline_identity"] = {
+                    "stage_keys": list(parsed.stage_keys()),
+                    "pipeline_hash": parsed.stable_hash(),
+                }
 
     if not isinstance(payload, dict):
         return identity

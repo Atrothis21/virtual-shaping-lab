@@ -10,12 +10,30 @@ from .environment import (
     RolloutHarness,
     TrialState,
 )
+from .operator import (
+    LookaheadContract,
+    NORMATIVE_STAGE_LOOKAHEAD,
+    NORMATIVE_STAGE_CONTRACTS,
+    NORMATIVE_STAGE_ORDER,
+    PIPELINE_BASE_FIELDS,
+    OperatorPipeline,
+    OperatorStage,
+    default_operator_pipeline,
+)
 
 __all__ = [
     "ActionSpace",
     "NullActionSpace",
     "SingletonActionSpace",
     "NullPolicy",
+    "OperatorStage",
+    "OperatorPipeline",
+    "LookaheadContract",
+    "NORMATIVE_STAGE_LOOKAHEAD",
+    "NORMATIVE_STAGE_CONTRACTS",
+    "NORMATIVE_STAGE_ORDER",
+    "PIPELINE_BASE_FIELDS",
+    "default_operator_pipeline",
     "IEnvironment",
     "TrialState",
     "EnvironmentReset",

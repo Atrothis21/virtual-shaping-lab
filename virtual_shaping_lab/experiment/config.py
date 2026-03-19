@@ -659,6 +659,11 @@ class ExperimentConfig:
             raise ValueError("experiment.runtime.update_mode must be 'trial' or 'tick'")
         if normalized["record_mode"] not in {"trial", "tick"}:
             raise ValueError("experiment.runtime.record_mode must be 'trial' or 'tick'")
+        if "operator_pipeline" in runtime:
+            operator_pipeline = runtime.get("operator_pipeline")
+            if not isinstance(operator_pipeline, dict):
+                raise ValueError("experiment.runtime.operator_pipeline must be an object when provided")
+            normalized["operator_pipeline"] = dict(operator_pipeline)
         return normalized
 
     @classmethod
