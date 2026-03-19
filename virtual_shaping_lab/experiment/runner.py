@@ -12,7 +12,7 @@ from experiment.trial_executor import TrialExecutor
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
-from virtual_shaping_lab.vsl.environment import IEnvironment
+from virtual_shaping_lab.vsl.environment import IEnvironment, TrialState
 
 
 @runtime_checkable
@@ -190,35 +190,35 @@ class Runner:
         while not unit.done:
             self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=None)
             step = unit.step(action=None)
-            step_payload = step.to_dict()
-            trial_state = step_payload.get("trial_state")
+            if not isinstance(step.trial_state, TrialState):
+                raise TypeError("Environment step must provide typed TrialState.")
+            trial_state = step.trial_state.to_dict()
             context_value = None
-            if isinstance(trial_state, dict):
-                z = trial_state.get("z")
-                if isinstance(z, dict):
-                    context_value = z.get("context")
+            z = trial_state.get("z")
+            if isinstance(z, dict):
+                context_value = z.get("context")
 
             record = {
-                "phase": step_payload.get("protocol"),
-                "trial": step_payload.get("step_index"),
-                "tick": step_payload.get("step_index"),
-                "stimulus": step_payload.get("stimulus"),
-                "action": step_payload.get("action"),
-                "reward": step_payload.get("reward"),
-                "done": step_payload.get("done"),
+                "phase": step.protocol,
+                "trial": step.step_index,
+                "tick": step.step_index,
+                "stimulus": dict(step.stimulus),
+                "action": step.action,
+                "reward": float(step.reward),
+                "done": step.done,
                 "context": context_value,
                 "metadata": {
                     "trial_state": trial_state,
-                    "termination": step_payload.get("termination"),
-                    "segment_key": step_payload.get("segment_key"),
-                    "trial_type": step_payload.get("trial_type"),
-                    "trial_index": step_payload.get("trial_index"),
+                    "termination": step.termination.to_dict(),
+                    "segment_key": step.segment_key,
+                    "trial_type": step.trial_type,
+                    "trial_index": step.trial_index,
                 },
             }
 
             finalize_record(
                 record,
-                phase_name=step_payload.get("protocol"),
+                phase_name=step.protocol,
             )
             self._emit_record(record)
             records.append(record)
