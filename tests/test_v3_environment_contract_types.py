@@ -36,7 +36,7 @@ def test_environment_contract_runtime_checkable():
 def test_environment_typed_objects_roundtrip_shape():
     reset = EnvironmentReset(seed=7, done=False, metadata={"source": "test"})
     term = EnvironmentTermination(done=True, reason="terminal", metadata={"horizon": True})
-    trial_state = TrialState(
+    trial_state = TrialState.from_components(
         s={"step": 0},
         x={"cs_plus": ["tone"]},
         z={"context": "A"},
@@ -44,7 +44,9 @@ def test_environment_typed_objects_roundtrip_shape():
         a=[],
         u=None,
         y=1.0,
-        m={},
+        persistent={"phase": "acq"},
+        prediction=0.5,
+        error=0.5,
     )
     step = EnvironmentStep(
         step_index=0,
@@ -63,6 +65,7 @@ def test_environment_typed_objects_roundtrip_shape():
     assert reset.to_dict()["seed"] == 7
     assert step.to_dict()["termination"]["reason"] == "terminal"
     assert set(("s", "x", "z", "w", "a", "u", "y", "m")).issubset(step.to_dict()["trial_state"].keys())
+    assert step.to_dict()["trial_state"]["m"]["derived"] == {"prediction": 0.5, "error": 0.5}
 
 
 def test_environment_step_validation_guards():

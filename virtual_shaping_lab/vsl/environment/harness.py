@@ -90,7 +90,10 @@ class CompiledProgramTestEnvironment(IEnvironment):
             a=[],
             u=action,
             y=float(reward),
-            m={"termination": termination.to_dict()},
+            m={
+                "persistent": {"termination": termination.to_dict()},
+                "derived": {"prediction": None, "error": None},
+            },
         )
         return EnvironmentStep(
             step_index=step_index,
