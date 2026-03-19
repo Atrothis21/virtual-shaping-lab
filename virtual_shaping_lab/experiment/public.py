@@ -11,6 +11,7 @@ from typing import Any, Optional
 from experiment.assemble import assemble_experiment
 from experiment.config import ExperimentConfig
 from experiment.domain.types import ExperimentPlan
+from experiment.plan_access import get_runtime_composed_parameters, get_runtime_settings
 from experiment.phenomena.catalog import available_phenomena, get_phenomenon
 from experiment.parameters import validate_composed_parameter_ownership
 from experiment.runner import Runner
@@ -23,8 +24,7 @@ def build_plan(payload: dict[str, Any]) -> ExperimentPlan:
 
 def validate_plan(plan: ExperimentPlan) -> ExperimentPlan:
     """Validate plan-level ownership constraints and return the same plan."""
-    runtime_spec = dict(plan.runtime_spec or {})
-    composed = runtime_spec.get("composed_parameters")
+    composed = get_runtime_composed_parameters(plan)
     if composed:
         validate_composed_parameter_ownership(composed)
     return plan
@@ -57,8 +57,8 @@ def run_from_plan(
     """Assemble and execute all runtime units declared by the plan."""
     runtime_units, agent, representation = assemble_from_plan(plan)
     effective_seed = plan.seed if seed is None else seed
-    runner_settings = dict((plan.runtime_spec or {}).get("runtime", {}) or {})
-    composed = (plan.runtime_spec or {}).get("composed_parameters")
+    runner_settings = get_runtime_settings(plan)
+    composed = get_runtime_composed_parameters(plan)
     if composed:
         runner_settings["composed_parameters"] = composed
     runner_settings.setdefault("record_schema_version", plan.record_schema_version)
