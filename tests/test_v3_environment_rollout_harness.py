@@ -26,6 +26,20 @@ def _compiled_fixture():
     return compile_environment_program(payload)
 
 
+def _compiled_operant_fixture():
+    payload = {
+        "phases": [
+            {
+                "name": "Operant",
+                "protocol": "operant_conditioning",
+                "stimuli": {"cs_plus": ["lever"]},
+                "params": {"n_trials": 2, "reward": 1.0},
+            }
+        ]
+    }
+    return compile_environment_program(payload)
+
+
 def test_test_mode_rollout_harness_executes_environment_stepping():
     program = _compiled_fixture()
     env = CompiledProgramTestEnvironment(program)
@@ -36,6 +50,8 @@ def test_test_mode_rollout_harness_executes_environment_stepping():
     assert records[0]["protocol"] == "acquisition"
     assert records[-1]["protocol"] == "extinction"
     assert records[-1]["done"] is True
+    assert records[0]["trial_state"]["a"] == [None]
+    assert records[0]["trial_state"]["u"] is None
 
 
 def test_test_mode_rollout_harness_is_deterministic_for_same_seed():
@@ -68,3 +84,14 @@ def test_compiled_environment_raises_when_stepping_after_terminal():
     _ = harness.run(env)
     with pytest.raises(StopIteration):
         env.step(action=None)
+
+
+def test_rollout_harness_emits_operant_action_semantics():
+    program = _compiled_operant_fixture()
+    env = CompiledProgramTestEnvironment(program)
+    records = RolloutHarness().run(env, seed=9, action="leverpress")
+    assert records
+    for rec in records:
+        ts = rec["trial_state"]
+        assert ts["u"] == "leverpress"
+        assert "leverpress" in ts["a"]

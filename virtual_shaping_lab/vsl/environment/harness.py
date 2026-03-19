@@ -25,6 +25,23 @@ def _reward_from_trial_params(params: dict[str, Any]) -> float:
     return 0.0
 
 
+_OPERANT_PROTOCOLS = {
+    "operant_conditioning",
+    "matching_law",
+    "shaping",
+    "resurgence",
+    "superextinction",
+    "spontaneous_recovery",
+    "operant_phase_template",
+}
+
+
+def _is_operant_semantics(protocol: str, family: str) -> bool:
+    if family in {"template_operant", "protocol_recipe_operant"}:
+        return True
+    return protocol in _OPERANT_PROTOCOLS
+
+
 class CompiledProgramTestEnvironment(IEnvironment):
     """Deterministic environment adapter over compiled EnvironmentProgram."""
 
@@ -82,18 +99,20 @@ class CompiledProgramTestEnvironment(IEnvironment):
             reason="terminal" if self._done else "running",
             metadata={"cursor": self._cursor},
         )
-        trial_state = TrialState(
+        family = str(trial_meta.get("family", ""))
+        is_operant = _is_operant_semantics(protocol, family)
+        trial_state = TrialState.with_action_semantics(
             s={"segment_key": segment_key, "step_index": step_index, "trial_index": trial_index},
             x=dict(stimulus),
             z={"protocol": protocol},
             w=dict(trial_meta),
-            a=[],
-            u=action,
             y=float(reward),
-            m={
-                "persistent": {"termination": termination.to_dict()},
-                "derived": {"prediction": None, "error": None},
-            },
+            is_operant=is_operant,
+            action=action,
+            available_actions=[action] if action is not None else [],
+            persistent={"termination": termination.to_dict()},
+            prediction=None,
+            error=None,
         )
         return EnvironmentStep(
             step_index=step_index,

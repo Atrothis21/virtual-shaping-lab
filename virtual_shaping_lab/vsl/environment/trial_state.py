@@ -29,6 +29,12 @@ class TrialState:
     def __post_init__(self) -> None:
         if not isinstance(self.m, dict):
             raise ValueError("TrialState.m must be an object.")
+        if not isinstance(self.a, list):
+            raise ValueError("TrialState.a must be a list.")
+        if len(self.a) == 1 and self.a[0] is None and self.u is not None:
+            raise ValueError("TrialState classical null-action shape requires u=None when a=[None].")
+        if self.u is not None and len(self.a) == 0:
+            raise ValueError("TrialState requires non-empty action support list when u is set.")
         persistent = self.m.get(_META_PERSISTENT_KEY, {})
         derived = self.m.get(_META_DERIVED_KEY, {})
         if not isinstance(persistent, dict):
@@ -73,11 +79,11 @@ class TrialState:
         prediction: Any = None,
         error: Any = None,
     ) -> "TrialState":
-        derived: dict[str, Any] = {}
-        if prediction is not None:
-            derived["prediction"] = prediction
-        if error is not None:
-            derived["error"] = error
+        # Keep derived schema stable across records by always emitting both keys.
+        derived: dict[str, Any] = {
+            "prediction": prediction,
+            "error": error,
+        }
         return cls(
             s=s,
             x=x,
@@ -90,6 +96,52 @@ class TrialState:
                 _META_PERSISTENT_KEY: dict(persistent or {}),
                 _META_DERIVED_KEY: derived,
             },
+        )
+
+    @classmethod
+    def with_action_semantics(
+        cls,
+        *,
+        s: Any,
+        x: Any,
+        z: Any,
+        w: Any,
+        y: Any,
+        is_operant: bool,
+        action: Any = None,
+        available_actions: list[Any] | None = None,
+        persistent: dict[str, Any] | None = None,
+        prediction: Any = None,
+        error: Any = None,
+    ) -> "TrialState":
+        if is_operant:
+            action_space = list(available_actions or [])
+            if action is not None and action not in action_space:
+                action_space = [*action_space, action]
+            return cls.from_components(
+                s=s,
+                x=x,
+                z=z,
+                w=w,
+                a=action_space,
+                u=action,
+                y=y,
+                persistent=persistent,
+                prediction=prediction,
+                error=error,
+            )
+
+        return cls.from_components(
+            s=s,
+            x=x,
+            z=z,
+            w=w,
+            a=[None],
+            u=None,
+            y=y,
+            persistent=persistent,
+            prediction=prediction,
+            error=error,
         )
 
     def persistent_metadata(self) -> dict[str, Any]:
