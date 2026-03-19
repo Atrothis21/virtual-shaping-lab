@@ -290,6 +290,12 @@ class ExperimentPlan:
     seed: Optional[int] = None
     record_schema_version: str = "v1"
     settings: dict[str, Any] = field(default_factory=dict)
+    typed_program_spec: Any = field(default=None, repr=False, compare=False)
+    typed_agent_spec: Any = field(default=None, repr=False, compare=False)
+    typed_runtime_spec: Any = field(default=None, repr=False, compare=False)
+    typed_analysis_spec: Any = field(default=None, repr=False, compare=False)
+    typed_environment_program_spec: Any = field(default=None, repr=False, compare=False)
+    typed_experiment_spec: Any = field(default=None, repr=False, compare=False)
 
     @staticmethod
     def _to_primitive(value: Any) -> Any:
@@ -338,6 +344,55 @@ class ExperimentPlan:
         }
         payload = json.dumps(identity, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def as_typed_program_spec(self):
+        if self.typed_program_spec is not None:
+            return self.typed_program_spec
+        from virtual_shaping_lab.vsl.spec import ProgramSpec
+
+        return ProgramSpec.from_dict(self.program_spec)
+
+    def as_typed_agent_spec(self):
+        if self.typed_agent_spec is not None:
+            return self.typed_agent_spec
+        from virtual_shaping_lab.vsl.spec import AgentSpec
+
+        return AgentSpec.from_dict(self.agent_spec)
+
+    def as_typed_runtime_spec(self):
+        if self.typed_runtime_spec is not None:
+            return self.typed_runtime_spec
+        from virtual_shaping_lab.vsl.spec import RuntimeSpec
+
+        return RuntimeSpec.from_dict(self.runtime_spec)
+
+    def as_typed_analysis_spec(self):
+        if self.typed_analysis_spec is not None:
+            return self.typed_analysis_spec
+        from virtual_shaping_lab.vsl.spec import AnalysisSpec
+
+        return AnalysisSpec.from_dict(self.analysis_spec)
+
+    def as_typed_environment_program_spec(self):
+        if self.typed_environment_program_spec is not None:
+            return self.typed_environment_program_spec
+        from virtual_shaping_lab.vsl.spec import EnvironmentProgramSpec
+
+        return EnvironmentProgramSpec.from_dict({})
+
+    def as_typed_experiment_spec(self):
+        if self.typed_experiment_spec is not None:
+            return self.typed_experiment_spec
+        from virtual_shaping_lab.vsl.spec import EnvironmentProgramSpec, ExperimentSpec
+
+        return ExperimentSpec(
+            program=self.as_typed_program_spec(),
+            agent=self.as_typed_agent_spec(),
+            runtime=self.as_typed_runtime_spec(),
+            analysis=self.as_typed_analysis_spec(),
+            environment_program=EnvironmentProgramSpec.from_dict({}),
+            canonical_payload=dict(self.canonical_payload or {}),
+        )
 
 
 @dataclass

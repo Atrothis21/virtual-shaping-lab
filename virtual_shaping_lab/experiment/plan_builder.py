@@ -8,6 +8,14 @@ from typing import Any
 from experiment.config import ExperimentConfig
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import ParameterComposer, parameters_to_dict
+from virtual_shaping_lab.vsl.spec import (
+    AgentSpec,
+    AnalysisSpec,
+    EnvironmentProgramSpec,
+    ExperimentSpec,
+    ProgramSpec,
+    RuntimeSpec,
+)
 
 
 def _infer_phase_contexts(config: ExperimentConfig) -> list[str | None]:
@@ -136,6 +144,20 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "report_preset": config.report_preset,
     }
 
+    typed_program_spec = ProgramSpec.from_dict(program_spec)
+    typed_agent_spec = AgentSpec.from_dict(agent_spec)
+    typed_runtime_spec = RuntimeSpec.from_dict(runtime_spec)
+    typed_analysis_spec = AnalysisSpec.from_dict(analysis_spec)
+    typed_environment_program_spec = EnvironmentProgramSpec.from_dict({})
+    typed_experiment_spec = ExperimentSpec(
+        program=typed_program_spec,
+        agent=typed_agent_spec,
+        runtime=typed_runtime_spec,
+        analysis=typed_analysis_spec,
+        environment_program=typed_environment_program_spec,
+        canonical_payload=dict(canonical_payload or {}),
+    )
+
     return ExperimentPlan(
         units=units,
         program_spec=program_spec,
@@ -146,6 +168,12 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         seed=seed,
         record_schema_version="v1",
         settings=settings,
+        typed_program_spec=typed_program_spec,
+        typed_agent_spec=typed_agent_spec,
+        typed_runtime_spec=typed_runtime_spec,
+        typed_analysis_spec=typed_analysis_spec,
+        typed_environment_program_spec=typed_environment_program_spec,
+        typed_experiment_spec=typed_experiment_spec,
     )
 
 
