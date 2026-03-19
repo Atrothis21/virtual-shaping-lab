@@ -11,6 +11,7 @@ from virtual_shaping_lab.vsl.environment.contracts import (
     EnvironmentTermination,
     IEnvironment,
 )
+from virtual_shaping_lab.vsl.environment.trial_state import TrialState
 from virtual_shaping_lab.vsl.program.types import EnvironmentProgram
 
 
@@ -81,6 +82,16 @@ class CompiledProgramTestEnvironment(IEnvironment):
             reason="terminal" if self._done else "running",
             metadata={"cursor": self._cursor},
         )
+        trial_state = TrialState(
+            s={"segment_key": segment_key, "step_index": step_index, "trial_index": trial_index},
+            x=dict(stimulus),
+            z={"protocol": protocol},
+            w=dict(trial_meta),
+            a=[],
+            u=action,
+            y=float(reward),
+            m={"termination": termination.to_dict()},
+        )
         return EnvironmentStep(
             step_index=step_index,
             segment_key=segment_key,
@@ -91,6 +102,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
             stimulus=stimulus,
             reward=reward,
             done=self._done,
+            trial_state=trial_state,
             termination=termination,
             metadata={"trial": trial_meta},
         )

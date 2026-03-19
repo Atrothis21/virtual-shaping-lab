@@ -8,6 +8,7 @@ from virtual_shaping_lab.vsl.environment import (
     EnvironmentStep,
     EnvironmentTermination,
     IEnvironment,
+    TrialState,
 )
 from virtual_shaping_lab.vsl.program import compile_environment_program
 
@@ -35,6 +36,16 @@ def test_environment_contract_runtime_checkable():
 def test_environment_typed_objects_roundtrip_shape():
     reset = EnvironmentReset(seed=7, done=False, metadata={"source": "test"})
     term = EnvironmentTermination(done=True, reason="terminal", metadata={"horizon": True})
+    trial_state = TrialState(
+        s={"step": 0},
+        x={"cs_plus": ["tone"]},
+        z={"context": "A"},
+        w={},
+        a=[],
+        u=None,
+        y=1.0,
+        m={},
+    )
     step = EnvironmentStep(
         step_index=0,
         segment_key="acquisition_0",
@@ -45,11 +56,13 @@ def test_environment_typed_objects_roundtrip_shape():
         stimulus={"cs_plus": ["tone"]},
         reward=1.0,
         done=True,
+        trial_state=trial_state,
         termination=term,
         metadata={"phase_index": 0},
     )
     assert reset.to_dict()["seed"] == 7
     assert step.to_dict()["termination"]["reason"] == "terminal"
+    assert set(("s", "x", "z", "w", "a", "u", "y", "m")).issubset(step.to_dict()["trial_state"].keys())
 
 
 def test_environment_step_validation_guards():
@@ -72,4 +85,15 @@ def test_environment_step_validation_guards():
             trial_index=0,
             action=None,
             termination="bad",  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(ValueError, match="trial_state"):
+        EnvironmentStep(
+            step_index=0,
+            segment_key="acquisition_0",
+            protocol="acquisition",
+            trial_type="acquisition_trial",
+            trial_index=0,
+            action=None,
+            trial_state="bad",  # type: ignore[arg-type]
         )

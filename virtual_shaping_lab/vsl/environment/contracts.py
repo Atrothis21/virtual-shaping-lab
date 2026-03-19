@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
+from virtual_shaping_lab.vsl.environment.trial_state import TrialState
+
 
 @dataclass(frozen=True)
 class EnvironmentReset:
@@ -67,6 +69,7 @@ class EnvironmentStep:
     stimulus: dict[str, Any] = field(default_factory=dict)
     reward: float = 0.0
     done: bool = False
+    trial_state: TrialState | None = None
     termination: EnvironmentTermination = field(default_factory=lambda: EnvironmentTermination(done=False))
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -85,6 +88,8 @@ class EnvironmentStep:
             raise ValueError("EnvironmentStep.stimulus must be an object.")
         if not isinstance(self.done, bool):
             raise ValueError("EnvironmentStep.done must be a bool.")
+        if self.trial_state is not None and not isinstance(self.trial_state, TrialState):
+            raise ValueError("EnvironmentStep.trial_state must be a TrialState when provided.")
         if not isinstance(self.termination, EnvironmentTermination):
             raise ValueError("EnvironmentStep.termination must be an EnvironmentTermination.")
         if not isinstance(self.metadata, dict):
@@ -101,6 +106,7 @@ class EnvironmentStep:
             "stimulus": dict(self.stimulus),
             "reward": float(self.reward),
             "done": bool(self.done),
+            "trial_state": None if self.trial_state is None else self.trial_state.to_dict(),
             "termination": self.termination.to_dict(),
             "metadata": dict(self.metadata),
         }

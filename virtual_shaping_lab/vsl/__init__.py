@@ -7,10 +7,12 @@ from .environment import (
     EnvironmentTermination,
     IEnvironment,
     RolloutHarness,
+    TrialState,
 )
 
 __all__ = [
     "IEnvironment",
+    "TrialState",
     "EnvironmentReset",
     "EnvironmentTermination",
     "EnvironmentStep",
