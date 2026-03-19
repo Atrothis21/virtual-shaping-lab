@@ -3,6 +3,8 @@ from __future__ import annotations
 import pytest
 
 from virtual_shaping_lab.vsl.operator import (
+    LookaheadContract,
+    NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,
     NORMATIVE_STAGE_ORDER,
     OperatorPipeline,
@@ -70,6 +72,26 @@ def test_v3_operator_stage_contract_metadata_validation():
         OperatorStage(key="Err", required_fields=("x", ""))
 
 
+def test_v3_operator_stage_lookahead_contract_roundtrip():
+    stage = OperatorStage(
+        key="Err",
+        required_fields=("x", "y"),
+        produced_fields=("z",),
+        lookahead=LookaheadContract(source_stage="Env", relation="post", required_fields=("y", "z")),
+    )
+    rebuilt = OperatorStage.from_dict(stage.to_dict())
+    assert rebuilt == stage
+
+
+def test_v3_operator_stage_lookahead_contract_validation():
+    with pytest.raises(ValueError, match="source_stage"):
+        LookaheadContract(source_stage="")
+    with pytest.raises(ValueError, match="relation must be 'post'"):
+        LookaheadContract(source_stage="Env", relation="pre")
+    with pytest.raises(ValueError, match="required_fields must be unique"):
+        LookaheadContract(source_stage="Env", required_fields=("y", "y"))
+
+
 def test_v3_operator_pipeline_normative_stage_order_contract():
     expected = (
         "Phi",
@@ -101,3 +123,26 @@ def test_v3_operator_pipeline_normative_contracts_attach_to_stages():
         stage = stage_map[key]
         assert stage.required_fields == contract["required_fields"]
         assert stage.produced_fields == contract["produced_fields"]
+
+
+def test_v3_operator_pipeline_normative_lookahead_attaches_to_err_stage():
+    pipeline = default_operator_pipeline()
+    stage_map = {stage.key: stage for stage in pipeline.stages}
+    err = stage_map["Err"]
+    assert err.lookahead is not None
+    assert err.lookahead.source_stage == "Env"
+    assert err.lookahead.relation == "post"
+    assert err.lookahead.required_fields == NORMATIVE_STAGE_LOOKAHEAD["Err"]["required_fields"]
+
+
+def test_v3_operator_pipeline_rejects_invalid_post_lookahead_ordering():
+    with pytest.raises(ValueError, match="post-lookahead"):
+        OperatorPipeline(
+            stages=[
+                OperatorStage(
+                    key="Err",
+                    lookahead=LookaheadContract(source_stage="Env", relation="post", required_fields=("y",)),
+                ),
+                OperatorStage(key="Env"),
+            ]
+        )

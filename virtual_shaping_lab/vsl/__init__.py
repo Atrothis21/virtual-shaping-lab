@@ -11,6 +11,8 @@ from .environment import (
     TrialState,
 )
 from .operator import (
+    LookaheadContract,
+    NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,
     NORMATIVE_STAGE_ORDER,
     OperatorPipeline,
@@ -25,6 +27,8 @@ __all__ = [
     "NullPolicy",
     "OperatorStage",
     "OperatorPipeline",
+    "LookaheadContract",
+    "NORMATIVE_STAGE_LOOKAHEAD",
     "NORMATIVE_STAGE_CONTRACTS",
     "NORMATIVE_STAGE_ORDER",
     "default_operator_pipeline",
