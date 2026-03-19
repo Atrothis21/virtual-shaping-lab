@@ -18,6 +18,7 @@ _EXTENDED_PROTOCOL_TO_FAMILY = {
     "context_shift": "context_shift",
 }
 _EXTENDED_PROTOCOLS = set(_EXTENDED_PROTOCOL_TO_FAMILY.keys())
+_ALL_COMPILER_PROTOCOLS = _CORE_PROTOCOLS | _EXTENDED_PROTOCOLS
 
 
 def _require_phase_mapping(phase: Any, idx: int) -> dict[str, Any]:
@@ -174,3 +175,21 @@ def compile_extended_environment_program(program_spec: ProgramSpec | dict[str, A
             "Supported in slice 3: differential/probe/context-shift families."
         ),
     )
+
+
+def compile_environment_program(program_spec: ProgramSpec | dict[str, Any]) -> EnvironmentProgram:
+    """Compile supported V3.2.0 phase families into one EnvironmentProgram."""
+
+    return _compile_with_protocol_set(
+        program_spec,
+        allowed_protocols=_ALL_COMPILER_PROTOCOLS,
+        compiler_label="v3.2.0-all",
+        unsupported_message=(
+            "Unsupported protocol '{protocol}' for v3.2 compiler. "
+            "Supported: core acquisition/extinction + extended differential/probe/context-shift families."
+        ),
+    )
+
+
+def supported_compile_protocols() -> tuple[str, ...]:
+    return tuple(sorted(_ALL_COMPILER_PROTOCOLS))

@@ -32,6 +32,12 @@ def test_v3_program_types_roundtrip():
     assert rebuilt.to_dict() == blob
 
 
+def test_v3_program_types_stable_hash_repeats():
+    program = _sample_program()
+    hashes = [program.stable_hash() for _ in range(20)]
+    assert len(set(hashes)) == 1
+
+
 def test_v3_program_types_validation():
     with pytest.raises(ValueError, match="EventSpec.event_type"):
         EventSpec(event_type="", start_s=0.0, end_s=1.0)
@@ -44,4 +50,3 @@ def test_v3_program_types_validation():
 
     with pytest.raises(ValueError, match="EnvironmentProgram.segments must be non-empty"):
         EnvironmentProgram(segments=[])
-

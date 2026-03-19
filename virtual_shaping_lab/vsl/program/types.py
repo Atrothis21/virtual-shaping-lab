@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -181,6 +183,12 @@ class EnvironmentProgram:
             "metadata": _to_primitive(self.metadata),
         }
 
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+
+    def stable_hash(self) -> str:
+        return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "EnvironmentProgram":
         raw_segments = list(data.get("segments", []) or [])
@@ -188,4 +196,3 @@ class EnvironmentProgram:
             segments=[EnvironmentSegment.from_dict(s) if isinstance(s, dict) else s for s in raw_segments],
             metadata=dict(data.get("metadata", {}) or {}),
         )
-
