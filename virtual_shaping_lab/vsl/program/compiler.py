@@ -18,7 +18,33 @@ _EXTENDED_PROTOCOL_TO_FAMILY = {
     "context_shift": "context_shift",
 }
 _EXTENDED_PROTOCOLS = set(_EXTENDED_PROTOCOL_TO_FAMILY.keys())
-_ALL_COMPILER_PROTOCOLS = _CORE_PROTOCOLS | _EXTENDED_PROTOCOLS
+_CANONICAL_PROTOCOL_TO_FAMILY = {
+    **{key: "acquisition" for key in _CORE_ACQUISITION_PROTOCOLS},
+    **{key: "extinction" for key in _CORE_EXTINCTION_PROTOCOLS},
+    **_EXTENDED_PROTOCOL_TO_FAMILY,
+    "compound_acquisition": "compound_acquisition",
+    "compound_acquisition_template": "compound_acquisition",
+    "compound_nonreinforcement": "compound_nonreinforcement",
+    "compound_nonreinforcement_template": "compound_nonreinforcement",
+    "criterion_shift": "criterion_shift",
+    "pavlovian_phase_template": "template_pavlovian",
+    "operant_phase_template": "template_operant",
+    # Protocol-recipe families emitted by canonical preset fixtures.
+    "blocking": "protocol_recipe",
+    "conditioned_inhibition": "protocol_recipe",
+    "occasion_setting": "protocol_recipe",
+    "rapid_reacquisition": "protocol_recipe",
+    "aab_renewal": "protocol_recipe",
+    "aba_renewal": "protocol_recipe",
+    "abc_renewal": "protocol_recipe",
+    "operant_conditioning": "protocol_recipe_operant",
+    "matching_law": "protocol_recipe_operant",
+    "shaping": "protocol_recipe_operant",
+    "resurgence": "protocol_recipe_operant",
+    "superextinction": "protocol_recipe_operant",
+    "spontaneous_recovery": "protocol_recipe_operant",
+}
+_ALL_COMPILER_PROTOCOLS = set(_CANONICAL_PROTOCOL_TO_FAMILY.keys())
 
 
 def _require_phase_mapping(phase: Any, idx: int) -> dict[str, Any]:
@@ -49,12 +75,8 @@ def _normalize_protocol(raw_protocol: Any, idx: int) -> str:
 
 
 def _segment_family(protocol: str) -> str:
-    if protocol in _CORE_ACQUISITION_PROTOCOLS:
-        return "acquisition"
-    if protocol in _CORE_EXTINCTION_PROTOCOLS:
-        return "extinction"
-    if protocol in _EXTENDED_PROTOCOL_TO_FAMILY:
-        return _EXTENDED_PROTOCOL_TO_FAMILY[protocol]
+    if protocol in _CANONICAL_PROTOCOL_TO_FAMILY:
+        return _CANONICAL_PROTOCOL_TO_FAMILY[protocol]
     raise ValueError(
         f"Unsupported protocol '{protocol}' for V3.2 compiler."
     )
@@ -186,7 +208,7 @@ def compile_environment_program(program_spec: ProgramSpec | dict[str, Any]) -> E
         compiler_label="v3.2.0-all",
         unsupported_message=(
             "Unsupported protocol '{protocol}' for v3.2 compiler. "
-            "Supported: core acquisition/extinction + extended differential/probe/context-shift families."
+            "Supported: canonical phase families plus canonical preset protocol-recipe families."
         ),
     )
 
