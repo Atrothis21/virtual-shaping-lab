@@ -13,6 +13,7 @@ from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
 from virtual_shaping_lab.vsl.environment import IEnvironment, TrialState
+from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
 
 
 @runtime_checkable
@@ -80,9 +81,34 @@ class Runner:
             debug=self.debug_mode,
             debug_policy=debug_policy_settings,
         )
+        self.operator_pipeline = self._resolve_operator_pipeline()
 
     def _emit_record(self, record: Dict[str, Any]) -> None:
         self.sink.emit(record)
+
+    def _resolve_operator_pipeline(self) -> OperatorPipeline:
+        raw = self.settings.get("operator_pipeline")
+        if raw is None:
+            return default_operator_pipeline()
+        if isinstance(raw, OperatorPipeline):
+            return raw
+        if isinstance(raw, dict):
+            return OperatorPipeline.from_dict(raw)
+        raise ValueError("settings.operator_pipeline must be an OperatorPipeline object or object payload.")
+
+    @staticmethod
+    def _select_policy_action(ctx: ExperimentContext) -> Any:
+        agent = getattr(ctx, "agent", None)
+        if agent is None or not hasattr(agent, "act"):
+            return None
+        # Keep action semantics declaration-driven and deterministic under context RNG.
+        try:
+            return agent.act(state=None, actions=[], rng=ctx.rng)
+        except TypeError:
+            try:
+                return agent.act(None, [], ctx.rng)
+            except TypeError:
+                return agent.act(None)
 
     def _build_context(self, unit: Any) -> ExperimentContext:
         if self.context is not None:
@@ -186,10 +212,31 @@ class Runner:
         _ = reset_result
         records: List[Dict[str, Any]] = []
         trial_id = 0
+        declared_stage_keys = self.operator_pipeline.stage_keys()
+        if "Env" not in declared_stage_keys:
+            raise ValueError("OperatorPipeline for environment execution must declare an 'Env' stage.")
 
         while not unit.done:
             self.hooks.on_trial_start(unit=unit, ctx=ctx, trial_id=trial_id, step=None)
-            step = unit.step(action=None)
+            action = None
+            step = None
+            executed_stage_keys: list[str] = []
+            for stage in self.operator_pipeline.stages:
+                executed_stage_keys.append(stage.key)
+                if stage.key == "Policy":
+                    action = self._select_policy_action(ctx)
+                    continue
+                if stage.key == "Env":
+                    step = unit.step(action=action)
+                    continue
+                if stage.key == "Err":
+                    if step is None:
+                        raise ValueError(
+                            "OperatorPipeline Err stage requires post-Env lookahead; Env stage has not executed."
+                        )
+                    continue
+            if step is None:
+                raise ValueError("OperatorPipeline execution did not execute an Env stage step.")
             if not isinstance(step.trial_state, TrialState):
                 raise TypeError("Environment step must provide typed TrialState.")
             trial_state = step.trial_state.to_dict()
@@ -213,6 +260,11 @@ class Runner:
                     "segment_key": step.segment_key,
                     "trial_type": step.trial_type,
                     "trial_index": step.trial_index,
+                    "operator_pipeline": {
+                        "declared_stage_keys": list(declared_stage_keys),
+                        "executed_stage_keys": list(executed_stage_keys),
+                        "pipeline_hash": self.operator_pipeline.stable_hash(),
+                    },
                 },
             }
 
