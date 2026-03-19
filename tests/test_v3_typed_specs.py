@@ -51,6 +51,20 @@ def test_v3_typed_spec_roundtrip():
     assert rebuilt.to_dict() == blob
 
 
+def test_v3_typed_spec_json_roundtrip_is_deterministic():
+    spec = _sample_spec()
+    blob = spec.to_json()
+    rebuilt = ExperimentSpec.from_json(blob)
+    assert rebuilt.to_dict() == spec.to_dict()
+    assert rebuilt.to_json() == blob
+
+
+def test_v3_typed_spec_stable_hash_repeats():
+    spec = _sample_spec()
+    hashes = [spec.stable_hash() for _ in range(10)]
+    assert len(set(hashes)) == 1
+
+
 def test_v3_typed_spec_validation_rejects_bad_types():
     with pytest.raises(ValueError, match="RepresentationSpec.name"):
         RepresentationSpec(name="", params={})
@@ -73,4 +87,3 @@ def test_v3_typed_spec_validation_rejects_bad_types():
 def test_v3_policy_spec_serialization():
     policy = PolicySpec(name="epsilon_greedy", params={"epsilon": 0.1, "actions": ["left", "right"]})
     assert PolicySpec.from_dict(policy.to_dict()) == policy
-

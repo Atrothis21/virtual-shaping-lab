@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -281,3 +283,17 @@ class ExperimentSpec:
             canonical_payload=data.get("canonical_payload", {}),
         )
 
+    def to_json(self) -> str:
+        """Deterministic JSON serialization for typed-spec roundtrip and hashing."""
+        return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+
+    @classmethod
+    def from_json(cls, text: str) -> "ExperimentSpec":
+        data = json.loads(text)
+        if not isinstance(data, dict):
+            raise ValueError("ExperimentSpec JSON payload must decode to an object.")
+        return cls.from_dict(data)
+
+    def stable_hash(self) -> str:
+        """Stable semantic hash for deterministic identity checks."""
+        return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
