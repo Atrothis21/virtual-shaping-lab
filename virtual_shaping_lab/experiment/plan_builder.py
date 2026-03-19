@@ -150,30 +150,10 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
 
 
 def _compose_parameter_settings(config: ExperimentConfig) -> dict[str, Any]:
-    payload = {
-        "experiment": {
-            "learner": config.learner,
-            "agent": config.agent,
-            "representation": deepcopy(config.representation),
-            "policy": deepcopy(config.policy),
-            "stimuli": list(config.stimuli),
-            "salience": dict(config.salience),
-            "attention": dict(config.attention),
-            "attention_config": dict(config.attention_config),
-            "context_inference": dict(config.context_inference),
-            "runtime": dict(config.runtime),
-            "phases": [
-                {
-                    "name": phase.name,
-                    "protocol": phase.protocol,
-                    "stimuli": deepcopy(phase.stimuli),
-                    "params": deepcopy(phase.params or {}),
-                }
-                for phase in config.phases
-            ],
-        }
-    }
-    composed = ParameterComposer.compose(payload, normalize_and_validate=False)
+    payload = _build_canonical_payload_settings(config)
+    # Compose from canonical payload through the standard normalization path so
+    # plan.settings matches ParameterComposer.compose(plan.canonical_payload).
+    composed = ParameterComposer.compose(payload)
     return parameters_to_dict(composed)
 
 
