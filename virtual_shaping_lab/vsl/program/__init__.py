@@ -1,6 +1,6 @@
 """V3 environment-program data structures."""
 
-from .compiler import compile_core_environment_program
+from .compiler import compile_core_environment_program, compile_extended_environment_program
 from .types import EnvironmentProgram, EnvironmentSegment, EventSpec, TrialSpec
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     "EnvironmentSegment",
     "EnvironmentProgram",
     "compile_core_environment_program",
+    "compile_extended_environment_program",
 ]

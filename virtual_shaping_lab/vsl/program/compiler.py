@@ -10,6 +10,14 @@ from virtual_shaping_lab.vsl.spec import ProgramSpec
 _CORE_ACQUISITION_PROTOCOLS = {"acquisition", "acquisition_template"}
 _CORE_EXTINCTION_PROTOCOLS = {"nonreinforcement", "nonreinforcement_template", "extinction"}
 _CORE_PROTOCOLS = _CORE_ACQUISITION_PROTOCOLS | _CORE_EXTINCTION_PROTOCOLS
+_EXTENDED_PROTOCOL_TO_FAMILY = {
+    "differential_acquisition": "differential",
+    "differential_acquisition_template": "differential",
+    "probe": "probe",
+    "probe_template": "probe",
+    "context_shift": "context_shift",
+}
+_EXTENDED_PROTOCOLS = set(_EXTENDED_PROTOCOL_TO_FAMILY.keys())
 
 
 def _require_phase_mapping(phase: Any, idx: int) -> dict[str, Any]:
@@ -44,19 +52,17 @@ def _segment_family(protocol: str) -> str:
         return "acquisition"
     if protocol in _CORE_EXTINCTION_PROTOCOLS:
         return "extinction"
+    if protocol in _EXTENDED_PROTOCOL_TO_FAMILY:
+        return _EXTENDED_PROTOCOL_TO_FAMILY[protocol]
     raise ValueError(
-        f"Unsupported protocol '{protocol}' for core compiler. "
-        "Supported in slice 2: acquisition/nonreinforcement/extinction families."
+        f"Unsupported protocol '{protocol}' for V3.2 compiler."
     )
 
 
-def _compile_phase(phase: dict[str, Any], idx: int) -> EnvironmentSegment:
+def _compile_phase(phase: dict[str, Any], idx: int, *, allowed_protocols: set[str], unsupported_message: str) -> EnvironmentSegment:
     protocol = _normalize_protocol(phase.get("protocol", ""), idx)
-    if protocol not in _CORE_PROTOCOLS:
-        raise ValueError(
-            f"Unsupported protocol '{protocol}' for core compiler. "
-            "Supported in slice 2: acquisition/nonreinforcement/extinction families."
-        )
+    if protocol not in allowed_protocols:
+        raise ValueError(unsupported_message.format(protocol=protocol))
 
     params = phase.get("params", {})
     if not isinstance(params, dict):
@@ -85,15 +91,7 @@ def _compile_phase(phase: dict[str, Any], idx: int) -> EnvironmentSegment:
     )
 
 
-def compile_core_environment_program(program_spec: ProgramSpec | dict[str, Any]) -> EnvironmentProgram:
-    """
-    Compile core acquisition/extinction phase families into EnvironmentProgram.
-
-    Slice-2 scope:
-    - acquisition families
-    - nonreinforcement/extinction families
-    """
-
+def _extract_phases(program_spec: ProgramSpec | dict[str, Any]) -> list[dict[str, Any]]:
     if isinstance(program_spec, ProgramSpec):
         phases = list(program_spec.phases)
     elif isinstance(program_spec, dict):
@@ -108,12 +106,71 @@ def compile_core_environment_program(program_spec: ProgramSpec | dict[str, Any])
 
     if not phases:
         raise ValueError("program_spec.phases must be non-empty.")
+    return phases
 
-    segments = [_compile_phase(_require_phase_mapping(phase, idx), idx) for idx, phase in enumerate(phases)]
+
+def _compile_with_protocol_set(
+    program_spec: ProgramSpec | dict[str, Any],
+    *,
+    allowed_protocols: set[str],
+    compiler_label: str,
+    unsupported_message: str,
+) -> EnvironmentProgram:
+    phases = _extract_phases(program_spec)
+    segments = [
+        _compile_phase(
+            _require_phase_mapping(phase, idx),
+            idx,
+            allowed_protocols=allowed_protocols,
+            unsupported_message=unsupported_message,
+        )
+        for idx, phase in enumerate(phases)
+    ]
     return EnvironmentProgram(
         segments=segments,
         metadata={
-            "compiler": "v3.2.0-core",
-            "supported_protocols": sorted(_CORE_PROTOCOLS),
+            "compiler": compiler_label,
+            "supported_protocols": sorted(allowed_protocols),
         },
+    )
+
+
+def compile_core_environment_program(program_spec: ProgramSpec | dict[str, Any]) -> EnvironmentProgram:
+    """
+    Compile core acquisition/extinction phase families into EnvironmentProgram.
+
+    Slice-2 scope:
+    - acquisition families
+    - nonreinforcement/extinction families
+    """
+
+    return _compile_with_protocol_set(
+        program_spec,
+        allowed_protocols=_CORE_PROTOCOLS,
+        compiler_label="v3.2.0-core",
+        unsupported_message=(
+            "Unsupported protocol '{protocol}' for core compiler. "
+            "Supported in slice 2: acquisition/nonreinforcement/extinction families."
+        ),
+    )
+
+
+def compile_extended_environment_program(program_spec: ProgramSpec | dict[str, Any]) -> EnvironmentProgram:
+    """
+    Compile extended differential/probe/context-shift phase families into EnvironmentProgram.
+
+    Slice-3 scope:
+    - differential acquisition
+    - probe
+    - context shift
+    """
+
+    return _compile_with_protocol_set(
+        program_spec,
+        allowed_protocols=_EXTENDED_PROTOCOLS,
+        compiler_label="v3.2.0-extended",
+        unsupported_message=(
+            "Unsupported protocol '{protocol}' for extended compiler. "
+            "Supported in slice 3: differential/probe/context-shift families."
+        ),
     )
