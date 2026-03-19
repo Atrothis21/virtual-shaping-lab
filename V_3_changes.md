@@ -99,58 +99,21 @@ Naming rule (normative):
 
 ## Ownership Split (Authoritative)
 
-| Layer | Owns | Does Not Own |
-|---|---|---|
-| Program | experiment sequencing and phase order | learner update math, transition kernels |
-| Phase | local trial conditions/recipe declarations | environment stepping internals, learner math |
-| Protocol | reusable phase mechanics templates | global sequencing policy, learner internals |
-| Environment | executable contingencies, transition stepping, rewards, termination | representation transforms, learner slot logic |
-| Representation | Phi/Ctx/Sim transforms and state encoding | reward logic, action policy |
-| Learner | Pred/Err/Attn/Update/weights | sequencing, transition control |
-| Policy | action selection over action space | transition/reward generation |
-| Records + Analysis | rollout measurements/readouts/reporting | runtime transition ownership |
+Canonical ownership source of truth:
 
-Boundary invariant (normative):
+- `docs/v3_ownership_split.md`
 
-- Program and Phase define what should happen; Environment defines what actually happens at runtime
+Boundary invariant (normative) is defined in that document and applies to all slices.
 
 ---
 
 ## Reconciled Roadmap Execution Order
 
-This is the authoritative execution order.
+Canonical roadmap source of truth:
 
-| Planning Label | Slice Name | Why It Sits Here |
-|---|---|---|
-| v3.0.x | documentation normalization + glossary + UTF-8 cleanup | eliminate notation/encoding ambiguity before engineering work |
-| v3.1.x | typed semantic plan | stabilize ownership contracts early |
-| v3.2.x | environment program compilation from phases/protocols | reframe phases as generators, not mechanisms |
-| v3.3.x | first-class environment contract | make runtime semantics explicit |
-| v3.4.x | universal action-space and policy unification | collapse architectural split between classical and operant |
-| v3.4.5.x | explicit operator pipeline object | make noncommutative composition order first-class and test-enforced |
-| v3.5.x | learner grammar + compatibility validator + preset registry | formalize model families after environment/policy contracts |
-| v3.6.x | rollout engine + record schema finalization | lock runtime-analysis boundary early |
-| v3.7.x | temporal representation + episode/horizon semantics | deepen time semantics after rollout contract is stable |
-| v3.8.x | phenomenon registry + minimal operator bundles | scientific coverage after core runtime contracts settle |
-| v3.8.5.x | layered UI abstraction and teaching surfaces | expose operators progressively while keeping behavior-first usability |
-| v3.9.x | namespace/package reshaping + public API stabilization | physical package cleanup last |
+- `docs/v3_roadmap_order.md`
 
-### Cross-Slice Dependency Snapshot
-
-| Slice | Depends On |
-|---|---|
-| v3.0.x | none |
-| v3.1.x | v3.0.x |
-| v3.2.x | v3.1.x |
-| v3.3.x | v3.2.x |
-| v3.4.x | v3.3.x |
-| v3.4.5.x | v3.3.x, v3.4.x |
-| v3.5.x | v3.3.x, v3.4.x, v3.4.5.x |
-| v3.6.x | v3.1.x, v3.3.x |
-| v3.7.x | v3.6.x |
-| v3.8.x | v3.5.x, v3.6.x |
-| v3.8.5.x | v3.5.x, v3.6.x, v3.8.x |
-| v3.9.x | v3.1.x-v3.8.5.x stabilized |
+Execution order and cross-slice dependency tables are maintained in that document.
 
 ---
 
