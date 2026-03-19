@@ -458,6 +458,69 @@ def test_assemble_classical_path_uses_null_policy_semantics():
     assert agent.policy.__class__.__name__ == "NullPolicy"
 
 
+def test_assemble_classical_and_operant_use_unified_agent_kernel(monkeypatch):
+    captured_names = []
+
+    from experiment.factories.agent_factory import build_agent as _real_build_agent
+
+    def _spy_build_agent(name, **params):
+        captured_names.append(name)
+        return _real_build_agent(name, **params)
+
+    monkeypatch.setattr("experiment.assemble.build_agent", _spy_build_agent)
+
+    classical_payload = _canonical_fixture_payload({
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["tone"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 1, "alpha": 0.2, "gamma": 0.0},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    })
+    assemble_experiment(ExperimentConfig.from_payload(classical_payload))
+
+    operant_payload = _canonical_fixture_payload({
+        "experiment": {
+            "learner": "q_learner",
+            "agent": "operant_agent",
+            "policy": {
+                "name": "epsilon_greedy",
+                "params": {"epsilon": 0.1, "actions": ["left", "right"]},
+            },
+            "representation": {
+                "name": "vector_elemental",
+                "params": {"stimuli": ["lever"], "max_compound_size": 2},
+            },
+            "phases": [
+                {
+                    "name": "Operant",
+                    "protocol": "operant_conditioning",
+                    "stimuli": {"cs_plus": ["lever"]},
+                    "params": {
+                        "n_trials": 1,
+                        "reward_schedule": {"type": "fixed_ratio", "value": 1},
+                    },
+                }
+            ],
+        },
+        "report": {"preset": "operant_conditioning"},
+    })
+    assemble_experiment(ExperimentConfig.from_payload(operant_payload))
+
+    assert captured_names == ["composed_agent", "composed_agent"]
+
+
 def test_assemble_plan_uses_composed_attention_when_settings_attention_missing():
     plan = ExperimentPlan(
         units=[

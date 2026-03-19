@@ -27,7 +27,7 @@ from experiment.config import PhaseConfig
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import validate_composed_parameter_ownership
 
-OPERANT_AGENT_NAME = "operant_agent"
+UNIFIED_COMPOSED_AGENT_NAME = "composed_agent"
 
 
 def _get_composed_parameters(config) -> dict[str, Any]:
@@ -393,8 +393,10 @@ def _build_agent_stack(config, representation):
     )
     _assign_attention_map(config, learner)
 
+    # V3.4.0 slice 2: composition root always builds the same composed-agent stack.
+    # Family semantics are carried by policy/action-space behavior, not assembly branches.
     agent = build_agent(
-        config.agent,
+        UNIFIED_COMPOSED_AGENT_NAME,
         learner=learner,
         representation=representation,
         policy=policy,
