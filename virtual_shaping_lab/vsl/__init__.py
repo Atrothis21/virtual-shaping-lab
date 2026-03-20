@@ -1,6 +1,6 @@
 """V3 package surface (incremental)."""
 
-from .agent import ActionSpace, NullActionSpace, NullPolicy, SingletonActionSpace
+from .agent import ActionSpace, LearnerSpec, NullActionSpace, NullPolicy, SingletonActionSpace
 from .environment import (
     CompiledProgramTestEnvironment,
     EnvironmentReset,
@@ -22,6 +22,7 @@ from .operator import (
 )
 
 __all__ = [
+    "LearnerSpec",
     "ActionSpace",
     "NullActionSpace",
     "SingletonActionSpace",
