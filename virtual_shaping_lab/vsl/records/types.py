@@ -51,6 +51,9 @@ class RolloutRecord:
     """Stable V3 record boundary for environment rollouts."""
 
     schema_version: str = ROLLOUT_RECORD_SCHEMA_VERSION
+    rollout_id: str | None = None
+    episode_id: int | None = None
+    segment_index: int | None = None
     step_index: int = 0
     segment_key: str = ""
     protocol: str = ""
@@ -66,6 +69,12 @@ class RolloutRecord:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "schema_version", _coerce_schema_version(self.schema_version))
+        if self.rollout_id is not None and (not isinstance(self.rollout_id, str) or not self.rollout_id.strip()):
+            raise ValueError("RolloutRecord.rollout_id must be a non-empty string when provided.")
+        if self.episode_id is not None and int(self.episode_id) < 0:
+            raise ValueError("RolloutRecord.episode_id must be >= 0 when provided.")
+        if self.segment_index is not None and int(self.segment_index) < 0:
+            raise ValueError("RolloutRecord.segment_index must be >= 0 when provided.")
         if int(self.step_index) < 0:
             raise ValueError("RolloutRecord.step_index must be >= 0.")
         if int(self.trial_index) < 0:
@@ -90,6 +99,9 @@ class RolloutRecord:
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
+            "rollout_id": self.rollout_id,
+            "episode_id": None if self.episode_id is None else int(self.episode_id),
+            "segment_index": None if self.segment_index is None else int(self.segment_index),
             "step_index": int(self.step_index),
             "segment_key": self.segment_key,
             "protocol": self.protocol,
@@ -108,6 +120,9 @@ class RolloutRecord:
     def from_dict(cls, data: dict[str, Any]) -> "RolloutRecord":
         return cls(
             schema_version=data.get("schema_version", ROLLOUT_RECORD_SCHEMA_VERSION),
+            rollout_id=data.get("rollout_id"),
+            episode_id=(int(data.get("episode_id")) if data.get("episode_id") is not None else None),
+            segment_index=(int(data.get("segment_index")) if data.get("segment_index") is not None else None),
             step_index=int(data.get("step_index", 0)),
             segment_key=str(data.get("segment_key", "")),
             protocol=str(data.get("protocol", "")),
