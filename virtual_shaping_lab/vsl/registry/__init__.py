@@ -7,6 +7,7 @@ from .phenomenon_registry import (
     OperatorBundleSpec,
     PhenomenonRegistryEntry,
     ReadoutSpec,
+    match_phenomenon_registry_entry_for_protocol,
     phenomenon_registry_hash,
     phenomenon_registry_payload,
     validate_phenomenon_registry,
@@ -20,7 +21,7 @@ __all__ = [
     "PhenomenonRegistryEntry",
     "PHENOMENON_REGISTRY",
     "validate_phenomenon_registry",
+    "match_phenomenon_registry_entry_for_protocol",
     "phenomenon_registry_payload",
     "phenomenon_registry_hash",
 ]
-

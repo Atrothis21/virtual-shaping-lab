@@ -252,6 +252,10 @@ _PAVL_OVERVIEW = ("Phi", "P", "E", "W", "Omega", "M")
 _CTX_OVERVIEW = ("Phi", "C", "P", "E", "W", "Omega", "M")
 _OPERANT_OVERVIEW = ("Phi", "P", "E", "W", "Pi", "Omega", "M")
 
+_PAVL_REQUIRED = ("Env", "Err", "Measure")
+_CTX_REQUIRED = ("C", "Env", "Err", "Measure")
+_OPERANT_REQUIRED = ("Policy", "Env", "Err", "Measure")
+
 
 PHENOMENON_REGISTRY = {
     "blocking": _entry(
@@ -262,7 +266,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="pavlovian_error_driven",
         operators=_PAVL_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        required_operators=_PAVL_REQUIRED,
         metadata={"family": "cue_competition"},
     ),
     "conditioned_inhibition": _entry(
@@ -273,7 +277,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="pavlovian_error_driven",
         operators=_PAVL_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        required_operators=_PAVL_REQUIRED,
         metadata={"family": "cue_competition"},
     ),
     "renewal_aba": _entry(
@@ -284,7 +288,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "context"},
     ),
     "renewal_abc": _entry(
@@ -295,7 +299,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "context"},
     ),
     "renewal_aab": _entry(
@@ -306,7 +310,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "context"},
     ),
     "extinction": _entry(
@@ -317,7 +321,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="none",
         bundle_key="pavlovian_error_driven",
         operators=_PAVL_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        required_operators=_PAVL_REQUIRED,
         metadata={"family": "acquisition_extinction"},
     ),
     "rapid_reacquisition": _entry(
@@ -328,7 +332,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="moderate",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "acquisition_extinction", "note": "persistence-sensitive"},
     ),
     "occasion_setting": _entry(
@@ -339,7 +343,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "context"},
     ),
     "operant_conditioning": _entry(
@@ -350,7 +354,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="none",
         bundle_key="operant_core",
         operators=_OPERANT_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        required_operators=_OPERANT_REQUIRED,
         metadata={"family": "operant"},
     ),
     "matching_law": _entry(
@@ -361,7 +365,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="operant_core",
         operators=_OPERANT_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        required_operators=_OPERANT_REQUIRED,
         metadata={"family": "operant"},
     ),
     "shaping": _entry(
@@ -372,7 +376,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="operant_core",
         operators=_OPERANT_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        required_operators=_OPERANT_REQUIRED,
         metadata={"family": "operant"},
     ),
     "resurgence": _entry(
@@ -383,7 +387,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="moderate",
         bundle_key="operant_core",
         operators=_OPERANT_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        required_operators=_OPERANT_REQUIRED,
         metadata={"family": "operant", "note": "context/persistence-sensitive"},
     ),
     "superextinction": _entry(
@@ -394,7 +398,7 @@ PHENOMENON_REGISTRY = {
         caveat_tier="minor",
         bundle_key="operant_core",
         operators=_OPERANT_OVERVIEW,
-        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        required_operators=_OPERANT_REQUIRED,
         metadata={"family": "operant"},
     ),
     "spontaneous_recovery": _entry(
@@ -405,10 +409,26 @@ PHENOMENON_REGISTRY = {
         caveat_tier="major",
         bundle_key="contextual_pavlovian",
         operators=_CTX_OVERVIEW,
-        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        required_operators=_CTX_REQUIRED,
         metadata={"family": "acquisition_extinction", "note": "requires persistence assumptions"},
     ),
 }
+
+
+def match_phenomenon_registry_entry_for_protocol(
+    protocol: str,
+    registry: dict[str, PhenomenonRegistryEntry] | None = None,
+) -> PhenomenonRegistryEntry | None:
+    target = str(protocol or "").strip().lower()
+    if not target:
+        return None
+    active = registry if registry is not None else PHENOMENON_REGISTRY
+    for entry in active.values():
+        recipe = entry.recipe if isinstance(entry.recipe, dict) else {}
+        candidate = str(recipe.get("protocol", "")).strip().lower()
+        if candidate == target:
+            return entry
+    return None
 
 
 def validate_phenomenon_registry(
