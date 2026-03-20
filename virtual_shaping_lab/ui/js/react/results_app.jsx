@@ -76,6 +76,53 @@ function operantConsequenceClass(mode) {
   return "n/a";
 }
 
+function normalizeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function operatorPipelineForRecord(payload, record) {
+  const recordIdentity = record?.operator_pipeline_identity;
+  if (recordIdentity && Array.isArray(recordIdentity.stage_keys) && recordIdentity.stage_keys.length) {
+    return recordIdentity.stage_keys;
+  }
+  const payloadIdentity = payload?.metadata?.operator_pipeline_identity;
+  if (payloadIdentity && Array.isArray(payloadIdentity.stage_keys) && payloadIdentity.stage_keys.length) {
+    return payloadIdentity.stage_keys;
+  }
+  return ["Phi", "C", "K", "S", "P", "E", "U", "Policy"];
+}
+
+function behaviorToOperatorExplanation(payload, record, trialIndex) {
+  const prediction = normalizeNumber(record?.prediction);
+  const reward = normalizeNumber(record?.reward);
+  const error = normalizeNumber(record?.prediction_error);
+  const action = record?.action ?? "none";
+  const operatorStages = operatorPipelineForRecord(payload, record);
+
+  const lines = [];
+  lines.push(`Trial ${trialIndex + 1}: action=${valueToString(action)}`);
+  if (prediction !== null) lines.push(`Prediction (P): ${prediction.toFixed(6)}`);
+  if (reward !== null) lines.push(`Outcome/Reward (r): ${reward.toFixed(6)}`);
+  if (error !== null) {
+    lines.push(`Prediction Error (E): ${error.toFixed(6)}`);
+  } else if (prediction !== null && reward !== null) {
+    lines.push(`Prediction Error (E): ${(reward - prediction).toFixed(6)} (derived)`);
+  } else {
+    lines.push("Prediction Error (E): unavailable");
+  }
+  lines.push(`Pipeline hooks: ${operatorStages.join(" -> ")}`);
+
+  return {
+    prediction,
+    reward,
+    error,
+    action,
+    operatorStages,
+    summary: lines.join("\n"),
+  };
+}
+
 function Summary({ payload, runId }) {
   const exp = payload?.experiment || {};
   const program = exp?.program || {};
@@ -209,6 +256,53 @@ function RecordsTable({ records, showAll }) {
   );
 }
 
+function ExplainabilityOverlay({ payload, records }) {
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!records.length) {
+      setSelectedIndex(0);
+      return;
+    }
+    setSelectedIndex((idx) => {
+      if (idx < 0) return 0;
+      if (idx >= records.length) return records.length - 1;
+      return idx;
+    });
+  }, [records]);
+
+  if (!records.length) {
+    return <p>No records available for explainability overlay.</p>;
+  }
+
+  const selectedRecord = records[selectedIndex] || {};
+  const explanation = behaviorToOperatorExplanation(payload, selectedRecord, selectedIndex);
+
+  return (
+    <div className="summary behavior-operator-overlay">
+      <div style={{ marginBottom: "0.4rem" }}>
+        <strong>Trial:</strong> {selectedIndex + 1} / {records.length}
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={records.length - 1}
+        value={selectedIndex}
+        onChange={(e) => setSelectedIndex(Number(e.target.value))}
+      />
+      <div className="trial-explanation-hook" style={{ marginTop: "0.6rem" }}>
+        <div><strong>Prediction:</strong> {explanation.prediction === null ? "n/a" : explanation.prediction.toFixed(6)}</div>
+        <div><strong>Outcome:</strong> {explanation.reward === null ? "n/a" : explanation.reward.toFixed(6)}</div>
+        <div><strong>Prediction Error:</strong> {explanation.error === null ? "n/a" : explanation.error.toFixed(6)}</div>
+        <div><strong>Operator Pipeline:</strong> {explanation.operatorStages.join(" -> ")}</div>
+      </div>
+      <pre className="operator-explainability" style={{ whiteSpace: "pre-wrap", marginTop: "0.6rem" }}>
+        {explanation.summary}
+      </pre>
+    </div>
+  );
+}
+
 function ResultsApp() {
   const [runId] = React.useState(getRunId);
   const [payload, setPayload] = React.useState(null);
@@ -327,6 +421,9 @@ function ResultsApp() {
 
       <h2>Metrics</h2>
       <MetricsList runId={runId} files={metricFiles} />
+
+      <h2>Explainability Overlay</h2>
+      <ExplainabilityOverlay payload={payload} records={records} />
 
       <h2>Trial Records</h2>
       <button className="btn" onClick={() => setShowAll((v) => !v)}>

@@ -7,6 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 UI_PRESETS_DIR = ROOT / "virtual_shaping_lab" / "ui" / "presets"
 JS_DIR = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react"
+UI_ROOT_DIR = ROOT / "virtual_shaping_lab" / "ui"
 
 
 def _read(path: Path) -> str:
@@ -53,3 +54,86 @@ def test_preset_catalog_includes_teaching_metadata_fields():
     assert "teaches:" in catalog_src
     assert "builderNext:" in catalog_src
     assert "nextPhenomenon:" in catalog_src
+
+
+def test_ui_mode_model_declares_all_v3_8_5_modes():
+    mode_src = _read(JS_DIR / "ui_mode_model.jsx")
+    assert 'PRESET: "preset"' in mode_src
+    assert 'TEACHING: "teaching"' in mode_src
+    assert 'BUILDER: "builder"' in mode_src
+    assert 'EXPERT: "expert"' in mode_src
+    assert "preset_detail" in mode_src
+    assert "SURFACE_MODE_OPTIONS" in mode_src
+
+
+def test_primary_ui_surfaces_load_mode_model_script():
+    for html_name in ("index.html", "presets.html", "builder.html"):
+        html = _read(UI_ROOT_DIR / html_name)
+        assert '/ui/js/react/ui_mode_model.jsx' in html, f"Missing ui_mode_model script in {html_name}"
+
+
+def test_teaching_panel_exposes_mode_scaffolding_controls():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert 'modeModel.activate("preset_detail"' in teaching_src
+    assert 'data-mode="preset"' in teaching_src
+    assert 'data-mode="teaching"' in teaching_src
+    assert 'data-mode="builder"' in teaching_src
+    assert 'data-mode="expert"' in teaching_src
+
+
+def test_teaching_panel_exposes_progressive_reveal_layers():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "REVEAL_LAYERS" in teaching_src
+    assert 'data-layer="intuition"' in teaching_src
+    assert 'data-layer="mechanism"' in teaching_src
+    assert 'data-layer="operator"' in teaching_src
+    assert 'data-layer="algebra"' in teaching_src
+    assert "tp-reveal-content" in teaching_src
+    assert "operatorSequenceFor(" in teaching_src
+    assert "revealContentFor(" in teaching_src
+    assert "TRIAL_STATE_IO" in teaching_src
+    assert "tp-operator-pipeline" in teaching_src
+    assert "tp-trialstate-io" in teaching_src
+    assert "pipelineVisualizationMarkup(" in teaching_src
+    assert "activeLayer === REVEAL_LAYERS.ALGEBRA && activeMode !== \"expert\"" in teaching_src
+    assert "button.disabled = disableForMode" in teaching_src
+
+
+def test_reveal_toggle_path_is_render_only_and_payload_invariant():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "revealContent.innerHTML = revealContentFor(spec, activeLayer);" in teaching_src
+    assert "activeLayer = requested;" in teaching_src
+    assert "renderReveal();" in teaching_src
+    assert "toCanonicalPayload(" not in teaching_src.split("const revealContent = panel.querySelector(\"#tp-reveal-content\");", 1)[1]
+    assert "buildPayload(" not in teaching_src.split("const revealContent = panel.querySelector(\"#tp-reveal-content\");", 1)[1]
+
+
+def test_results_app_exposes_behavior_to_operator_explainability_overlay():
+    results_src = _read(JS_DIR / "results_app.jsx")
+    assert "Explainability Overlay" in results_src
+    assert "behaviorToOperatorExplanation(" in results_src
+    assert "operatorPipelineForRecord(" in results_src
+    assert "trial-explanation-hook" in results_src
+    assert "operator-explainability" in results_src
+
+
+def test_builder_state_enforces_raw_operator_wiring_guardrails():
+    builder_state_src = _read(JS_DIR / "builder_state.js")
+    assert "RAW_OPERATOR_WIRING_PATHS" in builder_state_src
+    assert "operator_pipeline" in builder_state_src
+    assert "enforceControlSurfaceGuard(" in builder_state_src
+    assert "Raw operator wiring controls are only available in Expert mode." in builder_state_src
+
+
+def test_builder_shell_validates_run_payload_against_active_ui_mode():
+    builder_src = _read(JS_DIR / "builder_shell.jsx")
+    assert "validateBeforeRun(payload, { mode: uiMode })" in builder_src
+
+
+def test_builder_and_preset_modes_do_not_expose_raw_operator_wiring_controls():
+    builder_src = _read(JS_DIR / "builder_shell.jsx")
+    app_src = _read(JS_DIR / "app.jsx")
+    assert "operator_pipeline" not in builder_src
+    assert "operator_wiring" not in builder_src
+    assert "operator_pipeline" not in app_src
+    assert "operator_wiring" not in app_src
