@@ -37,13 +37,13 @@ PREDICTOR_TO_POLICIES: dict[str, set[str]] = {
 }
 
 TRACE_TO_UPDATERS: dict[str, set[str]] = {
-    "none": {"delta_rule", "attention_delta_rule", "gradient_rule"},
-    "eligibility": {"delta_rule", "trace_delta_rule", "attention_delta_rule", "gradient_rule"},
+    "none": {"delta_rule", "attention_delta_rule", "gradient_rule", "actor_critic_update"},
+    "eligibility": {"delta_rule", "trace_delta_rule", "attention_delta_rule", "gradient_rule", "actor_critic_update"},
     "recency": {"delta_rule", "trace_delta_rule", "attention_delta_rule", "gradient_rule"},
 }
 
 ATTENTION_TO_UPDATERS_STRICT: dict[str, set[str]] = {
-    "fixed": {"delta_rule", "trace_delta_rule", "gradient_rule"},
+    "fixed": {"delta_rule", "trace_delta_rule", "gradient_rule", "actor_critic_update"},
     "pearce_hall": {"attention_delta_rule", "gradient_rule"},
     "mackintosh": {"attention_delta_rule", "gradient_rule"},
     "hybrid_attention": {"attention_delta_rule", "gradient_rule"},

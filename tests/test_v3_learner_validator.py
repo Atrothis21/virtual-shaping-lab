@@ -21,6 +21,18 @@ def test_validate_learner_spec_accepts_legal_classical_tuple():
     validate_learner_spec(spec)
 
 
+def test_validate_learner_spec_accepts_legal_actor_critic_tuple():
+    spec = LearnerSpec(
+        trace="none",
+        predictor="actor_critic_pair",
+        error="actor_critic_td_error",
+        attention="fixed",
+        updater="actor_critic_update",
+        policy="actor_policy",
+    )
+    validate_learner_spec(spec)
+
+
 @pytest.mark.parametrize(
     "patch,code",
     [
