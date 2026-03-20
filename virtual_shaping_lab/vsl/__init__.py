@@ -46,6 +46,14 @@ from .operator import (
     OperatorStage,
     default_operator_pipeline,
 )
+from .records import (
+    ROLLOUT_RECORD_SCHEMA_VERSION,
+    SUPPORTED_ROLLOUT_RECORD_SCHEMA_VERSIONS,
+    RolloutRecord,
+    normalize_rollout_record,
+    validate_rollout_record_migration,
+)
+from .rollout import ReplayHarness, rollout_records_to_dict, stable_rollout_hash, step_to_rollout_record
 
 __all__ = [
     "LearnerSpec",
@@ -81,6 +89,15 @@ __all__ = [
     "NORMATIVE_STAGE_ORDER",
     "PIPELINE_BASE_FIELDS",
     "default_operator_pipeline",
+    "ROLLOUT_RECORD_SCHEMA_VERSION",
+    "SUPPORTED_ROLLOUT_RECORD_SCHEMA_VERSIONS",
+    "RolloutRecord",
+    "normalize_rollout_record",
+    "validate_rollout_record_migration",
+    "step_to_rollout_record",
+    "rollout_records_to_dict",
+    "ReplayHarness",
+    "stable_rollout_hash",
     "IEnvironment",
     "TrialState",
     "EnvironmentReset",
