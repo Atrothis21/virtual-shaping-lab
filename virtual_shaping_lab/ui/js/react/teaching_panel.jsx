@@ -170,6 +170,57 @@ const PRESET_ORDER = [
   "spontaneous_recovery",
 ];
 
+const REVEAL_LAYERS = Object.freeze({
+  INTUITION: "intuition",
+  MECHANISM: "mechanism",
+  OPERATOR: "operator",
+  ALGEBRA: "algebra",
+});
+
+const REVEAL_LAYER_LABELS = Object.freeze({
+  [REVEAL_LAYERS.INTUITION]: "Intuition",
+  [REVEAL_LAYERS.MECHANISM]: "Mechanism",
+  [REVEAL_LAYERS.OPERATOR]: "Operator",
+  [REVEAL_LAYERS.ALGEBRA]: "Full Algebra",
+});
+
+function operatorSequenceFor(spec) {
+  const mechanisms = Array.isArray(spec?.mechanisms) ? spec.mechanisms : [];
+  const hasContext = mechanisms.includes("Context");
+  const hasOperant = mechanisms.includes("Operant Value Learning");
+  const seq = ["Phi"];
+  if (hasContext) seq.push("C");
+  seq.push("P");
+  if (hasOperant) seq.push("Policy");
+  seq.push("Env", "Err", "Update", "Measure");
+  return seq;
+}
+
+function revealContentFor(spec, layer) {
+  if (layer === REVEAL_LAYERS.INTUITION) {
+    return `<p style="margin:0;color:#374151;">${spec.summary}</p>`;
+  }
+  if (layer === REVEAL_LAYERS.MECHANISM) {
+    const mechanisms = Array.isArray(spec.mechanisms) ? spec.mechanisms : [];
+    const mechanismList = mechanisms.length ? mechanisms.join(", ") : "Baseline";
+    return `
+      <p style="margin:0 0 0.25rem 0;color:#374151;"><strong>Mechanisms:</strong> ${mechanismList}</p>
+      <p style="margin:0;color:#4b5563;">${spec.expected}</p>
+    `;
+  }
+  if (layer === REVEAL_LAYERS.OPERATOR) {
+    const seq = operatorSequenceFor(spec).join(" -> ");
+    return `
+      <p style="margin:0 0 0.25rem 0;color:#374151;"><strong>Pipeline:</strong> ${seq}</p>
+      <p style="margin:0;color:#4b5563;">Operator labels map to the mechanism view above and stay read-only in this teaching surface.</p>
+    `;
+  }
+  return `
+    <p style="margin:0 0 0.25rem 0;color:#374151;"><strong>TrialState Coordinates:</strong> s, x, z, w, a, u, y, m</p>
+    <p style="margin:0;color:#4b5563;">Advanced inspection mode exposes full state-flow interpretation without changing payload semantics.</p>
+  `;
+}
+
 window.VSLReact.teachingPanels = {
   acquisition: {
     phaseFlow: ["Acquisition"],
@@ -314,6 +365,7 @@ window.VSLReact.teachingPanels = {
     .map((name) => `<button type="button" class="tp-pill" data-mech="${name}" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">${name}</button>`)
     .join("");
 
+  let activeLayer = REVEAL_LAYERS.INTUITION;
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;">
       <div style="font-size:0.86rem;color:#374151;">
@@ -331,6 +383,16 @@ window.VSLReact.teachingPanels = {
       <button type="button" class="tp-pill" data-mode="builder" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Builder</button>
       <button type="button" class="tp-pill" data-mode="expert" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Expert</button>
     </div>
+    <div style="font-size:0.78rem;font-weight:700;color:#334155;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:0.25rem;">
+      Progressive Reveal
+    </div>
+    <div id="tp-reveal-actions" style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+      <button type="button" class="tp-pill" data-layer="intuition" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Intuition</button>
+      <button type="button" class="tp-pill" data-layer="mechanism" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Mechanism</button>
+      <button type="button" class="tp-pill" data-layer="operator" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Operator</button>
+      <button type="button" class="tp-pill" data-layer="algebra" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Full Algebra</button>
+    </div>
+    <div id="tp-reveal-content" style="font-size:0.88rem;color:#1f2937;background:#ffffff;border:1px solid #dbeafe;border-radius:6px;padding:0.45rem 0.55rem;margin-bottom:0.55rem;"></div>
     <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-bottom:0.55rem;">
       ${mechanismPills}
     </div>
@@ -395,6 +457,30 @@ window.VSLReact.teachingPanels = {
       }
     });
   });
+
+  const revealContent = panel.querySelector("#tp-reveal-content");
+  const revealButtons = panel.querySelectorAll("#tp-reveal-actions .tp-pill");
+  const renderReveal = () => {
+    if (!revealContent) return;
+    revealContent.innerHTML = revealContentFor(spec, activeLayer);
+    revealButtons.forEach((button) => {
+      const layer = button.getAttribute("data-layer");
+      const isActive = layer === activeLayer;
+      button.style.background = isActive ? "#1e3a8a" : "#eef2ff";
+      button.style.color = isActive ? "#ffffff" : "#1e3a8a";
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+      button.title = REVEAL_LAYER_LABELS[layer] || layer;
+    });
+  };
+  revealButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const requested = button.getAttribute("data-layer");
+      if (!requested || !Object.values(REVEAL_LAYERS).includes(requested)) return;
+      activeLayer = requested;
+      renderReveal();
+    });
+  });
+  renderReveal();
 
   const root = document.getElementById("root");
   if (root && root.parentNode) {

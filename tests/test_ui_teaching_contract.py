@@ -79,3 +79,15 @@ def test_teaching_panel_exposes_mode_scaffolding_controls():
     assert 'data-mode="teaching"' in teaching_src
     assert 'data-mode="builder"' in teaching_src
     assert 'data-mode="expert"' in teaching_src
+
+
+def test_teaching_panel_exposes_progressive_reveal_layers():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "REVEAL_LAYERS" in teaching_src
+    assert 'data-layer="intuition"' in teaching_src
+    assert 'data-layer="mechanism"' in teaching_src
+    assert 'data-layer="operator"' in teaching_src
+    assert 'data-layer="algebra"' in teaching_src
+    assert "tp-reveal-content" in teaching_src
+    assert "operatorSequenceFor(" in teaching_src
+    assert "revealContentFor(" in teaching_src
