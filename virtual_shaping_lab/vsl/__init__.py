@@ -53,7 +53,7 @@ from .records import (
     normalize_rollout_record,
     validate_rollout_record_migration,
 )
-from .rollout import rollout_records_to_dict, step_to_rollout_record
+from .rollout import ReplayHarness, rollout_records_to_dict, stable_rollout_hash, step_to_rollout_record
 
 __all__ = [
     "LearnerSpec",
@@ -96,6 +96,8 @@ __all__ = [
     "validate_rollout_record_migration",
     "step_to_rollout_record",
     "rollout_records_to_dict",
+    "ReplayHarness",
+    "stable_rollout_hash",
     "IEnvironment",
     "TrialState",
     "EnvironmentReset",
