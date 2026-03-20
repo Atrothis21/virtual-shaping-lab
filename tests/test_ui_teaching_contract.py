@@ -91,3 +91,12 @@ def test_teaching_panel_exposes_progressive_reveal_layers():
     assert "tp-reveal-content" in teaching_src
     assert "operatorSequenceFor(" in teaching_src
     assert "revealContentFor(" in teaching_src
+
+
+def test_results_app_exposes_behavior_to_operator_explainability_overlay():
+    results_src = _read(JS_DIR / "results_app.jsx")
+    assert "Explainability Overlay" in results_src
+    assert "behaviorToOperatorExplanation(" in results_src
+    assert "operatorPipelineForRecord(" in results_src
+    assert "trial-explanation-hook" in results_src
+    assert "operator-explainability" in results_src
