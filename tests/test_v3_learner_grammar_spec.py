@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import pytest
 
-from virtual_shaping_lab.vsl.agent.learning import LearnerSpec
+from virtual_shaping_lab.vsl.agent.learning import LearnerSpec, LearnerSpecValidationError
 
 
 def _sample_spec() -> LearnerSpec:
     return LearnerSpec(
-        trace="eligibility_trace",
-        predictor="linear_value",
-        error="td0",
+        trace="none",
+        predictor="q_value",
+        error="sarsa_error",
         attention="mackintosh",
-        updater="stochastic_gradient",
+        updater="attention_delta_rule",
         policy="epsilon_greedy",
-        metadata={"family": "td_control", "version": "3.5.0"},
+        metadata={"family": "operant_value", "version": "3.5.0"},
     )
 
 
@@ -43,3 +43,14 @@ def test_v3_learner_spec_requires_object_metadata():
     with pytest.raises(ValueError, match="metadata"):
         LearnerSpec.from_dict(payload)
 
+
+def test_v3_learner_spec_fails_fast_for_illegal_tuple():
+    with pytest.raises(LearnerSpecValidationError, match="LGR_E_ERROR_REQUIRES_Q_PREDICTOR"):
+        LearnerSpec(
+            trace="none",
+            predictor="state_value",
+            error="sarsa_error",
+            attention="fixed",
+            updater="delta_rule",
+            policy="none",
+        )

@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from .validator import validate_learner_spec
+
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -51,6 +53,7 @@ class LearnerSpec:
         if not isinstance(self.metadata, dict):
             raise ValueError("LearnerSpec.metadata must be an object.")
         object.__setattr__(self, "metadata", dict(self.metadata))
+        validate_learner_spec(self)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,7 +75,7 @@ class LearnerSpec:
             attention=data.get("attention", ""),
             updater=data.get("updater", ""),
             policy=data.get("policy", ""),
-            metadata=dict(data.get("metadata", {}) or {}),
+            metadata=data.get("metadata", {}),
         )
 
     def to_json(self) -> str:
@@ -80,4 +83,3 @@ class LearnerSpec:
 
     def stable_hash(self) -> str:
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
-
