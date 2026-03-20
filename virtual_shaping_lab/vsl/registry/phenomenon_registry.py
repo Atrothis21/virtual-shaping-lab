@@ -207,6 +207,210 @@ class PhenomenonRegistryEntry:
 PHENOMENON_REGISTRY: dict[str, PhenomenonRegistryEntry] = {}
 
 
+def _entry(
+    *,
+    key: str,
+    protocol: str,
+    readouts: tuple[str, ...],
+    fixture: str,
+    caveat_tier: str,
+    bundle_key: str,
+    operators: tuple[str, ...],
+    required_operators: tuple[str, ...],
+    metadata: dict[str, Any] | None = None,
+) -> PhenomenonRegistryEntry:
+    return PhenomenonRegistryEntry(
+        key=key,
+        recipe={"protocol": protocol, "variant": "canonical"},
+        bundles=(
+            OperatorBundleSpec(
+                key=bundle_key,
+                operators=operators,
+                metadata={"claim": "minimal_bundle"},
+            ),
+        ),
+        constraints=ConstraintSpec(
+            required_operators=required_operators,
+            forbidden_operators=(),
+            metadata={"enforcement": "build_and_run"},
+        ),
+        readouts=tuple(
+            ReadoutSpec(
+                key=readout,
+                metric=f"signature.{readout}",
+                metadata={"source": "behavioral_signature"},
+            )
+            for readout in readouts
+        ),
+        fixture=fixture,
+        caveat_tier=caveat_tier,
+        metadata=metadata or {},
+    )
+
+
+_PAVL_OVERVIEW = ("Phi", "P", "E", "W", "Omega", "M")
+_CTX_OVERVIEW = ("Phi", "C", "P", "E", "W", "Omega", "M")
+_OPERANT_OVERVIEW = ("Phi", "P", "E", "W", "Pi", "Omega", "M")
+
+
+PHENOMENON_REGISTRY = {
+    "blocking": _entry(
+        key="blocking",
+        protocol="blocking",
+        readouts=("blocked_cue_lower_than_pretrained_cue",),
+        fixture="tests/preset_payloads.py::blocking_payload",
+        caveat_tier="minor",
+        bundle_key="pavlovian_error_driven",
+        operators=_PAVL_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "cue_competition"},
+    ),
+    "conditioned_inhibition": _entry(
+        key="conditioned_inhibition",
+        protocol="conditioned_inhibition",
+        readouts=("compound_nonreinforcement_suppression", "summation_probe_below_excitatory_baseline"),
+        fixture="tests/preset_payloads.py::conditioned_inhibition_payload",
+        caveat_tier="minor",
+        bundle_key="pavlovian_error_driven",
+        operators=_PAVL_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "cue_competition"},
+    ),
+    "renewal_aba": _entry(
+        key="renewal_aba",
+        protocol="aba_renewal",
+        readouts=("probe_above_extinction_tail",),
+        fixture="tests/preset_payloads.py::aba_renewal_payload",
+        caveat_tier="minor",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "context"},
+    ),
+    "renewal_abc": _entry(
+        key="renewal_abc",
+        protocol="abc_renewal",
+        readouts=("probe_above_extinction_tail",),
+        fixture="tests/preset_payloads.py::abc_renewal_payload",
+        caveat_tier="minor",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "context"},
+    ),
+    "renewal_aab": _entry(
+        key="renewal_aab",
+        protocol="aab_renewal",
+        readouts=("probe_near_extinction_tail",),
+        fixture="tests/preset_payloads.py::aab_renewal_payload",
+        caveat_tier="minor",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "context"},
+    ),
+    "extinction": _entry(
+        key="extinction",
+        protocol="extinction",
+        readouts=("late_extinction_prediction_below_early_extinction",),
+        fixture="tests/preset_payloads.py::extinction_payload",
+        caveat_tier="none",
+        bundle_key="pavlovian_error_driven",
+        operators=_PAVL_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "acquisition_extinction"},
+    ),
+    "rapid_reacquisition": _entry(
+        key="rapid_reacquisition",
+        protocol="rapid_reacquisition",
+        readouts=("reacquisition_above_extinction_tail",),
+        fixture="tests/preset_payloads.py::rapid_reacquisition_payload",
+        caveat_tier="moderate",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "acquisition_extinction", "note": "persistence-sensitive"},
+    ),
+    "occasion_setting": _entry(
+        key="occasion_setting",
+        protocol="occasion_setting",
+        readouts=("probe_between_acquisition_and_nonreinforcement",),
+        fixture="tests/preset_payloads.py::occasion_setting_payload",
+        caveat_tier="minor",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "context"},
+    ),
+    "operant_conditioning": _entry(
+        key="operant_conditioning",
+        protocol="operant_conditioning",
+        readouts=("reward_and_prediction_increase",),
+        fixture="tests/preset_payloads.py::operant_conditioning_payload",
+        caveat_tier="none",
+        bundle_key="operant_core",
+        operators=_OPERANT_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        metadata={"family": "operant"},
+    ),
+    "matching_law": _entry(
+        key="matching_law",
+        protocol="matching_law",
+        readouts=("choice_bias_under_unequal_schedules",),
+        fixture="tests/preset_payloads.py::matching_law_payload",
+        caveat_tier="minor",
+        bundle_key="operant_core",
+        operators=_OPERANT_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        metadata={"family": "operant"},
+    ),
+    "shaping": _entry(
+        key="shaping",
+        protocol="shaping",
+        readouts=("stage_reward_density_shift",),
+        fixture="tests/preset_payloads.py::shaping_payload",
+        caveat_tier="minor",
+        bundle_key="operant_core",
+        operators=_OPERANT_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        metadata={"family": "operant"},
+    ),
+    "resurgence": _entry(
+        key="resurgence",
+        protocol="resurgence",
+        readouts=("recovery_above_suppression",),
+        fixture="tests/preset_payloads.py::resurgence_payload",
+        caveat_tier="moderate",
+        bundle_key="operant_core",
+        operators=_OPERANT_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        metadata={"family": "operant", "note": "context/persistence-sensitive"},
+    ),
+    "superextinction": _entry(
+        key="superextinction",
+        protocol="superextinction",
+        readouts=("punishment_phase_negative_rewards",),
+        fixture="tests/preset_payloads.py::superextinction_payload",
+        caveat_tier="minor",
+        bundle_key="operant_core",
+        operators=_OPERANT_OVERVIEW,
+        required_operators=("Phi", "P", "E", "W", "Pi", "Omega", "M"),
+        metadata={"family": "operant"},
+    ),
+    "spontaneous_recovery": _entry(
+        key="spontaneous_recovery",
+        protocol="spontaneous_recovery",
+        readouts=("probe_above_extinction_tail",),
+        fixture="tests/preset_payloads.py::spontaneous_recovery_payload",
+        caveat_tier="major",
+        bundle_key="contextual_pavlovian",
+        operators=_CTX_OVERVIEW,
+        required_operators=("Phi", "C", "P", "E", "W", "Omega", "M"),
+        metadata={"family": "acquisition_extinction", "note": "requires persistence assumptions"},
+    ),
+}
+
+
 def validate_phenomenon_registry(
     registry: dict[str, PhenomenonRegistryEntry] | None = None,
 ) -> None:
@@ -237,3 +441,5 @@ def phenomenon_registry_hash(
     blob = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
+
+validate_phenomenon_registry()

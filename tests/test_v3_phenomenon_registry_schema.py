@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from virtual_shaping_lab.vsl.registry import (
+    PHENOMENON_REGISTRY,
     SUPPORTED_CAVEAT_TIERS,
     ConstraintSpec,
     OperatorBundleSpec,
@@ -101,3 +102,29 @@ def test_v3_phenomenon_registry_rejects_key_mismatch():
     with pytest.raises(ValueError, match="key mismatch"):
         validate_phenomenon_registry({"different_key": entry})
 
+
+def test_v3_phenomenon_registry_canonical_population_is_present():
+    expected_keys = {
+        "blocking",
+        "conditioned_inhibition",
+        "renewal_aba",
+        "renewal_abc",
+        "renewal_aab",
+        "extinction",
+        "rapid_reacquisition",
+        "occasion_setting",
+        "operant_conditioning",
+        "matching_law",
+        "shaping",
+        "resurgence",
+        "superextinction",
+        "spontaneous_recovery",
+    }
+    assert set(PHENOMENON_REGISTRY.keys()) == expected_keys
+    for key, entry in PHENOMENON_REGISTRY.items():
+        assert entry.key == key
+        assert entry.readouts
+        assert entry.bundles
+        assert entry.constraints.required_operators
+        assert entry.fixture.startswith("tests/preset_payloads.py::")
+        assert entry.caveat_tier in SUPPORTED_CAVEAT_TIERS
