@@ -13,7 +13,7 @@ from .presets import (
     learner_preset_payload,
     learner_preset_registry,
 )
-from .boundary import resolve_learner_spec
+from .resolve import resolve_learner_spec
 from .registry import (
     COMPATIBILITY_MATRIX,
     SLOT_REGISTRIES,
@@ -23,7 +23,7 @@ from .registry import (
     slot_registries,
 )
 from .spec import LearnerSpec
-from .validator import LearnerSpecValidationError, validate_learner_spec
+from .validation import LearnerSpecValidationError, validate_learner_spec
 
 __all__ = [
     "LearnerSpec",

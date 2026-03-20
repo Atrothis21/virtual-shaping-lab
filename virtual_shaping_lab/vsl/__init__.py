@@ -41,7 +41,7 @@ from .environment import (
     TerminationCondition,
     TrialState,
 )
-from .operator import (
+from .rollout.operator_pipeline import (
     LookaheadContract,
     NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,
