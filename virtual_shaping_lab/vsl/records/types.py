@@ -7,6 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.records.types",
+    "virtual_shaping_lab.vsl.records.schema",
+    removal_release="V3.10.0",
+)
+
 ROLLOUT_RECORD_SCHEMA_VERSION = "v1"
 SUPPORTED_ROLLOUT_RECORD_SCHEMA_VERSIONS: tuple[str, ...] = (ROLLOUT_RECORD_SCHEMA_VERSION,)
 

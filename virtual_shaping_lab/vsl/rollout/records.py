@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
 from virtual_shaping_lab.vsl.environment.contracts import EnvironmentStep
 from virtual_shaping_lab.vsl.records import RolloutRecord
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.rollout.records",
+    "virtual_shaping_lab.vsl.records.adapters.rollout_records",
+    removal_release="V3.10.0",
+)
 
 
 def step_to_rollout_record(

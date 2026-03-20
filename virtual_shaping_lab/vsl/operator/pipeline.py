@@ -7,6 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.operator.pipeline",
+    "virtual_shaping_lab.vsl.rollout.operator_pipeline",
+    removal_release="V3.10.0",
+)
+
 NORMATIVE_STAGE_ORDER: tuple[str, ...] = (
     "Phi",
     "C",

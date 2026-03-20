@@ -5,6 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.agent.learning.validator",
+    "virtual_shaping_lab.vsl.agent.learning.validation",
+    removal_release="V3.10.0",
+)
+
 TRACE_VALUES = {"none", "eligibility", "recency"}
 PREDICTOR_VALUES = {"state_value", "q_value", "actor_critic_pair", "nonlinear_value", "nonlinear_q"}
 ERROR_VALUES = {

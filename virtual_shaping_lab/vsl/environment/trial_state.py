@@ -5,6 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.environment.trial_state",
+    "virtual_shaping_lab.vsl.rollout.trial_state",
+    removal_release="V3.10.0",
+)
+
 _DERIVED_KEYS = {"prediction", "error"}
 _META_PERSISTENT_KEY = "persistent"
 _META_DERIVED_KEY = "derived"

@@ -7,6 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.agent.representation.temporal",
+    "virtual_shaping_lab.vsl.agent.representation.temporal_basis",
+    removal_release="V3.10.0",
+)
+
 SUPPORTED_TEMPORAL_BASIS_VARIANTS: tuple[str, ...] = ("identity", "bins", "traces")
 _VARIANT_ALIASES: dict[str, str] = {
     "identity": "identity",

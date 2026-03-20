@@ -7,6 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.environment.episode",
+    "virtual_shaping_lab.vsl.rollout.episode",
+    removal_release="V3.10.0",
+)
+
 
 def _normalize_mapping(value: Any, field_name: str) -> dict[str, Any]:
     if value is None:

@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
 from virtual_shaping_lab.vsl.agent.representation import TemporalBasisSpec
 from virtual_shaping_lab.vsl.environment import EpisodeSpec, HorizonSpec, TerminationCondition
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.spec.binding",
+    "virtual_shaping_lab.vsl.spec.bindings",
+    removal_release="V3.10.0",
+)
 
 
 def bind_temporal_basis_spec(representation: dict[str, Any]) -> TemporalBasisSpec:

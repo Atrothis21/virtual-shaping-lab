@@ -7,6 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.registry.phenomenon_registry",
+    "virtual_shaping_lab.vsl.registry.phenomena",
+    removal_release="V3.10.0",
+)
+
 SUPPORTED_CAVEAT_TIERS: tuple[str, ...] = (
     "none",
     "minor",

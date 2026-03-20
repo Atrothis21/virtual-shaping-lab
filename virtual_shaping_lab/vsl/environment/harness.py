@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
 from virtual_shaping_lab.vsl.environment.contracts import (
     EnvironmentReset,
     EnvironmentStep,
@@ -13,6 +14,12 @@ from virtual_shaping_lab.vsl.environment.contracts import (
 )
 from virtual_shaping_lab.vsl.environment.trial_state import TrialState
 from virtual_shaping_lab.vsl.program.types import EnvironmentProgram
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.environment.harness",
+    "virtual_shaping_lab.vsl.rollout.harness",
+    removal_release="V3.10.0",
+)
 
 
 def _reward_from_trial_params(params: dict[str, Any]) -> float:

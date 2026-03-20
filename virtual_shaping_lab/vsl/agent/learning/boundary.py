@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
 from .presets import expand_learner_preset
 from .spec import LearnerSpec
 from .validator import LearnerSpecValidationError
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.agent.learning.boundary",
+    "virtual_shaping_lab.vsl.agent.learning.resolve",
+    removal_release="V3.10.0",
+)
 
 _POLICY_ALIASES = {
     "null": "none",

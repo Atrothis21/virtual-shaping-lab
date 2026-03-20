@@ -6,9 +6,16 @@ import hashlib
 from dataclasses import dataclass
 from typing import Any
 
+from virtual_shaping_lab.vsl._migration import warn_deprecated_import
 from virtual_shaping_lab.vsl.environment.contracts import IEnvironment
 from virtual_shaping_lab.vsl.records import ROLLOUT_RECORD_SCHEMA_VERSION, RolloutRecord
 from virtual_shaping_lab.vsl.rollout.records import step_to_rollout_record
+
+warn_deprecated_import(
+    "virtual_shaping_lab.vsl.rollout.replay",
+    "virtual_shaping_lab.vsl.rollout.replay_harness",
+    removal_release="V3.10.0",
+)
 
 
 def stable_rollout_hash(records: list[RolloutRecord]) -> str:
