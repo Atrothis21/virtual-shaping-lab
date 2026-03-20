@@ -20,6 +20,17 @@ ATTENTION_VALUES = {"fixed", "pearce_hall", "mackintosh", "hybrid_attention"}
 UPDATER_VALUES = {"delta_rule", "trace_delta_rule", "attention_delta_rule", "gradient_rule", "actor_critic_update"}
 POLICY_VALUES = {"none", "epsilon_greedy", "softmax", "greedy", "actor_policy"}
 
+ERROR_REQUIRES_Q_PREDICTOR = {"sarsa_error", "q_error", "expected_sarsa_error"}
+ERROR_REQUIRES_ACTION_POLICY = {"sarsa_error", "q_error"}
+EXPECTED_SARSA_POLICIES = {"epsilon_greedy", "softmax"}
+POLICY_NONE_INCOMPATIBLE_PREDICTORS = {"q_value", "nonlinear_q", "actor_critic_pair"}
+ACTOR_CRITIC_REQUIRED = {
+    "predictor": "actor_critic_pair",
+    "error": "actor_critic_td_error",
+    "updater": "actor_critic_update",
+    "policy": "actor_policy",
+}
+
 PREDICTOR_TO_ERRORS: dict[str, set[str]] = {
     "state_value": {"rw_error", "td_error", "mc_error"},
     "nonlinear_value": {"rw_error", "td_error", "mc_error"},
@@ -90,7 +101,7 @@ def validate_learner_spec(spec: Any) -> None:
     if policy not in POLICY_VALUES:
         _reject("LGR_E_UNKNOWN_POLICY", f"Unsupported policy '{policy}'.")
 
-    if error in {"sarsa_error", "q_error", "expected_sarsa_error"} and predictor not in {"q_value", "nonlinear_q"}:
+    if error in ERROR_REQUIRES_Q_PREDICTOR and predictor not in {"q_value", "nonlinear_q"}:
         _reject(
             "LGR_E_ERROR_REQUIRES_Q_PREDICTOR",
             f"Error '{error}' requires q-value predictor family.",
@@ -102,18 +113,27 @@ def validate_learner_spec(spec: Any) -> None:
             "actor_critic_update requires predictor='actor_critic_pair'.",
         )
 
-    if predictor == "actor_critic_pair":
-        if error != "actor_critic_td_error":
-            _reject("LGR_E_ACTOR_CRITIC_ERROR", "actor_critic_pair requires error='actor_critic_td_error'.")
-        if updater != "actor_critic_update":
-            _reject("LGR_E_ACTOR_CRITIC_UPDATER", "actor_critic_pair requires updater='actor_critic_update'.")
-        if policy != "actor_policy":
-            _reject("LGR_E_ACTOR_CRITIC_POLICY", "actor_critic_pair requires policy='actor_policy'.")
+    if predictor == ACTOR_CRITIC_REQUIRED["predictor"]:
+        if error != ACTOR_CRITIC_REQUIRED["error"]:
+            _reject(
+                "LGR_E_ACTOR_CRITIC_ERROR",
+                "actor_critic_pair requires error='actor_critic_td_error'.",
+            )
+        if updater != ACTOR_CRITIC_REQUIRED["updater"]:
+            _reject(
+                "LGR_E_ACTOR_CRITIC_UPDATER",
+                "actor_critic_pair requires updater='actor_critic_update'.",
+            )
+        if policy != ACTOR_CRITIC_REQUIRED["policy"]:
+            _reject(
+                "LGR_E_ACTOR_CRITIC_POLICY",
+                "actor_critic_pair requires policy='actor_policy'.",
+            )
 
-    if error in {"sarsa_error", "q_error"} and policy == "none":
+    if error in ERROR_REQUIRES_ACTION_POLICY and policy == "none":
         _reject("LGR_E_ERROR_REQUIRES_ACTION_POLICY", f"Error '{error}' requires non-null action policy.")
 
-    if error == "expected_sarsa_error" and policy not in {"epsilon_greedy", "softmax"}:
+    if error == "expected_sarsa_error" and policy not in EXPECTED_SARSA_POLICIES:
         _reject(
             "LGR_E_EXPECTED_SARSA_POLICY",
             "expected_sarsa_error requires policy in {'epsilon_greedy', 'softmax'}.",
@@ -122,7 +142,7 @@ def validate_learner_spec(spec: Any) -> None:
     if updater == "trace_delta_rule" and trace == "none":
         _reject("LGR_E_TRACE_REQUIRED", "trace_delta_rule requires trace != 'none'.")
 
-    if policy == "none" and predictor in {"q_value", "nonlinear_q", "actor_critic_pair"}:
+    if policy == "none" and predictor in POLICY_NONE_INCOMPATIBLE_PREDICTORS:
         _reject("LGR_E_POLICY_NONE_INCOMPATIBLE", f"Policy 'none' is incompatible with predictor '{predictor}'.")
 
     if error not in PREDICTOR_TO_ERRORS[predictor]:

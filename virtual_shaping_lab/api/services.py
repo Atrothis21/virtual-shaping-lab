@@ -100,6 +100,51 @@ def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
     }
 
 
+def _summarize_learner_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = spec.get("metadata", {}) if isinstance(spec.get("metadata"), dict) else {}
+    digest = hashlib.sha256(
+        json.dumps(spec, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "preset_name": metadata.get("preset_name"),
+        "spec_hash": digest,
+    }
+
+
+def _build_learner_identity(plan: ExperimentPlan) -> Dict[str, Any]:
+    learning = plan.agent_spec.get("learning", {}) if isinstance(plan.agent_spec, dict) else {}
+    if isinstance(learning, dict):
+        learner_spec = learning.get("learner_spec")
+        if isinstance(learner_spec, dict):
+            return _summarize_learner_spec(learner_spec)
+    settings = plan.settings if isinstance(plan.settings, dict) else {}
+    learner_spec = settings.get("learner_spec")
+    if isinstance(learner_spec, dict):
+        return _summarize_learner_spec(learner_spec)
+    return {"preset_name": None, "spec_hash": None}
+
+
+def _extract_learner_identity_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    plan = payload.get("plan")
+    if isinstance(plan, dict):
+        agent_spec = plan.get("agent_spec")
+        if isinstance(agent_spec, dict):
+            learning = agent_spec.get("learning", {})
+            if isinstance(learning, dict) and isinstance(learning.get("learner_spec"), dict):
+                return _summarize_learner_spec(learning.get("learner_spec"))
+        settings = plan.get("settings")
+        if isinstance(settings, dict) and isinstance(settings.get("learner_spec"), dict):
+            return _summarize_learner_spec(settings.get("learner_spec"))
+    experiment = payload.get("experiment")
+    if isinstance(experiment, dict):
+        agent = experiment.get("agent")
+        if isinstance(agent, dict):
+            learning = agent.get("learning")
+            if isinstance(learning, dict) and isinstance(learning.get("learner_spec"), dict):
+                return _summarize_learner_spec(learning.get("learner_spec"))
+    return {"preset_name": None, "spec_hash": None}
+
+
 def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
     provenance = payload.get("provenance")
     operator_pipeline_identity = None
@@ -152,6 +197,7 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             "record_schema_version": record_schema_version,
             "seed_identity": seed_identity,
             "operator_pipeline_identity": operator_pipeline_identity,
+            "learner_identity": _extract_learner_identity_from_payload(payload),
         }
 
     record_schema_version = "v1"
@@ -172,6 +218,7 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
         "record_schema_version": record_schema_version,
         "seed_identity": seed_identity,
         "operator_pipeline_identity": operator_pipeline_identity,
+        "learner_identity": _extract_learner_identity_from_payload(payload),
     }
 
 
@@ -347,6 +394,7 @@ class RunService:
             "seed_identity": plan.seed,
             "mechanism_provenance": _build_mechanism_provenance(plan),
             "operator_pipeline_identity": _build_operator_pipeline_identity(plan),
+            "learner_identity": _build_learner_identity(plan),
         }
         _set_status_with_lifecycle(
             store,
@@ -462,6 +510,11 @@ class ReportService:
                     if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
                     else payload.get("provenance", {}).get("operator_pipeline")
                 ),
+                "learner_identity": (
+                    plan_meta.get("learner_identity")
+                    if isinstance(plan_meta.get("learner_identity"), dict)
+                    else {"preset_name": None, "spec_hash": None}
+                ),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -485,6 +538,11 @@ class ReportService:
                     plan_meta.get("operator_pipeline_identity")
                     if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
                     else payload.get("provenance", {}).get("operator_pipeline")
+                ),
+                "learner_identity": (
+                    plan_meta.get("learner_identity")
+                    if isinstance(plan_meta.get("learner_identity"), dict)
+                    else {"preset_name": None, "spec_hash": None}
                 ),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,

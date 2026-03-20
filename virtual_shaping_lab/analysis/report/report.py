@@ -130,6 +130,45 @@ def _extract_mechanism_provenance(payload):
     }
 
 
+def _extract_learner_identity(payload):
+    if not isinstance(payload, dict):
+        return {"preset_name": None, "spec_hash": None}
+
+    plan = payload.get("plan")
+    learner_spec = None
+    if isinstance(plan, dict):
+        agent_spec = plan.get("agent_spec")
+        if isinstance(agent_spec, dict):
+            learning = agent_spec.get("learning")
+            if isinstance(learning, dict) and isinstance(learning.get("learner_spec"), dict):
+                learner_spec = dict(learning["learner_spec"])
+        if learner_spec is None:
+            settings = plan.get("settings")
+            if isinstance(settings, dict) and isinstance(settings.get("learner_spec"), dict):
+                learner_spec = dict(settings["learner_spec"])
+
+    if learner_spec is None:
+        experiment = payload.get("experiment")
+        if isinstance(experiment, dict):
+            agent = experiment.get("agent")
+            if isinstance(agent, dict):
+                learning = agent.get("learning")
+                if isinstance(learning, dict) and isinstance(learning.get("learner_spec"), dict):
+                    learner_spec = dict(learning["learner_spec"])
+
+    if not isinstance(learner_spec, dict):
+        return {"preset_name": None, "spec_hash": None}
+
+    digest = json.dumps(learner_spec, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    metadata = learner_spec.get("metadata", {}) if isinstance(learner_spec.get("metadata"), dict) else {}
+    import hashlib
+
+    return {
+        "preset_name": metadata.get("preset_name"),
+        "spec_hash": hashlib.sha256(digest).hexdigest(),
+    }
+
+
 def _extract_artifact_identity(payload):
     identity = {
         "engine_version": _load_engine_version(),
@@ -138,6 +177,7 @@ def _extract_artifact_identity(payload):
         "seed_identity": None,
         "mechanism_identity": None,
         "operator_pipeline_identity": None,
+        "learner_identity": _extract_learner_identity(payload),
     }
 
     mechanism_provenance = _extract_mechanism_provenance(payload)
