@@ -24,6 +24,7 @@ from .learning import (
     validate_learner_spec,
 )
 from .policy import ActionSpace, NullActionSpace, NullPolicy, SingletonActionSpace
+from .representation import SUPPORTED_TEMPORAL_BASIS_VARIANTS, TemporalBasisSpec
 
 __all__ = [
     "LearnerSpec",
@@ -51,5 +52,6 @@ __all__ = [
     "NullActionSpace",
     "SingletonActionSpace",
     "NullPolicy",
+    "TemporalBasisSpec",
+    "SUPPORTED_TEMPORAL_BASIS_VARIANTS",
 ]
-
