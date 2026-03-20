@@ -431,6 +431,30 @@ def match_phenomenon_registry_entry_for_protocol(
     return None
 
 
+def registry_fixture_matrix(
+    registry: dict[str, PhenomenonRegistryEntry] | None = None,
+) -> dict[str, str]:
+    active = registry if registry is not None else PHENOMENON_REGISTRY
+    return {key: active[key].fixture for key in sorted(active.keys())}
+
+
+def validate_registry_fixture_links(
+    registry: dict[str, PhenomenonRegistryEntry] | None = None,
+) -> None:
+    active = registry if registry is not None else PHENOMENON_REGISTRY
+    for key, entry in active.items():
+        fixture = str(entry.fixture or "").strip()
+        if "::" not in fixture:
+            raise ValueError(
+                f"Phenomenon '{key}' fixture must use '<module_path>::<callable>' format."
+            )
+        module_path, callable_name = fixture.split("::", 1)
+        if not module_path.strip() or not callable_name.strip():
+            raise ValueError(
+                f"Phenomenon '{key}' fixture must include both module path and callable name."
+            )
+
+
 def validate_phenomenon_registry(
     registry: dict[str, PhenomenonRegistryEntry] | None = None,
 ) -> None:
@@ -463,3 +487,4 @@ def phenomenon_registry_hash(
 
 
 validate_phenomenon_registry()
+validate_registry_fixture_links()
