@@ -95,6 +95,17 @@ def test_teaching_panel_exposes_progressive_reveal_layers():
     assert "tp-operator-pipeline" in teaching_src
     assert "tp-trialstate-io" in teaching_src
     assert "pipelineVisualizationMarkup(" in teaching_src
+    assert "activeLayer === REVEAL_LAYERS.ALGEBRA && activeMode !== \"expert\"" in teaching_src
+    assert "button.disabled = disableForMode" in teaching_src
+
+
+def test_reveal_toggle_path_is_render_only_and_payload_invariant():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "revealContent.innerHTML = revealContentFor(spec, activeLayer);" in teaching_src
+    assert "activeLayer = requested;" in teaching_src
+    assert "renderReveal();" in teaching_src
+    assert "toCanonicalPayload(" not in teaching_src.split("const revealContent = panel.querySelector(\"#tp-reveal-content\");", 1)[1]
+    assert "buildPayload(" not in teaching_src.split("const revealContent = panel.querySelector(\"#tp-reveal-content\");", 1)[1]
 
 
 def test_results_app_exposes_behavior_to_operator_explainability_overlay():
@@ -117,3 +128,12 @@ def test_builder_state_enforces_raw_operator_wiring_guardrails():
 def test_builder_shell_validates_run_payload_against_active_ui_mode():
     builder_src = _read(JS_DIR / "builder_shell.jsx")
     assert "validateBeforeRun(payload, { mode: uiMode })" in builder_src
+
+
+def test_builder_and_preset_modes_do_not_expose_raw_operator_wiring_controls():
+    builder_src = _read(JS_DIR / "builder_shell.jsx")
+    app_src = _read(JS_DIR / "app.jsx")
+    assert "operator_pipeline" not in builder_src
+    assert "operator_wiring" not in builder_src
+    assert "operator_pipeline" not in app_src
+    assert "operator_wiring" not in app_src

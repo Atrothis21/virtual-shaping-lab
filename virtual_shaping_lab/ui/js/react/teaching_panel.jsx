@@ -493,6 +493,7 @@ window.VSLReact.teachingPanels = {
       if (!modeModel) return;
       activeMode = modeModel.activate("preset_detail", requested);
       if (modeLabel) modeLabel.textContent = activeMode;
+      renderReveal();
       if (activeMode === "builder") {
         const destination = `/ui/builder.html?mode=builder&from=preset`;
         window.location.href = destination;
@@ -504,10 +505,16 @@ window.VSLReact.teachingPanels = {
   const revealButtons = panel.querySelectorAll("#tp-reveal-actions .tp-pill");
   const renderReveal = () => {
     if (!revealContent) return;
+    if (activeLayer === REVEAL_LAYERS.ALGEBRA && activeMode !== "expert") {
+      activeLayer = REVEAL_LAYERS.OPERATOR;
+    }
     revealContent.innerHTML = revealContentFor(spec, activeLayer);
     revealButtons.forEach((button) => {
       const layer = button.getAttribute("data-layer");
       const isActive = layer === activeLayer;
+      const isAlgebra = layer === REVEAL_LAYERS.ALGEBRA;
+      const disableForMode = isAlgebra && activeMode !== "expert";
+      button.disabled = disableForMode;
       button.style.background = isActive ? "#1e3a8a" : "#eef2ff";
       button.style.color = isActive ? "#ffffff" : "#1e3a8a";
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
