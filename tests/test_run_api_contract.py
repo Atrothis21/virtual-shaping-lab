@@ -433,6 +433,39 @@ def test_run_report_endpoint_rejects_legacy_payload_artifact(monkeypatch, tmp_pa
         api_services.ReportService.create_default(source_run_id, reports_dir=fixture_output_dir)
 
 
+def test_run_report_endpoint_regenerates_from_records_when_payload_artifact_missing(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    fixture_output_dir = tmp_path / "report_regen_records_only_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(output_dir),
+        )
+
+    monkeypatch.setattr(api_run, "reports_dir", fixture_output_dir)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    run_body = api_run.run_api(payload)
+    source_run_id = run_body["run_id"]
+    run_dir = fixture_output_dir / source_run_id
+    (run_dir / "payload.json").unlink()
+
+    report_body = api_run.run_report_api(source_run_id)
+    assert report_body["status"] == "success"
+    assert report_body["metadata"]["source_run_id"] == source_run_id
+    assert report_body["metadata"]["regenerated"] is True
+    assert report_body["metadata"]["regeneration_mode"] == "from_records"
+    assert isinstance(report_body["metadata"].get("plan_hash"), str) and report_body["metadata"]["plan_hash"]
+    assert report_body["metadata"].get("record_schema_version") == "v1"
+    assert isinstance(report_body["metadata"].get("template_version_used"), int)
+    assert isinstance(report_body["metadata"].get("operator_pipeline_identity"), dict)
+    assert isinstance(report_body["metadata"].get("learner_identity"), dict)
+
+
 def test_run_report_endpoint_404_for_missing_run():
     with pytest.raises(HTTPException) as exc:
         api_run.run_report_api("missing-run-id")

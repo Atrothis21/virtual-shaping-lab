@@ -222,6 +222,39 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _fallback_plan_metadata_from_status(*, run_id: str, source_status: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = source_status.get("metadata") if isinstance(source_status.get("metadata"), dict) else {}
+    record_schema_version = str(metadata.get("record_schema_version", "v1"))
+    plan_hash = metadata.get("plan_hash")
+    if not isinstance(plan_hash, str) or not plan_hash.strip():
+        encoded = json.dumps(
+            {"source_run_id": run_id, "record_schema_version": record_schema_version},
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        plan_hash = hashlib.sha256(encoded).hexdigest()
+
+    operator_pipeline_identity = metadata.get("operator_pipeline_identity")
+    if not isinstance(operator_pipeline_identity, dict):
+        pipeline = default_operator_pipeline()
+        operator_pipeline_identity = {
+            "stage_keys": list(pipeline.stage_keys()),
+            "pipeline_hash": pipeline.stable_hash(),
+        }
+
+    learner_identity = metadata.get("learner_identity")
+    if not isinstance(learner_identity, dict):
+        learner_identity = {"preset_name": None, "spec_hash": None}
+
+    return {
+        "plan_hash": plan_hash,
+        "record_schema_version": record_schema_version,
+        "seed_identity": metadata.get("seed_identity"),
+        "operator_pipeline_identity": operator_pipeline_identity,
+        "learner_identity": learner_identity,
+    }
+
+
 def _set_status_with_lifecycle(
     store: RunStatusStoreProtocol,
     run_id: str,
@@ -443,35 +476,47 @@ class ReportService:
         run_dir = Path(reports_dir) / run_id
         records_path = run_dir / "records.json"
         payload_path = run_dir / "payload.json"
+        source_status = store.get(run_id) or {}
+        source_metadata = dict(source_status.get("metadata", {}))
 
-        if not records_path.exists() or not payload_path.exists():
+        if not records_path.exists():
             raise FileNotFoundError(f"Run artifacts for '{run_id}' not found.")
 
         with records_path.open("r", encoding="utf-8") as f:
             records = json.load(f)
-        with payload_path.open("r", encoding="utf-8") as f:
-            raw_payload = json.load(f)
-        payload = to_canonical_payload(raw_payload)
-        if isinstance(raw_payload, dict):
-            if isinstance(raw_payload.get("provenance"), dict):
-                payload["provenance"] = dict(raw_payload["provenance"])
-            if isinstance(raw_payload.get("plan"), dict):
-                payload["plan"] = dict(raw_payload["plan"])
+        payload: Dict[str, Any] | None = None
+        if payload_path.exists():
+            with payload_path.open("r", encoding="utf-8") as f:
+                raw_payload = json.load(f)
+            payload = to_canonical_payload(raw_payload)
+            if isinstance(raw_payload, dict):
+                if isinstance(raw_payload.get("provenance"), dict):
+                    payload["provenance"] = dict(raw_payload["provenance"])
+                if isinstance(raw_payload.get("plan"), dict):
+                    payload["plan"] = dict(raw_payload["plan"])
 
-        preset = preset_override or payload.get("report", {}).get("preset")
+        preset = preset_override
+        if not preset and isinstance(payload, dict):
+            preset = payload.get("report", {}).get("preset")
         if not preset:
             preset = "acquisition"
 
-        plan_meta = _artifact_plan_metadata(payload)
+        plan_meta = _artifact_plan_metadata(payload) if isinstance(payload, dict) else _fallback_plan_metadata_from_status(
+            run_id=run_id,
+            source_status=source_status,
+        )
         protocol_name = ""
-        if isinstance(payload.get("experiment"), dict):
+        if isinstance(payload, dict) and isinstance(payload.get("experiment"), dict):
             exp = payload["experiment"]
             program = exp.get("program")
             if isinstance(program, dict):
                 phases = program.get("phases")
                 if isinstance(phases, list) and phases:
                     protocol_name = str(phases[0].get("protocol", "") or "")
-        template_version = get_protocol_default_template(protocol_name).template_version if protocol_name else 1
+        if protocol_name:
+            template_version = get_protocol_default_template(protocol_name).template_version
+        else:
+            template_version = int(source_metadata.get("template_version_used", 1) or 1)
 
         regen_root = Path(reports_dir) / "regenerated"
         regen_root.mkdir(parents=True, exist_ok=True)
@@ -487,11 +532,10 @@ class ReportService:
             "figures": [str(p) for p in report_dir.glob("*.png")],
             "artifact_identity": str(report_dir / "artifact_identity.json"),
         }
-        source_status = store.get(run_id) or {}
-        source_metadata = dict(source_status.get("metadata", {}))
         required_source_keys = {"plan_hash", "record_schema_version", "template_version_used"}
         missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
         source_metadata_complete = len(missing_source_keys) == 0
+        regeneration_mode = "from_artifacts" if isinstance(payload, dict) else "from_records"
 
         new_run_id = report_dir.name
         _set_status_with_lifecycle(
@@ -504,12 +548,12 @@ class ReportService:
                 "record_schema_version": plan_meta["record_schema_version"],
                 "template_version_used": template_version,
                 "seed_identity": plan_meta["seed_identity"],
-                "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
-                "operator_pipeline_identity": (
-                    plan_meta.get("operator_pipeline_identity")
-                    if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
-                    else payload.get("provenance", {}).get("operator_pipeline")
+                "mechanism_provenance": (
+                    payload.get("provenance", {}).get("mechanisms", {})
+                    if isinstance(payload, dict)
+                    else source_metadata.get("mechanism_provenance", {})
                 ),
+                "operator_pipeline_identity": plan_meta.get("operator_pipeline_identity"),
                 "learner_identity": (
                     plan_meta.get("learner_identity")
                     if isinstance(plan_meta.get("learner_identity"), dict)
@@ -518,7 +562,7 @@ class ReportService:
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
-                "regeneration_mode": "from_artifacts",
+                "regeneration_mode": regeneration_mode,
             },
             error=None,
         )
@@ -533,12 +577,12 @@ class ReportService:
                 "record_schema_version": plan_meta["record_schema_version"],
                 "template_version_used": template_version,
                 "seed_identity": plan_meta["seed_identity"],
-                "mechanism_provenance": payload.get("provenance", {}).get("mechanisms", {}),
-                "operator_pipeline_identity": (
-                    plan_meta.get("operator_pipeline_identity")
-                    if isinstance(plan_meta.get("operator_pipeline_identity"), dict)
-                    else payload.get("provenance", {}).get("operator_pipeline")
+                "mechanism_provenance": (
+                    payload.get("provenance", {}).get("mechanisms", {})
+                    if isinstance(payload, dict)
+                    else source_metadata.get("mechanism_provenance", {})
                 ),
+                "operator_pipeline_identity": plan_meta.get("operator_pipeline_identity"),
                 "learner_identity": (
                     plan_meta.get("learner_identity")
                     if isinstance(plan_meta.get("learner_identity"), dict)
@@ -546,6 +590,6 @@ class ReportService:
                 ),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
-                "regeneration_mode": "from_artifacts",
+                "regeneration_mode": regeneration_mode,
             },
         }
