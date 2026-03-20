@@ -6,6 +6,7 @@ from virtual_shaping_lab.vsl import (
     EpisodeSpec,
     HorizonSpec,
     RolloutRecord,
+    SUPPORTED_TEMPORAL_BASIS_VARIANTS,
     TemporalBasisSpec,
     TerminationCondition,
 )
@@ -56,6 +57,22 @@ def test_v3_temporal_basis_spec_rejects_invalid_shape():
         TemporalBasisSpec(variant="missing_variant", dimension=2, enabled=True)
     with pytest.raises(ValueError, match="dimension"):
         TemporalBasisSpec(variant="identity", dimension=0, enabled=True)
+
+
+def test_v3_temporal_fixture_coverage_has_two_fixtures_per_supported_basis():
+    fixtures = [
+        TemporalBasisSpec(variant="identity", dimension=1, enabled=False, params={}),
+        TemporalBasisSpec(variant="identity", dimension=2, enabled=True, params={"scale": 1.0}),
+        TemporalBasisSpec(variant="bins", dimension=3, enabled=True, params={"max_time_s": 2.0}),
+        TemporalBasisSpec(variant="binned", dimension=4, enabled=True, params={"max_time_s": 4.0}),
+        TemporalBasisSpec(variant="traces", dimension=2, enabled=True, params={"decay": 0.9}),
+        TemporalBasisSpec(variant="trace", dimension=3, enabled=True, params={"decay": 0.8}),
+    ]
+    counts = {variant: 0 for variant in SUPPORTED_TEMPORAL_BASIS_VARIANTS}
+    for spec in fixtures:
+        counts[spec.variant] += 1
+    for variant in SUPPORTED_TEMPORAL_BASIS_VARIANTS:
+        assert counts[variant] >= 2
 
 
 def test_v3_horizon_spec_requires_positive_bound_and_roundtrips():
