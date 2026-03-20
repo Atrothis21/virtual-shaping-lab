@@ -16,6 +16,7 @@ from virtual_shaping_lab.vsl.spec import (
     ProgramSpec,
     RuntimeSpec,
 )
+from virtual_shaping_lab.vsl.agent.learning import resolve_learner_spec
 
 
 def _infer_phase_contexts(config: ExperimentConfig) -> list[str | None]:
@@ -95,6 +96,21 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         if "rng_seed" in first_params:
             seed = first_params.get("rng_seed")
 
+    learning_config = {
+        "rule": config.learner,
+        "params": {},
+        "attention": {
+            "initial": dict(config.attention),
+            "config": dict(config.attention_config),
+        },
+    }
+    learner_spec = resolve_learner_spec(
+        learner_rule=config.learner,
+        policy_config=config.policy,
+        learning_config=learning_config,
+        metadata={"boundary": "spec_build"},
+    )
+
     settings = {
         "learner": config.learner,
         "agent": config.agent,
@@ -110,6 +126,8 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "resolved_plan": True,
         "resolved_phase_contexts": inferred_phase_contexts,
         "composed_parameters": _compose_parameter_settings(config),
+        "learner_spec": learner_spec.to_dict(),
+        "learner_spec_hash": learner_spec.stable_hash(),
     }
     canonical_payload = _build_canonical_payload_settings(config)
 
@@ -121,12 +139,8 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "agent": config.agent,
         "representation": _resolve_representation(config, inferred_phase_contexts),
         "learning": {
-            "rule": config.learner,
-            "params": {},
-            "attention": {
-                "initial": dict(config.attention),
-                "config": dict(config.attention_config),
-            },
+            **learning_config,
+            "learner_spec": learner_spec.to_dict(),
         },
         "policy": deepcopy(config.policy),
         "stimuli": list(config.stimuli),

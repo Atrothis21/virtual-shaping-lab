@@ -13,6 +13,7 @@ from .presets import (
     learner_preset_payload,
     learner_preset_registry,
 )
+from .boundary import resolve_learner_spec
 from .registry import (
     COMPATIBILITY_MATRIX,
     SLOT_REGISTRIES,
@@ -45,4 +46,5 @@ __all__ = [
     "expand_learner_preset",
     "learner_preset_payload",
     "learner_preset_hash",
+    "resolve_learner_spec",
 ]

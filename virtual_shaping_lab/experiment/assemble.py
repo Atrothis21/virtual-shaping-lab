@@ -16,6 +16,7 @@ from virtual_shaping_lab.agents.math_objects.representation_objects import (
 )
 from virtual_shaping_lab.agents.math_objects.salience_objects import DiagonalSalienceOperator
 from virtual_shaping_lab.agents.math_objects.temporal_objects import build_temporal_basis
+from virtual_shaping_lab.vsl.agent.learning import resolve_learner_spec
 from experiment.factories.learner_factory import build_learner
 from experiment.factories.agent_factory import build_agent
 from experiment.factories.protocol_factory import build_protocol, PROTOCOL_REGISTRY
@@ -382,6 +383,21 @@ def _build_policy_from_config(config):
 
 
 def _build_agent_stack(config, representation):
+    learning_config = getattr(config, "learning_config", None)
+    policy_config = getattr(config, "policy_config", None)
+    if policy_config is None:
+        policy_config = getattr(config, "policy", None)
+    if policy_config is None:
+        composed_policy = _get_composed_policy(config)
+        if isinstance(composed_policy, dict) and composed_policy:
+            policy_config = composed_policy
+    resolve_learner_spec(
+        learner_rule=_resolve_learner_name(config),
+        policy_config=policy_config,
+        learning_config=learning_config if isinstance(learning_config, dict) else None,
+        metadata={"boundary": "runtime_assembly"},
+    )
+
     policy, policy_actions = _build_policy_from_config(config)
     learner_params = _extract_learner_params(config, representation, policy_actions)
     learner_params.setdefault("prediction_error_rule", _build_prediction_error_rule(config))

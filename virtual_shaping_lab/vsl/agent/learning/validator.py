@@ -50,7 +50,7 @@ ATTENTION_TO_UPDATERS_STRICT: dict[str, set[str]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass
 class LearnerSpecValidationError(ValueError):
     code: str
     message: str

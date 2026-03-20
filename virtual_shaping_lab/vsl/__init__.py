@@ -23,6 +23,7 @@ from .agent import (
     learner_preset_registry,
     learner_registry_hash,
     learner_registry_payload,
+    resolve_learner_spec,
     slot_registries,
     validate_learner_spec,
 )
@@ -67,6 +68,7 @@ __all__ = [
     "expand_learner_preset",
     "learner_preset_payload",
     "learner_preset_hash",
+    "resolve_learner_spec",
     "ActionSpace",
     "NullActionSpace",
     "SingletonActionSpace",
