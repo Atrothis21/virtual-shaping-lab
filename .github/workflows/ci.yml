@@ -57,6 +57,11 @@ jobs:
           pytest -q tests/test_v3_temporal_episode_types.py tests/test_v3_temporal_runtime_binding.py tests/test_v3_runner_environment_integration.py
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 phenomenon registry bucket
+        run: >
+          pytest -q tests/test_v3_phenomenon_registry_schema.py tests/test_v3_phenomenon_operator_constraints.py tests/test_v3_phenomenon_fixture_binding.py tests/test_v3_phenomenon_bundle_ablation.py
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

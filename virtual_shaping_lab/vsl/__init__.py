@@ -58,6 +58,20 @@ from .records import (
     normalize_rollout_record,
     validate_rollout_record_migration,
 )
+from .registry import (
+    PHENOMENON_REGISTRY,
+    SUPPORTED_CAVEAT_TIERS,
+    ConstraintSpec,
+    OperatorBundleSpec,
+    PhenomenonRegistryEntry,
+    ReadoutSpec,
+    match_phenomenon_registry_entry_for_protocol,
+    phenomenon_registry_hash,
+    phenomenon_registry_payload,
+    registry_fixture_matrix,
+    validate_registry_fixture_links,
+    validate_phenomenon_registry,
+)
 from .rollout import ReplayHarness, rollout_records_to_dict, stable_rollout_hash, step_to_rollout_record
 
 __all__ = [
@@ -101,6 +115,18 @@ __all__ = [
     "RolloutRecord",
     "normalize_rollout_record",
     "validate_rollout_record_migration",
+    "SUPPORTED_CAVEAT_TIERS",
+    "OperatorBundleSpec",
+    "ConstraintSpec",
+    "ReadoutSpec",
+    "PhenomenonRegistryEntry",
+    "PHENOMENON_REGISTRY",
+    "validate_phenomenon_registry",
+    "match_phenomenon_registry_entry_for_protocol",
+    "registry_fixture_matrix",
+    "validate_registry_fixture_links",
+    "phenomenon_registry_payload",
+    "phenomenon_registry_hash",
     "step_to_rollout_record",
     "rollout_records_to_dict",
     "ReplayHarness",

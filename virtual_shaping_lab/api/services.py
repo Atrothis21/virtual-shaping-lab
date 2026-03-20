@@ -12,6 +12,7 @@ from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.payload_contract import to_canonical_payload
 from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
+from virtual_shaping_lab.vsl.registry import match_phenomenon_registry_entry_for_protocol
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -74,6 +75,14 @@ def _build_mechanism_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
 
 
 def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
+    pipeline = _resolve_operator_pipeline(plan)
+    return {
+        "stage_keys": list(pipeline.stage_keys()),
+        "pipeline_hash": pipeline.stable_hash(),
+    }
+
+
+def _resolve_operator_pipeline(plan: ExperimentPlan) -> OperatorPipeline:
     runtime_spec = dict(plan.runtime_spec or {})
     runtime_settings = runtime_spec.get("runtime")
     raw = None
@@ -94,10 +103,43 @@ def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
         pipeline = OperatorPipeline.from_dict(raw)
     else:
         pipeline = default_operator_pipeline()
-    return {
-        "stage_keys": list(pipeline.stage_keys()),
-        "pipeline_hash": pipeline.stable_hash(),
-    }
+    return pipeline
+
+
+def _resolve_primary_protocol(plan: ExperimentPlan) -> str:
+    if not isinstance(plan.canonical_payload, dict):
+        return ""
+    experiment = plan.canonical_payload.get("experiment")
+    if not isinstance(experiment, dict):
+        return ""
+    program = experiment.get("program")
+    if not isinstance(program, dict):
+        return ""
+    phases = program.get("phases")
+    if not isinstance(phases, list) or not phases:
+        return ""
+    first = phases[0]
+    if not isinstance(first, dict):
+        return ""
+    return str(first.get("protocol", "") or "").strip()
+
+
+def _enforce_phenomenon_operator_constraints(plan: ExperimentPlan) -> None:
+    protocol = _resolve_primary_protocol(plan)
+    entry = match_phenomenon_registry_entry_for_protocol(protocol)
+    if entry is None:
+        return
+    pipeline = _resolve_operator_pipeline(plan)
+    declared = set(pipeline.stage_keys())
+    required = set(entry.constraints.required_operators)
+    missing = sorted(required - declared)
+    if missing:
+        missing_text = ", ".join(missing)
+        declared_text = ", ".join(pipeline.stage_keys())
+        raise ValueError(
+            f"Operator-constraint violation for phenomenon '{entry.key}' (protocol '{protocol}'): "
+            f"missing required operators: {missing_text}. Declared operators: {declared_text}."
+        )
 
 
 def _summarize_learner_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
@@ -330,6 +372,7 @@ class PlanService:
     @staticmethod
     def resolve(payload: Dict[str, Any]) -> Dict[str, Any]:
         plan = build_plan(payload)
+        _enforce_phenomenon_operator_constraints(plan)
         return {
             "plan": plan.to_dict(),
             "stable_hash": plan.stable_hash(),
@@ -412,6 +455,7 @@ class RunService:
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
         plan = build_plan(payload)
+        _enforce_phenomenon_operator_constraints(plan)
         plan_hash = plan.stable_hash()
         if expected_plan_hash is not None and expected_plan_hash != plan_hash:
             raise ValueError(
