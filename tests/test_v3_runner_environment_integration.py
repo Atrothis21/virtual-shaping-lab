@@ -71,10 +71,43 @@ def test_runner_environment_path_emits_trial_state_metadata():
         assert "pipeline_hash" in op
 
 
+def test_runner_environment_path_emits_episode_identity_and_terminal_surface():
+    settings = {
+        "episode": {
+            "episode_id": 7,
+            "rollout_id": "rollout_A",
+            "horizon": {"max_steps": 5, "stop_reason": "horizon_exhausted"},
+        }
+    }
+    records = Runner(_compiled_classical_env(), seed=3, settings=settings).run()
+    assert records
+    assert all(rec.get("episode_id") == 7 for rec in records)
+    assert all(rec.get("rollout_id") == "rollout_A" for rec in records)
+    assert all("terminal" in rec for rec in records)
+    assert all("terminal_reason" in rec for rec in records)
+    assert all("horizon_stop_reason" in rec for rec in records)
+    assert records[-1]["terminal"] is True
+
+
 def test_runner_environment_replay_is_hash_identical_for_10_of_10_runs():
     streams = [Runner(_compiled_classical_env(), seed=17).run() for _ in range(10)]
     baseline = streams[0]
     assert all(stream == baseline for stream in streams[1:])
+
+
+def test_runner_environment_temporal_episode_replay_is_hash_identical_for_10_of_10_runs():
+    settings = {
+        "episode": {
+            "episode_id": 11,
+            "rollout_id": "temporal_rollout_A",
+            "horizon": {"max_steps": 5, "stop_reason": "horizon_exhausted"},
+        }
+    }
+    streams = [Runner(_compiled_classical_env(), seed=23, settings=settings).run() for _ in range(10)]
+    baseline = streams[0]
+    assert all(stream == baseline for stream in streams[1:])
+    assert all(record.get("episode_id") == 11 for record in baseline)
+    assert all(record.get("rollout_id") == "temporal_rollout_A" for record in baseline)
 
 
 def test_runner_executes_operant_environment_contract_with_action_semantics():

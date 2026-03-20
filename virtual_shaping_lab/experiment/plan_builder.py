@@ -15,6 +15,8 @@ from virtual_shaping_lab.vsl.spec import (
     ExperimentSpec,
     ProgramSpec,
     RuntimeSpec,
+    bind_episode_spec,
+    bind_temporal_basis_spec,
 )
 from virtual_shaping_lab.vsl.agent.learning import resolve_learner_spec
 
@@ -68,7 +70,21 @@ def _resolve_representation(config: ExperimentConfig, inferred_phase_contexts: l
     if not contexts:
         contexts.add("A")
     rep_params["contexts"] = sorted(contexts)
+    representation = {"name": rep_name, "params": rep_params}
+    temporal_basis = bind_temporal_basis_spec(representation)
+    rep_params["temporal_basis"] = temporal_basis.to_dict()
     return {"name": rep_name, "params": rep_params}
+
+
+def _default_horizon_steps(config: ExperimentConfig) -> int:
+    total = 0
+    for phase in config.phases:
+        params = phase.params or {}
+        try:
+            total += int(params.get("n_trials", 1) or 1)
+        except (TypeError, ValueError):
+            total += 1
+    return max(total, 1)
 
 
 def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
@@ -154,6 +170,11 @@ def build_experiment_plan(config: ExperimentConfig) -> ExperimentPlan:
         "resolved_plan": True,
         "composed_parameters": deepcopy(settings["composed_parameters"]),
     }
+    runtime_spec["episode"] = bind_episode_spec(
+        runtime_spec["runtime"],
+        default_seed=seed,
+        default_max_steps=_default_horizon_steps(config),
+    ).to_dict()
     analysis_spec = {
         "report_preset": config.report_preset,
     }
