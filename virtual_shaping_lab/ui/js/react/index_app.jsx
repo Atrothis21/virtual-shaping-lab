@@ -11,10 +11,13 @@ function HomeCard({ title, description, cta, href }) {
 }
 
 function IndexApp() {
+  const modeModel = window.VSLReact?.uiModes;
+  const mode = modeModel ? modeModel.activate("index") : "preset";
   return (
     <>
       <h1>Virtual Shaping Lab</h1>
       <p>Choose how you want to start.</p>
+      <p><strong>Mode:</strong> {mode}</p>
 
       <HomeCard
         title="Presets"

@@ -7,6 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parents[1]
 UI_PRESETS_DIR = ROOT / "virtual_shaping_lab" / "ui" / "presets"
 JS_DIR = ROOT / "virtual_shaping_lab" / "ui" / "js" / "react"
+UI_ROOT_DIR = ROOT / "virtual_shaping_lab" / "ui"
 
 
 def _read(path: Path) -> str:
@@ -53,3 +54,28 @@ def test_preset_catalog_includes_teaching_metadata_fields():
     assert "teaches:" in catalog_src
     assert "builderNext:" in catalog_src
     assert "nextPhenomenon:" in catalog_src
+
+
+def test_ui_mode_model_declares_all_v3_8_5_modes():
+    mode_src = _read(JS_DIR / "ui_mode_model.jsx")
+    assert 'PRESET: "preset"' in mode_src
+    assert 'TEACHING: "teaching"' in mode_src
+    assert 'BUILDER: "builder"' in mode_src
+    assert 'EXPERT: "expert"' in mode_src
+    assert "preset_detail" in mode_src
+    assert "SURFACE_MODE_OPTIONS" in mode_src
+
+
+def test_primary_ui_surfaces_load_mode_model_script():
+    for html_name in ("index.html", "presets.html", "builder.html"):
+        html = _read(UI_ROOT_DIR / html_name)
+        assert '/ui/js/react/ui_mode_model.jsx' in html, f"Missing ui_mode_model script in {html_name}"
+
+
+def test_teaching_panel_exposes_mode_scaffolding_controls():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert 'modeModel.activate("preset_detail"' in teaching_src
+    assert 'data-mode="preset"' in teaching_src
+    assert 'data-mode="teaching"' in teaching_src
+    assert 'data-mode="builder"' in teaching_src
+    assert 'data-mode="expert"' in teaching_src

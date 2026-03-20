@@ -79,6 +79,10 @@ function isNeutralParamMap(mapObj, field, neutralValue) {
 }
 
 function BuilderShellApp() {
+  const modeModel = window.VSLReact?.uiModes;
+  const queryMode = new URLSearchParams(window.location.search || "").get("mode");
+  const initialMode = modeModel ? modeModel.activate("builder", queryMode) : "builder";
+  const [uiMode, setUiMode] = React.useState(initialMode);
   const [payload, setPayload] = React.useState(createInitialPayload);
   const [activePhaseIndex, setActivePhaseIndex] = React.useState(0);
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
@@ -92,6 +96,12 @@ function BuilderShellApp() {
       setSeedNotice("Loaded payload from preset. You can now customize it in Builder.");
     }
   }, []);
+
+  const setMode = (nextMode) => {
+    if (!modeModel) return;
+    const resolved = modeModel.activate("builder", nextMode);
+    setUiMode(resolved);
+  };
 
   const availableStimuli = React.useMemo(() => getAvailableStimuli(payload), [payload]);
   const phases =
@@ -215,6 +225,17 @@ function BuilderShellApp() {
     <>
       <h1>Virtual Shaping Lab - Builder</h1>
       <p>Constrained builder with pre-allowed parameter controls.</p>
+      <div style={{ marginBottom: "0.4rem" }}>
+        <strong>Mode:</strong> {uiMode}
+      </div>
+      <div className="actions" style={{ marginBottom: "0.35rem" }}>
+        <button className={`btn ${uiMode === "builder" ? "" : "secondary"}`} type="button" onClick={() => setMode("builder")}>
+          Builder Mode
+        </button>
+        <button className={`btn ${uiMode === "expert" ? "" : "secondary"}`} type="button" onClick={() => setMode("expert")}>
+          Expert Mode
+        </button>
+      </div>
       <div style={{ color: "#555", marginBottom: "0.45rem" }}>
         <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Builder
       </div>

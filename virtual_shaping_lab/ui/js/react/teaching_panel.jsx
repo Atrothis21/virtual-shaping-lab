@@ -1,5 +1,60 @@
 window.VSLReact = window.VSLReact || {};
 
+window.VSLReact.uiModes = window.VSLReact.uiModes || (() => {
+  const MODES = Object.freeze({
+    PRESET: "preset",
+    TEACHING: "teaching",
+    BUILDER: "builder",
+    EXPERT: "expert",
+  });
+
+  const SURFACE_MODE_OPTIONS = Object.freeze({
+    index: [MODES.PRESET],
+    presets: [MODES.PRESET, MODES.TEACHING],
+    preset_detail: [MODES.PRESET, MODES.TEACHING, MODES.BUILDER, MODES.EXPERT],
+    builder: [MODES.BUILDER, MODES.EXPERT],
+  });
+
+  const STORAGE_KEY = "vsl_ui_mode";
+
+  function validMode(mode) {
+    return Object.values(MODES).includes(mode);
+  }
+
+  function resolveMode(surfaceKey, requested) {
+    const options = SURFACE_MODE_OPTIONS[surfaceKey] || [MODES.PRESET];
+    const requestedMode = String(requested || "").toLowerCase();
+    if (validMode(requestedMode) && options.includes(requestedMode)) return requestedMode;
+    try {
+      const persisted = String(localStorage.getItem(STORAGE_KEY) || "").toLowerCase();
+      if (validMode(persisted) && options.includes(persisted)) return persisted;
+    } catch (_err) {
+      // ignore storage access issues
+    }
+    return options[0];
+  }
+
+  function activate(surfaceKey, requested) {
+    const mode = resolveMode(surfaceKey, requested);
+    window.VSLReact.currentMode = mode;
+    window.VSLReact.currentSurface = surfaceKey;
+    window.VSLReact.availableModesForSurface = SURFACE_MODE_OPTIONS[surfaceKey] || [MODES.PRESET];
+    try {
+      localStorage.setItem(STORAGE_KEY, mode);
+    } catch (_err) {
+      // ignore storage access issues
+    }
+    return mode;
+  }
+
+  return {
+    MODES,
+    SURFACE_MODE_OPTIONS,
+    resolveMode,
+    activate,
+  };
+})();
+
 window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload) {
   if (!payload || typeof payload !== "object") return payload;
   const source = JSON.parse(JSON.stringify(payload));
@@ -240,6 +295,9 @@ window.VSLReact.teachingPanels = {
   const spec = window.VSLReact.teachingPanels[slug];
   if (!spec) return;
   if (document.getElementById("teaching-panel")) return;
+  const modeModel = window.VSLReact.uiModes;
+  const queryMode = new URLSearchParams(window.location.search || "").get("mode");
+  let activeMode = modeModel ? modeModel.activate("preset_detail", queryMode || "teaching") : "teaching";
 
   const panel = document.createElement("section");
   panel.id = "teaching-panel";
@@ -263,7 +321,16 @@ window.VSLReact.teachingPanels = {
       </div>
       <div id="tp-nav-links" style="display:flex;gap:0.35rem;flex-wrap:wrap;"></div>
     </div>
-    <h3 style="margin:0 0 0.45rem 0;">Teaching Panel</h3>
+    <h3 style="margin:0 0 0.25rem 0;">Teaching Panel</h3>
+    <div style="font-size:0.85rem;color:#374151;margin-bottom:0.45rem;">
+      <strong>UI Mode:</strong> <span id="tp-ui-mode">${activeMode}</span>
+    </div>
+    <div id="tp-mode-actions" style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+      <button type="button" class="tp-pill" data-mode="preset" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Preset</button>
+      <button type="button" class="tp-pill" data-mode="teaching" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Teaching</button>
+      <button type="button" class="tp-pill" data-mode="builder" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Builder</button>
+      <button type="button" class="tp-pill" data-mode="expert" style="border:1px solid #c7d2fe;background:#eef2ff;color:#1e3a8a;border-radius:999px;padding:0.12rem 0.5rem;font-size:0.78rem;cursor:pointer;">Expert</button>
+    </div>
     <div style="display:flex;gap:0.45rem;flex-wrap:wrap;margin-bottom:0.55rem;">
       ${mechanismPills}
     </div>
@@ -311,6 +378,21 @@ window.VSLReact.teachingPanels = {
       const text = MECHANISM_HELP[name] || "Mechanism explanation coming soon.";
       help.style.display = "block";
       help.innerHTML = `<strong>${name}:</strong> ${text}`;
+    });
+  });
+
+  const modeLabel = panel.querySelector("#tp-ui-mode");
+  const modeButtons = panel.querySelectorAll("#tp-mode-actions .tp-pill");
+  modeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const requested = button.getAttribute("data-mode");
+      if (!modeModel) return;
+      activeMode = modeModel.activate("preset_detail", requested);
+      if (modeLabel) modeLabel.textContent = activeMode;
+      if (activeMode === "builder") {
+        const destination = `/ui/builder.html?mode=builder&from=preset`;
+        window.location.href = destination;
+      }
     });
   });
 
