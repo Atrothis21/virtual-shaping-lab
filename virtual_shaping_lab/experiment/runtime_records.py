@@ -22,6 +22,8 @@ _TRIAL_RECORD_DEFAULTS: dict[str, Any] = {
     "dt_s": None,
     "trial_step": None,
     "trial_id": None,
+    "episode_id": None,
+    "rollout_id": None,
     "context": None,
     "stimulus": None,
     "stimulus_type": None,
@@ -34,6 +36,9 @@ _TRIAL_RECORD_DEFAULTS: dict[str, Any] = {
     "outcome_type": None,
     "schedule": None,
     "done": None,
+    "terminal": None,
+    "terminal_reason": None,
+    "horizon_stop_reason": None,
     "learning_enabled": None,
     "metadata": {},
 }
@@ -85,6 +90,22 @@ class SchemaDefaultsNormalizer:
                 candidate = metadata.get("policy_state")
                 if isinstance(candidate, dict):
                     record["policy_state"] = dict(candidate)
+        if record.get("terminal") is None:
+            done = record.get("done")
+            if isinstance(done, bool):
+                record["terminal"] = done
+        if record.get("terminal_reason") is None:
+            metadata = record.get("metadata")
+            if isinstance(metadata, dict):
+                termination = metadata.get("termination")
+                if isinstance(termination, dict):
+                    reason = termination.get("reason")
+                    if isinstance(reason, str) and reason.strip():
+                        record["terminal_reason"] = reason
+        if record.get("horizon_stop_reason") is None:
+            terminal_reason = record.get("terminal_reason")
+            if isinstance(terminal_reason, str) and "horizon" in terminal_reason.lower():
+                record["horizon_stop_reason"] = terminal_reason
 
 
 class ProtocolMetadataNormalizer:

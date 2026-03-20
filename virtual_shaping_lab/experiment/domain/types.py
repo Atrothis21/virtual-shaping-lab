@@ -39,6 +39,8 @@ class TrialRecord(TypedDict, total=False):
     dt_s: float | None
     trial_step: int | None
     trial_id: Any
+    episode_id: int | None
+    rollout_id: str | None
 
     context: Any
     stimulus: Any
@@ -52,6 +54,9 @@ class TrialRecord(TypedDict, total=False):
     outcome_type: str | None
     schedule: str | None
     done: bool | None
+    terminal: bool | None
+    terminal_reason: str | None
+    horizon_stop_reason: str | None
     learning_enabled: bool | None
 
     metadata: dict[str, Any]

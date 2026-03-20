@@ -42,6 +42,8 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
         "dt_s",
         "trial_step",
         "trial_id",
+        "episode_id",
+        "rollout_id",
         "context",
         "stimulus",
         "stimulus_type",
@@ -54,6 +56,9 @@ def test_finalize_record_applies_stable_trial_record_schema_defaults():
         "outcome_type",
         "schedule",
         "done",
+        "terminal",
+        "terminal_reason",
+        "horizon_stop_reason",
         "learning_enabled",
         "metadata",
     ):
@@ -75,6 +80,25 @@ def test_finalize_record_derives_minimum_schema_fields_from_common_runtime_data(
     assert out["step"] == 2
     assert out["prediction_error"] == pytest.approx(-0.25)
     assert out["policy_state"] == {"mode": "epsilon_greedy"}
+
+
+def test_finalize_record_derives_terminal_flags_from_termination_metadata():
+    record = {
+        "phase": "timed",
+        "trial": 0,
+        "done": True,
+        "metadata": {
+            "termination": {
+                "done": True,
+                "reason": "horizon_exhausted",
+                "metadata": {"cursor": 10},
+            }
+        },
+    }
+    out = finalize_record(record)
+    assert out["terminal"] is True
+    assert out["terminal_reason"] == "horizon_exhausted"
+    assert out["horizon_stop_reason"] == "horizon_exhausted"
 
 
 def test_record_finalization_pipeline_matches_finalize_record_contract():

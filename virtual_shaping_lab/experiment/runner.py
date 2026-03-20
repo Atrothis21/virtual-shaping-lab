@@ -121,6 +121,70 @@ class Runner:
             settings=dict(self.settings),
         )
 
+    def _episode_runtime_fields(self) -> tuple[int | None, str | None, str | None]:
+        episode = self.settings.get("episode")
+        if not isinstance(episode, dict):
+            episode = {}
+        episode_id = episode.get("episode_id", self.settings.get("episode_id"))
+        rollout_id = episode.get("rollout_id", self.settings.get("rollout_id"))
+        horizon = episode.get("horizon")
+        horizon = horizon if isinstance(horizon, dict) else {}
+        configured_stop_reason = horizon.get("stop_reason", "horizon_exhausted")
+        try:
+            episode_id = int(episode_id) if episode_id is not None else None
+        except (TypeError, ValueError):
+            episode_id = None
+        rollout_id = str(rollout_id).strip() if rollout_id is not None else None
+        if rollout_id == "":
+            rollout_id = None
+        configured_stop_reason = str(configured_stop_reason).strip() if configured_stop_reason is not None else None
+        if configured_stop_reason == "":
+            configured_stop_reason = None
+        return episode_id, rollout_id, configured_stop_reason
+
+    def _annotate_record_episode_surface(
+        self,
+        record: Dict[str, Any],
+        *,
+        termination_done: bool | None = None,
+        termination_reason: str | None = None,
+    ) -> None:
+        episode_id, rollout_id, configured_stop_reason = self._episode_runtime_fields()
+        if record.get("episode_id") is None:
+            record["episode_id"] = episode_id
+        if record.get("rollout_id") is None:
+            record["rollout_id"] = rollout_id
+
+        done = record.get("done")
+        terminal = bool(done) if isinstance(done, bool) else False
+        if termination_done is not None:
+            terminal = bool(termination_done) or terminal
+        record["terminal"] = terminal
+
+        reason = termination_reason
+        if reason is None:
+            metadata = record.get("metadata")
+            if isinstance(metadata, dict):
+                termination = metadata.get("termination")
+                if isinstance(termination, dict):
+                    raw_reason = termination.get("reason")
+                    if isinstance(raw_reason, str) and raw_reason.strip():
+                        reason = raw_reason
+        if reason is not None and str(reason).strip():
+            record["terminal_reason"] = str(reason).strip()
+        else:
+            record.setdefault("terminal_reason", None)
+
+        horizon_stop = None
+        terminal_reason = record.get("terminal_reason")
+        if isinstance(terminal_reason, str):
+            normalized = terminal_reason.lower()
+            if "horizon" in normalized:
+                horizon_stop = terminal_reason
+            elif configured_stop_reason and normalized == configured_stop_reason.lower():
+                horizon_stop = terminal_reason
+        record["horizon_stop_reason"] = horizon_stop
+
     def _run_runnable_unit(self, unit: RunnableUnitLike, ctx: ExperimentContext) -> List[Dict[str, Any]]:
         """
         v2.1 path for units implementing iter_steps(context).
@@ -226,6 +290,7 @@ class Runner:
                             "executed_stage_keys": list(executed_stage_keys),
                             "pipeline_hash": self.operator_pipeline.stable_hash(),
                         }
+                        self._annotate_record_episode_surface(emitted_record)
                         finalize_record(
                             emitted_record,
                             phase_name=emitted_record.get("phase"),
@@ -312,6 +377,11 @@ class Runner:
                             },
                         },
                     }
+                    self._annotate_record_episode_surface(
+                        record,
+                        termination_done=step.termination.done,
+                        termination_reason=step.termination.reason,
+                    )
 
                     finalize_record(
                         record,
