@@ -184,6 +184,44 @@ const REVEAL_LAYER_LABELS = Object.freeze({
   [REVEAL_LAYERS.ALGEBRA]: "Full Algebra",
 });
 
+const TRIAL_STATE_IO = Object.freeze({
+  Phi: { reads: ["s"], writes: ["x"] },
+  C: { reads: ["x", "m.persistent.context"], writes: ["z"] },
+  P: { reads: ["z", "w"], writes: ["y.prediction"] },
+  Policy: { reads: ["y.prediction", "a"], writes: ["a"] },
+  Env: { reads: ["a", "u"], writes: ["u"] },
+  Err: { reads: ["u", "y.prediction"], writes: ["y.error", "m.derived.error"] },
+  Update: { reads: ["y.error", "x", "z", "w"], writes: ["w", "m.persistent.weights"] },
+  Measure: { reads: ["w", "y", "u"], writes: ["m.derived.metrics"] },
+});
+
+function ioForStage(stage) {
+  return TRIAL_STATE_IO[stage] || { reads: ["state"], writes: ["state"] };
+}
+
+function pipelineNodeMarkup(stage) {
+  const io = ioForStage(stage);
+  return `
+    <div class="tp-pipeline-node" data-stage="${stage}" style="border:1px solid #dbeafe;border-radius:6px;padding:0.35rem 0.45rem;background:#ffffff;min-width:12rem;">
+      <div style="font-weight:700;color:#1e3a8a;margin-bottom:0.2rem;">${stage}</div>
+      <div class="tp-trialstate-io" data-stage="${stage}">
+        <div style="font-size:0.8rem;color:#334155;"><strong>Reads:</strong> ${io.reads.join(", ")}</div>
+        <div style="font-size:0.8rem;color:#334155;"><strong>Writes:</strong> ${io.writes.join(", ")}</div>
+      </div>
+    </div>
+  `;
+}
+
+function pipelineVisualizationMarkup(spec) {
+  const seq = operatorSequenceFor(spec);
+  const nodes = seq.map((stage) => pipelineNodeMarkup(stage)).join("");
+  return `
+    <div class="tp-operator-pipeline" style="display:flex;flex-wrap:wrap;gap:0.45rem;align-items:stretch;">
+      ${nodes}
+    </div>
+  `;
+}
+
 function operatorSequenceFor(spec) {
   const mechanisms = Array.isArray(spec?.mechanisms) ? spec.mechanisms : [];
   const hasContext = mechanisms.includes("Context");
@@ -210,14 +248,18 @@ function revealContentFor(spec, layer) {
   }
   if (layer === REVEAL_LAYERS.OPERATOR) {
     const seq = operatorSequenceFor(spec).join(" -> ");
+    const pipeline = pipelineVisualizationMarkup(spec);
     return `
       <p style="margin:0 0 0.25rem 0;color:#374151;"><strong>Pipeline:</strong> ${seq}</p>
       <p style="margin:0;color:#4b5563;">Operator labels map to the mechanism view above and stay read-only in this teaching surface.</p>
+      <div style="margin-top:0.45rem;">${pipeline}</div>
     `;
   }
+  const pipeline = pipelineVisualizationMarkup(spec);
   return `
     <p style="margin:0 0 0.25rem 0;color:#374151;"><strong>TrialState Coordinates:</strong> s, x, z, w, a, u, y, m</p>
     <p style="margin:0;color:#4b5563;">Advanced inspection mode exposes full state-flow interpretation without changing payload semantics.</p>
+    <div style="margin-top:0.45rem;">${pipeline}</div>
   `;
 }
 

@@ -91,6 +91,10 @@ def test_teaching_panel_exposes_progressive_reveal_layers():
     assert "tp-reveal-content" in teaching_src
     assert "operatorSequenceFor(" in teaching_src
     assert "revealContentFor(" in teaching_src
+    assert "TRIAL_STATE_IO" in teaching_src
+    assert "tp-operator-pipeline" in teaching_src
+    assert "tp-trialstate-io" in teaching_src
+    assert "pipelineVisualizationMarkup(" in teaching_src
 
 
 def test_results_app_exposes_behavior_to_operator_explainability_overlay():
