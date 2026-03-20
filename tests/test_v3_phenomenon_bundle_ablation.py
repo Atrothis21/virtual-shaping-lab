@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from api import services as api_services
-from virtual_shaping_lab.vsl.operator import default_operator_pipeline
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import default_operator_pipeline
 from virtual_shaping_lab.vsl.registry import PHENOMENON_REGISTRY
 
 
