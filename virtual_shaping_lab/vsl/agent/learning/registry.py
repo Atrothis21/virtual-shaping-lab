@@ -6,7 +6,7 @@ import hashlib
 import json
 from typing import Any
 
-from .validator import (
+from .validation import (
     ACTOR_CRITIC_REQUIRED,
     ATTENTION_TO_UPDATERS_STRICT,
     ATTENTION_VALUES,

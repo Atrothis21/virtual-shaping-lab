@@ -8,7 +8,7 @@ from virtual_shaping_lab.vsl.agent.learning import (
     learner_registry_payload,
     slot_registries,
 )
-from virtual_shaping_lab.vsl.agent.learning.validator import (
+from virtual_shaping_lab.vsl.agent.learning.validation import (
     ACTOR_CRITIC_REQUIRED,
     ATTENTION_TO_UPDATERS_STRICT,
     ATTENTION_VALUES,

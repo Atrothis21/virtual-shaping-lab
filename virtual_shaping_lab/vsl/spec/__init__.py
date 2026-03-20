@@ -1,7 +1,7 @@
 """Typed semantic spec models for V3 planning."""
 
-from .binding import bind_episode_spec, bind_temporal_basis_spec
-from .models import (
+from .bindings import bind_episode_spec, bind_temporal_basis_spec
+from .contracts import (
     AgentSpec,
     AnalysisSpec,
     EnvironmentProgramSpec,

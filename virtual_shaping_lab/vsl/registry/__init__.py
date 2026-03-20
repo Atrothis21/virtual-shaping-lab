@@ -1,6 +1,6 @@
 """V3 phenomenon registry primitives."""
 
-from .phenomenon_registry import (
+from .phenomena import (
     PHENOMENON_REGISTRY,
     SUPPORTED_CAVEAT_TIERS,
     ConstraintSpec,

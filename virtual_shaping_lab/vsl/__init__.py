@@ -41,7 +41,7 @@ from .environment import (
     TerminationCondition,
     TrialState,
 )
-from .operator import (
+from .rollout.operator_pipeline import (
     LookaheadContract,
     NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,
@@ -72,7 +72,8 @@ from .registry import (
     validate_registry_fixture_links,
     validate_phenomenon_registry,
 )
-from .rollout import ReplayHarness, rollout_records_to_dict, stable_rollout_hash, step_to_rollout_record
+from .records.adapters.rollout_records import rollout_records_to_dict, step_to_rollout_record
+from .rollout.replay_harness import ReplayHarness, stable_rollout_hash
 
 __all__ = [
     "LearnerSpec",

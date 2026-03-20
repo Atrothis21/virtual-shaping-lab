@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from .validator import validate_learner_spec
+from .validation import validate_learner_spec
 
 
 def _to_primitive(value: Any) -> Any:

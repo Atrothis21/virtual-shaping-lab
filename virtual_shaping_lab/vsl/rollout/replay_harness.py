@@ -8,7 +8,7 @@ from typing import Any
 
 from virtual_shaping_lab.vsl.environment.contracts import IEnvironment
 from virtual_shaping_lab.vsl.records import ROLLOUT_RECORD_SCHEMA_VERSION, RolloutRecord
-from virtual_shaping_lab.vsl.rollout.records import step_to_rollout_record
+from virtual_shaping_lab.vsl.records.adapters.rollout_records import step_to_rollout_record
 
 
 def stable_rollout_hash(records: list[RolloutRecord]) -> str:

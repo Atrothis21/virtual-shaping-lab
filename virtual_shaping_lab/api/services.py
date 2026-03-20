@@ -11,7 +11,7 @@ from analysis.public import (
 from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.payload_contract import to_canonical_payload
-from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
 from virtual_shaping_lab.vsl.registry import match_phenomenon_registry_entry_for_protocol
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,

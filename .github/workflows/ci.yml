@@ -62,6 +62,11 @@ jobs:
           pytest -q tests/test_v3_phenomenon_registry_schema.py tests/test_v3_phenomenon_operator_constraints.py tests/test_v3_phenomenon_fixture_binding.py tests/test_v3_phenomenon_bundle_ablation.py
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 namespace stabilization bucket
+        run: >
+          pytest -q tests/test_v3_namespace_migration_map.py tests/test_v3_public_facade_stabilization.py tests/test_v3_namespace_hard_removal.py tests/test_v3_namespace_import_audit.py
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

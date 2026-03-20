@@ -11,7 +11,7 @@ from virtual_shaping_lab.vsl.environment.contracts import (
     EnvironmentTermination,
     IEnvironment,
 )
-from virtual_shaping_lab.vsl.environment.trial_state import TrialState
+from virtual_shaping_lab.vsl.rollout.trial_state import TrialState
 from virtual_shaping_lab.vsl.program.types import EnvironmentProgram
 
 

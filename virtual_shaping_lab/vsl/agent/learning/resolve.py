@@ -6,7 +6,7 @@ from typing import Any, Mapping
 
 from .presets import expand_learner_preset
 from .spec import LearnerSpec
-from .validator import LearnerSpecValidationError
+from .validation import LearnerSpecValidationError
 
 _POLICY_ALIASES = {
     "null": "none",

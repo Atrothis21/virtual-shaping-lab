@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from virtual_shaping_lab.vsl.operator import (
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import (
     LookaheadContract,
     NORMATIVE_STAGE_LOOKAHEAD,
     NORMATIVE_STAGE_CONTRACTS,

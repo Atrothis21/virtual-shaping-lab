@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
-from virtual_shaping_lab.vsl.environment.trial_state import TrialState
+from virtual_shaping_lab.vsl.rollout.trial_state import TrialState
 
 
 @dataclass(frozen=True)

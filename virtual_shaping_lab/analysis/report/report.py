@@ -9,7 +9,7 @@ from analysis.visualizations.registry import VISUALIZATION_REGISTRY
 from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
-from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"

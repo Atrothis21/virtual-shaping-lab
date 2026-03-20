@@ -6,7 +6,7 @@ import pytest
 
 from api import services as api_services
 from tests.preset_payloads import CONTRACT_FIXTURES, blocking_payload
-from virtual_shaping_lab.vsl.operator import default_operator_pipeline
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import default_operator_pipeline
 
 
 def _pipeline_without(stage_key: str) -> dict:
