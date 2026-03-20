@@ -7,7 +7,14 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-SUPPORTED_TEMPORAL_BASIS_VARIANTS: tuple[str, ...] = ("identity", "binned", "trace")
+SUPPORTED_TEMPORAL_BASIS_VARIANTS: tuple[str, ...] = ("identity", "bins", "traces")
+_VARIANT_ALIASES: dict[str, str] = {
+    "identity": "identity",
+    "bins": "bins",
+    "binned": "bins",
+    "trace": "traces",
+    "traces": "traces",
+}
 
 
 def _normalize_mapping(value: Any, field_name: str) -> dict[str, Any]:
@@ -28,13 +35,14 @@ class TemporalBasisSpec:
     params: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        variant = str(self.variant or "").strip()
+        raw_variant = str(self.variant or "").strip().lower()
+        variant = _VARIANT_ALIASES.get(raw_variant, raw_variant)
         if not variant:
             raise ValueError("TemporalBasisSpec.variant must be a non-empty string.")
         if variant not in SUPPORTED_TEMPORAL_BASIS_VARIANTS:
             supported = ", ".join(SUPPORTED_TEMPORAL_BASIS_VARIANTS)
             raise ValueError(
-                f"TemporalBasisSpec.variant '{variant}' is unsupported. Supported variants: {supported}"
+                f"TemporalBasisSpec.variant '{raw_variant}' is unsupported. Supported variants: {supported}"
             )
         dimension = int(self.dimension)
         if dimension < 0:
@@ -67,4 +75,3 @@ class TemporalBasisSpec:
     def stable_hash(self) -> str:
         blob = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(blob).hexdigest()
-

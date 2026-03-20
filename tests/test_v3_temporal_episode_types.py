@@ -45,6 +45,7 @@ def test_v3_7_entry_typed_plan_identity_surface_exists():
 def test_v3_temporal_basis_spec_roundtrip_and_hash():
     spec = TemporalBasisSpec(variant="trace", dimension=4, enabled=True, params={"decay": 0.9})
     rebuilt = TemporalBasisSpec.from_dict(spec.to_dict())
+    assert spec.variant == "traces"
     assert rebuilt.to_dict() == spec.to_dict()
     hashes = [spec.stable_hash() for _ in range(10)]
     assert len(set(hashes)) == 1
@@ -83,4 +84,3 @@ def test_v3_episode_spec_and_termination_condition_types():
         EpisodeSpec(episode_id=0, rollout_id="", horizon=HorizonSpec(max_steps=1))
     with pytest.raises(ValueError, match="TerminationCondition.reason"):
         TerminationCondition(reason=" ", terminal=True)
-

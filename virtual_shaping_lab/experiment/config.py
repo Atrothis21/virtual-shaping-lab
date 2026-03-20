@@ -664,6 +664,20 @@ class ExperimentConfig:
             if not isinstance(operator_pipeline, dict):
                 raise ValueError("experiment.runtime.operator_pipeline must be an object when provided")
             normalized["operator_pipeline"] = dict(operator_pipeline)
+        if "episode" in runtime:
+            episode = runtime.get("episode")
+            if not isinstance(episode, dict):
+                raise ValueError("experiment.runtime.episode must be an object when provided")
+            normalized["episode"] = dict(episode)
+        if "horizon" in runtime:
+            horizon = runtime.get("horizon")
+            if not isinstance(horizon, dict):
+                raise ValueError("experiment.runtime.horizon must be an object when provided")
+            normalized["horizon"] = dict(horizon)
+        if "episode_id" in runtime:
+            normalized["episode_id"] = runtime.get("episode_id")
+        if "rollout_id" in runtime:
+            normalized["rollout_id"] = runtime.get("rollout_id")
         return normalized
 
     @classmethod
