@@ -2,11 +2,17 @@
 
 from .agent import (
     ActionSpace,
+    COMPATIBILITY_MATRIX,
     LearnerSpec,
     LearnerSpecValidationError,
     NullActionSpace,
     NullPolicy,
+    SLOT_REGISTRIES,
     SingletonActionSpace,
+    compatibility_matrix,
+    learner_registry_hash,
+    learner_registry_payload,
+    slot_registries,
     validate_learner_spec,
 )
 from .environment import (
@@ -33,6 +39,12 @@ __all__ = [
     "LearnerSpec",
     "LearnerSpecValidationError",
     "validate_learner_spec",
+    "SLOT_REGISTRIES",
+    "COMPATIBILITY_MATRIX",
+    "slot_registries",
+    "compatibility_matrix",
+    "learner_registry_payload",
+    "learner_registry_hash",
     "ActionSpace",
     "NullActionSpace",
     "SingletonActionSpace",
