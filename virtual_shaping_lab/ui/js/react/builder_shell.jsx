@@ -186,7 +186,7 @@ function BuilderShellApp() {
 
     let runPayload;
     try {
-      runPayload = validateBeforeRun(payload);
+      runPayload = validateBeforeRun(payload, { mode: uiMode });
     } catch (err) {
       setRunError(true);
       setRunStatus("Validation Error");

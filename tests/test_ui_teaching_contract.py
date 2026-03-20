@@ -104,3 +104,16 @@ def test_results_app_exposes_behavior_to_operator_explainability_overlay():
     assert "operatorPipelineForRecord(" in results_src
     assert "trial-explanation-hook" in results_src
     assert "operator-explainability" in results_src
+
+
+def test_builder_state_enforces_raw_operator_wiring_guardrails():
+    builder_state_src = _read(JS_DIR / "builder_state.js")
+    assert "RAW_OPERATOR_WIRING_PATHS" in builder_state_src
+    assert "operator_pipeline" in builder_state_src
+    assert "enforceControlSurfaceGuard(" in builder_state_src
+    assert "Raw operator wiring controls are only available in Expert mode." in builder_state_src
+
+
+def test_builder_shell_validates_run_payload_against_active_ui_mode():
+    builder_src = _read(JS_DIR / "builder_shell.jsx")
+    assert "validateBeforeRun(payload, { mode: uiMode })" in builder_src

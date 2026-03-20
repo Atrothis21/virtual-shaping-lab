@@ -35,6 +35,14 @@ const PHASE_DEFS = {
   criterion_shift: { n_trials: 100, stimulus_type: "cs" },
 };
 
+const RAW_OPERATOR_WIRING_PATHS = [
+  ["experiment", "runtime", "operator_pipeline"],
+  ["experiment", "runtime", "operator_wiring"],
+  ["experiment", "runtime", "operator_pipeline_overrides"],
+  ["experiment", "runtime", "operator_graph"],
+  ["experiment", "runtime", "operator_bindings"],
+];
+
 function safeClone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -141,6 +149,34 @@ function buildStimuliForProtocol(protocol, availableStimuli, prevStimuli) {
 
 function finiteNumber(value, fallback) {
   return Number.isFinite(+value) ? +value : fallback;
+}
+
+function hasOwnPath(obj, path) {
+  let cursor = obj;
+  for (let i = 0; i < path.length; i += 1) {
+    const key = path[i];
+    if (!cursor || typeof cursor !== "object" || !Object.prototype.hasOwnProperty.call(cursor, key)) {
+      return false;
+    }
+    cursor = cursor[key];
+  }
+  return true;
+}
+
+function findRawOperatorWiringPaths(payload) {
+  return RAW_OPERATOR_WIRING_PATHS.filter((path) => hasOwnPath(payload, path));
+}
+
+function enforceControlSurfaceGuard(payload, options = {}) {
+  const mode = String(options.mode || "builder").toLowerCase();
+  const isExpert = mode === "expert";
+  if (isExpert) return;
+  const violations = findRawOperatorWiringPaths(payload);
+  if (!violations.length) return;
+  const formatted = violations.map((path) => path.join(".")).join(", ");
+  throw new Error(
+    `Raw operator wiring controls are only available in Expert mode. Remove: ${formatted}`,
+  );
 }
 
 function buildParamsForProtocol(protocol, prevParams) {
@@ -378,8 +414,9 @@ function hasPriorLearning(phases, index) {
   return false;
 }
 
-function validateBeforeRun(inputPayload) {
+function validateBeforeRun(inputPayload, options = {}) {
   const payload = normalizePayload(inputPayload);
+  enforceControlSurfaceGuard(payload, options);
   const phases = payload?.experiment?.program?.phases || [];
   const repStimuli = payload?.experiment?.agent?.representation?.params?.stimuli || [];
   const repSet = new Set(Array.isArray(repStimuli) ? repStimuli : []);
@@ -465,6 +502,8 @@ window.VSLReact.builderState = {
   createInitialPayload,
   loadSeedPayload,
   normalizePayload,
+  enforceControlSurfaceGuard,
   validateBeforeRun,
   getAvailableStimuli,
+  RAW_OPERATOR_WIRING_PATHS,
 };
