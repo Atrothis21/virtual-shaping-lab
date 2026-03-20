@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import product
 
 from virtual_shaping_lab.vsl.agent.learning import COMPATIBILITY_MATRIX, SLOT_REGISTRIES, LearnerSpec
-from virtual_shaping_lab.vsl.agent.learning.validator import LearnerSpecValidationError
+from virtual_shaping_lab.vsl.agent.learning.validation import LearnerSpecValidationError
 
 
 def _runtime_accepts_tuple(trace: str, predictor: str, error: str, attention: str, updater: str, policy: str) -> bool:

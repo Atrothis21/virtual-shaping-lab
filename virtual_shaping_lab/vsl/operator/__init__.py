@@ -1,23 +1,6 @@
-"""V3 operator-pipeline primitives."""
+"""Removed in V3.9 hard-cut: use virtual_shaping_lab.vsl.rollout.operator_pipeline."""
 
-from .pipeline import (
-    LookaheadContract,
-    NORMATIVE_STAGE_LOOKAHEAD,
-    NORMATIVE_STAGE_CONTRACTS,
-    NORMATIVE_STAGE_ORDER,
-    PIPELINE_BASE_FIELDS,
-    OperatorPipeline,
-    OperatorStage,
-    default_operator_pipeline,
+raise ModuleNotFoundError(
+    "virtual_shaping_lab.vsl.operator has been removed in V3.9; "
+    "use virtual_shaping_lab.vsl.rollout.operator_pipeline."
 )
-
-__all__ = [
-    "OperatorStage",
-    "OperatorPipeline",
-    "LookaheadContract",
-    "NORMATIVE_STAGE_LOOKAHEAD",
-    "NORMATIVE_STAGE_CONTRACTS",
-    "NORMATIVE_STAGE_ORDER",
-    "PIPELINE_BASE_FIELDS",
-    "default_operator_pipeline",
-]

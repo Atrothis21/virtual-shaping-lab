@@ -7,8 +7,8 @@ from virtual_shaping_lab.vsl.environment.contracts import (
     EnvironmentStep,
     EnvironmentTermination,
 )
-from virtual_shaping_lab.vsl.environment.trial_state import TrialState
-from virtual_shaping_lab.vsl.operator import OperatorPipeline, OperatorStage
+from virtual_shaping_lab.vsl.rollout.trial_state import TrialState
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, OperatorStage
 from virtual_shaping_lab.vsl.program import compile_environment_program
 
 

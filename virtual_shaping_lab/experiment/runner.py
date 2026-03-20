@@ -13,7 +13,7 @@ from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import TrialSchedule, TrialTimeSpec
 from virtual_shaping_lab.experiment.runtime_records import finalize_record
 from virtual_shaping_lab.vsl.environment import IEnvironment, TrialState
-from virtual_shaping_lab.vsl.operator import OperatorPipeline, default_operator_pipeline
+from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
 
 
 @runtime_checkable
