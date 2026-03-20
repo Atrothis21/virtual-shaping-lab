@@ -197,6 +197,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"].get("operator_pipeline_identity"), dict)
     assert isinstance(body["metadata"]["operator_pipeline_identity"].get("stage_keys"), list)
     assert isinstance(body["metadata"]["operator_pipeline_identity"].get("pipeline_hash"), str)
+    assert isinstance(body["metadata"].get("learner_identity"), dict)
+    assert "spec_hash" in body["metadata"]["learner_identity"]
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
 
@@ -216,6 +218,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(identity.get("operator_pipeline_identity"), dict)
     assert identity["operator_pipeline_identity"].get("stage_keys") == body["metadata"]["operator_pipeline_identity"].get("stage_keys")
     assert identity["operator_pipeline_identity"].get("pipeline_hash") == body["metadata"]["operator_pipeline_identity"].get("pipeline_hash")
+    assert isinstance(identity.get("learner_identity"), dict)
+    assert identity["learner_identity"].get("spec_hash") == body["metadata"]["learner_identity"].get("spec_hash")
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -245,6 +249,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert "seed_identity" in status["metadata"]
     assert isinstance(status["metadata"].get("mechanism_provenance"), dict)
     assert isinstance(status["metadata"].get("operator_pipeline_identity"), dict)
+    assert isinstance(status["metadata"].get("learner_identity"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
 
@@ -294,6 +299,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert "seed_identity" in report_body["metadata"]
     assert isinstance(report_body["metadata"].get("mechanism_provenance"), dict)
     assert isinstance(report_body["metadata"].get("operator_pipeline_identity"), dict)
+    assert isinstance(report_body["metadata"].get("learner_identity"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
     assert report_body["metadata"]["missing_source_metadata"] == []

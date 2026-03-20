@@ -1,15 +1,10 @@
-"""V3 agent package surface."""
+"""V3 learner grammar surface."""
 
-from .learning import (
-    COMPATIBILITY_MATRIX,
+from .presets import (
+    PRESET_VERSION,
     LEARNER_PRESET_ALIASES,
     LEARNER_PRESET_FAMILIES,
     LEARNER_PRESETS,
-    PRESET_VERSION,
-    SLOT_REGISTRIES,
-    LearnerSpec,
-    LearnerSpecValidationError,
-    compatibility_matrix,
     expand_learner_preset,
     learner_preset_aliases,
     learner_preset_families,
@@ -17,13 +12,18 @@ from .learning import (
     learner_preset_names,
     learner_preset_payload,
     learner_preset_registry,
+)
+from .boundary import resolve_learner_spec
+from .registry import (
+    COMPATIBILITY_MATRIX,
+    SLOT_REGISTRIES,
+    compatibility_matrix,
     learner_registry_hash,
     learner_registry_payload,
-    resolve_learner_spec,
     slot_registries,
-    validate_learner_spec,
 )
-from .policy import ActionSpace, NullActionSpace, NullPolicy, SingletonActionSpace
+from .spec import LearnerSpec
+from .validator import LearnerSpecValidationError, validate_learner_spec
 
 __all__ = [
     "LearnerSpec",
@@ -47,9 +47,4 @@ __all__ = [
     "learner_preset_payload",
     "learner_preset_hash",
     "resolve_learner_spec",
-    "ActionSpace",
-    "NullActionSpace",
-    "SingletonActionSpace",
-    "NullPolicy",
 ]
-
