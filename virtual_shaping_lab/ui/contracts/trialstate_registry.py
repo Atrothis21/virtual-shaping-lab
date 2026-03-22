@@ -269,6 +269,32 @@ TRIALSTATE_FIELD_REGISTRY: dict[str, Any] = {
                 "results_overlay": True,
             },
         },
+        "associability": {
+            "id": "associability",
+            "label": "Associability",
+            "group": "attention_memory",
+            "pedagogy": {
+                "intuition": "How learnable a cue currently is.",
+                "mechanism": "Dynamic sensitivity factor that modulates update strength.",
+                "operator_view": "Field written by attention operators and consumed by update stages.",
+                "expert": "Can reflect different attention-model semantics.",
+            },
+            "runtime": {
+                "kind": "float",
+                "shape": "scalar_or_vector",
+                "nullable": True,
+                "default": None,
+                "produced_by": ["a"],
+                "consumed_by": ["w", "m"],
+            },
+            "visibility": {
+                "preset_mode": "hidden",
+                "mechanism_layer": False,
+                "operator_layer": True,
+                "expert_mode": True,
+                "results_overlay": True,
+            },
+        },
         "selected_action": {
             "id": "selected_action",
             "label": "Selected Action",

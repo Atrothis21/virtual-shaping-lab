@@ -6,6 +6,17 @@ from ui.contracts.builder_draft import (
     BuilderPhaseDraft,
     BuilderRuntimeDraft,
 )
+from ui.contracts.operator_registry import (
+    OPERATOR_REGISTRY,
+    OPERATOR_REGISTRY_VERSION,
+    REQUIRED_OPERATOR_FAMILIES,
+    REQUIRED_OPERATORS,
+    OperatorRegistryValidationError,
+    get_operator,
+    get_operator_registry,
+    list_operator_ids,
+    validate_operator_registry,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -25,6 +36,15 @@ __all__ = [
     "BuilderPhaseDraft",
     "BuilderRuntimeDraft",
     "draft_to_payload",
+    "OperatorRegistryValidationError",
+    "OPERATOR_REGISTRY_VERSION",
+    "OPERATOR_REGISTRY",
+    "REQUIRED_OPERATOR_FAMILIES",
+    "REQUIRED_OPERATORS",
+    "validate_operator_registry",
+    "get_operator_registry",
+    "list_operator_ids",
+    "get_operator",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
