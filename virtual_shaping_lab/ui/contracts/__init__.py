@@ -45,6 +45,10 @@ from ui.contracts.registry_integrity import (
     load_ui_registries,
     validate_ui_registry_integrity,
 )
+from ui.contracts.preset_detail_contract import (
+    PresetDetailContractError,
+    build_preset_detail_contract,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -95,6 +99,8 @@ __all__ = [
     "UIRegistryIntegrityError",
     "load_ui_registries",
     "validate_ui_registry_integrity",
+    "PresetDetailContractError",
+    "build_preset_detail_contract",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
