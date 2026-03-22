@@ -56,6 +56,13 @@ from ui.contracts.preset_materialization import (
     stable_materialized_payload_json,
     validate_materialized_payload_boundary,
 )
+from ui.contracts.preset_run_flow import (
+    PresetRunFlowContractError,
+    build_preset_run_flow_contract,
+    resolve_preset_results_view,
+    resolve_results_contract_from_preset,
+    validate_preset_results_priority,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -113,6 +120,11 @@ __all__ = [
     "stable_materialized_payload_json",
     "stable_materialized_payload_hash",
     "validate_materialized_payload_boundary",
+    "PresetRunFlowContractError",
+    "build_preset_run_flow_contract",
+    "resolve_preset_results_view",
+    "resolve_results_contract_from_preset",
+    "validate_preset_results_priority",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
