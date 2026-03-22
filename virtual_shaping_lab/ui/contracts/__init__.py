@@ -30,6 +30,20 @@ from ui.contracts.dependent_variable_registry import (
     validate_dependent_variable_registry,
     validate_preset_results_contract,
 )
+from ui.contracts.preset_registry import (
+    PRESET_REGISTRY,
+    PRESET_REGISTRY_VERSION,
+    PresetRegistryValidationError,
+    get_preset,
+    get_preset_registry,
+    list_preset_ids,
+    validate_preset_registry,
+)
+from ui.contracts.registry_integrity import (
+    UIRegistryIntegrityError,
+    load_ui_registries,
+    validate_ui_registry_integrity,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -69,6 +83,16 @@ __all__ = [
     "get_dependent_variable",
     "validate_dependent_variable_ids",
     "validate_preset_results_contract",
+    "PresetRegistryValidationError",
+    "PRESET_REGISTRY_VERSION",
+    "PRESET_REGISTRY",
+    "validate_preset_registry",
+    "get_preset_registry",
+    "list_preset_ids",
+    "get_preset",
+    "UIRegistryIntegrityError",
+    "load_ui_registries",
+    "validate_ui_registry_integrity",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
