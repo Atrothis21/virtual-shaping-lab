@@ -54,7 +54,12 @@ PRESET_REGISTRY: dict[str, Any] = {
                                 "stimuli": {"cs_plus": ["tone"]},
                                 "params": {"n_trials": 50},
                             }
-                        ]
+                        ],
+                    },
+                    "agent": {
+                        "learning": {
+                            "rule": "rescorla_wagner",
+                        }
                     }
                 }
             },
@@ -74,11 +79,18 @@ PRESET_REGISTRY: dict[str, Any] = {
                     "allowed_parameters": [
                         "experiment.program.phases[0].params.n_trials",
                         "experiment.program.phases[0].stimuli.cs_plus",
+                        "experiment.agent.learning.rule",
                     ],
                     "locked_parameters": [
                         "experiment.program.phases[0].protocol",
                         "experiment.program.phases",
                     ],
+                    "option_constraints": {
+                        "experiment.agent.learning.rule": [
+                            "rescorla_wagner",
+                            "temporal_difference",
+                        ]
+                    },
                 },
             },
             "registry_bindings": {
@@ -193,6 +205,29 @@ def _validate_preset_ui_contract(
         raise PresetRegistryValidationError(
             f"preset_registry.presets.{preset_key}.ui_contract.editability has overlapping allowed/locked parameters: {', '.join(overlap)}"
         )
+    option_constraints = editability.get("option_constraints", {})
+    if option_constraints is not None:
+        option_constraints = _require_dict(
+            option_constraints,
+            f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints",
+        )
+        for path, values in option_constraints.items():
+            path_key = _require_non_empty_string(
+                path,
+                f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.path",
+            )
+            if path_key not in allowed:
+                raise PresetRegistryValidationError(
+                    f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints path must also be allowed: {path_key}"
+                )
+            allowed_values = _require_string_list(
+                values,
+                f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.{path_key}",
+            )
+            if not allowed_values:
+                raise PresetRegistryValidationError(
+                    f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.{path_key} must be non-empty."
+                )
 
 
 def _validate_acquisition_template(preset: dict[str, Any], *, preset_key: str) -> None:

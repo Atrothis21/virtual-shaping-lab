@@ -49,6 +49,13 @@ from ui.contracts.preset_detail_contract import (
     PresetDetailContractError,
     build_preset_detail_contract,
 )
+from ui.contracts.preset_materialization import (
+    PresetMaterializationError,
+    materialize_preset_payload,
+    stable_materialized_payload_hash,
+    stable_materialized_payload_json,
+    validate_materialized_payload_boundary,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -101,6 +108,11 @@ __all__ = [
     "validate_ui_registry_integrity",
     "PresetDetailContractError",
     "build_preset_detail_contract",
+    "PresetMaterializationError",
+    "materialize_preset_payload",
+    "stable_materialized_payload_json",
+    "stable_materialized_payload_hash",
+    "validate_materialized_payload_boundary",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
