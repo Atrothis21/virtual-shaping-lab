@@ -89,6 +89,11 @@ from ui.contracts.trial_hover_explainability import (
     TrialHoverExplainabilityError,
     build_trial_hover_explainability_panel,
 )
+from ui.contracts.trialstate_inspector import (
+    ALLOWED_INSPECTOR_MODES,
+    TrialStateInspectorError,
+    build_trialstate_inspector,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -169,6 +174,9 @@ __all__ = [
     "validate_preset_form_edits",
     "TrialHoverExplainabilityError",
     "build_trial_hover_explainability_panel",
+    "TrialStateInspectorError",
+    "ALLOWED_INSPECTOR_MODES",
+    "build_trialstate_inspector",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
