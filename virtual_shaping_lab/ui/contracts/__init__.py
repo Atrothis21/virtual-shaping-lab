@@ -30,6 +30,14 @@ from ui.contracts.dependent_variable_registry import (
     validate_dependent_variable_registry,
     validate_preset_results_contract,
 )
+from ui.contracts.dependent_variable_resolver import (
+    DependentVariableResolverError,
+    resolve_dependent_variable,
+    resolve_dependent_variable_from_registry_payload,
+    resolve_dependent_variables_for_surface,
+    resolve_report_variable,
+    resolve_results_variable,
+)
 from ui.contracts.preset_registry import (
     PRESET_REGISTRY,
     PRESET_REGISTRY_VERSION,
@@ -109,6 +117,12 @@ __all__ = [
     "get_dependent_variable",
     "validate_dependent_variable_ids",
     "validate_preset_results_contract",
+    "DependentVariableResolverError",
+    "resolve_dependent_variable",
+    "resolve_dependent_variable_from_registry_payload",
+    "resolve_dependent_variables_for_surface",
+    "resolve_results_variable",
+    "resolve_report_variable",
     "PresetRegistryValidationError",
     "PRESET_REGISTRY_VERSION",
     "PRESET_REGISTRY",
