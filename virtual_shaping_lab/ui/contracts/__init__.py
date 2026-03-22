@@ -78,6 +78,10 @@ from ui.contracts.preset_hardening import (
     encode_results_return_state,
     validate_preset_form_edits,
 )
+from ui.contracts.trial_hover_explainability import (
+    TrialHoverExplainabilityError,
+    build_trial_hover_explainability_panel,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -151,6 +155,8 @@ __all__ = [
     "encode_results_return_state",
     "decode_results_return_state",
     "validate_preset_form_edits",
+    "TrialHoverExplainabilityError",
+    "build_trial_hover_explainability_panel",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
