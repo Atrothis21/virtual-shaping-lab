@@ -17,6 +17,13 @@ from ui.contracts.operator_registry import (
     list_operator_ids,
     validate_operator_registry,
 )
+from ui.contracts.operator_graph_backlinks import (
+    OperatorGraphBacklinkError,
+    list_operator_graph_backlinks,
+    resolve_operator_graph_backlinks,
+    validate_operator_graph_backlink_integrity_from_payloads,
+    validate_operator_graph_backlink_integrity,
+)
 from ui.contracts.dependent_variable_registry import (
     DEPENDENT_VARIABLE_REGISTRY,
     DEPENDENT_VARIABLE_REGISTRY_VERSION,
@@ -110,6 +117,11 @@ __all__ = [
     "get_operator_registry",
     "list_operator_ids",
     "get_operator",
+    "OperatorGraphBacklinkError",
+    "resolve_operator_graph_backlinks",
+    "list_operator_graph_backlinks",
+    "validate_operator_graph_backlink_integrity_from_payloads",
+    "validate_operator_graph_backlink_integrity",
     "DependentVariableRegistryValidationError",
     "DEPENDENT_VARIABLE_REGISTRY_VERSION",
     "DEPENDENT_VARIABLE_REGISTRY",
