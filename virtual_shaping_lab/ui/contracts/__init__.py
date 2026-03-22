@@ -63,6 +63,13 @@ from ui.contracts.preset_run_flow import (
     resolve_results_contract_from_preset,
     validate_preset_results_priority,
 )
+from ui.contracts.preset_hardening import (
+    PresetHardeningError,
+    build_trial_hover_overlay,
+    decode_results_return_state,
+    encode_results_return_state,
+    validate_preset_form_edits,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -125,6 +132,11 @@ __all__ = [
     "resolve_preset_results_view",
     "resolve_results_contract_from_preset",
     "validate_preset_results_priority",
+    "PresetHardeningError",
+    "build_trial_hover_overlay",
+    "encode_results_return_state",
+    "decode_results_return_state",
+    "validate_preset_form_edits",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
