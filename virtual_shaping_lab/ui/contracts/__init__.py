@@ -94,6 +94,11 @@ from ui.contracts.trialstate_inspector import (
     TrialStateInspectorError,
     build_trialstate_inspector,
 )
+from ui.contracts.report_alignment import (
+    METRIC_TO_DEPENDENT_VARIABLE,
+    ReportAlignmentError,
+    build_report_alignment_contract,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -177,6 +182,9 @@ __all__ = [
     "TrialStateInspectorError",
     "ALLOWED_INSPECTOR_MODES",
     "build_trialstate_inspector",
+    "ReportAlignmentError",
+    "METRIC_TO_DEPENDENT_VARIABLE",
+    "build_report_alignment_contract",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
