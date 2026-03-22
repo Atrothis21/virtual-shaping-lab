@@ -37,6 +37,7 @@ from ui.contracts.preset_registry import (
     get_preset,
     get_preset_registry,
     list_preset_ids,
+    validate_acquisition_preset_invariants,
     validate_preset_registry,
 )
 from ui.contracts.registry_integrity import (
@@ -87,6 +88,7 @@ __all__ = [
     "PRESET_REGISTRY_VERSION",
     "PRESET_REGISTRY",
     "validate_preset_registry",
+    "validate_acquisition_preset_invariants",
     "get_preset_registry",
     "list_preset_ids",
     "get_preset",
