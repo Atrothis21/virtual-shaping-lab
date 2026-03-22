@@ -25,6 +25,8 @@ REQUIRED_PRESET_KEYS: tuple[str, ...] = (
     "label",
     "description",
     "protocol_family",
+    "template",
+    "ui_contract",
     "registry_bindings",
     "results_contract",
 )
@@ -42,6 +44,55 @@ PRESET_REGISTRY: dict[str, Any] = {
             "label": "Acquisition",
             "description": "Canonical acquisition preset contract surface.",
             "protocol_family": "acquisition",
+            "template": {
+                "experiment": {
+                    "program": {
+                        "phases": [
+                            {
+                                "name": "Acquisition",
+                                "protocol": "acquisition",
+                                "stimuli": {"cs_plus": ["tone"]},
+                                "params": {"n_trials": 50},
+                            }
+                        ],
+                    },
+                    "agent": {
+                        "learning": {
+                            "rule": "rescorla_wagner",
+                        }
+                    }
+                }
+            },
+            "ui_contract": {
+                "layers": {
+                    "overview": True,
+                    "phases": True,
+                    "operators": True,
+                    "math": True,
+                },
+                "locking": {
+                    "protocol_locked": True,
+                    "phase_structure_locked": True,
+                    "operators_read_only": True,
+                },
+                "editability": {
+                    "allowed_parameters": [
+                        "experiment.program.phases[0].params.n_trials",
+                        "experiment.program.phases[0].stimuli.cs_plus",
+                        "experiment.agent.learning.rule",
+                    ],
+                    "locked_parameters": [
+                        "experiment.program.phases[0].protocol",
+                        "experiment.program.phases",
+                    ],
+                    "option_constraints": {
+                        "experiment.agent.learning.rule": [
+                            "rescorla_wagner",
+                            "temporal_difference",
+                        ]
+                    },
+                },
+            },
             "registry_bindings": {
                 "trialstate_fields": [
                     "stimulus",
@@ -100,6 +151,155 @@ def _require_string_list(value: Any, label: str) -> list[str]:
     return out
 
 
+def _validate_preset_ui_contract(
+    ui_contract: dict[str, Any],
+    *,
+    preset_key: str,
+) -> None:
+    layers = _require_dict(
+        ui_contract.get("layers"),
+        f"preset_registry.presets.{preset_key}.ui_contract.layers",
+    )
+    for layer_key in ("overview", "phases", "operators", "math"):
+        if layer_key not in layers:
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.ui_contract.layers missing required key: {layer_key}"
+            )
+        if not isinstance(layers.get(layer_key), bool):
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.ui_contract.layers.{layer_key} must be boolean."
+            )
+
+    locking = _require_dict(
+        ui_contract.get("locking"),
+        f"preset_registry.presets.{preset_key}.ui_contract.locking",
+    )
+    for lock_key in ("protocol_locked", "phase_structure_locked", "operators_read_only"):
+        if lock_key not in locking:
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.ui_contract.locking missing required key: {lock_key}"
+            )
+        if not isinstance(locking.get(lock_key), bool):
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.ui_contract.locking.{lock_key} must be boolean."
+            )
+
+    editability = _require_dict(
+        ui_contract.get("editability"),
+        f"preset_registry.presets.{preset_key}.ui_contract.editability",
+    )
+    allowed = set(
+        _require_string_list(
+            editability.get("allowed_parameters"),
+            f"preset_registry.presets.{preset_key}.ui_contract.editability.allowed_parameters",
+        )
+    )
+    locked = set(
+        _require_string_list(
+            editability.get("locked_parameters"),
+            f"preset_registry.presets.{preset_key}.ui_contract.editability.locked_parameters",
+        )
+    )
+    overlap = sorted(allowed.intersection(locked))
+    if overlap:
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key}.ui_contract.editability has overlapping allowed/locked parameters: {', '.join(overlap)}"
+        )
+    option_constraints = editability.get("option_constraints", {})
+    if option_constraints is not None:
+        option_constraints = _require_dict(
+            option_constraints,
+            f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints",
+        )
+        for path, values in option_constraints.items():
+            path_key = _require_non_empty_string(
+                path,
+                f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.path",
+            )
+            if path_key not in allowed:
+                raise PresetRegistryValidationError(
+                    f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints path must also be allowed: {path_key}"
+                )
+            allowed_values = _require_string_list(
+                values,
+                f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.{path_key}",
+            )
+            if not allowed_values:
+                raise PresetRegistryValidationError(
+                    f"preset_registry.presets.{preset_key}.ui_contract.editability.option_constraints.{path_key} must be non-empty."
+                )
+
+
+def _validate_acquisition_template(preset: dict[str, Any], *, preset_key: str) -> None:
+    template = _require_dict(
+        preset.get("template"),
+        f"preset_registry.presets.{preset_key}.template",
+    )
+    experiment = _require_dict(
+        template.get("experiment"),
+        f"preset_registry.presets.{preset_key}.template.experiment",
+    )
+    program = _require_dict(
+        experiment.get("program"),
+        f"preset_registry.presets.{preset_key}.template.experiment.program",
+    )
+    phases = program.get("phases")
+    if not isinstance(phases, list):
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key}.template.experiment.program.phases must be a list."
+        )
+    if len(phases) != 1:
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key} acquisition invariant failed: expected exactly one phase."
+        )
+    phase0 = _require_dict(
+        phases[0],
+        f"preset_registry.presets.{preset_key}.template.experiment.program.phases[0]",
+    )
+    protocol = _require_non_empty_string(
+        phase0.get("protocol"),
+        f"preset_registry.presets.{preset_key}.template.experiment.program.phases[0].protocol",
+    )
+    if protocol != "acquisition":
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key} acquisition invariant failed: phase protocol must be 'acquisition'."
+        )
+
+
+def validate_acquisition_preset_invariants(
+    preset: dict[str, Any],
+    *,
+    preset_key: str = "acquisition",
+) -> None:
+    protocol_family = _require_non_empty_string(
+        preset.get("protocol_family"),
+        f"preset_registry.presets.{preset_key}.protocol_family",
+    )
+    if protocol_family != "acquisition":
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key} acquisition invariant failed: protocol_family must be 'acquisition'."
+        )
+
+    _validate_acquisition_template(preset, preset_key=preset_key)
+
+    bindings = _require_dict(
+        preset.get("registry_bindings"),
+        f"preset_registry.presets.{preset_key}.registry_bindings",
+    )
+    operators = set(
+        _require_string_list(
+            bindings.get("operators"),
+            f"preset_registry.presets.{preset_key}.registry_bindings.operators",
+        )
+    )
+    required_operators = {"phi", "p", "delta", "w", "m"}
+    missing = sorted(required_operators - operators)
+    if missing:
+        raise PresetRegistryValidationError(
+            f"preset_registry.presets.{preset_key} acquisition invariant failed: missing required operators: {', '.join(missing)}"
+        )
+
+
 def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str, Any]:
     payload = deepcopy(PRESET_REGISTRY if registry is None else registry)
     root = _require_dict(payload, "preset_registry")
@@ -143,6 +343,13 @@ def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str
         _require_non_empty_string(
             preset.get("protocol_family"),
             f"preset_registry.presets.{preset_key}.protocol_family",
+        )
+        _validate_preset_ui_contract(
+            _require_dict(
+                preset.get("ui_contract"),
+                f"preset_registry.presets.{preset_key}.ui_contract",
+            ),
+            preset_key=preset_key,
         )
 
         bindings = _require_dict(
@@ -204,6 +411,8 @@ def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str
                         f"preset_registry.presets.{preset_key}.results_contract.{contract_key} "
                         f"contains undeclared dependent variable: {variable_id}"
                     )
+        if preset_key == "acquisition":
+            validate_acquisition_preset_invariants(preset, preset_key=preset_key)
 
     return payload
 

@@ -37,12 +37,38 @@ from ui.contracts.preset_registry import (
     get_preset,
     get_preset_registry,
     list_preset_ids,
+    validate_acquisition_preset_invariants,
     validate_preset_registry,
 )
 from ui.contracts.registry_integrity import (
     UIRegistryIntegrityError,
     load_ui_registries,
     validate_ui_registry_integrity,
+)
+from ui.contracts.preset_detail_contract import (
+    PresetDetailContractError,
+    build_preset_detail_contract,
+)
+from ui.contracts.preset_materialization import (
+    PresetMaterializationError,
+    materialize_preset_payload,
+    stable_materialized_payload_hash,
+    stable_materialized_payload_json,
+    validate_materialized_payload_boundary,
+)
+from ui.contracts.preset_run_flow import (
+    PresetRunFlowContractError,
+    build_preset_run_flow_contract,
+    resolve_preset_results_view,
+    resolve_results_contract_from_preset,
+    validate_preset_results_priority,
+)
+from ui.contracts.preset_hardening import (
+    PresetHardeningError,
+    build_trial_hover_overlay,
+    decode_results_return_state,
+    encode_results_return_state,
+    validate_preset_form_edits,
 )
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
@@ -87,12 +113,30 @@ __all__ = [
     "PRESET_REGISTRY_VERSION",
     "PRESET_REGISTRY",
     "validate_preset_registry",
+    "validate_acquisition_preset_invariants",
     "get_preset_registry",
     "list_preset_ids",
     "get_preset",
     "UIRegistryIntegrityError",
     "load_ui_registries",
     "validate_ui_registry_integrity",
+    "PresetDetailContractError",
+    "build_preset_detail_contract",
+    "PresetMaterializationError",
+    "materialize_preset_payload",
+    "stable_materialized_payload_json",
+    "stable_materialized_payload_hash",
+    "validate_materialized_payload_boundary",
+    "PresetRunFlowContractError",
+    "build_preset_run_flow_contract",
+    "resolve_preset_results_view",
+    "resolve_results_contract_from_preset",
+    "validate_preset_results_priority",
+    "PresetHardeningError",
+    "build_trial_hover_overlay",
+    "encode_results_return_state",
+    "decode_results_return_state",
+    "validate_preset_form_edits",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",
