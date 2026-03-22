@@ -17,6 +17,8 @@ class ReportAlignmentError(ValueError):
 # Keep this intentionally explicit and easy to extend as report coverage grows.
 METRIC_TO_DEPENDENT_VARIABLE: dict[str, str] = {
     "prediction_time_series": "predicted_outcome",
+    "mean_prediction_by_stimulus": "predicted_outcome",
+    "final_prediction_by_stimulus": "predicted_outcome",
     "prediction_error_time_series": "prediction_error",
     "action_counts": "action_counts",
 }
@@ -33,7 +35,12 @@ def _humanize_metric_name(metric_name: str) -> str:
 
 
 def _resolve_preset_variable_catalog(preset_id: str) -> list[dict[str, Any]]:
-    preset = get_preset(preset_id)
+    try:
+        preset = get_preset(preset_id)
+    except KeyError:
+        # Report presets can exist without a UI preset-registry entry.
+        # In that case, keep a thin/empty catalog and still align mapped metrics.
+        return []
     results_contract = preset.get("results_contract")
     if not isinstance(results_contract, dict):
         raise ReportAlignmentError(f"Preset '{preset_id}' is missing results_contract.")
@@ -76,15 +83,27 @@ def build_report_alignment_contract(
     for idx, raw_metric_name in enumerate(metric_names):
         metric_name = _require_non_empty_string(raw_metric_name, f"metric_names[{idx}]")
         variable_id = METRIC_TO_DEPENDENT_VARIABLE.get(metric_name)
-        if variable_id and variable_id in variable_by_id:
-            variable = variable_by_id[variable_id]
-            metric_labels[metric_name] = {
-                "label": variable["label"],
-                "description": variable["description"],
-                "variable_id": variable_id,
-                "source": "dependent_variable_registry",
-            }
-            continue
+        if variable_id:
+            variable = variable_by_id.get(variable_id)
+            if variable is None:
+                try:
+                    resolved = resolve_report_variable(variable_id)
+                    variable = {
+                        "id": resolved["id"],
+                        "label": resolved["label"],
+                        "description": resolved["plain_language"],
+                        "units": resolved["units"],
+                    }
+                except KeyError:
+                    variable = None
+            if variable is not None:
+                metric_labels[metric_name] = {
+                    "label": variable["label"],
+                    "description": variable["description"],
+                    "variable_id": variable_id,
+                    "source": "dependent_variable_registry",
+                }
+                continue
         metric_labels[metric_name] = {
             "label": _humanize_metric_name(metric_name),
             "description": "",
@@ -97,4 +116,3 @@ def build_report_alignment_contract(
         "variables": deepcopy(variable_catalog),
         "metric_labels": deepcopy(metric_labels),
     }
-

@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 
 from analysis.report.config import ReportConfig
+from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
 from ui.contracts.dependent_variable_resolver import resolve_report_variable
 from ui.contracts.report_alignment import build_report_alignment_contract
 
 
 class _DummyMetric:
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
     def compute(self, records):
         return {"n": len(records)}
 
@@ -47,10 +51,10 @@ def test_report_alignment_snapshot_for_selected_acquisition_metrics():
             "source": "dependent_variable_registry",
         },
         "mean_prediction_by_stimulus": {
-            "label": "Mean Prediction By Stimulus",
-            "description": "",
-            "variable_id": None,
-            "source": "metric_name_fallback",
+            "label": "Predicted Outcome",
+            "description": "Expected outcome before feedback arrives.",
+            "variable_id": "predicted_outcome",
+            "source": "dependent_variable_registry",
         },
     }
 
@@ -82,7 +86,7 @@ def test_run_report_emits_registry_driven_alignment_artifact(monkeypatch, tmp_pa
     payload = json.loads(alignment_path.read_text(encoding="utf-8"))
     assert payload["preset_id"] == "acquisition"
     assert payload["metric_labels"]["prediction_time_series"]["label"] == "Predicted Outcome"
-    assert payload["metric_labels"]["mean_prediction_by_stimulus"]["label"] == "Mean Prediction By Stimulus"
+    assert payload["metric_labels"]["mean_prediction_by_stimulus"]["label"] == "Predicted Outcome"
 
 
 def test_run_report_metric_pages_use_registry_alignment_label(monkeypatch, tmp_path):
@@ -117,3 +121,91 @@ def test_run_report_metric_pages_use_registry_alignment_label(monkeypatch, tmp_p
         output_dir=str(tmp_path),
     )
     assert captured_titles == ["Predicted Outcome"]
+
+
+def test_report_alignment_snapshot_selected_presets_generated_artifacts(monkeypatch, tmp_path):
+    selected_presets = ("acquisition", "differential_acquisition")
+    all_metrics: set[str] = set()
+    all_visualizations: set[str] = set()
+    for preset in selected_presets:
+        cfg = get_report_preset(preset)
+        all_metrics.update(cfg.metrics)
+        all_visualizations.update(cfg.visualizations)
+
+    monkeypatch.setattr(
+        report_module,
+        "METRIC_REGISTRY",
+        {name: _DummyMetric for name in all_metrics},
+    )
+
+    class _DummyViz:
+        def __init__(self):
+            self.fig = None
+
+        def render(self, records, metrics=None):
+            self.fig = None
+
+        def save(self, path):
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("dummy")
+
+    monkeypatch.setattr(
+        report_module,
+        "VISUALIZATION_REGISTRY",
+        {name: _DummyViz for name in all_visualizations},
+    )
+
+    acquisition_dir = report_module.run_report(
+        records=[{"prediction": 0.2, "response": 0.2, "stimulus": "tone"}],
+        preset="acquisition",
+        output_dir=str(tmp_path / "acquisition"),
+    )
+    differential_dir = report_module.run_report(
+        records=[{"prediction": 0.2, "response": 0.2, "reward": 1.0, "stimulus": "tone"}],
+        preset="differential_acquisition",
+        output_dir=str(tmp_path / "differential_acquisition"),
+    )
+
+    acquisition_alignment = json.loads((acquisition_dir / "report_alignment.json").read_text(encoding="utf-8"))
+    differential_alignment = json.loads((differential_dir / "report_alignment.json").read_text(encoding="utf-8"))
+
+    assert acquisition_alignment["metric_labels"] == {
+        "prediction_time_series": {
+            "label": "Predicted Outcome",
+            "description": "Expected outcome before feedback arrives.",
+            "variable_id": "predicted_outcome",
+            "source": "dependent_variable_registry",
+        }
+    }
+    assert differential_alignment["metric_labels"] == {
+        "mean_prediction_by_stimulus": {
+            "label": "Predicted Outcome",
+            "description": "Expected outcome before feedback arrives.",
+            "variable_id": "predicted_outcome",
+            "source": "dependent_variable_registry",
+        },
+        "final_prediction_by_stimulus": {
+            "label": "Predicted Outcome",
+            "description": "Expected outcome before feedback arrives.",
+            "variable_id": "predicted_outcome",
+            "source": "dependent_variable_registry",
+        },
+        "mean_reward_by_stimulus": {
+            "label": "Mean Reward By Stimulus",
+            "description": "",
+            "variable_id": None,
+            "source": "metric_name_fallback",
+        },
+        "trial_count_by_stimulus": {
+            "label": "Trial Count By Stimulus",
+            "description": "",
+            "variable_id": None,
+            "source": "metric_name_fallback",
+        },
+        "discrimination_index": {
+            "label": "Discrimination Index",
+            "description": "",
+            "variable_id": None,
+            "source": "metric_name_fallback",
+        },
+    }
