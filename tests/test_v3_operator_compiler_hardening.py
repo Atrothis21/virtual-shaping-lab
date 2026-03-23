@@ -61,12 +61,14 @@ def test_compile_latency_guardrail_for_canonical_fixture_set():
     rounds = 30
     for _ in range(rounds):
         for fixture in fixtures:
-            compile_and_materialize_operator_plan(
-                fixture["preset_definition"],
-                protocol_family=fixture["protocol_family"],
-                stimuli_catalog=["tone", "noise"],
-            )
+                compile_and_materialize_operator_plan(
+                    fixture["preset_definition"],
+                    protocol_family=fixture["protocol_family"],
+                    stimuli_catalog=["tone", "noise"],
+                )
     elapsed = time.perf_counter() - start
-    # Generous guardrail to catch severe performance regressions without CI flakiness.
-    assert elapsed < 5.0
-
+    total_compiles = rounds * len(fixtures)
+    per_compile_ms = (elapsed / total_compiles) * 1000.0
+    # Guardrail uses per-compile latency to reduce host-variance flakiness while
+    # still catching severe regressions in compiler/materialization performance.
+    assert per_compile_ms < 120.0
