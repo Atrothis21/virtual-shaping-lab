@@ -57,6 +57,35 @@ from ui.contracts.operator_assembly_spec import (
     stable_operator_assembly_spec_json,
     validate_operator_assembly_spec,
 )
+from ui.contracts.operator_legality_engine import (
+    OPERATOR_COMPATIBILITY_MATRIX,
+    OPERATOR_LEGALITY_RULES_VERSION,
+    OperatorLegalityError,
+    evaluate_operator_legality,
+    get_operator_compatibility_matrix,
+    list_operator_legality_error_codes,
+    validate_operator_legality,
+    validate_slot_selection_legality,
+)
+from ui.contracts.operator_selection_compiler import (
+    OPERATOR_SELECTION_COMPILER_VERSION,
+    OperatorSelectionCompilerError,
+    compile_operator_selection_artifact,
+    stable_selection_compile_hash,
+    stable_selection_compile_json,
+)
+from ui.contracts.operator_plan_materialization import (
+    OPERATOR_PLAN_MATERIALIZATION_VERSION,
+    OperatorPlanMaterializationError,
+    compile_and_materialize_operator_plan,
+    materialize_compiled_operator_plan_sections,
+    stable_materialized_operator_plan_hash,
+    stable_materialized_operator_plan_json,
+)
+from ui.contracts.operator_compiler_fixtures import (
+    CANONICAL_COMPILED_PRESET_FIXTURES_VERSION,
+    get_canonical_compiled_preset_fixtures,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -199,6 +228,27 @@ __all__ = [
     "validate_operator_assembly_spec",
     "stable_operator_assembly_spec_json",
     "stable_operator_assembly_spec_hash",
+    "OperatorLegalityError",
+    "OPERATOR_LEGALITY_RULES_VERSION",
+    "OPERATOR_COMPATIBILITY_MATRIX",
+    "validate_slot_selection_legality",
+    "evaluate_operator_legality",
+    "validate_operator_legality",
+    "get_operator_compatibility_matrix",
+    "list_operator_legality_error_codes",
+    "OperatorSelectionCompilerError",
+    "OPERATOR_SELECTION_COMPILER_VERSION",
+    "compile_operator_selection_artifact",
+    "stable_selection_compile_json",
+    "stable_selection_compile_hash",
+    "OperatorPlanMaterializationError",
+    "OPERATOR_PLAN_MATERIALIZATION_VERSION",
+    "materialize_compiled_operator_plan_sections",
+    "compile_and_materialize_operator_plan",
+    "stable_materialized_operator_plan_json",
+    "stable_materialized_operator_plan_hash",
+    "CANONICAL_COMPILED_PRESET_FIXTURES_VERSION",
+    "get_canonical_compiled_preset_fixtures",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
