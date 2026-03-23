@@ -74,7 +74,7 @@ jobs:
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3 operator basis foundation
         run: >
-          pytest -q tests/test_v3_operator_basis_schema.py tests/test_v3_operator_registry_contract.py tests/test_v3_operator_subset_contract.py
+          pytest -q tests/test_v3_operator_basis_schema.py tests/test_v3_operator_registry_contract.py tests/test_v3_operator_subset_contract.py tests/test_v3_operator_assembly_spec.py
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3 acquisition preset golden path bucket

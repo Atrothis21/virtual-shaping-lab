@@ -49,6 +49,14 @@ from ui.contracts.operator_subset_contract import (
     validate_preset_definition,
     validate_registry_generated_ui_universe,
 )
+from ui.contracts.operator_assembly_spec import (
+    OPERATOR_ASSEMBLY_SPEC_VERSION,
+    OperatorAssemblySpecValidationError,
+    compile_operator_subset_to_assembly_spec,
+    stable_operator_assembly_spec_hash,
+    stable_operator_assembly_spec_json,
+    validate_operator_assembly_spec,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -185,6 +193,12 @@ __all__ = [
     "get_preset_definition_template",
     "build_registry_generated_ui_universe",
     "validate_registry_generated_ui_universe",
+    "OperatorAssemblySpecValidationError",
+    "OPERATOR_ASSEMBLY_SPEC_VERSION",
+    "compile_operator_subset_to_assembly_spec",
+    "validate_operator_assembly_spec",
+    "stable_operator_assembly_spec_json",
+    "stable_operator_assembly_spec_hash",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
