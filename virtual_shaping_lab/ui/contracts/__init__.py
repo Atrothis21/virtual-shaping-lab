@@ -74,6 +74,14 @@ from ui.contracts.operator_selection_compiler import (
     stable_selection_compile_hash,
     stable_selection_compile_json,
 )
+from ui.contracts.operator_plan_materialization import (
+    OPERATOR_PLAN_MATERIALIZATION_VERSION,
+    OperatorPlanMaterializationError,
+    compile_and_materialize_operator_plan,
+    materialize_compiled_operator_plan_sections,
+    stable_materialized_operator_plan_hash,
+    stable_materialized_operator_plan_json,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -229,6 +237,12 @@ __all__ = [
     "compile_operator_selection_artifact",
     "stable_selection_compile_json",
     "stable_selection_compile_hash",
+    "OperatorPlanMaterializationError",
+    "OPERATOR_PLAN_MATERIALIZATION_VERSION",
+    "materialize_compiled_operator_plan_sections",
+    "compile_and_materialize_operator_plan",
+    "stable_materialized_operator_plan_json",
+    "stable_materialized_operator_plan_hash",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
