@@ -24,9 +24,15 @@ from experiment.factories.representation_factory import build_representation
 from experiment.factories.reward_schedule_factory import build_reward_schedule
 from experiment.factories.policy_factory import build_policy
 from experiment.phases.public import build_phase
+from experiment.phases.catalog_runtime import PHASE_BUILDERS
 from experiment.config import PhaseConfig
 from experiment.domain.types import ExperimentPlan
 from experiment.parameters import validate_composed_parameter_ownership
+from experiment.protocol_phase_boundary import (
+    ProtocolPhaseBoundaryError,
+    derive_unit_build_key,
+    resolve_unit_build_boundary,
+)
 
 UNIFIED_COMPOSED_AGENT_NAME = "composed_agent"
 
@@ -550,7 +556,19 @@ def _plan_to_config(plan: ExperimentPlan):
                 name=unit.get("name", f"Phase {i}"),
                 protocol=unit["protocol"],
                 stimuli=unit.get("stimuli"),
-                params=unit.get("params") or {},
+                params={
+                    **(unit.get("params") or {}),
+                    **(
+                        {"__basis_operator_attachments__": unit.get("operator_attachments")}
+                        if isinstance(unit.get("operator_attachments"), dict)
+                        else {}
+                    ),
+                    **(
+                        {"build_boundary": unit.get("build_boundary")}
+                        if isinstance(unit.get("build_boundary"), str)
+                        else {}
+                    ),
+                },
             )
         )
 
@@ -688,10 +706,40 @@ class UnitAssembler:
             typed_unit = typed_units[i] if i < len(typed_units) else None
             params = self._apply_typed_unit_defaults(params, typed_unit)
 
+            requested_boundary = None
+            if isinstance(params.get("build_boundary"), str):
+                requested_boundary = str(params.pop("build_boundary")).strip().lower()
+            attachments = params.pop("__basis_operator_attachments__", None)
+            if requested_boundary is None and isinstance(attachments, dict):
+                candidate = attachments.get("build_boundary")
+                if isinstance(candidate, str):
+                    requested_boundary = candidate.strip().lower()
+            if isinstance(typed_unit, dict):
+                if isinstance(typed_unit.get("build_boundary"), str):
+                    requested_boundary = str(typed_unit.get("build_boundary")).strip().lower()
+                metadata = typed_unit.get("metadata")
+                if requested_boundary is None and isinstance(metadata, dict):
+                    candidate = metadata.get("build_boundary")
+                    if isinstance(candidate, str):
+                        requested_boundary = candidate.strip().lower()
+
+            build_boundary = resolve_unit_build_boundary(
+                phase.protocol,
+                protocol_registry=PROTOCOL_REGISTRY,
+                phase_registry=PHASE_BUILDERS,
+                requested_boundary=requested_boundary,
+            )
+            if build_boundary == "phase" and phase.protocol not in PHASE_BUILDERS:
+                available = ", ".join(sorted(PHASE_BUILDERS.keys()))
+                raise ProtocolPhaseBoundaryError(
+                    f"Phase boundary requested for '{phase.protocol}', but no atomic phase builder exists. "
+                    f"Available atomic phases: {available}"
+                )
+
             if "reward_schedule" in params:
                 params["reward_schedule"] = build_reward_schedule(params["reward_schedule"])
 
-            if _is_protocol_phase(phase.protocol):
+            if build_boundary == "protocol":
                 unit = build_protocol(
                     phase.protocol,
                     agent=agent,
@@ -711,6 +759,17 @@ class UnitAssembler:
                 if hasattr(unit, "context"):
                     unit.context = inferred_context
                 unit.context_source = "inferred"
+
+            unit_context = getattr(unit, "context", None)
+            unit_build_key = derive_unit_build_key(
+                phase_index=i,
+                phase_name=phase.name,
+                protocol_name=phase.protocol,
+                build_boundary=build_boundary,
+                context_id=unit_context if isinstance(unit_context, str) else None,
+            )
+            unit.build_boundary = build_boundary
+            unit.unit_build_key = unit_build_key
 
             runtime_units.append(unit)
         return runtime_units
