@@ -483,9 +483,10 @@ def _plan_to_config(plan: ExperimentPlan):
     typed_attention = typed_learning.get("attention", {}) if isinstance(typed_learning.get("attention"), dict) else {}
     canonical_attention = canonical_learning.get("attention", {}) if isinstance(canonical_learning.get("attention"), dict) else {}
 
-    learner_rule = typed_learning.get("rule", canonical_learning.get("rule"))
-    if not learner_rule and isinstance(basis_agent.get("learning"), dict):
-        learner_rule = basis_agent.get("learning", {}).get("rule")
+    basis_learning = basis_agent.get("learning", {}) if isinstance(basis_agent.get("learning"), dict) else {}
+    learner_rule = basis_learning.get("rule")
+    if not learner_rule:
+        learner_rule = typed_learning.get("rule", canonical_learning.get("rule"))
     agent_name = agent_spec.get("agent", canonical_agent.get("name"))
     if not agent_name:
         agent_name = basis_agent.get("name")
