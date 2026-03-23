@@ -32,6 +32,12 @@ Compiler outputs become the source for plan materialization:
 - stable compile identity/hash
 - predictable diagnostics on invalid subsets
 
+### 4. Legality matrix is published and drift-guarded
+
+- authoritative artifact: `docs/v3_12_5_legality_matrix.json`
+- human-readable companion: `docs/v3_12_5_legality_matrix.md`
+- CI drift guard: `tests/test_v3_operator_legality_matrix_drift.py`
+
 ## Migration Guidance for Contributors
 
 ### Do
@@ -64,3 +70,4 @@ Compiler outputs become the source for plan materialization:
 - Keep `version` fields stable and bump intentionally.
 - Treat selection IDs as contract identifiers.
 - Keep error codes and compile diagnostics deterministic for snapshot-based CI.
+- Keep legality matrix artifact in lockstep with engine registry.

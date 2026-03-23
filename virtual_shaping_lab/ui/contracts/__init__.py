@@ -82,6 +82,10 @@ from ui.contracts.operator_plan_materialization import (
     stable_materialized_operator_plan_hash,
     stable_materialized_operator_plan_json,
 )
+from ui.contracts.operator_compiler_fixtures import (
+    CANONICAL_COMPILED_PRESET_FIXTURES_VERSION,
+    get_canonical_compiled_preset_fixtures,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -243,6 +247,8 @@ __all__ = [
     "compile_and_materialize_operator_plan",
     "stable_materialized_operator_plan_json",
     "stable_materialized_operator_plan_hash",
+    "CANONICAL_COMPILED_PRESET_FIXTURES_VERSION",
+    "get_canonical_compiled_preset_fixtures",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
