@@ -40,6 +40,15 @@ from ui.contracts.operator_basis_registry import (
     list_ui_selectable_implementations,
     validate_operator_basis_registry,
 )
+from ui.contracts.operator_subset_contract import (
+    PRESET_DEFINITION_TEMPLATE,
+    UI_SELECTABLE_UNIVERSE_POLICY,
+    OperatorSubsetContractError,
+    build_registry_generated_ui_universe,
+    get_preset_definition_template,
+    validate_preset_definition,
+    validate_registry_generated_ui_universe,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -169,6 +178,13 @@ __all__ = [
     "list_ui_selectable_implementations",
     "get_operator_selection_contract",
     "get_internal_builder_family",
+    "OperatorSubsetContractError",
+    "UI_SELECTABLE_UNIVERSE_POLICY",
+    "PRESET_DEFINITION_TEMPLATE",
+    "validate_preset_definition",
+    "get_preset_definition_template",
+    "build_registry_generated_ui_universe",
+    "validate_registry_generated_ui_universe",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
