@@ -77,6 +77,11 @@ jobs:
           pytest -q tests/test_v3_ui_preset_schema_contracts.py tests/test_v3_ui_teaching_contract.py tests/test_v3_ui_payload_materialization.py tests/test_v3_ui_preset_run_flow.py tests/test_v3_ui_preset_hardening.py -k acquisition
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 UI explainability contracts
+        run: >
+          pytest -q tests/test_v3_ui_dependent_variable_resolver.py tests/test_v3_ui_trial_hover_explainability.py tests/test_v3_ui_operator_graph_backlinks.py tests/test_v3_ui_trialstate_inspector.py tests/test_v3_ui_report_alignment.py
+          -W error
+          -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

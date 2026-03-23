@@ -17,6 +17,13 @@ from ui.contracts.operator_registry import (
     list_operator_ids,
     validate_operator_registry,
 )
+from ui.contracts.operator_graph_backlinks import (
+    OperatorGraphBacklinkError,
+    list_operator_graph_backlinks,
+    resolve_operator_graph_backlinks,
+    validate_operator_graph_backlink_integrity_from_payloads,
+    validate_operator_graph_backlink_integrity,
+)
 from ui.contracts.dependent_variable_registry import (
     DEPENDENT_VARIABLE_REGISTRY,
     DEPENDENT_VARIABLE_REGISTRY_VERSION,
@@ -29,6 +36,14 @@ from ui.contracts.dependent_variable_registry import (
     validate_dependent_variable_ids,
     validate_dependent_variable_registry,
     validate_preset_results_contract,
+)
+from ui.contracts.dependent_variable_resolver import (
+    DependentVariableResolverError,
+    resolve_dependent_variable,
+    resolve_dependent_variable_from_registry_payload,
+    resolve_dependent_variables_for_surface,
+    resolve_report_variable,
+    resolve_results_variable,
 )
 from ui.contracts.preset_registry import (
     PRESET_REGISTRY,
@@ -70,6 +85,20 @@ from ui.contracts.preset_hardening import (
     encode_results_return_state,
     validate_preset_form_edits,
 )
+from ui.contracts.trial_hover_explainability import (
+    TrialHoverExplainabilityError,
+    build_trial_hover_explainability_panel,
+)
+from ui.contracts.trialstate_inspector import (
+    ALLOWED_INSPECTOR_MODES,
+    TrialStateInspectorError,
+    build_trialstate_inspector,
+)
+from ui.contracts.report_alignment import (
+    METRIC_TO_DEPENDENT_VARIABLE,
+    ReportAlignmentError,
+    build_report_alignment_contract,
+)
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
     REQUIRED_TRIALSTATE_FIELD_GROUPS,
@@ -98,6 +127,11 @@ __all__ = [
     "get_operator_registry",
     "list_operator_ids",
     "get_operator",
+    "OperatorGraphBacklinkError",
+    "resolve_operator_graph_backlinks",
+    "list_operator_graph_backlinks",
+    "validate_operator_graph_backlink_integrity_from_payloads",
+    "validate_operator_graph_backlink_integrity",
     "DependentVariableRegistryValidationError",
     "DEPENDENT_VARIABLE_REGISTRY_VERSION",
     "DEPENDENT_VARIABLE_REGISTRY",
@@ -109,6 +143,12 @@ __all__ = [
     "get_dependent_variable",
     "validate_dependent_variable_ids",
     "validate_preset_results_contract",
+    "DependentVariableResolverError",
+    "resolve_dependent_variable",
+    "resolve_dependent_variable_from_registry_payload",
+    "resolve_dependent_variables_for_surface",
+    "resolve_results_variable",
+    "resolve_report_variable",
     "PresetRegistryValidationError",
     "PRESET_REGISTRY_VERSION",
     "PRESET_REGISTRY",
@@ -137,6 +177,14 @@ __all__ = [
     "encode_results_return_state",
     "decode_results_return_state",
     "validate_preset_form_edits",
+    "TrialHoverExplainabilityError",
+    "build_trial_hover_explainability_panel",
+    "TrialStateInspectorError",
+    "ALLOWED_INSPECTOR_MODES",
+    "build_trialstate_inspector",
+    "ReportAlignmentError",
+    "METRIC_TO_DEPENDENT_VARIABLE",
+    "build_report_alignment_contract",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",

@@ -10,6 +10,7 @@ from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
+from ui.contracts.report_alignment import ReportAlignmentError, build_report_alignment_contract
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
@@ -311,6 +312,12 @@ class ReportArtifactWriter:
         with open(ctx.metrics_dir / f"{metric_name}.json", "w") as f:
             json.dump(_to_jsonable(result), f, indent=2)
 
+    def write_report_alignment(self, *, alignment: dict | None, ctx: ReportRunContext) -> None:
+        if not isinstance(alignment, dict):
+            return
+        with open(ctx.report_dir / "report_alignment.json", "w") as f:
+            json.dump(_to_jsonable(alignment), f, indent=2)
+
 
 class MetricExecutionPipeline:
     def run(self, *, records, report_config, artifact_writer: ReportArtifactWriter, ctx: ReportRunContext) -> dict:
@@ -363,9 +370,10 @@ class PdfComposer:
     def create(self, *, ctx: ReportRunContext) -> ReportPDF:
         return ReportPDF(ctx.report_dir / "report.pdf")
 
-    def add_metric_pages(self, *, pdf: ReportPDF, metrics: dict) -> None:
+    def add_metric_pages(self, *, pdf: ReportPDF, metrics: dict, metric_display_labels: dict[str, str] | None = None) -> None:
+        display = metric_display_labels or {}
         for metric_name, metric_result in metrics.items():
-            pdf.add_metric_text(metric_name, _to_jsonable(metric_result))
+            pdf.add_metric_text(display.get(metric_name, metric_name), _to_jsonable(metric_result))
 
     def close(self, *, pdf: ReportPDF) -> None:
         pdf.close()
@@ -382,6 +390,12 @@ def run_report(records, preset: str, payload=None, output_dir: str | None = None
 
     ctx = artifact_writer.create_context(output_dir=output_dir)
     artifact_writer.write_provenance(records=records, payload=payload, ctx=ctx)
+    report_alignment = None
+    try:
+        report_alignment = build_report_alignment_contract(preset_id=preset, metric_names=report_config.metrics)
+    except (ReportAlignmentError, KeyError):
+        report_alignment = None
+    artifact_writer.write_report_alignment(alignment=report_alignment, ctx=ctx)
 
     metrics = metric_pipeline.run(
         records=records,
@@ -398,7 +412,14 @@ def run_report(records, preset: str, payload=None, output_dir: str | None = None
         ctx=ctx,
         pdf=pdf,
     )
-    pdf_composer.add_metric_pages(pdf=pdf, metrics=metrics)
+    metric_display_labels = {}
+    if isinstance(report_alignment, dict):
+        raw_metric_labels = report_alignment.get("metric_labels")
+        if isinstance(raw_metric_labels, dict):
+            for metric_name, item in raw_metric_labels.items():
+                if isinstance(item, dict) and isinstance(item.get("label"), str) and item["label"].strip():
+                    metric_display_labels[str(metric_name)] = item["label"]
+    pdf_composer.add_metric_pages(pdf=pdf, metrics=metrics, metric_display_labels=metric_display_labels)
     pdf_composer.close(pdf=pdf)
 
     return ctx.report_dir
