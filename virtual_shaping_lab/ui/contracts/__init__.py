@@ -29,6 +29,17 @@ from ui.contracts.operator_basis_schema import (
     stable_operator_basis_schema_json,
     validate_operator_basis_schema,
 )
+from ui.contracts.operator_basis_registry import (
+    OPERATOR_BASIS_REGISTRY,
+    OPERATOR_BASIS_REGISTRY_VERSION,
+    OperatorBasisRegistryValidationError,
+    get_internal_builder_family,
+    get_operator_basis_registry,
+    get_operator_selection_contract,
+    list_operator_basis_registry_slots,
+    list_ui_selectable_implementations,
+    validate_operator_basis_registry,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -149,6 +160,15 @@ __all__ = [
     "list_operator_basis_slots",
     "stable_operator_basis_schema_json",
     "stable_operator_basis_schema_hash",
+    "OperatorBasisRegistryValidationError",
+    "OPERATOR_BASIS_REGISTRY_VERSION",
+    "OPERATOR_BASIS_REGISTRY",
+    "validate_operator_basis_registry",
+    "get_operator_basis_registry",
+    "list_operator_basis_registry_slots",
+    "list_ui_selectable_implementations",
+    "get_operator_selection_contract",
+    "get_internal_builder_family",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
