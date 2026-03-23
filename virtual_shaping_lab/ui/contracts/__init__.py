@@ -67,6 +67,13 @@ from ui.contracts.operator_legality_engine import (
     validate_operator_legality,
     validate_slot_selection_legality,
 )
+from ui.contracts.operator_selection_compiler import (
+    OPERATOR_SELECTION_COMPILER_VERSION,
+    OperatorSelectionCompilerError,
+    compile_operator_selection_artifact,
+    stable_selection_compile_hash,
+    stable_selection_compile_json,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -217,6 +224,11 @@ __all__ = [
     "validate_operator_legality",
     "get_operator_compatibility_matrix",
     "list_operator_legality_error_codes",
+    "OperatorSelectionCompilerError",
+    "OPERATOR_SELECTION_COMPILER_VERSION",
+    "compile_operator_selection_artifact",
+    "stable_selection_compile_json",
+    "stable_selection_compile_hash",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",

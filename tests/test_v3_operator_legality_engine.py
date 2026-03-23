@@ -36,6 +36,7 @@ def test_legality_engine_rejects_conditional_requirement_delta_requires_trace():
 
 def test_legality_engine_rejects_incompatible_classical_policy_pair():
     payload = _preset()
+    payload["operator_subset"]["p"] = "state_action_value"
     payload["operator_subset"]["pi"] = "softmax"
     with pytest.raises(OperatorLegalityError, match="LGL_E_CLASSICAL_POLICY_INCOMPATIBLE"):
         validate_operator_legality(payload)
@@ -84,7 +85,7 @@ def test_legality_matrix_coverage_entries_exercised():
     scenarios = [
         {"operator_subset": {"delta": "td_lambda_error", "e": "none"}},
         {"operator_subset": {"pi": "softmax", "p": "state_value"}},
-        {"operator_subset": {"pi": "softmax"}},
+        {"operator_subset": {"pi": "softmax", "p": "state_action_value"}},
         {"operator_subset": {"w": "actor_critic_update", "delta": "rw_error"}},
         {"operator_subset": {"m": ["action_probabilities"]}},
         {"operator_subset": {"m": ["eligibility_curve"]}},
