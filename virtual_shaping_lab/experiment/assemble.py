@@ -440,6 +440,31 @@ def _plan_to_config(plan: ExperimentPlan):
     program_spec = plan.program_spec or {}
     agent_spec = plan.agent_spec or {}
     runtime_spec = plan.runtime_spec or {}
+    basis_sections = (
+        plan.basis_materialized_sections
+        if isinstance(getattr(plan, "basis_materialized_sections", None), dict)
+        else {}
+    )
+    basis_experiment = (
+        basis_sections.get("experiment")
+        if isinstance(basis_sections.get("experiment"), dict)
+        else {}
+    )
+    basis_agent = (
+        basis_experiment.get("agent")
+        if isinstance(basis_experiment.get("agent"), dict)
+        else {}
+    )
+    basis_runtime = (
+        basis_experiment.get("runtime")
+        if isinstance(basis_experiment.get("runtime"), dict)
+        else {}
+    )
+    basis_program = (
+        basis_experiment.get("program")
+        if isinstance(basis_experiment.get("program"), dict)
+        else {}
+    )
     canonical_experiment = (
         (plan.canonical_payload or {}).get("experiment", {})
         if isinstance(plan.canonical_payload, dict)
@@ -459,12 +484,27 @@ def _plan_to_config(plan: ExperimentPlan):
     canonical_attention = canonical_learning.get("attention", {}) if isinstance(canonical_learning.get("attention"), dict) else {}
 
     learner_rule = typed_learning.get("rule", canonical_learning.get("rule"))
+    if not learner_rule and isinstance(basis_agent.get("learning"), dict):
+        learner_rule = basis_agent.get("learning", {}).get("rule")
     agent_name = agent_spec.get("agent", canonical_agent.get("name"))
-    representation_cfg = agent_spec.get("representation", canonical_representation)
-    policy_cfg = agent_spec.get("policy", canonical_agent.get("policy"))
+    if not agent_name:
+        agent_name = basis_agent.get("name")
+    representation_cfg = (
+        basis_agent.get("representation")
+        if isinstance(basis_agent.get("representation"), dict)
+        else agent_spec.get("representation", canonical_representation)
+    )
+    policy_cfg = basis_agent.get("policy", agent_spec.get("policy", canonical_agent.get("policy")))
     stimuli = agent_spec.get("stimuli")
     if not isinstance(stimuli, list):
-        stimuli = canonical_representation.get("params", {}).get("stimuli", []) if isinstance(canonical_representation.get("params"), dict) else []
+        if isinstance(representation_cfg, dict) and isinstance(representation_cfg.get("params"), dict):
+            stimuli = representation_cfg.get("params", {}).get("stimuli", [])
+        if not isinstance(stimuli, list):
+            stimuli = (
+                canonical_representation.get("params", {}).get("stimuli", [])
+                if isinstance(canonical_representation.get("params"), dict)
+                else []
+            )
 
     salience = agent_spec.get("salience")
     if not isinstance(salience, dict):
@@ -484,10 +524,18 @@ def _plan_to_config(plan: ExperimentPlan):
 
     context_inference = runtime_spec.get("context_inference")
     if not isinstance(context_inference, dict):
-        context_inference = canonical_runtime.get("context_inference", {}) if isinstance(canonical_runtime.get("context_inference"), dict) else {}
+        context_inference = (
+            canonical_runtime.get("context_inference", {})
+            if isinstance(canonical_runtime.get("context_inference"), dict)
+            else {}
+        )
+    if not context_inference and isinstance(basis_runtime.get("context_inference"), dict):
+        context_inference = dict(basis_runtime.get("context_inference") or {})
 
     phases = []
-    phase_source = program_spec.get("phases") if isinstance(program_spec.get("phases"), list) else plan.units
+    phase_source = basis_program.get("phases") if isinstance(basis_program.get("phases"), list) else None
+    if not isinstance(phase_source, list):
+        phase_source = program_spec.get("phases") if isinstance(program_spec.get("phases"), list) else plan.units
     for i, unit in enumerate(phase_source):
         if isinstance(unit, PhaseConfig):
             phases.append(unit)

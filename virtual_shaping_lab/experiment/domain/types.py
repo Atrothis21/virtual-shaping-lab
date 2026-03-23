@@ -291,6 +291,8 @@ class ExperimentPlan:
     agent_spec: dict[str, Any] = field(default_factory=dict)
     runtime_spec: dict[str, Any] = field(default_factory=dict)
     analysis_spec: dict[str, Any] = field(default_factory=dict)
+    basis_compile_artifact: dict[str, Any] = field(default_factory=dict)
+    basis_materialized_sections: dict[str, Any] = field(default_factory=dict)
     canonical_payload: dict[str, Any] = field(default_factory=dict)
     seed: Optional[int] = None
     record_schema_version: str = "v1"
@@ -320,6 +322,8 @@ class ExperimentPlan:
             "agent_spec": self._to_primitive(self.agent_spec),
             "runtime_spec": self._to_primitive(self.runtime_spec),
             "analysis_spec": self._to_primitive(self.analysis_spec),
+            "basis_compile_artifact": self._to_primitive(self.basis_compile_artifact),
+            "basis_materialized_sections": self._to_primitive(self.basis_materialized_sections),
             "canonical_payload": self._to_primitive(self.canonical_payload),
             "seed": self.seed,
             "record_schema_version": self.record_schema_version,
@@ -335,6 +339,8 @@ class ExperimentPlan:
             agent_spec=dict(data.get("agent_spec", {}) or {}),
             runtime_spec=dict(data.get("runtime_spec", {}) or {}),
             analysis_spec=dict(data.get("analysis_spec", {}) or {}),
+            basis_compile_artifact=dict(data.get("basis_compile_artifact", {}) or {}),
+            basis_materialized_sections=dict(data.get("basis_materialized_sections", {}) or {}),
             canonical_payload=dict(data.get("canonical_payload", {}) or {}),
             seed=data.get("seed"),
             record_schema_version=data.get("record_schema_version", "v1"),
@@ -398,6 +404,14 @@ class ExperimentPlan:
             environment_program=EnvironmentProgramSpec.from_dict({}),
             canonical_payload=dict(self.canonical_payload or {}),
         )
+
+    def basis_compile(self) -> dict[str, Any]:
+        """Return basis compile artifact reference payload."""
+        return dict(self.basis_compile_artifact or {})
+
+    def basis_materialized(self) -> dict[str, Any]:
+        """Return basis materialized section payload."""
+        return dict(self.basis_materialized_sections or {})
 
 
 @dataclass
