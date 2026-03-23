@@ -57,6 +57,16 @@ from ui.contracts.operator_assembly_spec import (
     stable_operator_assembly_spec_json,
     validate_operator_assembly_spec,
 )
+from ui.contracts.operator_legality_engine import (
+    OPERATOR_COMPATIBILITY_MATRIX,
+    OPERATOR_LEGALITY_RULES_VERSION,
+    OperatorLegalityError,
+    evaluate_operator_legality,
+    get_operator_compatibility_matrix,
+    list_operator_legality_error_codes,
+    validate_operator_legality,
+    validate_slot_selection_legality,
+)
 from ui.contracts.operator_graph_backlinks import (
     OperatorGraphBacklinkError,
     list_operator_graph_backlinks,
@@ -199,6 +209,14 @@ __all__ = [
     "validate_operator_assembly_spec",
     "stable_operator_assembly_spec_json",
     "stable_operator_assembly_spec_hash",
+    "OperatorLegalityError",
+    "OPERATOR_LEGALITY_RULES_VERSION",
+    "OPERATOR_COMPATIBILITY_MATRIX",
+    "validate_slot_selection_legality",
+    "evaluate_operator_legality",
+    "validate_operator_legality",
+    "get_operator_compatibility_matrix",
+    "list_operator_legality_error_codes",
     "OperatorGraphBacklinkError",
     "resolve_operator_graph_backlinks",
     "list_operator_graph_backlinks",
