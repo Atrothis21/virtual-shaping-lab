@@ -265,6 +265,19 @@ def materialize_tuple_authoring_api(payload: dict):
             and not any(key in raw_payload for key in ("arrangement", "task", "agent"))
         )
         materialized = materialize_tuple_authoring_payload(raw_payload)
+        # Preserve preset UX context from authoring request through materialization.
+        preset_ux = raw_payload.get("preset_ux")
+        if isinstance(preset_ux, dict):
+            normalized_preset_ux = {}
+            for key in ("smart_preset_id", "entry_mode", "compatibility_status"):
+                value = preset_ux.get(key)
+                if isinstance(value, str) and value.strip():
+                    normalized_preset_ux[key] = value.strip()
+            if normalized_preset_ux:
+                materialized["preset_ux"] = dict(normalized_preset_ux)
+                tuple_meta = materialized.get("tuple_authoring")
+                if isinstance(tuple_meta, dict):
+                    tuple_meta["preset_ux"] = dict(normalized_preset_ux)
         if uses_deprecated_shape:
             tuple_meta = materialized.get("tuple_authoring", {})
             diagnostics = tuple_meta.get("translation_diagnostics", {}) if isinstance(tuple_meta, dict) else {}
