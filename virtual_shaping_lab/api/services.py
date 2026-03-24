@@ -83,6 +83,43 @@ def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
     }
 
 
+def _summarize_operator_stage_diagnostics(records: list[dict[str, Any]]) -> Dict[str, Any]:
+    """Aggregate stage-level realization diagnostics from emitted records."""
+    stage_counts: Dict[str, Dict[str, int]] = {}
+    pipeline_hashes: set[str] = set()
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        metadata = record.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        op = metadata.get("operator_pipeline")
+        if not isinstance(op, dict):
+            continue
+
+        pipeline_hash = op.get("pipeline_hash")
+        if isinstance(pipeline_hash, str) and pipeline_hash.strip():
+            pipeline_hashes.add(pipeline_hash)
+
+        realization = op.get("stage_realization")
+        if not isinstance(realization, dict):
+            continue
+        for stage_key, mode in realization.items():
+            stage = str(stage_key)
+            mode_key = str(mode)
+            if stage not in stage_counts:
+                stage_counts[stage] = {"executed": 0, "delegated": 0, "metadata_only": 0}
+            if mode_key not in stage_counts[stage]:
+                stage_counts[stage][mode_key] = 0
+            stage_counts[stage][mode_key] += 1
+
+    return {
+        "pipeline_hashes": sorted(pipeline_hashes),
+        "realization_matrix": stage_counts,
+    }
+
+
 def _build_basis_compile_identity(plan: ExperimentPlan) -> Dict[str, Any]:
     basis_compile = dict(plan.basis_compile_artifact or {})
     subset_hash = basis_compile.get("frozen_compiled_hash")
@@ -577,6 +614,7 @@ class RunService:
             "learner_identity": _build_learner_identity(plan),
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
+            "operator_stage_diagnostics": _summarize_operator_stage_diagnostics(records),
         }
         _set_status_with_lifecycle(
             store,
@@ -724,6 +762,11 @@ class ReportService:
                 ),
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
+                "operator_stage_diagnostics": (
+                    source_metadata.get("operator_stage_diagnostics", {})
+                    if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
+                    else {}
+                ),
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -755,6 +798,11 @@ class ReportService:
                 ),
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
+                "operator_stage_diagnostics": (
+                    source_metadata.get("operator_stage_diagnostics", {})
+                    if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
+                    else {}
+                ),
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
                 "regeneration_mode": regeneration_mode,

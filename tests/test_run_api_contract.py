@@ -204,6 +204,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert "routed_objects" in body["metadata"]["basis_compile_identity"]
     assert isinstance(body["metadata"].get("measurement_provenance_identity"), dict)
     assert body["metadata"]["measurement_provenance_identity"].get("slot") == "m"
+    assert isinstance(body["metadata"].get("operator_stage_diagnostics"), dict)
+    assert isinstance(body["metadata"]["operator_stage_diagnostics"].get("realization_matrix"), dict)
     assert body["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in body["lifecycle"]["next_actions"]
 
@@ -261,6 +263,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("learner_identity"), dict)
     assert isinstance(status["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(status["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(status["metadata"].get("operator_stage_diagnostics"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
 
@@ -313,6 +316,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("learner_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
     assert report_body["metadata"]["missing_source_metadata"] == []
@@ -479,6 +483,7 @@ def test_run_report_endpoint_regenerates_from_records_when_payload_artifact_miss
     assert isinstance(report_body["metadata"].get("learner_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
 
 
 def test_run_report_regeneration_keeps_basis_and_measurement_identity(monkeypatch, tmp_path):
@@ -503,6 +508,7 @@ def test_run_report_regeneration_keeps_basis_and_measurement_identity(monkeypatc
 
     assert report_body["metadata"]["basis_compile_identity"] == run_body["metadata"]["basis_compile_identity"]
     assert report_body["metadata"]["measurement_provenance_identity"] == run_body["metadata"]["measurement_provenance_identity"]
+    assert report_body["metadata"]["operator_stage_diagnostics"] == run_body["metadata"]["operator_stage_diagnostics"]
 
 
 def test_run_report_endpoint_404_for_missing_run():

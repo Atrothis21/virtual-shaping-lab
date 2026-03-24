@@ -86,6 +86,36 @@ class Runner:
     def _emit_record(self, record: Dict[str, Any]) -> None:
         self.sink.emit(record)
 
+    @staticmethod
+    def _build_stage_realization(
+        *,
+        declared_stage_keys: tuple[str, ...],
+        executed_stage_keys: list[str],
+        delegated_stage_keys: set[str],
+        metadata_only_stage_keys: set[str],
+    ) -> dict[str, str]:
+        """
+        Build stage realization map for a single emitted record.
+
+        Contract:
+        - executed: stage executed concretely by runner
+        - delegated: stage declared but executed by delegated runtime path
+        - metadata_only: declared stage represented only as contract metadata
+        """
+        executed = set(executed_stage_keys)
+        out: dict[str, str] = {}
+        for key in declared_stage_keys:
+            if key in executed:
+                out[key] = "executed"
+            elif key in delegated_stage_keys:
+                out[key] = "delegated"
+            elif key in metadata_only_stage_keys:
+                out[key] = "metadata_only"
+            else:
+                # Any undeclared classification defaults to metadata-only.
+                out[key] = "metadata_only"
+        return out
+
     def _resolve_operator_pipeline(self) -> OperatorPipeline:
         raw = self.settings.get("operator_pipeline")
         if raw is None:
@@ -205,6 +235,7 @@ class Runner:
             executed_stage_keys: list[str] = []
             env_executed = False
             measure_executed = False
+            delegated_stage_keys: set[str] = {"Env"}
             for stage in self.operator_pipeline.stages:
                 executed_stage_keys.append(stage.key)
                 if stage.key == "Env":
@@ -280,6 +311,17 @@ class Runner:
                     measure_executed = True
                     if emitted is None:
                         raise ValueError("OperatorPipeline Measure stage requires prior Env execution.")
+                    stage_realization = self._build_stage_realization(
+                        declared_stage_keys=declared_stage_keys,
+                        executed_stage_keys=["Measure"],
+                        delegated_stage_keys=delegated_stage_keys,
+                        metadata_only_stage_keys=set(declared_stage_keys)
+                        - {"Measure"}
+                        - delegated_stage_keys,
+                    )
+                    non_executing_declared_stages = [
+                        key for key, status in stage_realization.items() if status != "executed"
+                    ]
                     for emitted_record in emitted:
                         metadata = emitted_record.get("metadata")
                         if not isinstance(metadata, dict):
@@ -289,6 +331,8 @@ class Runner:
                             "declared_stage_keys": list(declared_stage_keys),
                             "executed_stage_keys": list(executed_stage_keys),
                             "pipeline_hash": self.operator_pipeline.stable_hash(),
+                            "stage_realization": stage_realization,
+                            "non_executing_declared_stages": non_executing_declared_stages,
                         }
                         self._annotate_record_episode_surface(emitted_record)
                         finalize_record(
@@ -329,13 +373,16 @@ class Runner:
             step = None
             executed_stage_keys: list[str] = []
             measure_executed = False
+            executed_by_runner: set[str] = set()
             for stage in self.operator_pipeline.stages:
                 executed_stage_keys.append(stage.key)
                 if stage.key == "Policy":
                     action = self._select_policy_action(ctx)
+                    executed_by_runner.add(stage.key)
                     continue
                 if stage.key == "Env":
                     step = unit.step(action=action)
+                    executed_by_runner.add(stage.key)
                     continue
                 if stage.key == "Err":
                     if step is None:
@@ -345,11 +392,21 @@ class Runner:
                     continue
                 if stage.key == "Measure":
                     measure_executed = True
+                    executed_by_runner.add(stage.key)
                     if step is None:
                         raise ValueError("OperatorPipeline Measure stage requires prior Env execution.")
                     if not isinstance(step.trial_state, TrialState):
                         raise TypeError("Environment step must provide typed TrialState.")
                     trial_state = step.trial_state.to_dict()
+                    stage_realization = self._build_stage_realization(
+                        declared_stage_keys=declared_stage_keys,
+                        executed_stage_keys=sorted(executed_by_runner),
+                        delegated_stage_keys=set(),
+                        metadata_only_stage_keys=set(declared_stage_keys) - executed_by_runner,
+                    )
+                    non_executing_declared_stages = [
+                        key for key, status in stage_realization.items() if status != "executed"
+                    ]
                     context_value = None
                     z = trial_state.get("z")
                     if isinstance(z, dict):
@@ -374,6 +431,8 @@ class Runner:
                                 "declared_stage_keys": list(declared_stage_keys),
                                 "executed_stage_keys": list(executed_stage_keys),
                                 "pipeline_hash": self.operator_pipeline.stable_hash(),
+                                "stage_realization": stage_realization,
+                                "non_executing_declared_stages": non_executing_declared_stages,
                             },
                         },
                     }

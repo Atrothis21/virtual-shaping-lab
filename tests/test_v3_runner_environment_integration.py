@@ -69,6 +69,8 @@ def test_runner_environment_path_emits_trial_state_metadata():
         assert "declared_stage_keys" in op
         assert "executed_stage_keys" in op
         assert "pipeline_hash" in op
+        assert "stage_realization" in op and isinstance(op["stage_realization"], dict)
+        assert "non_executing_declared_stages" in op and isinstance(op["non_executing_declared_stages"], list)
 
 
 def test_runner_environment_path_emits_episode_identity_and_terminal_surface():
@@ -140,6 +142,11 @@ def test_runner_environment_execution_uses_declared_operator_pipeline_stage_sequ
         op = rec["metadata"]["operator_pipeline"]
         assert op["declared_stage_keys"] == list(pipeline.stage_keys())
         assert op["executed_stage_keys"] == list(pipeline.stage_keys())
+        assert op["stage_realization"]["Policy"] == "executed"
+        assert op["stage_realization"]["Env"] == "executed"
+        assert op["stage_realization"]["Measure"] == "executed"
+        assert op["stage_realization"]["Err"] == "metadata_only"
+        assert "Err" in op["non_executing_declared_stages"]
 
 
 def test_runner_environment_execution_rejects_pipeline_without_env_stage():
