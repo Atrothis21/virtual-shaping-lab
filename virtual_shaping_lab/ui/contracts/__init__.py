@@ -65,6 +65,13 @@ from ui.contracts.tuple_authoring_api import (
     build_tuple_guided_catalog,
     materialize_tuple_authoring_payload,
 )
+from ui.contracts.behavioral_compatibility_registry import (
+    BEHAVIORAL_COMPATIBILITY_REGISTRY,
+    BEHAVIORAL_COMPATIBILITY_REGISTRY_VERSION,
+    BehavioralCompatibilityRegistryValidationError,
+    get_behavioral_compatibility_registry,
+    validate_behavioral_compatibility_registry,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -306,6 +313,11 @@ __all__ = [
     "TupleAuthoringAPIError",
     "build_tuple_guided_catalog",
     "materialize_tuple_authoring_payload",
+    "BehavioralCompatibilityRegistryValidationError",
+    "BEHAVIORAL_COMPATIBILITY_REGISTRY_VERSION",
+    "BEHAVIORAL_COMPATIBILITY_REGISTRY",
+    "validate_behavioral_compatibility_registry",
+    "get_behavioral_compatibility_registry",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
