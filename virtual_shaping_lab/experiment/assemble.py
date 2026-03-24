@@ -427,6 +427,16 @@ def _build_agent_stack(config, representation):
 
 
 # Assembly pipeline: build representation -> policy (optional) -> learner -> agent -> runtime units.
+def _is_protocol_phase(protocol_name: str) -> bool:
+    """Compatibility helper: True when key resolves to protocol registry."""
+    return str(protocol_name or "") in PROTOCOL_REGISTRY
+
+
+def _is_atomic_phase(protocol_name: str) -> bool:
+    """Compatibility helper: True when key resolves to atomic phase registry."""
+    return str(protocol_name or "") in PHASE_BUILDERS
+
+
 def _plan_to_config(plan: ExperimentPlan):
     program_spec = plan.program_spec or {}
     agent_spec = plan.agent_spec or {}
