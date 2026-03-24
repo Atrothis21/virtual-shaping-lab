@@ -1,6 +1,18 @@
 window.VSLReact = window.VSLReact || {};
 
 const sections = window.VSLReact.presetSections || [];
+const UX_STATUS_BADGE = Object.freeze({
+  success: "badge-mechanism-operant",
+  partial: "badge-mechanism-similarity",
+  novel: "badge-mechanism-attention",
+  behaviorally_unsupported: "badge-mechanism-salience",
+});
+const UX_STATUS_LABEL = Object.freeze({
+  success: "Supported",
+  partial: "Partially Supported",
+  novel: "Novel",
+  behaviorally_unsupported: "Exploratory",
+});
 
 function mechanismBadgeClass(name) {
   const key = String(name || "").trim().toLowerCase();
@@ -47,6 +59,51 @@ function PresetCard({ item }) {
   );
 }
 
+function PresetUxCard({ item }) {
+  const status = String(item?.compatibility?.status || "behaviorally_unsupported");
+  const uxState = String(item?.compatibility?.ux_state || "caution");
+  const badgeClass = UX_STATUS_BADGE[status] || "badge-mechanism-default";
+  const statusLabel = UX_STATUS_LABEL[status] || "Exploratory";
+  const routeHref = item?.route?.href || "/ui/presets.html";
+  const smartPresetHref = `${routeHref}?entry=smart_preset_prefill&smart_preset_id=${encodeURIComponent(String(item?.id || ""))}`;
+  const manualExploreHref = `${routeHref}?entry=manual_tuple_explore&arrangement=${encodeURIComponent(String(item?.tuple_reference?.arrangement_id || ""))}&task=${encodeURIComponent(String(item?.tuple_reference?.phenomenon_id || ""))}`;
+  const guidanceText = String(item?.compatibility?.guidance || "");
+  return (
+    <div
+      className="card"
+      data-ux-state={uxState}
+      data-compatibility-status={status}
+      role="article"
+      aria-label={`Preset card ${item.label}`}
+    >
+      <h3>{item.label}</h3>
+      {item.description && <p>{item.description}</p>}
+      <p className="phase-summary">
+        <strong>Arrangement:</strong> {item?.tuple_reference?.arrangement_id || "unknown"}{" "}
+        <strong>Task:</strong> {item?.tuple_reference?.phenomenon_id || "unknown"}{" "}
+        <strong>Agent:</strong> {item?.tuple_reference?.agent_bundle_id || "unknown"}
+      </p>
+      <div className="badge-block">
+        <div className="badge-label">Expected Outcome</div>
+        <div className="badge-row">
+          <span className={`badge ${badgeClass}`} aria-label={`Compatibility status: ${statusLabel}`}>{statusLabel}</span>
+          <span className="badge badge-mechanism-baseline" aria-label={`UX state: ${uxState}`}>{uxState}</span>
+        </div>
+      </div>
+      {item?.compatibility?.explanation && (
+        <p aria-label="Compatibility explanation from evaluator output">{item.compatibility.explanation}</p>
+      )}
+      {guidanceText && (
+        <p aria-label="Compatibility guidance">{guidanceText}</p>
+      )}
+      <div className="card-actions">
+        <a className="button" href={smartPresetHref} aria-label={`Open preset ${item.label}`}>Open Preset</a>
+        <a className="button secondary" href={manualExploreHref} aria-label={`Explore tuple space for ${item.label}`}>Explore Tuple Space</a>
+      </div>
+    </div>
+  );
+}
+
 function PresetSection({ title, items }) {
   return (
     <section>
@@ -56,6 +113,54 @@ function PresetSection({ title, items }) {
           <PresetCard key={item.href} item={item} />
         ))}
       </div>
+    </section>
+  );
+}
+
+function PresetUxArrangementSection({ arrangement }) {
+  const uiControls = arrangement?.ui_density_controls || {};
+  const collapseThreshold = Number(uiControls.collapse_sections_when_card_count_gt || 6);
+  const topRecommendedLimit = Number(uiControls.top_recommended_limit || 3);
+  const [expanded, setExpanded] = React.useState({});
+
+  return (
+    <section data-arrangement-id={arrangement.arrangement_id}>
+      <h2>{arrangement.arrangement_id}</h2>
+      {arrangement.phenomenon_groups.map((group) => {
+        const allCards = Array.isArray(group.smart_presets) ? group.smart_presets : [];
+        const recommended = allCards.filter((x) => x?.compatibility?.status === "success");
+        const recommendedTop = recommended.slice(0, topRecommendedLimit);
+        const recommendedIds = new Set(recommendedTop.map((x) => x.id));
+        const nonRecommended = allCards.filter((x) => !recommendedIds.has(x.id));
+        const ordered = [...recommendedTop, ...nonRecommended];
+        const needsCollapse = ordered.length > collapseThreshold;
+        const key = `${arrangement.arrangement_id}:${group.phenomenon_class}`;
+        const isExpanded = Boolean(expanded[key]);
+        const visible = !needsCollapse || isExpanded ? ordered : ordered.slice(0, topRecommendedLimit);
+        return (
+          <div key={key} data-phenomenon-class={group.phenomenon_class}>
+            <h3>{group.phenomenon_class}</h3>
+            <div className="grid">
+              {visible.map((item) => (
+                <PresetUxCard key={item.id} item={item} />
+              ))}
+            </div>
+            {needsCollapse && (
+              <div className="actions">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => {
+                    setExpanded((prev) => ({ ...prev, [key]: !isExpanded }));
+                  }}
+                >
+                  {isExpanded ? "Show Less" : "Show More"}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -138,6 +243,34 @@ function App() {
   const mechanismSections = buildMechanismSections(sections);
   const mechanismTitles = mechanismSections.map((section) => section.title);
   const [selectedMechanisms, setSelectedMechanisms] = React.useState([]);
+  const [presetUxCatalog, setPresetUxCatalog] = React.useState(null);
+  const [presetUxLoadError, setPresetUxLoadError] = React.useState(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function loadPresetUxCatalog() {
+      try {
+        const response = await fetch("/catalog/preset-ux");
+        if (!response.ok) {
+          throw new Error(`preset-ux ${response.status}`);
+        }
+        const body = await response.json();
+        if (!cancelled) {
+          setPresetUxCatalog(body);
+          setPresetUxLoadError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPresetUxCatalog(null);
+          setPresetUxLoadError(String(error?.message || error));
+        }
+      }
+    }
+    loadPresetUxCatalog();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onSelectAll = React.useCallback(() => {
     setSelectedMechanisms([]);
@@ -156,6 +289,12 @@ function App() {
   const visibleSections = selectedMechanisms.length === 0
     ? mechanismSections
     : mechanismSections.filter((section) => selectedMechanisms.includes(section.title));
+  const hasPresetUxCatalog = Boolean(
+    presetUxCatalog
+    && Array.isArray(presetUxCatalog.arrangements)
+    && presetUxCatalog.registry_generated === true
+  );
+  const densityControls = hasPresetUxCatalog ? (presetUxCatalog.ui_density_controls || {}) : {};
 
   return (
     <>
@@ -165,6 +304,16 @@ function App() {
       <div style={{ color: "#555", marginBottom: "0.45rem" }}>
         <strong>Navigation:</strong> <a href="/ui/index.html">Menu</a> / Presets
       </div>
+      {hasPresetUxCatalog && (
+        <div style={{ color: "#94a3b8", marginBottom: "0.45rem" }}>
+          <strong>Catalog Source:</strong> tuple-first preset UX contract
+        </div>
+      )}
+      {!hasPresetUxCatalog && (
+        <div style={{ color: "#fcd34d", marginBottom: "0.45rem" }}>
+          <strong>Catalog Source:</strong> degraded fallback ({presetUxLoadError || "preset-ux unavailable"})
+        </div>
+      )}
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/index.html"; }}>
@@ -172,16 +321,36 @@ function App() {
         </button>
       </div>
 
-      <MechanismTabs
-        mechanisms={mechanismTitles}
-        selectedMechanisms={selectedMechanisms}
-        onSelectAll={onSelectAll}
-        onToggleMechanism={onToggleMechanism}
-      />
+      {hasPresetUxCatalog ? (
+        <>
+          <div style={{ color: "#94a3b8", marginBottom: "0.45rem" }}>
+            <strong>Density controls:</strong>{" "}
+            collapse>{String(densityControls.collapse_sections_when_card_count_gt || 6)} | top-recommended={String(densityControls.top_recommended_limit || 3)}
+          </div>
+          {presetUxCatalog.arrangements.map((arrangement) => (
+            <PresetUxArrangementSection
+              key={arrangement.arrangement_id}
+              arrangement={{
+                ...arrangement,
+                ui_density_controls: densityControls,
+              }}
+            />
+          ))}
+        </>
+      ) : (
+        <>
+          <MechanismTabs
+            mechanisms={mechanismTitles}
+            selectedMechanisms={selectedMechanisms}
+            onSelectAll={onSelectAll}
+            onToggleMechanism={onToggleMechanism}
+          />
 
-      {visibleSections.map((section) => (
-        <PresetSection key={section.title} title={section.title} items={section.items} />
-      ))}
+          {visibleSections.map((section) => (
+            <PresetSection key={section.title} title={section.title} items={section.items} />
+          ))}
+        </>
+      )}
     </>
   );
 }

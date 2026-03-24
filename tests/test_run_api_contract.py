@@ -211,6 +211,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"].get("measurement_provenance_identity"), dict)
     assert body["metadata"]["measurement_provenance_identity"].get("slot") == "m"
     assert isinstance(body["metadata"].get("tuple_authoring_identity"), dict)
+    assert isinstance(body["metadata"].get("preset_ux_identity"), dict)
     assert isinstance(body["metadata"].get("operator_stage_diagnostics"), dict)
     assert isinstance(body["metadata"]["operator_stage_diagnostics"].get("realization_matrix"), dict)
     assert body["lifecycle"]["state"] == "RunComplete"
@@ -245,6 +246,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert identity["measurement_provenance_identity"].get("slot") == "m"
     assert isinstance(identity.get("tuple_authoring_identity"), dict)
     assert identity["tuple_authoring_identity"] == body["metadata"]["tuple_authoring_identity"]
+    assert isinstance(identity.get("preset_ux_identity"), dict)
+    assert identity["preset_ux_identity"] == body["metadata"]["preset_ux_identity"]
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -279,6 +282,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(status["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(status["metadata"].get("tuple_authoring_identity"), dict)
+    assert isinstance(status["metadata"].get("preset_ux_identity"), dict)
     assert isinstance(status["metadata"].get("operator_stage_diagnostics"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
@@ -334,6 +338,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(report_body["metadata"].get("tuple_authoring_identity"), dict)
+    assert isinstance(report_body["metadata"].get("preset_ux_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
@@ -506,6 +511,7 @@ def test_run_report_endpoint_regenerates_from_records_when_payload_artifact_miss
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(report_body["metadata"].get("tuple_authoring_identity"), dict)
+    assert isinstance(report_body["metadata"].get("preset_ux_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
 
 
@@ -533,6 +539,7 @@ def test_run_report_regeneration_keeps_basis_and_measurement_identity(monkeypatc
     assert report_body["metadata"]["payload_mode_identity"] == run_body["metadata"]["payload_mode_identity"]
     assert report_body["metadata"]["measurement_provenance_identity"] == run_body["metadata"]["measurement_provenance_identity"]
     assert report_body["metadata"]["tuple_authoring_identity"] == run_body["metadata"]["tuple_authoring_identity"]
+    assert report_body["metadata"]["preset_ux_identity"] == run_body["metadata"]["preset_ux_identity"]
     assert report_body["metadata"]["operator_stage_diagnostics"] == run_body["metadata"]["operator_stage_diagnostics"]
 
 
@@ -556,6 +563,11 @@ def test_run_api_emits_tuple_identity_and_artifact_identity_for_tuple_payload(mo
             "task": "acquisition",
             "agent": "rw_classical",
             "edits": {"n_trials": 7, "cs_plus": ["tone"]},
+            "preset_ux": {
+                "smart_preset_id": "classical_acquisition",
+                "entry_mode": "smart_preset",
+                "compatibility_status": "compatible",
+            },
         }
     )
     body = api_run.run_api(materialized)
@@ -566,10 +578,16 @@ def test_run_api_emits_tuple_identity_and_artifact_identity_for_tuple_payload(mo
     assert tuple_identity["agent_id"] == "rw_classical"
     assert tuple_identity["task_implementation_id"] == "pavlovian_acquisition"
     assert isinstance(tuple_identity["composition_hash"], str) and tuple_identity["composition_hash"]
+    assert body["metadata"]["preset_ux_identity"] == {
+        "smart_preset_id": "classical_acquisition",
+        "entry_mode": "smart_preset",
+        "compatibility_status": "compatible",
+    }
 
     run_dir = fixture_output_dir / body["run_id"]
     artifact_identity = json.loads((run_dir / "artifact_identity.json").read_text(encoding="utf-8"))
     assert artifact_identity["tuple_authoring_identity"] == tuple_identity
+    assert artifact_identity["preset_ux_identity"] == body["metadata"]["preset_ux_identity"]
 
 
 def test_run_report_regeneration_keeps_tuple_identity(monkeypatch, tmp_path):
@@ -593,12 +611,18 @@ def test_run_report_regeneration_keeps_tuple_identity(monkeypatch, tmp_path):
             "task": "acquisition",
             "agent": "rw_classical",
             "edits": {"n_trials": 6, "cs_plus": ["tone"]},
+            "preset_ux": {
+                "smart_preset_id": "classical_acquisition",
+                "entry_mode": "smart_preset",
+                "compatibility_status": "compatible",
+            },
         }
     )
     run_body = api_run.run_api(materialized)
     report_body = api_run.run_report_api(run_body["run_id"])
 
     assert report_body["metadata"]["tuple_authoring_identity"] == run_body["metadata"]["tuple_authoring_identity"]
+    assert report_body["metadata"]["preset_ux_identity"] == run_body["metadata"]["preset_ux_identity"]
 
 
 def test_run_api_rejects_mixed_legacy_and_canonical_payload_with_actionable_details():
@@ -734,6 +758,22 @@ def test_smart_preset_project_endpoint_shape():
     assert body["task"] == "acquisition"
     assert body["agent"] == "rw_classical"
     assert body["edits"]["n_trials"] == 9
+
+
+def test_preset_ux_catalog_endpoint_shape():
+    body = api_run.preset_ux_catalog_api()
+    assert body["registry_generated"] is True
+    assert isinstance(body.get("arrangements"), list)
+    assert isinstance(body.get("ui_density_controls"), dict)
+    assert body["degraded_fallback"]["enabled"] is True
+
+
+def test_preset_route_migration_endpoint_shape():
+    body = api_run.preset_route_migration_api()
+    assert body["strategy"] == "overlay_gradual"
+    assert isinstance(body["tuple_first_preset_routes"], list)
+    assert isinstance(body["basis_first_preset_routes"], list)
+    assert isinstance(body["legacy_fallback_preset_routes"], list)
 
 
 def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():

@@ -10,6 +10,30 @@ const BASIS_FIRST_PRESET_ROUTES = Object.freeze([
 // Current strategy: overlay/gradual adoption (no preset pages fully tuple-migrated yet).
 const TUPLE_ROUTE_MIGRATION_STRATEGY = "overlay_gradual";
 const TUPLE_MIGRATED_PRESET_ROUTES = Object.freeze([]);
+const LEGACY_FALLBACK_PRESET_ROUTES = Object.freeze([
+  "compound_acquisition",
+  "blocking",
+  "overshadowing",
+  "overexpectation",
+  "conditioned_inhibition",
+  "aba_renewal",
+  "abc_renewal",
+  "aab_renewal",
+  "rapid_reacquisition",
+  "occasion_setting",
+  "operant_conditioning",
+  "matching_law",
+  "shaping",
+  "resurgence",
+  "superextinction",
+  "spontaneous_recovery",
+]);
+const PRESET_ROUTE_MIGRATION_MAP = Object.freeze({
+  strategy: TUPLE_ROUTE_MIGRATION_STRATEGY,
+  tuple_first_preset_routes: TUPLE_MIGRATED_PRESET_ROUTES,
+  basis_first_preset_routes: BASIS_FIRST_PRESET_ROUTES,
+  legacy_fallback_preset_routes: LEGACY_FALLBACK_PRESET_ROUTES,
+});
 const LEGACY_BRIDGE_DISABLED_PRESET_ROUTES = Object.freeze(
   Array.from(new Set([...BASIS_FIRST_PRESET_ROUTES, ...TUPLE_MIGRATED_PRESET_ROUTES]))
 );
