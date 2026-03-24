@@ -127,6 +127,17 @@ jobs:
           pytest -q tests/test_v3_operator_legality_engine.py -k "tuple_path or TUPLE_COMPOSITION" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 arrangement-task-agent cutover
+        run: |
+          pytest -q tests/test_v3_tuple_authoring_contract.py tests/test_v3_tuple_authoring_api.py tests/test_v3_ui_tuple_selection_flow.py tests/test_v3_ui_tuple_visibility_policy.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_run_api_contract.py -k "tuple_identity or regeneration_keeps_tuple_identity or arrangement or task or agent or composition_hash" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_ui_teaching_contract.py -k "legacy_bridge or tuple_route_migration" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

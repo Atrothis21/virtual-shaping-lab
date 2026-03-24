@@ -24,6 +24,11 @@ from ui.contracts.preset_basis_authoring import (
     materialize_preset_basis_payload,
     materialize_acquisition_basis_payload,
 )
+from ui.contracts.tuple_authoring_api import (
+    TupleAuthoringAPIError,
+    build_tuple_guided_catalog,
+    materialize_tuple_authoring_payload,
+)
 from ui.validate_payload import validate_payload
 
 
@@ -218,6 +223,56 @@ def materialize_preset_basis_api(preset_id: str, payload: dict):
         raise_internal_error(
             "Preset basis payload materialization failed.",
             details={"reason": str(exc), "preset_id": preset_id},
+        )
+
+
+@app.get("/catalog/tuple-authoring")
+def tuple_authoring_catalog_api(arrangement: str | None = None, task: str | None = None):
+    try:
+        return build_tuple_guided_catalog(arrangement=arrangement, task=task)
+    except TupleAuthoringAPIError as exc:
+        raise_validation_error(
+            "Tuple guided catalog contract generation failed.",
+            details={"reason": str(exc), "arrangement": arrangement, "task": task},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Tuple guided catalog contract generation failed.",
+            details={"reason": str(exc), "arrangement": arrangement, "task": task},
+        )
+
+
+@app.post("/catalog/tuple-authoring/materialize")
+def materialize_tuple_authoring_api(payload: dict):
+    try:
+        raw_payload = dict(payload or {})
+        uses_deprecated_shape = (
+            "preset_id" in raw_payload
+            and not any(key in raw_payload for key in ("arrangement", "task", "agent"))
+        )
+        materialized = materialize_tuple_authoring_payload(raw_payload)
+        if uses_deprecated_shape:
+            tuple_meta = materialized.get("tuple_authoring", {})
+            diagnostics = tuple_meta.get("translation_diagnostics", {}) if isinstance(tuple_meta, dict) else {}
+            deprecations = diagnostics.get("deprecation_diagnostics", [])
+            if not isinstance(deprecations, list):
+                deprecations = []
+            materialized["tuple_route_migration_diagnostics"] = {
+                "deprecated_input_detected": True,
+                "deprecated_input_mode": diagnostics.get("source_mode", "preset_basis_v1"),
+                "recommended_input_mode": diagnostics.get("target_mode", "tuple_v1"),
+                "messages": [str(msg) for msg in deprecations],
+            }
+        return materialized
+    except TupleAuthoringAPIError as exc:
+        raise_validation_error(
+            "Tuple authoring payload validation/materialization failed.",
+            details={"reason": str(exc)},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Tuple authoring payload materialization failed.",
+            details={"reason": str(exc)},
         )
 
 

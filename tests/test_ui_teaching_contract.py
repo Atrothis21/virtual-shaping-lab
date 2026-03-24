@@ -117,6 +117,21 @@ def test_legacy_bridge_is_disabled_for_basis_first_migrated_routes():
     assert "has migrated to basis-first authoring; legacy canonicalization bridge is disabled" in teaching_src
 
 
+def test_tuple_route_migration_boundary_mapping_declares_overlay_strategy():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "TUPLE_ROUTE_MIGRATION_STRATEGY" in teaching_src
+    assert "overlay_gradual" in teaching_src
+    assert "TUPLE_MIGRATED_PRESET_ROUTES" in teaching_src
+    assert "LEGACY_BRIDGE_DISABLED_PRESET_ROUTES" in teaching_src
+    assert "new Set([...BASIS_FIRST_PRESET_ROUTES, ...TUPLE_MIGRATED_PRESET_ROUTES])" in teaching_src
+
+
+def test_tuple_migrated_route_bridge_error_path_is_explicit():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "isTupleMigratedPresetRoute" in teaching_src
+    assert "has migrated to tuple-first authoring; legacy canonicalization bridge is disabled" in teaching_src
+
+
 def test_legacy_bridge_retained_for_unmigrated_routes_via_explicit_fallback():
     teaching_src = _read(JS_DIR / "teaching_panel.jsx")
     assert "window.VSLReact.legacyToCanonicalPayload" in teaching_src
