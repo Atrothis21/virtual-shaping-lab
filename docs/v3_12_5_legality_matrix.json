@@ -28,6 +28,10 @@
     "LGL_E_MEASURE_REQUIRES_TRACE": {
       "kind": "cross_slot",
       "description": "eligibility_curve measurement requires trace mechanism."
+    },
+    "LGL_E_TUPLE_COMPOSITION": {
+      "kind": "tuple_level",
+      "description": "Tuple composition failed before slot legality evaluation."
     }
   }
 }

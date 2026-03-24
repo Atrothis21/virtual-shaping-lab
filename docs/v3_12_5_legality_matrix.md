@@ -29,3 +29,6 @@ The JSON artifact is CI-validated against:
 - `LGL_E_MEASURE_REQUIRES_TRACE`
   - kind: `cross_slot`
   - `eligibility_curve` measurement requires trace mechanism
+- `LGL_E_TUPLE_COMPOSITION`
+  - kind: `tuple_level`
+  - tuple composition failed before slot legality evaluation
