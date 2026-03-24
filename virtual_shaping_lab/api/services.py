@@ -11,6 +11,7 @@ from analysis.public import (
 from experiment.public import assemble_from_plan, build_plan, run_from_plan
 from experiment.domain.types import ExperimentPlan
 from experiment.payload_contract import to_canonical_payload
+from experiment.basis_routing import BasisAssemblyRoutingError, build_basis_assembly_routing_contract
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
 from virtual_shaping_lab.vsl.registry import match_phenomenon_registry_entry_for_protocol
 from api.lifecycle import (
@@ -79,6 +80,76 @@ def _build_operator_pipeline_identity(plan: ExperimentPlan) -> Dict[str, Any]:
     return {
         "stage_keys": list(pipeline.stage_keys()),
         "pipeline_hash": pipeline.stable_hash(),
+    }
+
+
+def _build_basis_compile_identity(plan: ExperimentPlan) -> Dict[str, Any]:
+    basis_compile = dict(plan.basis_compile_artifact or {})
+    subset_hash = basis_compile.get("frozen_compiled_hash")
+    if not isinstance(subset_hash, str) or not subset_hash.strip():
+        subset_hash = None
+
+    preset_id = basis_compile.get("preset_id")
+    if not isinstance(preset_id, str) or not preset_id.strip():
+        preset_id = None
+
+    selected_slots_raw = basis_compile.get("selected_slots")
+    selected_slots = (
+        [str(slot) for slot in selected_slots_raw if isinstance(slot, str)]
+        if isinstance(selected_slots_raw, list)
+        else []
+    )
+
+    routing_hash = None
+    routed_objects: Dict[str, Any] = {}
+    try:
+        routing_contract = build_basis_assembly_routing_contract(plan)
+        routing_hash = routing_contract.get("routing_hash")
+        family_routing = routing_contract.get("family_routing")
+        if isinstance(family_routing, dict):
+            routed_objects = dict(family_routing)
+    except BasisAssemblyRoutingError:
+        routed_objects = {}
+
+    return {
+        "subset_hash": subset_hash,
+        "preset_id": preset_id,
+        "selected_slots": selected_slots,
+        "routing_hash": routing_hash if isinstance(routing_hash, str) and routing_hash else None,
+        "routed_objects": routed_objects,
+    }
+
+
+def _build_measurement_provenance_identity(plan: ExperimentPlan) -> Dict[str, Any]:
+    basis_compile = dict(plan.basis_compile_artifact or {})
+    assembly_spec = basis_compile.get("assembly_spec")
+    m_slot = {}
+    if isinstance(assembly_spec, dict):
+        slots = assembly_spec.get("slots")
+        if isinstance(slots, dict):
+            raw_m = slots.get("m")
+            if isinstance(raw_m, dict):
+                m_slot = raw_m
+
+    selection_ids = m_slot.get("selection_ids", []) if isinstance(m_slot.get("selection_ids"), list) else []
+    builder_families = (
+        m_slot.get("internal_builder_families", [])
+        if isinstance(m_slot.get("internal_builder_families"), list)
+        else []
+    )
+
+    basis_identity = _build_basis_compile_identity(plan)
+    report_routes = basis_identity.get("routed_objects", {}).get("report_readout_family", [])
+    if not isinstance(report_routes, list):
+        report_routes = []
+
+    return {
+        "slot": "m",
+        "selection_ids": [str(v) for v in selection_ids],
+        "internal_builder_families": [str(v) for v in builder_families],
+        "report_routes": report_routes,
+        "routing_hash": basis_identity.get("routing_hash"),
+        "subset_hash": basis_identity.get("subset_hash"),
     }
 
 
@@ -240,6 +311,16 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             "seed_identity": seed_identity,
             "operator_pipeline_identity": operator_pipeline_identity,
             "learner_identity": _extract_learner_identity_from_payload(payload),
+            "basis_compile_identity": (
+                dict(provenance.get("basis_compile_identity", {}))
+                if isinstance(provenance, dict) and isinstance(provenance.get("basis_compile_identity"), dict)
+                else {}
+            ),
+            "measurement_provenance_identity": (
+                dict(provenance.get("measurement_provenance_identity", {}))
+                if isinstance(provenance, dict) and isinstance(provenance.get("measurement_provenance_identity"), dict)
+                else {}
+            ),
         }
 
     record_schema_version = "v1"
@@ -261,6 +342,16 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
         "seed_identity": seed_identity,
         "operator_pipeline_identity": operator_pipeline_identity,
         "learner_identity": _extract_learner_identity_from_payload(payload),
+        "basis_compile_identity": (
+            dict(provenance.get("basis_compile_identity", {}))
+            if isinstance(provenance, dict) and isinstance(provenance.get("basis_compile_identity"), dict)
+            else {}
+        ),
+        "measurement_provenance_identity": (
+            dict(provenance.get("measurement_provenance_identity", {}))
+            if isinstance(provenance, dict) and isinstance(provenance.get("measurement_provenance_identity"), dict)
+            else {}
+        ),
     }
 
 
@@ -294,6 +385,16 @@ def _fallback_plan_metadata_from_status(*, run_id: str, source_status: Dict[str,
         "seed_identity": metadata.get("seed_identity"),
         "operator_pipeline_identity": operator_pipeline_identity,
         "learner_identity": learner_identity,
+        "basis_compile_identity": (
+            dict(metadata.get("basis_compile_identity", {}))
+            if isinstance(metadata.get("basis_compile_identity"), dict)
+            else {}
+        ),
+        "measurement_provenance_identity": (
+            dict(metadata.get("measurement_provenance_identity", {}))
+            if isinstance(metadata.get("measurement_provenance_identity"), dict)
+            else {}
+        ),
     }
 
 
@@ -395,6 +496,8 @@ class RunService:
         payload["provenance"] = {
             "mechanisms": _build_mechanism_provenance(plan),
             "operator_pipeline": _build_operator_pipeline_identity(plan),
+            "basis_compile_identity": _build_basis_compile_identity(plan),
+            "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
         }
         payload["plan"] = plan.to_dict()
         return payload
@@ -472,6 +575,8 @@ class RunService:
             "mechanism_provenance": _build_mechanism_provenance(plan),
             "operator_pipeline_identity": _build_operator_pipeline_identity(plan),
             "learner_identity": _build_learner_identity(plan),
+            "basis_compile_identity": _build_basis_compile_identity(plan),
+            "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
         }
         _set_status_with_lifecycle(
             store,
@@ -580,6 +685,20 @@ class ReportService:
         missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
         source_metadata_complete = len(missing_source_keys) == 0
         regeneration_mode = "from_artifacts" if isinstance(payload, dict) else "from_records"
+        plan_basis_identity = plan_meta.get("basis_compile_identity")
+        source_basis_identity = source_metadata.get("basis_compile_identity")
+        basis_compile_identity = (
+            plan_basis_identity
+            if isinstance(plan_basis_identity, dict) and plan_basis_identity
+            else (source_basis_identity if isinstance(source_basis_identity, dict) else {})
+        )
+        plan_measure_identity = plan_meta.get("measurement_provenance_identity")
+        source_measure_identity = source_metadata.get("measurement_provenance_identity")
+        measurement_provenance_identity = (
+            plan_measure_identity
+            if isinstance(plan_measure_identity, dict) and plan_measure_identity
+            else (source_measure_identity if isinstance(source_measure_identity, dict) else {})
+        )
 
         new_run_id = report_dir.name
         _set_status_with_lifecycle(
@@ -603,6 +722,8 @@ class ReportService:
                     if isinstance(plan_meta.get("learner_identity"), dict)
                     else {"preset_name": None, "spec_hash": None}
                 ),
+                "basis_compile_identity": basis_compile_identity,
+                "measurement_provenance_identity": measurement_provenance_identity,
                 "source_run_id": run_id,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
@@ -632,6 +753,8 @@ class ReportService:
                     if isinstance(plan_meta.get("learner_identity"), dict)
                     else {"preset_name": None, "spec_hash": None}
                 ),
+                "basis_compile_identity": basis_compile_identity,
+                "measurement_provenance_identity": measurement_provenance_identity,
                 "source_metadata_complete": source_metadata_complete,
                 "missing_source_metadata": missing_source_keys,
                 "regeneration_mode": regeneration_mode,

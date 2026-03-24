@@ -179,6 +179,8 @@ def _extract_artifact_identity(payload):
         "mechanism_identity": None,
         "operator_pipeline_identity": None,
         "learner_identity": _extract_learner_identity(payload),
+        "basis_compile_identity": {},
+        "measurement_provenance_identity": {},
     }
 
     mechanism_provenance = _extract_mechanism_provenance(payload)
@@ -194,6 +196,12 @@ def _extract_artifact_identity(payload):
                     "stage_keys": list(operator_pipeline.get("stage_keys", []) or []),
                     "pipeline_hash": operator_pipeline.get("pipeline_hash"),
                 }
+            basis_identity = provenance.get("basis_compile_identity")
+            if isinstance(basis_identity, dict):
+                identity["basis_compile_identity"] = dict(basis_identity)
+            measurement_identity = provenance.get("measurement_provenance_identity")
+            if isinstance(measurement_identity, dict):
+                identity["measurement_provenance_identity"] = dict(measurement_identity)
         if identity["operator_pipeline_identity"] is None:
             experiment = payload.get("experiment")
             runtime = experiment.get("runtime") if isinstance(experiment, dict) else None
