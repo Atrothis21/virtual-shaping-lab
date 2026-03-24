@@ -6,6 +6,14 @@ const BASIS_FIRST_PRESET_ROUTES = Object.freeze([
   "differential_acquisition",
 ]);
 
+// Migration strategy for tuple-first adoption on preset pages.
+// Current strategy: overlay/gradual adoption (no preset pages fully tuple-migrated yet).
+const TUPLE_ROUTE_MIGRATION_STRATEGY = "overlay_gradual";
+const TUPLE_MIGRATED_PRESET_ROUTES = Object.freeze([]);
+const LEGACY_BRIDGE_DISABLED_PRESET_ROUTES = Object.freeze(
+  Array.from(new Set([...BASIS_FIRST_PRESET_ROUTES, ...TUPLE_MIGRATED_PRESET_ROUTES]))
+);
+
 function currentPresetSlug() {
   const match = window.location.pathname.match(/\/ui\/presets\/([a-z0-9_]+)\.html$/i);
   return match ? match[1] : null;
@@ -14,6 +22,16 @@ function currentPresetSlug() {
 function isBasisFirstPresetRoute(slug) {
   if (!slug) return false;
   return BASIS_FIRST_PRESET_ROUTES.includes(String(slug).toLowerCase());
+}
+
+function isTupleMigratedPresetRoute(slug) {
+  if (!slug) return false;
+  return TUPLE_MIGRATED_PRESET_ROUTES.includes(String(slug).toLowerCase());
+}
+
+function isLegacyBridgeDisabledRoute(slug) {
+  if (!slug) return false;
+  return LEGACY_BRIDGE_DISABLED_PRESET_ROUTES.includes(String(slug).toLowerCase());
 }
 
 window.VSLReact.uiModes = window.VSLReact.uiModes || (() => {
@@ -78,7 +96,12 @@ window.VSLReact.legacyToCanonicalPayload = window.VSLReact.legacyToCanonicalPayl
   const report = source.report || {};
 
   const slug = currentPresetSlug();
-  if (isBasisFirstPresetRoute(slug)) {
+  if (isLegacyBridgeDisabledRoute(slug)) {
+    if (isTupleMigratedPresetRoute(slug)) {
+      throw new Error(
+        `Preset route '${slug}' has migrated to tuple-first authoring; legacy canonicalization bridge is disabled.`
+      );
+    }
     throw new Error(
       `Preset route '${slug}' has migrated to basis-first authoring; legacy canonicalization bridge is disabled.`
     );

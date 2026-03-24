@@ -245,7 +245,25 @@ def tuple_authoring_catalog_api(arrangement: str | None = None, task: str | None
 @app.post("/catalog/tuple-authoring/materialize")
 def materialize_tuple_authoring_api(payload: dict):
     try:
-        return materialize_tuple_authoring_payload(payload)
+        raw_payload = dict(payload or {})
+        uses_deprecated_shape = (
+            "preset_id" in raw_payload
+            and not any(key in raw_payload for key in ("arrangement", "task", "agent"))
+        )
+        materialized = materialize_tuple_authoring_payload(raw_payload)
+        if uses_deprecated_shape:
+            tuple_meta = materialized.get("tuple_authoring", {})
+            diagnostics = tuple_meta.get("translation_diagnostics", {}) if isinstance(tuple_meta, dict) else {}
+            deprecations = diagnostics.get("deprecation_diagnostics", [])
+            if not isinstance(deprecations, list):
+                deprecations = []
+            materialized["tuple_route_migration_diagnostics"] = {
+                "deprecated_input_detected": True,
+                "deprecated_input_mode": diagnostics.get("source_mode", "preset_basis_v1"),
+                "recommended_input_mode": diagnostics.get("target_mode", "tuple_v1"),
+                "messages": [str(msg) for msg in deprecations],
+            }
+        return materialized
     except TupleAuthoringAPIError as exc:
         raise_validation_error(
             "Tuple authoring payload validation/materialization failed.",

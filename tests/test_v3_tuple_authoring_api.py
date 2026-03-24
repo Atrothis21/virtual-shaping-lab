@@ -70,3 +70,16 @@ def test_tuple_materialization_legacy_preset_wrapper_parity_smoke():
     assert tuple_phase["trials"] == basis_phase["trials"] == 9
     assert tuple_phase["stimuli"]["cs_plus"] == basis_phase["stimuli"]["cs_plus"] == ["tone"]
 
+
+def test_tuple_materialization_emits_migration_diagnostics_for_deprecated_preset_shape():
+    payload = {
+        "preset_id": "acquisition",
+        "edits": {"n_trials": 9, "cs_plus": ["tone"]},
+    }
+    body = api_run.materialize_tuple_authoring_api(payload)
+    diagnostics = body.get("tuple_route_migration_diagnostics", {})
+    assert diagnostics.get("deprecated_input_detected") is True
+    assert diagnostics.get("deprecated_input_mode") == "preset_basis_v1"
+    assert diagnostics.get("recommended_input_mode") == "tuple_v1"
+    assert isinstance(diagnostics.get("messages"), list)
+    assert diagnostics["messages"]
