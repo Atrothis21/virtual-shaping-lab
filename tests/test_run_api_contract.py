@@ -711,6 +711,31 @@ def test_acquisition_basis_authoring_contract_endpoint_shape():
     assert isinstance(body["operator_choices"]["w"], list) and body["operator_choices"]["w"]
 
 
+def test_smart_preset_catalog_endpoint_shape():
+    body = api_run.smart_preset_catalog_api()
+    assert body["registry_generated"] is True
+    assert isinstance(body["contract_version"], str) and body["contract_version"]
+    assert isinstance(body["smart_presets"], list) and body["smart_presets"]
+    first = body["smart_presets"][0]
+    assert set(first.keys()) == {"id", "label", "description", "education", "tuple_reference"}
+    assert set(first["tuple_reference"].keys()) == {
+        "arrangement_id",
+        "phenomenon_id",
+        "agent_bundle_id",
+    }
+
+
+def test_smart_preset_project_endpoint_shape():
+    body = api_run.smart_preset_project_api(
+        "classical_acquisition",
+        {"edits": {"n_trials": 9, "cs_plus": ["tone"]}},
+    )
+    assert body["arrangement"] == "pavlovian"
+    assert body["task"] == "acquisition"
+    assert body["agent"] == "rw_classical"
+    assert body["edits"]["n_trials"] == 9
+
+
 def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
     payload = {
         "preset_id": "acquisition",

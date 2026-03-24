@@ -65,6 +65,28 @@ from ui.contracts.tuple_authoring_api import (
     build_tuple_guided_catalog,
     materialize_tuple_authoring_payload,
 )
+from ui.contracts.behavioral_compatibility_registry import (
+    BEHAVIORAL_COMPATIBILITY_REGISTRY,
+    BEHAVIORAL_COMPATIBILITY_REGISTRY_VERSION,
+    BehavioralCompatibilityRegistryValidationError,
+    get_behavioral_compatibility_registry,
+    validate_behavioral_compatibility_registry,
+)
+from ui.contracts.behavioral_compatibility_engine import (
+    BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION,
+    evaluate_behavioral_compatibility,
+)
+from ui.contracts.smart_preset_projection import (
+    SMART_PRESET_PROJECTION_VERSION,
+    SMART_PRESET_PROJECTIONS,
+    SmartPresetProjectionValidationError,
+    build_smart_preset_catalog,
+    get_smart_preset_projection,
+    get_smart_preset_projection_contract,
+    list_smart_preset_ids,
+    project_smart_preset_to_tuple_payload,
+    validate_smart_preset_projection_contract,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -306,6 +328,22 @@ __all__ = [
     "TupleAuthoringAPIError",
     "build_tuple_guided_catalog",
     "materialize_tuple_authoring_payload",
+    "BehavioralCompatibilityRegistryValidationError",
+    "BEHAVIORAL_COMPATIBILITY_REGISTRY_VERSION",
+    "BEHAVIORAL_COMPATIBILITY_REGISTRY",
+    "validate_behavioral_compatibility_registry",
+    "get_behavioral_compatibility_registry",
+    "BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION",
+    "evaluate_behavioral_compatibility",
+    "SmartPresetProjectionValidationError",
+    "SMART_PRESET_PROJECTION_VERSION",
+    "SMART_PRESET_PROJECTIONS",
+    "validate_smart_preset_projection_contract",
+    "get_smart_preset_projection_contract",
+    "list_smart_preset_ids",
+    "get_smart_preset_projection",
+    "project_smart_preset_to_tuple_payload",
+    "build_smart_preset_catalog",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",

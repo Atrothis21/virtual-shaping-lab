@@ -29,6 +29,14 @@ from ui.contracts.tuple_authoring_api import (
     build_tuple_guided_catalog,
     materialize_tuple_authoring_payload,
 )
+from ui.contracts.behavioral_compatibility_engine import (
+    evaluate_behavioral_compatibility,
+)
+from ui.contracts.smart_preset_projection import (
+    SmartPresetProjectionValidationError,
+    build_smart_preset_catalog,
+    project_smart_preset_to_tuple_payload,
+)
 from ui.validate_payload import validate_payload
 
 
@@ -273,6 +281,70 @@ def materialize_tuple_authoring_api(payload: dict):
         raise_internal_error(
             "Tuple authoring payload materialization failed.",
             details={"reason": str(exc)},
+        )
+
+
+@app.post("/catalog/tuple-authoring/compatibility")
+def tuple_authoring_compatibility_api(payload: dict):
+    try:
+        raw = dict(payload or {})
+        arrangement = raw.get("arrangement")
+        task = raw.get("task")
+        agent = raw.get("agent")
+        edits = raw.get("edits", {})
+        if not isinstance(edits, dict):
+            raise ValueError("edits must be an object.")
+        return evaluate_behavioral_compatibility(
+            arrangement_id=str(arrangement or ""),
+            phenomenon_id=str(task or ""),
+            agent_bundle_id=str(agent or ""),
+            edits=edits,
+        )
+    except ValueError as exc:
+        raise_validation_error(
+            "Tuple compatibility payload validation failed.",
+            details={"reason": str(exc)},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Tuple compatibility evaluation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/smart-presets")
+def smart_preset_catalog_api():
+    try:
+        return build_smart_preset_catalog()
+    except SmartPresetProjectionValidationError as exc:
+        raise_validation_error(
+            "Smart preset catalog generation failed.",
+            details={"reason": str(exc)},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Smart preset catalog generation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.post("/catalog/smart-presets/{smart_preset_id}/project")
+def smart_preset_project_api(smart_preset_id: str, payload: dict | None = None):
+    try:
+        raw = dict(payload or {})
+        edits = raw.get("edits", {})
+        if not isinstance(edits, dict):
+            raise ValueError("edits must be an object.")
+        return project_smart_preset_to_tuple_payload(smart_preset_id, edits=edits)
+    except (ValueError, SmartPresetProjectionValidationError) as exc:
+        raise_validation_error(
+            "Smart preset projection failed.",
+            details={"reason": str(exc), "smart_preset_id": smart_preset_id},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Smart preset projection failed.",
+            details={"reason": str(exc), "smart_preset_id": smart_preset_id},
         )
 
 

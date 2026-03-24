@@ -31,6 +31,7 @@ def test_tuple_selection_flow_js_declares_three_step_order_and_catalog_endpoint(
     assert "\"task\"" in src
     assert "\"agent\"" in src
     assert "/catalog/tuple-authoring" in src
+    assert "/catalog/smart-presets" in src
 
 
 def test_tuple_selection_flow_has_no_hardcoded_selectable_universe():
@@ -39,4 +40,10 @@ def test_tuple_selection_flow_has_no_hardcoded_selectable_universe():
     assert "registry_generated" in src
     assert "elemental" not in src
     assert "rescorla_wagner" not in src
+
+
+def test_tuple_selection_flow_js_exposes_smart_preset_projection_helpers():
+    src = _read(JS_DIR / "tuple_authoring_flow.jsx")
+    assert "fetchSmartPresetCatalog" in src
+    assert "projectSmartPreset" in src
 
