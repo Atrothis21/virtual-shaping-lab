@@ -11,6 +11,7 @@ from ui.contracts.dependent_variable_registry import (
 )
 from ui.contracts.operator_registry import list_operator_ids
 from ui.contracts.trialstate_registry import list_trialstate_field_ids
+from ui.contracts.operator_basis_registry import list_ui_selectable_implementations
 
 
 class PresetRegistryValidationError(ValueError):
@@ -123,6 +124,11 @@ PRESET_REGISTRY: dict[str, Any] = {
                     "predicted_outcome",
                     "prediction_error",
                     "response_strength",
+                ],
+                "measurement_readouts": [
+                    "trial_log",
+                    "learning_curve",
+                    "report_bundle",
                 ],
             },
         }
@@ -413,6 +419,24 @@ def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str
                     )
         if preset_key == "acquisition":
             validate_acquisition_preset_invariants(preset, preset_key=preset_key)
+
+        known_measurement_readouts = set(list_ui_selectable_implementations("m"))
+        measurement_readouts = results_contract.get("measurement_readouts", [])
+        if measurement_readouts is not None:
+            if not isinstance(measurement_readouts, list):
+                raise PresetRegistryValidationError(
+                    f"preset_registry.presets.{preset_key}.results_contract.measurement_readouts must be a list."
+                )
+            for idx, readout_id in enumerate(measurement_readouts):
+                key = _require_non_empty_string(
+                    readout_id,
+                    f"preset_registry.presets.{preset_key}.results_contract.measurement_readouts[{idx}]",
+                )
+                if key not in known_measurement_readouts:
+                    raise PresetRegistryValidationError(
+                        f"preset_registry.presets.{preset_key}.results_contract.measurement_readouts[{idx}] "
+                        f"references unknown measurement readout id: {key}"
+                    )
 
     return payload
 

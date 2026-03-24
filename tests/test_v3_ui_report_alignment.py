@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from analysis.report.config import ReportConfig
 from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
 from ui.contracts.dependent_variable_resolver import resolve_report_variable
-from ui.contracts.report_alignment import build_report_alignment_contract
+from ui.contracts.report_alignment import ReportAlignmentError, build_report_alignment_contract
 
 
 class _DummyMetric:
@@ -209,3 +211,29 @@ def test_report_alignment_snapshot_selected_presets_generated_artifacts(monkeypa
             "source": "metric_name_fallback",
         },
     }
+
+
+def test_report_alignment_rejects_missing_metric_under_strict_measurement_readouts():
+    with pytest.raises(ReportAlignmentError, match="Missing measurement readout coverage"):
+        build_report_alignment_contract(
+            "acquisition",
+            metric_names=["prediction_time_series"],
+            measurement_selection_ids=["final_weights"],
+            strict_readout_coverage=True,
+        )
+
+
+def test_report_alignment_multi_readout_priority_is_deterministic():
+    aligned = build_report_alignment_contract(
+        "acquisition",
+        metric_names=["prediction_time_series", "mean_prediction_by_stimulus"],
+        measurement_selection_ids=["trial_log", "learning_curve"],
+        strict_readout_coverage=True,
+    )
+    assert aligned["selected_measurement_readouts"] == ["trial_log", "learning_curve"]
+    catalog = aligned["measurement_readout_catalog"]
+    assert [entry["selection_id"] for entry in catalog[:2]] == ["learning_curve", "trial_log"]
+
+
+def test_report_alignment_module_does_not_expose_hand_authored_metric_map():
+    assert not hasattr(report_module, "METRIC_TO_DEPENDENT_VARIABLE")

@@ -86,6 +86,112 @@ _PARAM_SCHEMA_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
     },
 }
 
+_MEASUREMENT_REPORT_ALIGNMENT: dict[str, dict[str, Any]] = {
+    "trial_log": {
+        "priority": 30,
+        "supported_metrics": [
+            "prediction_time_series",
+            "prediction_error_time_series",
+            "action_counts",
+        ],
+        "metric_to_variable": {
+            "prediction_time_series": "predicted_outcome",
+            "prediction_error_time_series": "prediction_error",
+            "action_counts": "action_counts",
+        },
+    },
+    "associative_strength": {
+        "priority": 20,
+        "supported_metrics": ["associative_strength_time_series"],
+        "metric_to_variable": {"associative_strength_time_series": "associative_strength"},
+    },
+    "response_strength": {
+        "priority": 20,
+        "supported_metrics": ["response_strength_time_series"],
+        "metric_to_variable": {"response_strength_time_series": "response_strength"},
+    },
+    "prediction_curve": {
+        "priority": 10,
+        "supported_metrics": [
+            "prediction_time_series",
+            "mean_prediction_by_stimulus",
+            "final_prediction_by_stimulus",
+        ],
+        "metric_to_variable": {
+            "prediction_time_series": "predicted_outcome",
+            "mean_prediction_by_stimulus": "predicted_outcome",
+            "final_prediction_by_stimulus": "predicted_outcome",
+        },
+    },
+    "learning_curve": {
+        "priority": 5,
+        "supported_metrics": [
+            "prediction_time_series",
+            "mean_prediction_by_stimulus",
+            "final_prediction_by_stimulus",
+            "mean_reward_by_stimulus",
+            "trial_count_by_stimulus",
+            "discrimination_index",
+            "extinction_rate",
+            "reward_time_series",
+            "cumulative_responses",
+            "cumulative_rewards",
+            "outcome_type_counts",
+            "phase_reward_summary",
+            "action_counts",
+        ],
+        "metric_to_variable": {
+            "prediction_time_series": "predicted_outcome",
+            "mean_prediction_by_stimulus": "predicted_outcome",
+            "final_prediction_by_stimulus": "predicted_outcome",
+            "action_counts": "action_counts",
+        },
+    },
+    "action_probabilities": {
+        "priority": 20,
+        "supported_metrics": ["action_counts"],
+        "metric_to_variable": {"action_counts": "action_counts"},
+    },
+    "prediction_error_curve": {
+        "priority": 15,
+        "supported_metrics": ["prediction_error_time_series"],
+        "metric_to_variable": {"prediction_error_time_series": "prediction_error"},
+    },
+    "discrimination_index": {
+        "priority": 10,
+        "supported_metrics": ["discrimination_index"],
+        "metric_to_variable": {},
+    },
+    "phase_summary": {
+        "priority": 40,
+        "supported_metrics": ["phase_reward_summary"],
+        "metric_to_variable": {},
+    },
+    "report_bundle": {
+        "priority": 50,
+        "supported_metrics": [
+            "prediction_time_series",
+            "mean_prediction_by_stimulus",
+            "final_prediction_by_stimulus",
+            "mean_reward_by_stimulus",
+            "trial_count_by_stimulus",
+            "discrimination_index",
+            "reward_time_series",
+            "cumulative_responses",
+            "cumulative_rewards",
+            "outcome_type_counts",
+            "phase_reward_summary",
+            "action_counts",
+        ],
+        "metric_to_variable": {
+            "prediction_time_series": "predicted_outcome",
+            "mean_prediction_by_stimulus": "predicted_outcome",
+            "final_prediction_by_stimulus": "predicted_outcome",
+            "action_counts": "action_counts",
+        },
+    },
+}
+
 
 def _titleize(selection_id: str) -> str:
     return selection_id.replace("_", " ").strip().title()
@@ -103,13 +209,25 @@ def _build_registry() -> dict[str, Any]:
                 if isinstance(_PARAM_SCHEMA_OVERRIDES.get(slot, {}), dict)
                 else {}
             )
-            selection_payloads[selection_id] = {
+            selection_payload = {
                 "id": selection_id,
                 "label": _titleize(selection_id),
                 "params_schema": dict(param_schema),
                 "internal_builder_family": _SLOT_TO_BUILDER_FAMILY[slot],
                 "ui_visible": True,
             }
+            if slot == "m":
+                selection_payload["report_alignment"] = deepcopy(
+                    _MEASUREMENT_REPORT_ALIGNMENT.get(
+                        selection_id,
+                        {
+                            "priority": 100,
+                            "supported_metrics": [],
+                            "metric_to_variable": {},
+                        },
+                    )
+                )
+            selection_payloads[selection_id] = selection_payload
         slots[slot] = {
             "id": slot,
             "label": master_entry["label"],
@@ -294,6 +412,44 @@ def validate_operator_basis_registry(registry: dict[str, Any] | None = None) -> 
                 selection.get("ui_visible"),
                 f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.ui_visible",
             )
+            if slot_key == "m":
+                report_alignment = _require_dict(
+                    selection.get("report_alignment"),
+                    f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment",
+                )
+                priority = report_alignment.get("priority")
+                if not isinstance(priority, int):
+                    raise OperatorBasisRegistryValidationError(
+                        f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.priority must be int."
+                    )
+                supported_metrics = _require_string_list(
+                    report_alignment.get("supported_metrics"),
+                    f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.supported_metrics",
+                )
+                metric_to_variable = _require_dict(
+                    report_alignment.get("metric_to_variable"),
+                    f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.metric_to_variable",
+                )
+                for metric_name in metric_to_variable.keys():
+                    _require_non_empty_string(
+                        metric_name,
+                        f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.metric_to_variable.key",
+                    )
+                for variable_id in metric_to_variable.values():
+                    if variable_id is None:
+                        continue
+                    _require_non_empty_string(
+                        variable_id,
+                        f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.metric_to_variable.value",
+                    )
+                invalid_metric_links = sorted(
+                    metric_name for metric_name in metric_to_variable.keys() if metric_name not in set(supported_metrics)
+                )
+                if invalid_metric_links:
+                    raise OperatorBasisRegistryValidationError(
+                        f"operator_basis_registry.slots.{slot_key}.selections.{selection_key}.report_alignment.metric_to_variable "
+                        f"references metrics not present in supported_metrics: {', '.join(invalid_metric_links)}"
+                    )
 
     return payload
 
@@ -343,4 +499,13 @@ def get_internal_builder_family(slot: str, selection: str) -> str:
     """Resolve builder-family routing metadata for a slot selection."""
     selection_payload = get_operator_selection_contract(slot, selection)
     return selection_payload["internal_builder_family"]
+
+
+def get_measurement_readout_contract(selection: str) -> dict[str, Any]:
+    """Resolve report-alignment metadata for an `m` selection id."""
+    payload = get_operator_selection_contract("m", selection)
+    report_alignment = payload.get("report_alignment")
+    if not isinstance(report_alignment, dict):
+        raise KeyError(f"Measurement readout '{selection}' has no report_alignment metadata.")
+    return deepcopy(report_alignment)
 

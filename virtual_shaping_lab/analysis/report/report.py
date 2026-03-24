@@ -280,6 +280,25 @@ def _extract_attention_summary(payload):
     return None
 
 
+def _extract_measurement_selection_ids(payload) -> list[str] | None:
+    if not isinstance(payload, dict):
+        return None
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict):
+        return None
+    measurement = provenance.get("measurement_provenance_identity")
+    if not isinstance(measurement, dict):
+        return None
+    selection_ids = measurement.get("selection_ids")
+    if not isinstance(selection_ids, list):
+        return None
+    out: list[str] = []
+    for item in selection_ids:
+        if isinstance(item, str) and item.strip():
+            out.append(item)
+    return out if out else None
+
+
 @dataclass(frozen=True)
 class ReportRunContext:
     report_dir: Path
@@ -399,9 +418,18 @@ def run_report(records, preset: str, payload=None, output_dir: str | None = None
     ctx = artifact_writer.create_context(output_dir=output_dir)
     artifact_writer.write_provenance(records=records, payload=payload, ctx=ctx)
     report_alignment = None
+    measurement_selection_ids = _extract_measurement_selection_ids(payload)
+    strict_readout_coverage = isinstance(measurement_selection_ids, list) and len(measurement_selection_ids) > 0
     try:
-        report_alignment = build_report_alignment_contract(preset_id=preset, metric_names=report_config.metrics)
+        report_alignment = build_report_alignment_contract(
+            preset_id=preset,
+            metric_names=report_config.metrics,
+            measurement_selection_ids=measurement_selection_ids,
+            strict_readout_coverage=strict_readout_coverage,
+        )
     except (ReportAlignmentError, KeyError):
+        if strict_readout_coverage:
+            raise
         report_alignment = None
     artifact_writer.write_report_alignment(alignment=report_alignment, ctx=ctx)
 
