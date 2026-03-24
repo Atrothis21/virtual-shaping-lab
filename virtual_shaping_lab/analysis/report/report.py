@@ -183,6 +183,7 @@ def _extract_artifact_identity(payload):
         "mechanism_identity": None,
         "operator_pipeline_identity": None,
         "learner_identity": _extract_learner_identity(payload),
+        "payload_mode_identity": {},
         "basis_compile_identity": {},
         "measurement_provenance_identity": {},
     }
@@ -203,6 +204,9 @@ def _extract_artifact_identity(payload):
             basis_identity = provenance.get("basis_compile_identity")
             if isinstance(basis_identity, dict):
                 identity["basis_compile_identity"] = dict(basis_identity)
+            payload_mode_identity = provenance.get("payload_mode_identity")
+            if isinstance(payload_mode_identity, dict):
+                identity["payload_mode_identity"] = dict(payload_mode_identity)
             measurement_identity = provenance.get("measurement_provenance_identity")
             if isinstance(measurement_identity, dict):
                 identity["measurement_provenance_identity"] = dict(measurement_identity)
