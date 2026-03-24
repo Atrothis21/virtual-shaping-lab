@@ -5,6 +5,10 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from ui.contracts.arrangement_task_agent_composition import (
+    ArrangementTaskAgentCompositionError,
+    compose_arrangement_task_agent_to_operator_subset,
+)
 from ui.contracts.operator_basis_registry import list_ui_selectable_implementations
 from ui.contracts.operator_basis_schema import REQUIRED_OPERATOR_BASIS_SLOTS
 from ui.contracts.operator_subset_contract import validate_preset_definition
@@ -82,6 +86,10 @@ OPERATOR_COMPATIBILITY_MATRIX: dict[str, dict[str, Any]] = {
         "kind": "cross_slot",
         "description": "eligibility_curve measurement requires trace mechanism.",
     },
+    "LGL_E_TUPLE_COMPOSITION": {
+        "kind": "tuple_level",
+        "description": "Tuple composition failed before slot legality evaluation.",
+    },
 }
 
 
@@ -135,9 +143,85 @@ def validate_slot_selection_legality(slot: str, selection: Any) -> None:
         )
 
 
-def evaluate_operator_legality(preset_definition: dict[str, Any]) -> list[dict[str, Any]]:
+def _infer_violating_axis(composition_code: str) -> str:
+    if "ARRANGEMENT" in composition_code:
+        return "arrangement"
+    if "AGENT" in composition_code or "BUNDLE" in composition_code:
+        return "agent"
+    if "TASK" in composition_code:
+        return "task"
+    return "tuple"
+
+
+def _preset_definition_from_subset(
+    *,
+    operator_subset: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    return {
+        "id": f"tuple_{label}",
+        "label": f"Tuple {label}",
+        "description": "Tuple-composed operator subset.",
+        "operator_subset": deepcopy(operator_subset),
+        "defaults": {},
+        "locked": [],
+        "optional": ["a", "c", "g", "e", "pi"],
+    }
+
+
+def evaluate_operator_legality(
+    preset_definition: dict[str, Any] | None = None,
+    *,
+    arrangement_id: str | None = None,
+    phenomenon_id: str | None = None,
+    agent_bundle_id: str | None = None,
+) -> list[dict[str, Any]]:
     """Evaluate legality rules and return diagnostics."""
-    selected = _materialize_effective_selection_map(preset_definition)
+    selected: dict[str, Any]
+    tuple_context: dict[str, str] | None = None
+    if preset_definition is not None:
+        selected = _materialize_effective_selection_map(preset_definition)
+    else:
+        if not arrangement_id or not phenomenon_id or not agent_bundle_id:
+            raise OperatorLegalityError(
+                "LGL_E_TUPLE_COMPOSITION",
+                "Tuple-path legality requires arrangement_id, phenomenon_id, and agent_bundle_id.",
+                details={
+                    "arrangement_id": arrangement_id,
+                    "phenomenon_id": phenomenon_id,
+                    "agent_bundle_id": agent_bundle_id,
+                },
+            )
+        tuple_context = {
+            "arrangement_id": str(arrangement_id),
+            "phenomenon_id": str(phenomenon_id),
+            "agent_bundle_id": str(agent_bundle_id),
+        }
+        try:
+            composition = compose_arrangement_task_agent_to_operator_subset(
+                arrangement_id=str(arrangement_id),
+                phenomenon_id=str(phenomenon_id),
+                agent_bundle_id=str(agent_bundle_id),
+            )
+        except ArrangementTaskAgentCompositionError as exc:
+            return [
+                {
+                    "code": "LGL_E_TUPLE_COMPOSITION",
+                    "message": str(exc),
+                    "slot": "tuple",
+                    "details": {
+                        "tuple_context": dict(tuple_context),
+                        "composition_code": exc.code,
+                        "violating_axis": _infer_violating_axis(exc.code),
+                        "composition_details": dict(exc.details),
+                    },
+                }
+            ]
+        derived = _preset_definition_from_subset(
+            operator_subset=composition["operator_subset"],
+            label=f"{arrangement_id}_{phenomenon_id}_{agent_bundle_id}",
+        )
+        selected = _materialize_effective_selection_map(derived)
 
     diagnostics: list[dict[str, Any]] = []
     for slot in REQUIRED_OPERATOR_BASIS_SLOTS:
@@ -152,6 +236,11 @@ def evaluate_operator_legality(preset_definition: dict[str, Any]) -> list[dict[s
                     "details": dict(exc.details),
                 }
             )
+    if tuple_context is not None:
+        for diagnostic in diagnostics:
+            details = dict(diagnostic.get("details", {}))
+            details["tuple_context"] = dict(tuple_context)
+            diagnostic["details"] = details
 
     delta = _selection(selected, "delta")
     e = _selection(selected, "e")
@@ -226,12 +315,30 @@ def evaluate_operator_legality(preset_definition: dict[str, Any]) -> list[dict[s
             }
         )
 
+    if tuple_context is not None:
+        for diagnostic in diagnostics:
+            details = dict(diagnostic.get("details", {}))
+            details["tuple_context"] = dict(tuple_context)
+            details.setdefault("violating_axis", "slot")
+            diagnostic["details"] = details
+
     return diagnostics
 
 
-def validate_operator_legality(preset_definition: dict[str, Any]) -> dict[str, Any]:
+def validate_operator_legality(
+    preset_definition: dict[str, Any] | None = None,
+    *,
+    arrangement_id: str | None = None,
+    phenomenon_id: str | None = None,
+    agent_bundle_id: str | None = None,
+) -> dict[str, Any]:
     """Validate legality and raise machine-readable error codes on failure."""
-    diagnostics = evaluate_operator_legality(preset_definition)
+    diagnostics = evaluate_operator_legality(
+        preset_definition,
+        arrangement_id=arrangement_id,
+        phenomenon_id=phenomenon_id,
+        agent_bundle_id=agent_bundle_id,
+    )
     if diagnostics:
         first = diagnostics[0]
         raise OperatorLegalityError(
@@ -239,5 +346,17 @@ def validate_operator_legality(preset_definition: dict[str, Any]) -> dict[str, A
             str(first["message"]),
             details={"diagnostics": diagnostics},
         )
-    return _materialize_effective_selection_map(preset_definition)
+    if preset_definition is not None:
+        return _materialize_effective_selection_map(preset_definition)
+    composition = compose_arrangement_task_agent_to_operator_subset(
+        arrangement_id=str(arrangement_id),
+        phenomenon_id=str(phenomenon_id),
+        agent_bundle_id=str(agent_bundle_id),
+    )
+    return _materialize_effective_selection_map(
+        _preset_definition_from_subset(
+            operator_subset=composition["operator_subset"],
+            label=f"{arrangement_id}_{phenomenon_id}_{agent_bundle_id}",
+        )
+    )
 

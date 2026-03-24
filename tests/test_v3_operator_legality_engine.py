@@ -97,4 +97,34 @@ def test_legality_matrix_coverage_entries_exercised():
         diagnostics = evaluate_operator_legality(payload)
         observed.update(d["code"] for d in diagnostics)
 
+    tuple_diagnostics = evaluate_operator_legality(
+        arrangement_id="hybrid",
+        phenomenon_id="acquisition",
+        agent_bundle_id="legacy_hybrid_bundle",
+    )
+    observed.update(d["code"] for d in tuple_diagnostics)
+
     assert expected_codes.issubset(observed)
+
+
+def test_legality_engine_tuple_path_reports_axis_context_for_composition_failure():
+    diagnostics = evaluate_operator_legality(
+        arrangement_id="hybrid",
+        phenomenon_id="acquisition",
+        agent_bundle_id="legacy_hybrid_bundle",
+    )
+    assert diagnostics
+    assert diagnostics[0]["code"] == "LGL_E_TUPLE_COMPOSITION"
+    details = diagnostics[0]["details"]
+    assert details["tuple_context"]["arrangement_id"] == "hybrid"
+    assert details["violating_axis"] == "arrangement"
+
+
+def test_legality_engine_tuple_path_accepts_known_valid_tuple():
+    validated = validate_operator_legality(
+        arrangement_id="pavlovian",
+        phenomenon_id="acquisition",
+        agent_bundle_id="rw_classical",
+    )
+    assert validated["w"] == "rescorla_wagner"
+    assert validated["omega"] == "classical_contingency"
