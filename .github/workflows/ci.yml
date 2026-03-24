@@ -119,6 +119,14 @@ jobs:
           pytest -q tests/test_run_api_contract.py -k "preset_basis_authoring_contract_endpoint_shape or basis_materialization_endpoint_emits_canonical_payload or basis_materialization_endpoint_payload_runs_for_core_presets or acquisition_basis_materialization_endpoint_payload_runs or mixed_legacy_and_canonical_payload_with_actionable_details or rejects_legacy_flat_payload_with_actionable_details or payload_mode_identity" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 arrangement-task-agent foundation
+        run: |
+          pytest -q tests/test_v3_arrangement_contract.py tests/test_v3_task_registry.py tests/test_v3_agent_bundle_registry.py tests/test_v3_agent_bundle_declarative_contract.py tests/test_v3_arrangement_task_agent_composition.py tests/test_v3_arrangement_task_agent_provenance.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_operator_legality_engine.py -k "tuple_path or TUPLE_COMPOSITION" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

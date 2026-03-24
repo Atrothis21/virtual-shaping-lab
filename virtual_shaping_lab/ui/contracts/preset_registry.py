@@ -13,6 +13,10 @@ from ui.contracts.operator_registry import list_operator_ids
 from ui.contracts.trialstate_registry import list_trialstate_field_ids
 from ui.contracts.operator_basis_registry import list_ui_selectable_implementations
 from ui.contracts.operator_subset_contract import validate_preset_definition
+from ui.contracts.task_registry import (
+    build_thin_preset_task_reference,
+    validate_preset_task_reference,
+)
 
 
 class PresetRegistryValidationError(ValueError):
@@ -27,6 +31,7 @@ REQUIRED_PRESET_KEYS: tuple[str, ...] = (
     "label",
     "description",
     "protocol_family",
+    "task_reference",
     "basis_definition",
     "template",
     "ui_contract",
@@ -74,6 +79,7 @@ def _core_preset(
         "label": label,
         "description": description,
         "protocol_family": protocol_family,
+        "task_reference": build_thin_preset_task_reference(preset_id),
         "basis_definition": _core_basis_definition(
             preset_id=preset_id,
             label=label,
@@ -420,6 +426,16 @@ def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str
             preset.get("protocol_family"),
             f"preset_registry.presets.{preset_key}.protocol_family",
         )
+        task_reference = _require_dict(
+            preset.get("task_reference"),
+            f"preset_registry.presets.{preset_key}.task_reference",
+        )
+        try:
+            validate_preset_task_reference(task_reference)
+        except Exception as exc:
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.task_reference invalid: {exc}"
+            ) from exc
         basis_definition = _require_dict(
             preset.get("basis_definition"),
             f"preset_registry.presets.{preset_key}.basis_definition",
