@@ -33,6 +33,16 @@ from ui.contracts.task_registry import (
     validate_task_registry,
     validate_task_tuple_policy,
 )
+from ui.contracts.agent_bundle_registry import (
+    AGENT_BUNDLE_REGISTRY,
+    AGENT_BUNDLE_REGISTRY_VERSION,
+    AgentBundleRegistryValidationError,
+    get_agent_bundle,
+    get_agent_bundle_registry,
+    list_agent_bundle_ids,
+    validate_agent_bundle_arrangement_compatibility,
+    validate_agent_bundle_registry,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -250,6 +260,14 @@ __all__ = [
     "validate_task_tuple_policy",
     "build_thin_preset_task_reference",
     "validate_preset_task_reference",
+    "AgentBundleRegistryValidationError",
+    "AGENT_BUNDLE_REGISTRY_VERSION",
+    "AGENT_BUNDLE_REGISTRY",
+    "validate_agent_bundle_registry",
+    "get_agent_bundle_registry",
+    "list_agent_bundle_ids",
+    "get_agent_bundle",
+    "validate_agent_bundle_arrangement_compatibility",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
