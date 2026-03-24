@@ -112,6 +112,8 @@ def test_legacy_bridge_is_disabled_for_basis_first_migrated_routes():
     teaching_src = _read(JS_DIR / "teaching_panel.jsx")
     assert "BASIS_FIRST_PRESET_ROUTES" in teaching_src
     assert "\"acquisition\"" in teaching_src
+    assert "\"extinction\"" in teaching_src
+    assert "\"differential_acquisition\"" in teaching_src
     assert "has migrated to basis-first authoring; legacy canonicalization bridge is disabled" in teaching_src
 
 

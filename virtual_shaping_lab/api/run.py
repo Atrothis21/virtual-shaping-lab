@@ -20,6 +20,8 @@ from paths import REPORTS_DIR, UI_DIR
 from ui.contracts.preset_basis_authoring import (
     PresetBasisAuthoringError,
     build_acquisition_basis_authoring_contract,
+    build_preset_basis_authoring_contract,
+    materialize_preset_basis_payload,
     materialize_acquisition_basis_payload,
 )
 from ui.validate_payload import validate_payload
@@ -169,6 +171,22 @@ def acquisition_basis_authoring_contract_api():
         )
 
 
+@app.get("/catalog/presets/{preset_id}/basis-authoring")
+def preset_basis_authoring_contract_api(preset_id: str):
+    try:
+        return build_preset_basis_authoring_contract(preset_id)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Preset basis authoring contract generation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Preset basis authoring contract generation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+
+
 @app.post("/catalog/presets/acquisition/materialize-basis")
 def materialize_acquisition_basis_api(payload: dict):
     try:
@@ -182,6 +200,24 @@ def materialize_acquisition_basis_api(payload: dict):
         raise_internal_error(
             "Acquisition basis payload materialization failed.",
             details={"reason": str(exc)},
+        )
+
+
+@app.post("/catalog/presets/{preset_id}/materialize-basis")
+def materialize_preset_basis_api(preset_id: str, payload: dict):
+    try:
+        merged = dict(payload or {})
+        merged["preset_id"] = preset_id
+        return materialize_preset_basis_payload(merged)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Preset basis authoring payload validation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Preset basis payload materialization failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
         )
 
 

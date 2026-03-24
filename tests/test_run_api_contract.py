@@ -678,6 +678,70 @@ def test_acquisition_basis_materialization_endpoint_payload_runs(monkeypatch, tm
     assert body["metadata"]["payload_mode_identity"]["payload_mode"] == "canonical_v3_with_basis_authoring_metadata"
 
 
+@pytest.mark.parametrize("preset_id", ["acquisition", "extinction", "differential_acquisition"])
+def test_preset_basis_authoring_contract_endpoint_shape(preset_id: str):
+    body = api_run.preset_basis_authoring_contract_api(preset_id)
+    assert body["preset_id"] == preset_id
+    assert body["registry_generated"] is True
+    assert isinstance(body["operator_choices"]["phi"], list) and body["operator_choices"]["phi"]
+    assert isinstance(body["operator_choices"]["w"], list) and body["operator_choices"]["w"]
+
+
+@pytest.mark.parametrize(
+    ("preset_id", "authoring"),
+    [
+        (
+            "extinction",
+            {
+                "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+                "edits": {
+                    "n_acquisition_trials": 8,
+                    "n_extinction_trials": 9,
+                    "cs_plus": ["tone"],
+                    "learning_rule": "rescorla_wagner",
+                },
+            },
+        ),
+        (
+            "differential_acquisition",
+            {
+                "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+                "edits": {
+                    "n_trials": 10,
+                    "cs_plus": ["tone"],
+                    "cs_minus": ["noise"],
+                    "learning_rule": "rescorla_wagner",
+                },
+            },
+        ),
+    ],
+)
+def test_basis_materialization_endpoint_payload_runs_for_core_presets(
+    monkeypatch,
+    tmp_path,
+    preset_id: str,
+    authoring: dict[str, object],
+):
+    fixture_output_dir = tmp_path / f"{preset_id}_basis_materialized_run"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    materialized = api_run.materialize_preset_basis_api(preset_id, copy.deepcopy(authoring))
+    body = api_run.run_api(materialized)
+    assert body["status"] == "success"
+    assert body["state"] == "completed"
+    assert isinstance(body.get("run_id"), str) and body["run_id"]
+    assert body["metadata"]["payload_mode_identity"]["payload_mode"] == "canonical_v3_with_basis_authoring_metadata"
+
+
 def test_operator_stage_io_provenance_artifact_integrity(monkeypatch, tmp_path):
     payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
     fixture_output_dir = tmp_path / "stage_io_fixture"

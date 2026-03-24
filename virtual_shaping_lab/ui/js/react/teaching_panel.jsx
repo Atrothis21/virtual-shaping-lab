@@ -1,6 +1,10 @@
 window.VSLReact = window.VSLReact || {};
 
-const BASIS_FIRST_PRESET_ROUTES = Object.freeze(["acquisition"]);
+const BASIS_FIRST_PRESET_ROUTES = Object.freeze([
+  "acquisition",
+  "extinction",
+  "differential_acquisition",
+]);
 
 function currentPresetSlug() {
   const match = window.location.pathname.match(/\/ui\/presets\/([a-z0-9_]+)\.html$/i);
