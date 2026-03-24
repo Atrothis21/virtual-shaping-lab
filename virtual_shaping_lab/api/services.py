@@ -406,6 +406,52 @@ def _derive_tuple_authoring_identity(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _derive_preset_ux_identity(payload: Dict[str, Any]) -> Dict[str, Any]:
+    tuple_authoring = payload.get("tuple_authoring")
+    candidates: list[Dict[str, Any]] = []
+    top_level = payload.get("preset_ux")
+    if isinstance(top_level, dict):
+        candidates.append(top_level)
+    if isinstance(tuple_authoring, dict):
+        nested = tuple_authoring.get("preset_ux")
+        if isinstance(nested, dict):
+            candidates.append(nested)
+        nested_identity = tuple_authoring.get("preset_ux_identity")
+        if isinstance(nested_identity, dict):
+            candidates.append(nested_identity)
+    direct = {
+        "smart_preset_id": payload.get("smart_preset_id"),
+        "entry_mode": payload.get("entry_mode"),
+        "compatibility_status": payload.get("compatibility_status"),
+    }
+    if any(isinstance(v, str) and v.strip() for v in direct.values()):
+        candidates.append(direct)
+    if not candidates:
+        return {}
+
+    def _first_non_empty(key: str) -> Any:
+        for source in candidates:
+            value = source.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+        return None
+
+    smart_preset_id = _first_non_empty("smart_preset_id")
+    entry_mode = _first_non_empty("entry_mode")
+    compatibility_status = _first_non_empty("compatibility_status")
+    return {
+        "smart_preset_id": (
+            smart_preset_id if isinstance(smart_preset_id, str) and smart_preset_id.strip() else None
+        ),
+        "entry_mode": entry_mode if isinstance(entry_mode, str) and entry_mode.strip() else None,
+        "compatibility_status": (
+            compatibility_status
+            if isinstance(compatibility_status, str) and compatibility_status.strip()
+            else None
+        ),
+    }
+
+
 def _extract_learner_identity_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     plan = payload.get("plan")
     if isinstance(plan, dict):
@@ -500,6 +546,11 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
                 if isinstance(provenance, dict) and isinstance(provenance.get("tuple_authoring_identity"), dict)
                 else {}
             ),
+            "preset_ux_identity": (
+                dict(provenance.get("preset_ux_identity", {}))
+                if isinstance(provenance, dict) and isinstance(provenance.get("preset_ux_identity"), dict)
+                else {}
+            ),
         }
 
     record_schema_version = "v1"
@@ -534,6 +585,16 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
         "measurement_provenance_identity": (
             dict(provenance.get("measurement_provenance_identity", {}))
             if isinstance(provenance, dict) and isinstance(provenance.get("measurement_provenance_identity"), dict)
+            else {}
+        ),
+        "tuple_authoring_identity": (
+            dict(provenance.get("tuple_authoring_identity", {}))
+            if isinstance(provenance, dict) and isinstance(provenance.get("tuple_authoring_identity"), dict)
+            else {}
+        ),
+        "preset_ux_identity": (
+            dict(provenance.get("preset_ux_identity", {}))
+            if isinstance(provenance, dict) and isinstance(provenance.get("preset_ux_identity"), dict)
             else {}
         ),
     }
@@ -592,6 +653,11 @@ def _fallback_plan_metadata_from_status(*, run_id: str, source_status: Dict[str,
         "tuple_authoring_identity": (
             dict(metadata.get("tuple_authoring_identity", {}))
             if isinstance(metadata.get("tuple_authoring_identity"), dict)
+            else {}
+        ),
+        "preset_ux_identity": (
+            dict(metadata.get("preset_ux_identity", {}))
+            if isinstance(metadata.get("preset_ux_identity"), dict)
             else {}
         ),
     }
@@ -688,6 +754,7 @@ class RunService:
         *,
         payload_mode_identity: Optional[Dict[str, Any]] = None,
         tuple_authoring_identity: Optional[Dict[str, Any]] = None,
+        preset_ux_identity: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         payload = to_canonical_payload(
             {
@@ -704,6 +771,7 @@ class RunService:
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
             "tuple_authoring_identity": dict(tuple_authoring_identity or {}),
+            "preset_ux_identity": dict(preset_ux_identity or {}),
         }
         payload["plan"] = plan.to_dict()
         return payload
@@ -715,6 +783,7 @@ class RunService:
         reports_dir: Path,
         payload_mode_identity: Optional[Dict[str, Any]] = None,
         tuple_authoring_identity: Optional[Dict[str, Any]] = None,
+        preset_ux_identity: Optional[Dict[str, Any]] = None,
     ):
         # Compatibility hook: allows API-contract tests to patch assembly seam.
         assemble_experiment(plan)
@@ -746,6 +815,7 @@ class RunService:
             plan,
             payload_mode_identity=payload_mode_identity,
             tuple_authoring_identity=tuple_authoring_identity,
+            preset_ux_identity=preset_ux_identity,
         )
         report_dir = run_report(
             records=records,
@@ -786,6 +856,7 @@ class RunService:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
         payload_mode_identity = _derive_payload_mode_identity(payload)
         tuple_authoring_identity = _derive_tuple_authoring_identity(payload)
+        preset_ux_identity = _derive_preset_ux_identity(payload)
         plan = build_plan(payload)
         _enforce_phenomenon_operator_constraints(plan)
         plan_hash = plan.stable_hash()
@@ -799,6 +870,7 @@ class RunService:
             reports_dir=reports_dir,
             payload_mode_identity=payload_mode_identity,
             tuple_authoring_identity=tuple_authoring_identity,
+            preset_ux_identity=preset_ux_identity,
         )
         run_id = report_dir.name
         run_metadata = {
@@ -813,6 +885,7 @@ class RunService:
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
             "tuple_authoring_identity": tuple_authoring_identity,
+            "preset_ux_identity": preset_ux_identity,
             "operator_stage_diagnostics": _summarize_operator_stage_diagnostics(records),
         }
         _set_status_with_lifecycle(
@@ -973,6 +1046,13 @@ class ReportService:
             if isinstance(plan_tuple_identity, dict) and plan_tuple_identity
             else (source_tuple_identity if isinstance(source_tuple_identity, dict) else {})
         )
+        plan_preset_ux_identity = plan_meta.get("preset_ux_identity")
+        source_preset_ux_identity = source_metadata.get("preset_ux_identity")
+        preset_ux_identity = (
+            plan_preset_ux_identity
+            if isinstance(plan_preset_ux_identity, dict) and plan_preset_ux_identity
+            else (source_preset_ux_identity if isinstance(source_preset_ux_identity, dict) else {})
+        )
 
         new_run_id = report_dir.name
         _set_status_with_lifecycle(
@@ -1000,6 +1080,7 @@ class ReportService:
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
                 "tuple_authoring_identity": tuple_authoring_identity,
+                "preset_ux_identity": preset_ux_identity,
                 "operator_stage_diagnostics": (
                     source_metadata.get("operator_stage_diagnostics", {})
                     if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
@@ -1038,6 +1119,7 @@ class ReportService:
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
                 "tuple_authoring_identity": tuple_authoring_identity,
+                "preset_ux_identity": preset_ux_identity,
                 "operator_stage_diagnostics": (
                     source_metadata.get("operator_stage_diagnostics", {})
                     if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
