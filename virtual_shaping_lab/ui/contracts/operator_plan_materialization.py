@@ -92,6 +92,7 @@ def _protocol_template(protocol_family: str, *, stimuli_catalog: list[str]) -> l
                 "protocol": "acquisition",
                 "stimuli": {"cs_plus": [stimuli_catalog[0]]},
                 "params": {"n_trials": 100},
+                "trials": 100,
             }
         ]
     if protocol_family == "extinction":
@@ -104,6 +105,7 @@ def _protocol_template(protocol_family: str, *, stimuli_catalog: list[str]) -> l
                     "n_acquisition_trials": 50,
                     "n_extinction_trials": 50,
                 },
+                "trials": 100,
             }
         ]
     if protocol_family == "differential_acquisition":
@@ -114,6 +116,7 @@ def _protocol_template(protocol_family: str, *, stimuli_catalog: list[str]) -> l
                 "protocol": "differential_acquisition",
                 "stimuli": {"cs_plus": [stimuli_catalog[0]], "cs_minus": [cs_minus]},
                 "params": {"n_trials": 100},
+                "trials": 100,
             }
         ]
     raise OperatorPlanMaterializationError(
