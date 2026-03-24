@@ -54,6 +54,28 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
     return response.json();
   }
 
+  async function fetchSmartPresetCatalog() {
+    const response = await fetch("/catalog/smart-presets");
+    if (!response.ok) {
+      throw new Error(`Smart preset catalog request failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function projectSmartPreset({ smartPresetId, edits = {} } = {}) {
+    const response = await fetch(`/catalog/smart-presets/${encodeURIComponent(String(smartPresetId || ""))}/project`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        edits: edits && typeof edits === "object" ? edits : {},
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Smart preset projection request failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
   function canRunForExpectedOutcome(compatibility) {
     const status = _normalizeId(compatibility && compatibility.status);
     return status !== "structurally_invalid";
@@ -167,6 +189,8 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
     SELECTABLE_UNIVERSE_SOURCE,
     fetchTupleCatalog,
     fetchTupleCompatibility,
+    fetchSmartPresetCatalog,
+    projectSmartPreset,
     canRunForExpectedOutcome,
     deriveExpectedOutcomePanelModel,
     deriveTupleSelectionModel,
