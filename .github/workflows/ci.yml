@@ -148,10 +148,10 @@ jobs:
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3 preset UX cutover
         run: |
-          pytest -q tests/test_v3_ui_preset_catalog_ux_contract.py tests/test_v3_ui_preset_detail_tuple_flow.py tests/test_v3_ui_preset_route_migration.py tests/test_v3_ui_preset_accessibility_contract.py tests/test_v3_preset_ux_docs_contract.py \
+          pytest -q tests/test_v3_ui_preset_catalog_ux_contract.py tests/test_v3_ui_preset_catalog_ordering.py tests/test_v3_ui_preset_catalog_density_controls.py tests/test_v3_ui_preset_detail_tuple_flow.py tests/test_v3_ui_manual_tuple_exploration_entry.py tests/test_v3_ui_preset_route_migration.py tests/test_v3_ui_preset_accessibility_contract.py tests/test_v3_ui_provenance_explanation_readability.py tests/test_v3_preset_ux_docs_contract.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
-          pytest -q tests/test_run_api_contract.py -k "preset_ux_catalog_endpoint_shape or preset_route_migration_endpoint_shape or smart_preset or tuple_compatibility or tuple_identity or keeps_tuple_identity" \
+          pytest -q tests/test_run_api_contract.py -k "preset_ux_catalog_endpoint_shape or preset_route_migration_endpoint_shape or smart_preset or tuple_compatibility or tuple_identity or keeps_tuple_identity or preset_ux_identity" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 

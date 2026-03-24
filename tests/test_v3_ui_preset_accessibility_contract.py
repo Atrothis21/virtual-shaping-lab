@@ -22,6 +22,14 @@ def test_preset_catalog_cards_expose_non_color_semantic_labels_and_aria_copy():
     assert "aria-label={`Explore tuple space for" in src
 
 
+def test_preset_catalog_action_focus_order_is_primary_then_manual_explore():
+    src = _read(JS_DIR / "app.jsx")
+    open_idx = src.find("aria-label={`Open preset")
+    explore_idx = src.find("aria-label={`Explore tuple space for")
+    assert open_idx >= 0 and explore_idx >= 0
+    assert open_idx < explore_idx
+
+
 def test_tuple_detail_copy_distinguishes_compatibility_guidance_from_composition_failure():
     src = _read(JS_DIR / "tuple_authoring_flow.jsx")
     assert "COMPATIBILITY_COPY_DECK" in src
