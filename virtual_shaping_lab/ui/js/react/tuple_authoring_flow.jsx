@@ -23,6 +23,14 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
     hide_structurally_impossible_agents: true,
     show_disabled_behaviorally_invalid_agents: true,
   });
+  const COMPATIBILITY_COPY_DECK = Object.freeze({
+    success: "Supported behavior: run is allowed.",
+    partial: "Partial support: run is allowed, but expected signatures may be incomplete.",
+    novel: "Novel prediction: run is allowed with explicit rationale attribution.",
+    behaviorally_unsupported: "This tuple is unlikely to reproduce the standard effect, but may still yield interpretable behavior.",
+    structurally_invalid: "Run is disabled because tuple composition is invalid. Select a compatible arrangement, task, and agent.",
+  });
+  const COMPOSITION_ERROR_COPY = "Run is disabled due to tuple composition failure. Resolve arrangement-task-agent compatibility first.";
 
   // Contract marker: selectable universes are registry/API generated, not hand-authored in UI.
   const SELECTABLE_UNIVERSE_SOURCE = "registry_generated";
@@ -104,19 +112,7 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
   }
 
   function _guidanceForStatus(status) {
-    if (status === "structurally_invalid") {
-      return "Run is disabled because the selected tuple is structurally invalid.";
-    }
-    if (status === "behaviorally_unsupported") {
-      return "This tuple is unlikely to reproduce the standard effect, but may still yield interpretable behavior.";
-    }
-    if (status === "partial") {
-      return "Partial support: run is allowed, but expected signatures may be incomplete.";
-    }
-    if (status === "novel") {
-      return "Novel prediction: run is allowed with explicit rationale attribution.";
-    }
-    return "Supported behavior: run is allowed.";
+    return COMPATIBILITY_COPY_DECK[status] || COMPATIBILITY_COPY_DECK.success;
   }
 
   function deriveExpectedOutcomePanelModel(compatibility) {
@@ -155,7 +151,31 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
       type: "composition_error",
       code,
       message,
+      guidance: COMPOSITION_ERROR_COPY,
       can_run: false,
+    };
+  }
+
+  function deriveRunDisabledReason({ compatibility, compositionError } = {}) {
+    if (_isObject(compositionError)) {
+      return COMPOSITION_ERROR_COPY;
+    }
+    const status = _normalizeId(compatibility && compatibility.status);
+    if (status === "structurally_invalid") {
+      return COMPATIBILITY_COPY_DECK.structurally_invalid;
+    }
+    return "";
+  }
+
+  function deriveA11yLabels({ compatibility, compositionError } = {}) {
+    const status = _normalizeId(compatibility && compatibility.status) || "unknown";
+    const disabledReason = deriveRunDisabledReason({ compatibility, compositionError });
+    return {
+      compatibility_badge_label: `Compatibility status: ${status}`,
+      compatibility_explanation_label: "Compatibility explanation from evaluator output",
+      run_gating_reason_label: disabledReason
+        ? `Run disabled reason: ${disabledReason}`
+        : "Run action enabled",
     };
   }
 
@@ -308,11 +328,15 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
     deriveExpectedOutcomePanelModel,
     deriveCompositionErrorPanelModel,
     deriveReadableProvenanceFactors,
+    deriveRunDisabledReason,
+    deriveA11yLabels,
     deriveTupleSelectionState,
     deriveDetailFlowStateFromSmartPresetProjection,
     deriveDetailFlowStateFromManualTupleSelection,
     deriveUnifiedDetailFlowModel,
     deriveTupleSelectionModel,
+    COMPATIBILITY_COPY_DECK,
+    COMPOSITION_ERROR_COPY,
   };
 })();
 

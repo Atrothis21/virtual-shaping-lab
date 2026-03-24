@@ -7,6 +7,12 @@ const UX_STATUS_BADGE = Object.freeze({
   novel: "badge-mechanism-attention",
   behaviorally_unsupported: "badge-mechanism-salience",
 });
+const UX_STATUS_LABEL = Object.freeze({
+  success: "Supported",
+  partial: "Partially Supported",
+  novel: "Novel",
+  behaviorally_unsupported: "Exploratory",
+});
 
 function mechanismBadgeClass(name) {
   const key = String(name || "").trim().toLowerCase();
@@ -57,11 +63,19 @@ function PresetUxCard({ item }) {
   const status = String(item?.compatibility?.status || "behaviorally_unsupported");
   const uxState = String(item?.compatibility?.ux_state || "caution");
   const badgeClass = UX_STATUS_BADGE[status] || "badge-mechanism-default";
+  const statusLabel = UX_STATUS_LABEL[status] || "Exploratory";
   const routeHref = item?.route?.href || "/ui/presets.html";
   const smartPresetHref = `${routeHref}?entry=smart_preset_prefill&smart_preset_id=${encodeURIComponent(String(item?.id || ""))}`;
   const manualExploreHref = `${routeHref}?entry=manual_tuple_explore&arrangement=${encodeURIComponent(String(item?.tuple_reference?.arrangement_id || ""))}&task=${encodeURIComponent(String(item?.tuple_reference?.phenomenon_id || ""))}`;
+  const guidanceText = String(item?.compatibility?.guidance || "");
   return (
-    <div className="card" data-ux-state={uxState} data-compatibility-status={status}>
+    <div
+      className="card"
+      data-ux-state={uxState}
+      data-compatibility-status={status}
+      role="article"
+      aria-label={`Preset card ${item.label}`}
+    >
       <h3>{item.label}</h3>
       {item.description && <p>{item.description}</p>}
       <p className="phase-summary">
@@ -72,14 +86,19 @@ function PresetUxCard({ item }) {
       <div className="badge-block">
         <div className="badge-label">Expected Outcome</div>
         <div className="badge-row">
-          <span className={`badge ${badgeClass}`}>{status}</span>
-          <span className="badge badge-mechanism-baseline">{uxState}</span>
+          <span className={`badge ${badgeClass}`} aria-label={`Compatibility status: ${statusLabel}`}>{statusLabel}</span>
+          <span className="badge badge-mechanism-baseline" aria-label={`UX state: ${uxState}`}>{uxState}</span>
         </div>
       </div>
-      {item?.compatibility?.explanation && <p>{item.compatibility.explanation}</p>}
+      {item?.compatibility?.explanation && (
+        <p aria-label="Compatibility explanation from evaluator output">{item.compatibility.explanation}</p>
+      )}
+      {guidanceText && (
+        <p aria-label="Compatibility guidance">{guidanceText}</p>
+      )}
       <div className="card-actions">
-        <a className="button" href={smartPresetHref}>Open Preset</a>
-        <a className="button secondary" href={manualExploreHref}>Explore Tuple Space</a>
+        <a className="button" href={smartPresetHref} aria-label={`Open preset ${item.label}`}>Open Preset</a>
+        <a className="button secondary" href={manualExploreHref} aria-label={`Explore tuple space for ${item.label}`}>Explore Tuple Space</a>
       </div>
     </div>
   );
