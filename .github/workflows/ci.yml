@@ -138,6 +138,14 @@ jobs:
           pytest -q tests/test_ui_teaching_contract.py -k "legacy_bridge or tuple_route_migration" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 behavioral compatibility and smart presets
+        run: |
+          pytest -q tests/test_v3_behavioral_compatibility_registry.py tests/test_v3_behavioral_compatibility_engine.py tests/test_v3_legality_behavior_separation.py tests/test_v3_ui_expected_outcome_panel.py tests/test_v3_smart_preset_projection.py tests/test_v3_behavioral_compatibility_smart_preset_docs.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_run_api_contract.py -k "smart_preset or tuple_compatibility" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest
