@@ -108,6 +108,20 @@ def test_reveal_toggle_path_is_render_only_and_payload_invariant():
     assert "buildPayload(" not in teaching_src.split("const revealContent = panel.querySelector(\"#tp-reveal-content\");", 1)[1]
 
 
+def test_legacy_bridge_is_disabled_for_basis_first_migrated_routes():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "BASIS_FIRST_PRESET_ROUTES" in teaching_src
+    assert "\"acquisition\"" in teaching_src
+    assert "has migrated to basis-first authoring; legacy canonicalization bridge is disabled" in teaching_src
+
+
+def test_legacy_bridge_retained_for_unmigrated_routes_via_explicit_fallback():
+    teaching_src = _read(JS_DIR / "teaching_panel.jsx")
+    assert "window.VSLReact.legacyToCanonicalPayload" in teaching_src
+    assert "window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload)" in teaching_src
+    assert "return window.VSLReact.legacyToCanonicalPayload(payload);" in teaching_src
+
+
 def test_results_app_exposes_behavior_to_operator_explainability_overlay():
     results_src = _read(JS_DIR / "results_app.jsx")
     assert "Explainability Overlay" in results_src

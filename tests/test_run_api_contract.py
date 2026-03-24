@@ -598,6 +598,32 @@ def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
     assert body["experiment"]["program"]["phases"][0]["trials"] == 9
 
 
+def test_acquisition_basis_materialization_endpoint_payload_runs(monkeypatch, tmp_path):
+    fixture_output_dir = tmp_path / "acquisition_basis_materialized_run"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    materialized = api_run.materialize_acquisition_basis_api(
+        {
+            "preset_id": "acquisition",
+            "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+            "edits": {"n_trials": 7, "cs_plus": ["tone"], "learning_rule": "rescorla_wagner"},
+        }
+    )
+    body = api_run.run_api(materialized)
+    assert body["status"] == "success"
+    assert body["state"] == "completed"
+    assert isinstance(body.get("run_id"), str) and body["run_id"]
+
+
 def test_operator_stage_io_provenance_artifact_integrity(monkeypatch, tmp_path):
     payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
     fixture_output_dir = tmp_path / "stage_io_fixture"
