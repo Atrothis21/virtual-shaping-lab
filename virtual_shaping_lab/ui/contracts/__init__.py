@@ -60,6 +60,11 @@ from ui.contracts.tuple_authoring_contract import (
     translate_to_tuple_authoring_payload,
     validate_tuple_authoring_payload,
 )
+from ui.contracts.tuple_authoring_api import (
+    TupleAuthoringAPIError,
+    build_tuple_guided_catalog,
+    materialize_tuple_authoring_payload,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -298,6 +303,9 @@ __all__ = [
     "TUPLE_AUTHORING_MODE",
     "validate_tuple_authoring_payload",
     "translate_to_tuple_authoring_payload",
+    "TupleAuthoringAPIError",
+    "build_tuple_guided_catalog",
+    "materialize_tuple_authoring_payload",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
