@@ -210,6 +210,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert "routed_objects" in body["metadata"]["basis_compile_identity"]
     assert isinstance(body["metadata"].get("measurement_provenance_identity"), dict)
     assert body["metadata"]["measurement_provenance_identity"].get("slot") == "m"
+    assert isinstance(body["metadata"].get("tuple_authoring_identity"), dict)
     assert isinstance(body["metadata"].get("operator_stage_diagnostics"), dict)
     assert isinstance(body["metadata"]["operator_stage_diagnostics"].get("realization_matrix"), dict)
     assert body["lifecycle"]["state"] == "RunComplete"
@@ -242,6 +243,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert identity["basis_compile_identity"].get("subset_hash") == body["metadata"]["basis_compile_identity"].get("subset_hash")
     assert isinstance(identity.get("measurement_provenance_identity"), dict)
     assert identity["measurement_provenance_identity"].get("slot") == "m"
+    assert isinstance(identity.get("tuple_authoring_identity"), dict)
+    assert identity["tuple_authoring_identity"] == body["metadata"]["tuple_authoring_identity"]
 
 
 def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
@@ -275,6 +278,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(status["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(status["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(status["metadata"].get("tuple_authoring_identity"), dict)
     assert isinstance(status["metadata"].get("operator_stage_diagnostics"), dict)
     assert status["lifecycle"]["state"] == "RunComplete"
     assert "create_report" in status["lifecycle"]["next_actions"]
@@ -329,6 +333,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(report_body["metadata"].get("tuple_authoring_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
     assert report_body["metadata"]["regeneration_mode"] == "from_artifacts"
     assert report_body["metadata"]["source_metadata_complete"] is True
@@ -500,6 +505,7 @@ def test_run_report_endpoint_regenerates_from_records_when_payload_artifact_miss
     assert isinstance(report_body["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
+    assert isinstance(report_body["metadata"].get("tuple_authoring_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
 
 
@@ -526,7 +532,73 @@ def test_run_report_regeneration_keeps_basis_and_measurement_identity(monkeypatc
     assert report_body["metadata"]["basis_compile_identity"] == run_body["metadata"]["basis_compile_identity"]
     assert report_body["metadata"]["payload_mode_identity"] == run_body["metadata"]["payload_mode_identity"]
     assert report_body["metadata"]["measurement_provenance_identity"] == run_body["metadata"]["measurement_provenance_identity"]
+    assert report_body["metadata"]["tuple_authoring_identity"] == run_body["metadata"]["tuple_authoring_identity"]
     assert report_body["metadata"]["operator_stage_diagnostics"] == run_body["metadata"]["operator_stage_diagnostics"]
+
+
+def test_run_api_emits_tuple_identity_and_artifact_identity_for_tuple_payload(monkeypatch, tmp_path):
+    fixture_output_dir = tmp_path / "tuple_identity_run_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    materialized = api_run.materialize_tuple_authoring_api(
+        {
+            "arrangement": "pavlovian",
+            "task": "acquisition",
+            "agent": "rw_classical",
+            "edits": {"n_trials": 7, "cs_plus": ["tone"]},
+        }
+    )
+    body = api_run.run_api(materialized)
+
+    tuple_identity = body["metadata"]["tuple_authoring_identity"]
+    assert tuple_identity["arrangement_id"] == "pavlovian"
+    assert tuple_identity["task_id"] == "acquisition"
+    assert tuple_identity["agent_id"] == "rw_classical"
+    assert tuple_identity["task_implementation_id"] == "pavlovian_acquisition"
+    assert isinstance(tuple_identity["composition_hash"], str) and tuple_identity["composition_hash"]
+
+    run_dir = fixture_output_dir / body["run_id"]
+    artifact_identity = json.loads((run_dir / "artifact_identity.json").read_text(encoding="utf-8"))
+    assert artifact_identity["tuple_authoring_identity"] == tuple_identity
+
+
+def test_run_report_regeneration_keeps_tuple_identity(monkeypatch, tmp_path):
+    fixture_output_dir = tmp_path / "tuple_identity_regen_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(output_dir),
+        )
+
+    monkeypatch.setattr(api_run, "reports_dir", fixture_output_dir)
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+
+    materialized = api_run.materialize_tuple_authoring_api(
+        {
+            "arrangement": "pavlovian",
+            "task": "acquisition",
+            "agent": "rw_classical",
+            "edits": {"n_trials": 6, "cs_plus": ["tone"]},
+        }
+    )
+    run_body = api_run.run_api(materialized)
+    report_body = api_run.run_report_api(run_body["run_id"])
+
+    assert report_body["metadata"]["tuple_authoring_identity"] == run_body["metadata"]["tuple_authoring_identity"]
 
 
 def test_run_api_rejects_mixed_legacy_and_canonical_payload_with_actionable_details():

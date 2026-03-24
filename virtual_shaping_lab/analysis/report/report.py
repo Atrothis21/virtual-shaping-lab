@@ -186,6 +186,7 @@ def _extract_artifact_identity(payload):
         "payload_mode_identity": {},
         "basis_compile_identity": {},
         "measurement_provenance_identity": {},
+        "tuple_authoring_identity": {},
     }
 
     mechanism_provenance = _extract_mechanism_provenance(payload)
@@ -210,6 +211,9 @@ def _extract_artifact_identity(payload):
             measurement_identity = provenance.get("measurement_provenance_identity")
             if isinstance(measurement_identity, dict):
                 identity["measurement_provenance_identity"] = dict(measurement_identity)
+            tuple_identity = provenance.get("tuple_authoring_identity")
+            if isinstance(tuple_identity, dict):
+                identity["tuple_authoring_identity"] = dict(tuple_identity)
         if identity["operator_pipeline_identity"] is None:
             experiment = payload.get("experiment")
             runtime = experiment.get("runtime") if isinstance(experiment, dict) else None

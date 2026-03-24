@@ -369,6 +369,43 @@ def _derive_payload_mode_identity(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _derive_tuple_authoring_identity(payload: Dict[str, Any]) -> Dict[str, Any]:
+    tuple_authoring = payload.get("tuple_authoring")
+    if not isinstance(tuple_authoring, dict):
+        return {}
+
+    tuple_data = tuple_authoring.get("tuple")
+    composition_identity = tuple_authoring.get("composition_identity")
+    if not isinstance(tuple_data, dict):
+        tuple_data = {}
+    if not isinstance(composition_identity, dict):
+        composition_identity = {}
+
+    arrangement_id = tuple_data.get("arrangement")
+    task_id = tuple_data.get("task")
+    agent_id = tuple_data.get("agent")
+    task_implementation_id = composition_identity.get("task_implementation_id")
+    composition_hash = composition_identity.get("composition_hash")
+    protocol_family = composition_identity.get("protocol_family")
+
+    return {
+        "arrangement_id": arrangement_id if isinstance(arrangement_id, str) and arrangement_id.strip() else None,
+        "task_id": task_id if isinstance(task_id, str) and task_id.strip() else None,
+        "task_implementation_id": (
+            task_implementation_id
+            if isinstance(task_implementation_id, str) and task_implementation_id.strip()
+            else None
+        ),
+        "agent_id": agent_id if isinstance(agent_id, str) and agent_id.strip() else None,
+        "composition_hash": (
+            composition_hash if isinstance(composition_hash, str) and composition_hash.strip() else None
+        ),
+        "protocol_family": (
+            protocol_family if isinstance(protocol_family, str) and protocol_family.strip() else None
+        ),
+    }
+
+
 def _extract_learner_identity_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     plan = payload.get("plan")
     if isinstance(plan, dict):
@@ -458,6 +495,11 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
                 if isinstance(provenance, dict) and isinstance(provenance.get("measurement_provenance_identity"), dict)
                 else {}
             ),
+            "tuple_authoring_identity": (
+                dict(provenance.get("tuple_authoring_identity", {}))
+                if isinstance(provenance, dict) and isinstance(provenance.get("tuple_authoring_identity"), dict)
+                else {}
+            ),
         }
 
     record_schema_version = "v1"
@@ -545,6 +587,11 @@ def _fallback_plan_metadata_from_status(*, run_id: str, source_status: Dict[str,
         "measurement_provenance_identity": (
             dict(metadata.get("measurement_provenance_identity", {}))
             if isinstance(metadata.get("measurement_provenance_identity"), dict)
+            else {}
+        ),
+        "tuple_authoring_identity": (
+            dict(metadata.get("tuple_authoring_identity", {}))
+            if isinstance(metadata.get("tuple_authoring_identity"), dict)
             else {}
         ),
     }
@@ -640,6 +687,7 @@ class RunService:
         plan: ExperimentPlan,
         *,
         payload_mode_identity: Optional[Dict[str, Any]] = None,
+        tuple_authoring_identity: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         payload = to_canonical_payload(
             {
@@ -655,6 +703,7 @@ class RunService:
             "payload_mode_identity": dict(payload_mode_identity or {}),
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
+            "tuple_authoring_identity": dict(tuple_authoring_identity or {}),
         }
         payload["plan"] = plan.to_dict()
         return payload
@@ -665,6 +714,7 @@ class RunService:
         plan: ExperimentPlan,
         reports_dir: Path,
         payload_mode_identity: Optional[Dict[str, Any]] = None,
+        tuple_authoring_identity: Optional[Dict[str, Any]] = None,
     ):
         # Compatibility hook: allows API-contract tests to patch assembly seam.
         assemble_experiment(plan)
@@ -695,6 +745,7 @@ class RunService:
         report_payload = RunService._build_report_payload_from_plan(
             plan,
             payload_mode_identity=payload_mode_identity,
+            tuple_authoring_identity=tuple_authoring_identity,
         )
         report_dir = run_report(
             records=records,
@@ -734,6 +785,7 @@ class RunService:
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
         payload_mode_identity = _derive_payload_mode_identity(payload)
+        tuple_authoring_identity = _derive_tuple_authoring_identity(payload)
         plan = build_plan(payload)
         _enforce_phenomenon_operator_constraints(plan)
         plan_hash = plan.stable_hash()
@@ -746,6 +798,7 @@ class RunService:
             plan=plan,
             reports_dir=reports_dir,
             payload_mode_identity=payload_mode_identity,
+            tuple_authoring_identity=tuple_authoring_identity,
         )
         run_id = report_dir.name
         run_metadata = {
@@ -759,6 +812,7 @@ class RunService:
             "payload_mode_identity": payload_mode_identity,
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
+            "tuple_authoring_identity": tuple_authoring_identity,
             "operator_stage_diagnostics": _summarize_operator_stage_diagnostics(records),
         }
         _set_status_with_lifecycle(
@@ -912,6 +966,13 @@ class ReportService:
             if isinstance(plan_measure_identity, dict) and plan_measure_identity
             else (source_measure_identity if isinstance(source_measure_identity, dict) else {})
         )
+        plan_tuple_identity = plan_meta.get("tuple_authoring_identity")
+        source_tuple_identity = source_metadata.get("tuple_authoring_identity")
+        tuple_authoring_identity = (
+            plan_tuple_identity
+            if isinstance(plan_tuple_identity, dict) and plan_tuple_identity
+            else (source_tuple_identity if isinstance(source_tuple_identity, dict) else {})
+        )
 
         new_run_id = report_dir.name
         _set_status_with_lifecycle(
@@ -938,6 +999,7 @@ class ReportService:
                 "payload_mode_identity": payload_mode_identity,
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
+                "tuple_authoring_identity": tuple_authoring_identity,
                 "operator_stage_diagnostics": (
                     source_metadata.get("operator_stage_diagnostics", {})
                     if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
@@ -975,6 +1037,7 @@ class ReportService:
                 "payload_mode_identity": payload_mode_identity,
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
+                "tuple_authoring_identity": tuple_authoring_identity,
                 "operator_stage_diagnostics": (
                     source_metadata.get("operator_stage_diagnostics", {})
                     if isinstance(source_metadata.get("operator_stage_diagnostics"), dict)
