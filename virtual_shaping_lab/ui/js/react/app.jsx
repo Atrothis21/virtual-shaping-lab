@@ -58,6 +58,8 @@ function PresetUxCard({ item }) {
   const uxState = String(item?.compatibility?.ux_state || "caution");
   const badgeClass = UX_STATUS_BADGE[status] || "badge-mechanism-default";
   const routeHref = item?.route?.href || "/ui/presets.html";
+  const smartPresetHref = `${routeHref}?entry=smart_preset_prefill&smart_preset_id=${encodeURIComponent(String(item?.id || ""))}`;
+  const manualExploreHref = `${routeHref}?entry=manual_tuple_explore&arrangement=${encodeURIComponent(String(item?.tuple_reference?.arrangement_id || ""))}&task=${encodeURIComponent(String(item?.tuple_reference?.phenomenon_id || ""))}`;
   return (
     <div className="card" data-ux-state={uxState} data-compatibility-status={status}>
       <h3>{item.label}</h3>
@@ -76,7 +78,8 @@ function PresetUxCard({ item }) {
       </div>
       {item?.compatibility?.explanation && <p>{item.compatibility.explanation}</p>}
       <div className="card-actions">
-        <a className="button" href={routeHref}>Open Preset</a>
+        <a className="button" href={smartPresetHref}>Open Preset</a>
+        <a className="button secondary" href={manualExploreHref}>Explore Tuple Space</a>
       </div>
     </div>
   );
