@@ -578,6 +578,26 @@ def test_extensions_api_contract_shape():
     assert isinstance(ext["report_templates"], dict)
 
 
+def test_acquisition_basis_authoring_contract_endpoint_shape():
+    body = api_run.acquisition_basis_authoring_contract_api()
+    assert body["preset_id"] == "acquisition"
+    assert body["registry_generated"] is True
+    assert isinstance(body["operator_choices"]["phi"], list) and body["operator_choices"]["phi"]
+    assert isinstance(body["operator_choices"]["w"], list) and body["operator_choices"]["w"]
+
+
+def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
+    payload = {
+        "preset_id": "acquisition",
+        "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+        "edits": {"n_trials": 9, "cs_plus": ["tone"], "learning_rule": "rescorla_wagner"},
+    }
+    body = api_run.materialize_acquisition_basis_api(payload)
+    assert set(body["experiment"].keys()) == {"program", "agent", "runtime"}
+    assert body["report"]["preset"] == "acquisition"
+    assert body["experiment"]["program"]["phases"][0]["trials"] == 9
+
+
 def test_operator_stage_io_provenance_artifact_integrity(monkeypatch, tmp_path):
     payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
     fixture_output_dir = tmp_path / "stage_io_fixture"

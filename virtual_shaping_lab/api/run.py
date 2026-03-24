@@ -17,6 +17,11 @@ from api.errors import raise_internal_error, raise_not_found, raise_validation_e
 from api.extensions import ExtensionCatalog
 from api.services import PlanService, ReportService, RunService
 from paths import REPORTS_DIR, UI_DIR
+from ui.contracts.preset_basis_authoring import (
+    PresetBasisAuthoringError,
+    build_acquisition_basis_authoring_contract,
+    materialize_acquisition_basis_payload,
+)
 from ui.validate_payload import validate_payload
 
 
@@ -127,6 +132,33 @@ def run_api(payload: dict):
         traceback.print_exc()
         raise_internal_error(
             "Run execution failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/presets/acquisition/basis-authoring")
+def acquisition_basis_authoring_contract_api():
+    try:
+        return build_acquisition_basis_authoring_contract()
+    except Exception as exc:
+        raise_internal_error(
+            "Acquisition basis authoring contract generation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.post("/catalog/presets/acquisition/materialize-basis")
+def materialize_acquisition_basis_api(payload: dict):
+    try:
+        return materialize_acquisition_basis_payload(payload)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Acquisition basis authoring payload validation failed.",
+            details={"reason": str(exc)},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Acquisition basis payload materialization failed.",
             details={"reason": str(exc)},
         )
 
