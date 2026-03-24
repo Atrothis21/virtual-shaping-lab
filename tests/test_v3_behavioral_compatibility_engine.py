@@ -3,6 +3,7 @@ from __future__ import annotations
 from ui.contracts.behavioral_compatibility_engine import (
     evaluate_behavioral_compatibility,
 )
+import ui.contracts.behavioral_compatibility_engine as engine_module
 from ui.contracts.operator_legality_engine import evaluate_operator_legality
 from ui.contracts.task_registry import resolve_task_implementation_for_tuple
 
@@ -50,6 +51,22 @@ def test_behavioral_compatibility_engine_parity_with_legality_engine_for_invalid
     assert result["legality"]["diagnostics"] == legality
 
 
+def test_behavioral_compatibility_engine_consumes_legality_outputs(monkeypatch):
+    calls = {"count": 0}
+
+    def _fake_legality(*_args, **_kwargs):
+        calls["count"] += 1
+        return []
+
+    monkeypatch.setattr(engine_module, "evaluate_operator_legality", _fake_legality)
+    evaluate_behavioral_compatibility(
+        arrangement_id="pavlovian",
+        phenomenon_id="acquisition",
+        agent_bundle_id="rw_classical",
+    )
+    assert calls["count"] == 1
+
+
 def test_behavioral_compatibility_engine_returns_known_tuple_expectation_snapshot():
     result = evaluate_behavioral_compatibility(
         arrangement_id="pavlovian",
@@ -88,4 +105,3 @@ def test_behavioral_compatibility_engine_returns_behaviorally_unsupported_for_le
     assert result["status"] == "behaviorally_unsupported"
     assert result["task_implementation_id"] == expected_impl
     assert result["unmet_behavioral_requirements"]
-

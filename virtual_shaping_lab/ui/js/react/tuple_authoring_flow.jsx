@@ -2,6 +2,13 @@ window.VSLReact = window.VSLReact || {};
 
 window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
   const STEP_ORDER = Object.freeze(["arrangement", "task", "agent"]);
+  const EXPECTED_OUTCOME_STATUSES = Object.freeze([
+    "success",
+    "partial",
+    "structurally_invalid",
+    "behaviorally_unsupported",
+    "novel",
+  ]);
   const VISIBILITY_POLICY = Object.freeze({
     hide_structurally_impossible_agents: true,
     show_disabled_behaviorally_invalid_agents: true,
@@ -28,6 +35,72 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
       throw new Error(`Tuple catalog request failed: ${response.status}`);
     }
     return response.json();
+  }
+
+  async function fetchTupleCompatibility({ arrangement, task, agent, edits = {} } = {}) {
+    const response = await fetch("/catalog/tuple-authoring/compatibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        arrangement,
+        task,
+        agent,
+        edits: edits && typeof edits === "object" ? edits : {},
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Tuple compatibility request failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  function canRunForExpectedOutcome(compatibility) {
+    const status = _normalizeId(compatibility && compatibility.status);
+    return status !== "structurally_invalid";
+  }
+
+  function _guidanceForStatus(status) {
+    if (status === "structurally_invalid") {
+      return "Run is disabled because the selected tuple is structurally invalid.";
+    }
+    if (status === "behaviorally_unsupported") {
+      return "Behavioral support is not available; adjust tuple or edits before running.";
+    }
+    if (status === "partial") {
+      return "Partial support: run is allowed, but expected signatures may be incomplete.";
+    }
+    if (status === "novel") {
+      return "Novel prediction: run is allowed with explicit rationale attribution.";
+    }
+    return "Supported behavior: run is allowed.";
+  }
+
+  function deriveExpectedOutcomePanelModel(compatibility) {
+    const payload = compatibility && typeof compatibility === "object" ? compatibility : {};
+    const status = _normalizeId(payload.status);
+    const statusNormalized = EXPECTED_OUTCOME_STATUSES.includes(status)
+      ? status
+      : "behaviorally_unsupported";
+    const source = _normalizeId(payload.source || "unknown");
+    const sourceAllowed = source === "behavioral_registry"
+      || source === "behavioral_registry_fallback"
+      || source === "legality_engine";
+    const keyFactors = Array.isArray(payload.key_operator_factors)
+      ? payload.key_operator_factors.filter((item) => item && typeof item === "object")
+      : [];
+    return {
+      status: statusNormalized,
+      badge_label: statusNormalized,
+      explanation: String(payload.explanation || ""),
+      can_run: canRunForExpectedOutcome({ status: statusNormalized }),
+      guidance: _guidanceForStatus(statusNormalized),
+      unmet_behavioral_requirements: Array.isArray(payload.unmet_behavioral_requirements)
+        ? payload.unmet_behavioral_requirements
+        : [],
+      key_operator_factors: keyFactors,
+      explanation_source: sourceAllowed ? source : "unknown",
+      source_integrity_ok: sourceAllowed,
+    };
   }
 
   function deriveTupleSelectionModel(catalog, selection = {}) {
@@ -89,9 +162,13 @@ window.VSLReact.tupleAuthoring = window.VSLReact.tupleAuthoring || (() => {
 
   return {
     STEP_ORDER,
+    EXPECTED_OUTCOME_STATUSES,
     VISIBILITY_POLICY,
     SELECTABLE_UNIVERSE_SOURCE,
     fetchTupleCatalog,
+    fetchTupleCompatibility,
+    canRunForExpectedOutcome,
+    deriveExpectedOutcomePanelModel,
     deriveTupleSelectionModel,
   };
 })();

@@ -5,6 +5,10 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from ui.contracts.arrangement_task_agent_composition import (
+    ArrangementTaskAgentCompositionError,
+    compose_arrangement_task_agent_to_operator_subset,
+)
 from ui.contracts.behavioral_compatibility_registry import (
     get_behavioral_compatibility_registry,
 )
@@ -95,6 +99,63 @@ def _select_behavioral_entry(
     return deepcopy(ranked[0])
 
 
+def _key_operator_factors(
+    *,
+    arrangement_id: str,
+    phenomenon_id: str,
+    agent_bundle_id: str,
+) -> list[dict[str, Any]]:
+    try:
+        composed = compose_arrangement_task_agent_to_operator_subset(
+            arrangement_id=arrangement_id,
+            phenomenon_id=phenomenon_id,
+            agent_bundle_id=agent_bundle_id,
+        )
+    except ArrangementTaskAgentCompositionError:
+        return []
+
+    provenance = composed.get("provenance", {})
+    if not isinstance(provenance, dict):
+        return []
+    axis = provenance.get("axis_to_slot_contribution", {})
+    if not isinstance(axis, dict):
+        return []
+
+    factors: list[dict[str, Any]] = []
+    task = axis.get("task", {})
+    if isinstance(task, dict):
+        required = task.get("required_operators", [])
+        if isinstance(required, list) and required:
+            factors.append(
+                {
+                    "kind": "required_operators",
+                    "value": [str(v) for v in required],
+                    "source": "composition_provenance",
+                }
+            )
+        impl_id = task.get("implementation_id")
+        if isinstance(impl_id, str) and impl_id.strip():
+            factors.append(
+                {
+                    "kind": "task_implementation_id",
+                    "value": impl_id,
+                    "source": "composition_provenance",
+                }
+            )
+    arrangement = axis.get("arrangement", {})
+    if isinstance(arrangement, dict):
+        forbidden = arrangement.get("forbidden_slots", [])
+        if isinstance(forbidden, list) and forbidden:
+            factors.append(
+                {
+                    "kind": "forbidden_slots",
+                    "value": [str(v) for v in forbidden],
+                    "source": "composition_provenance",
+                }
+            )
+    return factors
+
+
 def evaluate_behavioral_compatibility(
     *,
     arrangement_id: str,
@@ -134,6 +195,7 @@ def evaluate_behavioral_compatibility(
             "unmet_behavioral_requirements": [],
             "rationale_source": None,
             "matched_registry_entry_id": None,
+            "key_operator_factors": [],
         }
 
     implementation = resolve_task_implementation_for_tuple(
@@ -168,6 +230,11 @@ def evaluate_behavioral_compatibility(
             ],
             "rationale_source": None,
             "matched_registry_entry_id": None,
+            "key_operator_factors": _key_operator_factors(
+                arrangement_id=arrangement,
+                phenomenon_id=phenomenon,
+                agent_bundle_id=bundle,
+            ),
         }
 
     return {
@@ -193,5 +260,9 @@ def evaluate_behavioral_compatibility(
         ),
         "rationale_source": selected.get("rationale_source"),
         "matched_registry_entry_id": selected["id"],
+        "key_operator_factors": _key_operator_factors(
+            arrangement_id=arrangement,
+            phenomenon_id=phenomenon,
+            agent_bundle_id=bundle,
+        ),
     }
-
