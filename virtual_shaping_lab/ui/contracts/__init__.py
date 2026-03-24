@@ -72,6 +72,10 @@ from ui.contracts.behavioral_compatibility_registry import (
     get_behavioral_compatibility_registry,
     validate_behavioral_compatibility_registry,
 )
+from ui.contracts.behavioral_compatibility_engine import (
+    BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION,
+    evaluate_behavioral_compatibility,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -318,6 +322,8 @@ __all__ = [
     "BEHAVIORAL_COMPATIBILITY_REGISTRY",
     "validate_behavioral_compatibility_registry",
     "get_behavioral_compatibility_registry",
+    "BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION",
+    "evaluate_behavioral_compatibility",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
