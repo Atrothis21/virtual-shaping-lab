@@ -92,6 +92,14 @@ jobs:
           pytest -q tests/test_v3_operator_legality_engine.py tests/test_v3_operator_selection_compiler.py tests/test_v3_operator_plan_materialization.py tests/test_v3_operator_compiler_boundaries.py tests/test_v3_operator_compiler_hardening.py tests/test_v3_operator_legality_matrix_drift.py
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 basis-driven assembly
+        run: |
+          pytest -q tests/test_v3_basis_assembly_contract.py tests/test_v3_assembly_routing_by_operator_family.py tests/test_v3_protocol_phase_boundary.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_run_api_contract.py -k basis \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

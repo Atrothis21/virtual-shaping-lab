@@ -74,6 +74,42 @@ def test_basis_adapter_prefers_basis_materialized_sections_over_legacy_fields():
     assert config.learner == "rescorla_wagner"
 
 
+def test_basis_adapter_ignores_legacy_phase_source_for_covered_presets():
+    _compiled, materialized = _basis_payload("acquisition")
+    plan = ExperimentPlan(
+        units=[
+            {
+                "name": "Legacy Invalid",
+                "protocol": "this_should_not_be_used",
+                "stimuli": {"cs_plus": ["noise"]},
+                "params": {"n_trials": 1},
+            }
+        ],
+        program_spec={
+            "phases": [
+                {
+                    "name": "Legacy Also Invalid",
+                    "protocol": "still_should_not_be_used",
+                    "stimuli": {"cs_plus": ["noise"]},
+                    "params": {"n_trials": 1},
+                }
+            ]
+        },
+        agent_spec={
+            "agent": "legacy_agent",
+            "representation": {"name": "legacy_rep", "params": {"stimuli": ["noise"]}},
+            "learning": {"rule": "legacy_rule", "params": {}},
+        },
+        runtime_spec={"resolved_plan": True},
+        basis_materialized_sections=materialized,
+        canonical_payload={"experiment": {}, "report": {"preset": "acquisition"}},
+    )
+    config = _plan_to_config(plan)
+    assert len(config.phases) == 1
+    assert config.phases[0].protocol == "acquisition"
+    assert config.phases[0].name == "Acquisition"
+
+
 def test_basis_adapter_falls_back_to_legacy_when_basis_sections_absent():
     plan = ExperimentPlan(
         units=[
@@ -115,4 +151,3 @@ def test_plan_hash_stability_ignores_basis_metadata():
         basis_materialized_sections=materialized,
     )
     assert p1.stable_hash() == p2.stable_hash()
-

@@ -426,21 +426,6 @@ def _build_agent_stack(config, representation):
     return agent
 
 
-# Phase vs protocol routing helper
-def _is_protocol_phase(protocol_name: str) -> bool:
-    """
-    Return True if a name refers to a protocol (multi-phase behavior).
-    """
-    return protocol_name in PROTOCOL_REGISTRY
-
-
-def _is_atomic_phase(protocol_name: str) -> bool:
-    """
-    Return True if a name refers to a phase.
-    """
-    return not _is_protocol_phase(protocol_name)
-
-
 # Assembly pipeline: build representation -> policy (optional) -> learner -> agent -> runtime units.
 def _plan_to_config(plan: ExperimentPlan):
     program_spec = plan.program_spec or {}
