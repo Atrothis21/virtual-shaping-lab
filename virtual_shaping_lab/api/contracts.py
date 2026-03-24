@@ -8,10 +8,27 @@ from api.lifecycle import (
     LIFECYCLE_RUN_IN_PROGRESS,
 )
 
+_IDENTITY_METADATA_KEYS: tuple[str, ...] = (
+    "payload_mode_identity",
+    "basis_compile_identity",
+    "measurement_provenance_identity",
+    "tuple_authoring_identity",
+    "preset_ux_identity",
+)
+
+
 def _require_fields(data: Dict[str, Any], required: tuple[str, ...], label: str) -> None:
     missing = [k for k in required if k not in data]
     if missing:
         raise ValueError(f"Missing required {label} fields: {', '.join(missing)}")
+
+
+def _normalize_identity_metadata(metadata: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    out = dict(metadata or {})
+    for key in _IDENTITY_METADATA_KEYS:
+        value = out.get(key)
+        out[key] = dict(value) if isinstance(value, dict) else {}
+    return out
 
 
 @dataclass(frozen=True)
@@ -134,13 +151,14 @@ def build_run_create_response(
     *,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    normalized_metadata = _normalize_identity_metadata(metadata)
     lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else LIFECYCLE_RUN_IN_PROGRESS
     response = RunCreateResponse(
         status="success",
         run_id=run_id,
         state=state,
         artifacts=artifacts,
-        metadata=metadata or {},
+        metadata=normalized_metadata,
         lifecycle=_lifecycle(lifecycle_state, ["get_run_status", "create_report"]),
     ).to_dict()
     _require_fields(
@@ -170,13 +188,14 @@ def build_run_status_response(
     metadata: Optional[Dict[str, Any]] = None,
     error: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    normalized_metadata = _normalize_identity_metadata(metadata)
     lifecycle_state = LIFECYCLE_RUN_COMPLETE if state == "completed" else LIFECYCLE_RUN_IN_PROGRESS
     response = RunStatusResponse(
         status="success",
         run_id=run_id,
         state=state,
         artifacts=artifacts or {},
-        metadata=metadata or {},
+        metadata=normalized_metadata,
         error=error,
         lifecycle=_lifecycle(lifecycle_state, ["create_report"] if state == "completed" else ["get_run_status"]),
     ).to_dict()
@@ -194,11 +213,12 @@ def build_report_create_response(
     *,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    normalized_metadata = _normalize_identity_metadata(metadata)
     response = ReportCreateResponse(
         status="success",
         run_id=run_id,
         artifacts=artifacts,
-        metadata=metadata or {},
+        metadata=normalized_metadata,
         lifecycle=_lifecycle(LIFECYCLE_REPORT_COMPLETE, ["view_report", "resolve_plan"]),
     ).to_dict()
     _require_fields(response, ("status", "run_id", "artifacts", "metadata", "lifecycle"), "ReportCreateResponse")
