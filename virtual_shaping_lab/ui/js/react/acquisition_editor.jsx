@@ -1,68 +1,74 @@
 window.VSLReact = window.VSLReact || {};
 
-const STIMULI = ["tone", "noise", "light", "click"];
-
-function buildPayload(params) {
-  const salienceMap = {};
-  params.cs_plus.forEach((s) => {
-    salienceMap[s] = { salience: params.salience };
-  });
-
-  const attentionMap = {};
-  params.cs_plus.forEach((s) => {
-    attentionMap[s] = { attention: 1.0 };
-  });
-
-  const payload = {
-    experiment: {
-      learner: "rescorla_wagner",
-      agent: "classical_agent",
-      representation: {
-        name: params.representation,
-        params: { stimuli: STIMULI, max_compound_size: 2 },
-      },
-      context_inference: { enabled: false, max_contexts: 3 },
-      phases: [
-        {
-          name: "Acquisition",
-          protocol: "acquisition",
-          stimuli: { cs_plus: params.cs_plus },
-          params: {
-            n_trials: params.n_trials,
-            alpha: params.alpha,
-            gamma: params.gamma,
-          },
-        },
-      ],
-      salience: salienceMap,
-      attention: attentionMap,
+function buildBasisAuthoringPayload(params) {
+  return {
+    preset_id: "acquisition",
+    operator_subset: {
+      phi: params.phi,
+      w: params.w,
     },
-    report: { preset: "acquisition" },
+    edits: {
+      n_trials: params.n_trials,
+      cs_plus: params.cs_plus,
+      learning_rule: params.learning_rule,
+    },
   };
-
-  return window.VSLReact.toCanonicalPayload(payload);
 }
 
 function validate(params) {
   if (params.n_trials < 1) throw new Error("n_trials must be at least 1");
-  if (params.alpha < 0 || params.alpha > 1) throw new Error("alpha must be 0-1");
-  if (params.gamma < 0 || params.gamma > 1) throw new Error("gamma must be 0-1");
   if (!params.cs_plus.length) throw new Error("Select at least one CS+ stimulus");
 }
 
 function AcquisitionApp() {
+  const [contract, setContract] = React.useState(null);
+  const [loadError, setLoadError] = React.useState("");
   const [params, setParams] = React.useState({
-    n_trials: 100,
-    alpha: 0.2,
-    gamma: 0.0,
+    n_trials: 50,
     cs_plus: ["tone"],
-    salience: 1.0,
-    representation: "vector_elemental",
+    learning_rule: "rescorla_wagner",
+    phi: "elemental",
+    w: "rescorla_wagner",
   });
   const [runOutput, setRunOutput] = React.useState("Not run yet.");
   const [runError, setRunError] = React.useState(false);
 
-  const payload = React.useMemo(() => buildPayload(params), [params]);
+  React.useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch("/catalog/presets/acquisition/basis-authoring");
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error((data && data.detail && data.detail.message) || "Failed to load acquisition authoring contract.");
+        }
+        if (!active) return;
+        setContract(data);
+        setParams((prev) => ({
+          ...prev,
+          n_trials: data.defaults.editable.n_trials,
+          cs_plus: data.defaults.editable.cs_plus,
+          learning_rule: data.defaults.editable.learning_rule,
+          phi: data.defaults.operator_subset.phi,
+          w: data.defaults.operator_subset.w,
+        }));
+      } catch (err) {
+        if (active) setLoadError(err.message || "Failed to load authoring contract.");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    setParams((prev) => {
+      if (prev.learning_rule === "temporal_difference") return { ...prev, w: "td0_update" };
+      return { ...prev, w: "rescorla_wagner" };
+    });
+  }, [params.learning_rule]);
+
+  const payload = React.useMemo(() => buildBasisAuthoringPayload(params), [params]);
 
   const onCSPlusChange = (e) => {
     const next = Array.from(e.target.selectedOptions).map((o) => o.value);
@@ -81,10 +87,22 @@ function AcquisitionApp() {
 
     setRunOutput("Running...");
 
-    const res = await fetch("/run", {
+    const materializeRes = await fetch("/catalog/presets/acquisition/materialize-basis", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    });
+    const materialized = await materializeRes.json();
+    if (!materializeRes.ok) {
+      setRunOutput(JSON.stringify(materialized, null, 2));
+      setRunError(true);
+      return;
+    }
+
+    const res = await fetch("/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(materialized),
     });
 
     const data = await res.json();
@@ -101,6 +119,8 @@ function AcquisitionApp() {
     <>
       <h1>Acquisition Preset</h1>
       <p>Classical acquisition with a CS+ stimulus.</p>
+      {loadError ? <pre className="error">{loadError}</pre> : null}
+      {!contract && !loadError ? <pre>Loading basis authoring contract...</pre> : null}
 
       <div className="actions">
         <button className="btn" onClick={() => { window.location.href = "/ui/presets.html"; }}>
@@ -121,62 +141,42 @@ function AcquisitionApp() {
       </div>
 
       <div className="panel">
-        <h3>Learning</h3>
-        <label>Learning Rate (alpha): <span>{params.alpha}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.alpha}
-          onChange={(e) => setParams((prev) => ({ ...prev, alpha: +e.target.value }))}
-        />
-
-        <label>Discount (gamma): <span>{params.gamma}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.gamma}
-          onChange={(e) => setParams((prev) => ({ ...prev, gamma: +e.target.value }))}
-        />
+        <h3>Learner Rule</h3>
+        <label>Rule</label>
+        <select
+          value={params.learning_rule}
+          onChange={(e) => setParams((prev) => ({ ...prev, learning_rule: e.target.value }))}
+        >
+          {(contract?.defaults?.editable?.learning_rule_choices || ["rescorla_wagner", "temporal_difference"]).map((rule) => (
+            <option key={rule} value={rule}>{rule}</option>
+          ))}
+        </select>
       </div>
 
       <div className="panel">
         <h3>Stimuli</h3>
         <label>CS</label>
         <select multiple value={params.cs_plus} onChange={onCSPlusChange}>
-          {STIMULI.map((s) => (
+          {(contract?.defaults?.stimuli_catalog || ["tone", "noise"]).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
-
-        <label>Salience (applies to selected CS): <span>{params.salience}</span></label>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={params.salience}
-          onChange={(e) => setParams((prev) => ({ ...prev, salience: +e.target.value }))}
-        />
       </div>
 
       <div className="panel">
-        <h3>Representation</h3>
-        <label>Type</label>
+        <h3>Representation Operator (phi)</h3>
+        <label>Selection</label>
         <select
-          value={params.representation}
-          onChange={(e) => setParams((prev) => ({ ...prev, representation: e.target.value }))}
+          value={params.phi}
+          onChange={(e) => setParams((prev) => ({ ...prev, phi: e.target.value }))}
         >
-          <option value="vector_elemental">vector_elemental</option>
-          <option value="vector_configural">vector_configural</option>
-          <option value="vector_hybrid">vector_hybrid</option>
+          {(contract?.operator_choices?.phi || []).map((choice) => (
+            <option key={choice} value={choice}>{choice}</option>
+          ))}
         </select>
       </div>
 
-      <h2>Generated Payload</h2>
+      <h2>Basis Authoring Payload</h2>
       <pre>{JSON.stringify(payload, null, 2)}</pre>
 
       <button onClick={onRun}>Run Experiment</button>

@@ -108,6 +108,17 @@ jobs:
           pytest -q tests/test_run_api_contract.py -k "run_api_contract_fixtures or regenerates_report or operator_stage_io_provenance" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 basis-first UI/API boundary
+        run: |
+          pytest -q tests/test_v3_ui_basis_authoring_contract.py tests/test_v3_ui_basis_authoring_editor_surface.py tests/test_v3_ui_preset_basis_migration.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_ui_teaching_contract.py -k "legacy_bridge_is_disabled_for_basis_first_migrated_routes or legacy_bridge_retained_for_unmigrated_routes_via_explicit_fallback" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_run_api_contract.py -k "preset_basis_authoring_contract_endpoint_shape or basis_materialization_endpoint_emits_canonical_payload or basis_materialization_endpoint_payload_runs_for_core_presets or acquisition_basis_materialization_endpoint_payload_runs or mixed_legacy_and_canonical_payload_with_actionable_details or rejects_legacy_flat_payload_with_actionable_details or payload_mode_identity" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

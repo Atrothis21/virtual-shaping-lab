@@ -17,6 +17,13 @@ from api.errors import raise_internal_error, raise_not_found, raise_validation_e
 from api.extensions import ExtensionCatalog
 from api.services import PlanService, ReportService, RunService
 from paths import REPORTS_DIR, UI_DIR
+from ui.contracts.preset_basis_authoring import (
+    PresetBasisAuthoringError,
+    build_acquisition_basis_authoring_contract,
+    build_preset_basis_authoring_contract,
+    materialize_preset_basis_payload,
+    materialize_acquisition_basis_payload,
+)
 from ui.validate_payload import validate_payload
 
 
@@ -27,6 +34,18 @@ app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
 reports_dir = REPORTS_DIR
 reports_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=str(reports_dir)), name="reports")
+
+
+_PAYLOAD_MODE_ERROR_DETAILS = {
+    "accepted_payload_modes": [
+        "canonical_v3",
+        "canonical_v3_with_basis_authoring_metadata",
+    ],
+    "rejected_payload_modes": [
+        "legacy_flat_experiment",
+        "mixed_legacy_and_canonical",
+    ],
+}
 
 
 @app.get("/")
@@ -83,9 +102,19 @@ def run_api(payload: dict):
         validate_payload(raw_payload)
         print("Payload validated", flush=True)
     except Exception as exc:
+        reason = str(exc)
+        if "Mixed payload shape detected" in reason or "Legacy payload shape is no longer accepted" in reason:
+            raise_validation_error(
+                "Mixed or legacy payload mode is not supported.",
+                details={
+                    "reason": reason,
+                    "hint": "Submit canonical experiment.program/experiment.agent/experiment.runtime payloads only.",
+                    **_PAYLOAD_MODE_ERROR_DETAILS,
+                },
+            )
         raise_validation_error(
             "Payload validation failed.",
-            details={"reason": str(exc)},
+            details={"reason": reason},
         )
 
     try:
@@ -128,6 +157,67 @@ def run_api(payload: dict):
         raise_internal_error(
             "Run execution failed.",
             details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/presets/acquisition/basis-authoring")
+def acquisition_basis_authoring_contract_api():
+    try:
+        return build_acquisition_basis_authoring_contract()
+    except Exception as exc:
+        raise_internal_error(
+            "Acquisition basis authoring contract generation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/presets/{preset_id}/basis-authoring")
+def preset_basis_authoring_contract_api(preset_id: str):
+    try:
+        return build_preset_basis_authoring_contract(preset_id)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Preset basis authoring contract generation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Preset basis authoring contract generation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+
+
+@app.post("/catalog/presets/acquisition/materialize-basis")
+def materialize_acquisition_basis_api(payload: dict):
+    try:
+        return materialize_acquisition_basis_payload(payload)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Acquisition basis authoring payload validation failed.",
+            details={"reason": str(exc)},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Acquisition basis payload materialization failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.post("/catalog/presets/{preset_id}/materialize-basis")
+def materialize_preset_basis_api(preset_id: str, payload: dict):
+    try:
+        merged = dict(payload or {})
+        merged["preset_id"] = preset_id
+        return materialize_preset_basis_payload(merged)
+    except PresetBasisAuthoringError as exc:
+        raise_validation_error(
+            "Preset basis authoring payload validation failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
+        )
+    except Exception as exc:
+        raise_internal_error(
+            "Preset basis payload materialization failed.",
+            details={"reason": str(exc), "preset_id": preset_id},
         )
 
 

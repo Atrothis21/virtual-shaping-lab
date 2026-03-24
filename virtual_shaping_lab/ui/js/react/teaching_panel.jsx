@@ -1,5 +1,21 @@
 window.VSLReact = window.VSLReact || {};
 
+const BASIS_FIRST_PRESET_ROUTES = Object.freeze([
+  "acquisition",
+  "extinction",
+  "differential_acquisition",
+]);
+
+function currentPresetSlug() {
+  const match = window.location.pathname.match(/\/ui\/presets\/([a-z0-9_]+)\.html$/i);
+  return match ? match[1] : null;
+}
+
+function isBasisFirstPresetRoute(slug) {
+  if (!slug) return false;
+  return BASIS_FIRST_PRESET_ROUTES.includes(String(slug).toLowerCase());
+}
+
 window.VSLReact.uiModes = window.VSLReact.uiModes || (() => {
   const MODES = Object.freeze({
     PRESET: "preset",
@@ -55,11 +71,18 @@ window.VSLReact.uiModes = window.VSLReact.uiModes || (() => {
   };
 })();
 
-window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload) {
+window.VSLReact.legacyToCanonicalPayload = window.VSLReact.legacyToCanonicalPayload || function legacyToCanonicalPayload(payload) {
   if (!payload || typeof payload !== "object") return payload;
   const source = JSON.parse(JSON.stringify(payload));
   const experiment = source.experiment || {};
   const report = source.report || {};
+
+  const slug = currentPresetSlug();
+  if (isBasisFirstPresetRoute(slug)) {
+    throw new Error(
+      `Preset route '${slug}' has migrated to basis-first authoring; legacy canonicalization bridge is disabled.`
+    );
+  }
 
   if (experiment.program && experiment.agent && experiment.runtime) return source;
 
@@ -69,7 +92,7 @@ window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || funct
     Object.prototype.hasOwnProperty.call(experiment, "protocol");
 
   if (!hasLegacyShape) {
-    throw new Error("Teaching panel requires canonical payloads.");
+    throw new Error("Legacy canonicalization bridge requires canonical payloads or recognized legacy shape.");
   }
 
   const legacyPhases = Array.isArray(experiment.phases)
@@ -136,6 +159,10 @@ window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || funct
     },
     report,
   };
+};
+
+window.VSLReact.toCanonicalPayload = window.VSLReact.toCanonicalPayload || function toCanonicalPayload(payload) {
+  return window.VSLReact.legacyToCanonicalPayload(payload);
 };
 
 const MECHANISM_HELP = {

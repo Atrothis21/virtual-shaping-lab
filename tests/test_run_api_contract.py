@@ -199,6 +199,12 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert isinstance(body["metadata"]["operator_pipeline_identity"].get("pipeline_hash"), str)
     assert isinstance(body["metadata"].get("learner_identity"), dict)
     assert "spec_hash" in body["metadata"]["learner_identity"]
+    assert isinstance(body["metadata"].get("payload_mode_identity"), dict)
+    assert body["metadata"]["payload_mode_identity"].get("payload_mode") in {
+        "canonical_v3",
+        "canonical_v3_with_basis_authoring_metadata",
+    }
+    assert isinstance(body["metadata"]["payload_mode_identity"].get("payload_contract_version"), str)
     assert isinstance(body["metadata"].get("basis_compile_identity"), dict)
     assert "subset_hash" in body["metadata"]["basis_compile_identity"]
     assert "routed_objects" in body["metadata"]["basis_compile_identity"]
@@ -230,6 +236,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert identity["operator_pipeline_identity"].get("pipeline_hash") == body["metadata"]["operator_pipeline_identity"].get("pipeline_hash")
     assert isinstance(identity.get("learner_identity"), dict)
     assert identity["learner_identity"].get("spec_hash") == body["metadata"]["learner_identity"].get("spec_hash")
+    assert isinstance(identity.get("payload_mode_identity"), dict)
+    assert identity["payload_mode_identity"].get("payload_mode") == body["metadata"]["payload_mode_identity"].get("payload_mode")
     assert isinstance(identity.get("basis_compile_identity"), dict)
     assert identity["basis_compile_identity"].get("subset_hash") == body["metadata"]["basis_compile_identity"].get("subset_hash")
     assert isinstance(identity.get("measurement_provenance_identity"), dict)
@@ -264,6 +272,7 @@ def test_run_status_endpoint_returns_completed(monkeypatch, tmp_path):
     assert isinstance(status["metadata"].get("mechanism_provenance"), dict)
     assert isinstance(status["metadata"].get("operator_pipeline_identity"), dict)
     assert isinstance(status["metadata"].get("learner_identity"), dict)
+    assert isinstance(status["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(status["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(status["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(status["metadata"].get("operator_stage_diagnostics"), dict)
@@ -317,6 +326,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert isinstance(report_body["metadata"].get("mechanism_provenance"), dict)
     assert isinstance(report_body["metadata"].get("operator_pipeline_identity"), dict)
     assert isinstance(report_body["metadata"].get("learner_identity"), dict)
+    assert isinstance(report_body["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
@@ -487,6 +497,7 @@ def test_run_report_endpoint_regenerates_from_records_when_payload_artifact_miss
     assert isinstance(report_body["metadata"].get("template_version_used"), int)
     assert isinstance(report_body["metadata"].get("operator_pipeline_identity"), dict)
     assert isinstance(report_body["metadata"].get("learner_identity"), dict)
+    assert isinstance(report_body["metadata"].get("payload_mode_identity"), dict)
     assert isinstance(report_body["metadata"].get("basis_compile_identity"), dict)
     assert isinstance(report_body["metadata"].get("measurement_provenance_identity"), dict)
     assert isinstance(report_body["metadata"].get("operator_stage_diagnostics"), dict)
@@ -513,8 +524,50 @@ def test_run_report_regeneration_keeps_basis_and_measurement_identity(monkeypatc
     report_body = api_run.run_report_api(source_run_id)
 
     assert report_body["metadata"]["basis_compile_identity"] == run_body["metadata"]["basis_compile_identity"]
+    assert report_body["metadata"]["payload_mode_identity"] == run_body["metadata"]["payload_mode_identity"]
     assert report_body["metadata"]["measurement_provenance_identity"] == run_body["metadata"]["measurement_provenance_identity"]
     assert report_body["metadata"]["operator_stage_diagnostics"] == run_body["metadata"]["operator_stage_diagnostics"]
+
+
+def test_run_api_rejects_mixed_legacy_and_canonical_payload_with_actionable_details():
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    payload["experiment"]["learner"] = "rescorla_wagner"
+    with pytest.raises(HTTPException) as exc:
+        api_run.run_api(payload)
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert exc.value.detail["message"] == "Mixed or legacy payload mode is not supported."
+    details = exc.value.detail.get("details", {})
+    assert isinstance(details.get("accepted_payload_modes"), list)
+    assert isinstance(details.get("rejected_payload_modes"), list)
+    assert "canonical_v3" in details["accepted_payload_modes"]
+    assert "legacy_flat_experiment" in details["rejected_payload_modes"]
+
+
+def test_run_api_rejects_legacy_flat_payload_with_actionable_details():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {"name": "vector_elemental", "params": {"stimuli": ["tone"]}},
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 5},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    with pytest.raises(HTTPException) as exc:
+        api_run.run_api(payload)
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert exc.value.detail["message"] == "Mixed or legacy payload mode is not supported."
+    details = exc.value.detail.get("details", {})
+    assert "legacy_flat_experiment" in details.get("rejected_payload_modes", [])
 
 
 def test_run_report_endpoint_404_for_missing_run():
@@ -576,6 +629,117 @@ def test_extensions_api_contract_shape():
     assert isinstance(ext["representations"], list)
     assert isinstance(ext["math_objects"], dict)
     assert isinstance(ext["report_templates"], dict)
+
+
+def test_acquisition_basis_authoring_contract_endpoint_shape():
+    body = api_run.acquisition_basis_authoring_contract_api()
+    assert body["preset_id"] == "acquisition"
+    assert body["registry_generated"] is True
+    assert isinstance(body["operator_choices"]["phi"], list) and body["operator_choices"]["phi"]
+    assert isinstance(body["operator_choices"]["w"], list) and body["operator_choices"]["w"]
+
+
+def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
+    payload = {
+        "preset_id": "acquisition",
+        "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+        "edits": {"n_trials": 9, "cs_plus": ["tone"], "learning_rule": "rescorla_wagner"},
+    }
+    body = api_run.materialize_acquisition_basis_api(payload)
+    assert set(body["experiment"].keys()) == {"program", "agent", "runtime"}
+    assert body["report"]["preset"] == "acquisition"
+    assert body["experiment"]["program"]["phases"][0]["trials"] == 9
+
+
+def test_acquisition_basis_materialization_endpoint_payload_runs(monkeypatch, tmp_path):
+    fixture_output_dir = tmp_path / "acquisition_basis_materialized_run"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    materialized = api_run.materialize_acquisition_basis_api(
+        {
+            "preset_id": "acquisition",
+            "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+            "edits": {"n_trials": 7, "cs_plus": ["tone"], "learning_rule": "rescorla_wagner"},
+        }
+    )
+    body = api_run.run_api(materialized)
+    assert body["status"] == "success"
+    assert body["state"] == "completed"
+    assert isinstance(body.get("run_id"), str) and body["run_id"]
+    assert body["metadata"]["payload_mode_identity"]["payload_mode"] == "canonical_v3_with_basis_authoring_metadata"
+
+
+@pytest.mark.parametrize("preset_id", ["acquisition", "extinction", "differential_acquisition"])
+def test_preset_basis_authoring_contract_endpoint_shape(preset_id: str):
+    body = api_run.preset_basis_authoring_contract_api(preset_id)
+    assert body["preset_id"] == preset_id
+    assert body["registry_generated"] is True
+    assert isinstance(body["operator_choices"]["phi"], list) and body["operator_choices"]["phi"]
+    assert isinstance(body["operator_choices"]["w"], list) and body["operator_choices"]["w"]
+
+
+@pytest.mark.parametrize(
+    ("preset_id", "authoring"),
+    [
+        (
+            "extinction",
+            {
+                "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+                "edits": {
+                    "n_acquisition_trials": 8,
+                    "n_extinction_trials": 9,
+                    "cs_plus": ["tone"],
+                    "learning_rule": "rescorla_wagner",
+                },
+            },
+        ),
+        (
+            "differential_acquisition",
+            {
+                "operator_subset": {"phi": "elemental", "w": "rescorla_wagner"},
+                "edits": {
+                    "n_trials": 10,
+                    "cs_plus": ["tone"],
+                    "cs_minus": ["noise"],
+                    "learning_rule": "rescorla_wagner",
+                },
+            },
+        ),
+    ],
+)
+def test_basis_materialization_endpoint_payload_runs_for_core_presets(
+    monkeypatch,
+    tmp_path,
+    preset_id: str,
+    authoring: dict[str, object],
+):
+    fixture_output_dir = tmp_path / f"{preset_id}_basis_materialized_run"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    materialized = api_run.materialize_preset_basis_api(preset_id, copy.deepcopy(authoring))
+    body = api_run.run_api(materialized)
+    assert body["status"] == "success"
+    assert body["state"] == "completed"
+    assert isinstance(body.get("run_id"), str) and body["run_id"]
+    assert body["metadata"]["payload_mode_identity"]["payload_mode"] == "canonical_v3_with_basis_authoring_metadata"
 
 
 def test_operator_stage_io_provenance_artifact_integrity(monkeypatch, tmp_path):

@@ -155,6 +155,17 @@ from ui.contracts.preset_hardening import (
     encode_results_return_state,
     validate_preset_form_edits,
 )
+from ui.contracts.preset_basis_authoring import (
+    PresetBasisAuthoringError,
+    build_acquisition_basis_authoring_contract,
+    build_differential_acquisition_basis_authoring_contract,
+    build_extinction_basis_authoring_contract,
+    build_preset_basis_authoring_contract,
+    materialize_acquisition_basis_payload,
+    materialize_differential_acquisition_basis_payload,
+    materialize_extinction_basis_payload,
+    materialize_preset_basis_payload,
+)
 from ui.contracts.trial_hover_explainability import (
     TrialHoverExplainabilityError,
     build_trial_hover_explainability_panel,
@@ -302,6 +313,15 @@ __all__ = [
     "encode_results_return_state",
     "decode_results_return_state",
     "validate_preset_form_edits",
+    "PresetBasisAuthoringError",
+    "build_preset_basis_authoring_contract",
+    "build_acquisition_basis_authoring_contract",
+    "build_extinction_basis_authoring_contract",
+    "build_differential_acquisition_basis_authoring_contract",
+    "materialize_preset_basis_payload",
+    "materialize_acquisition_basis_payload",
+    "materialize_extinction_basis_payload",
+    "materialize_differential_acquisition_basis_payload",
     "TrialHoverExplainabilityError",
     "build_trial_hover_explainability_panel",
     "TrialStateInspectorError",

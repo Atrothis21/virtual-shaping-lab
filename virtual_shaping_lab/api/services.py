@@ -39,6 +39,8 @@ assemble_experiment = assemble_from_plan
 # Backward-compatible symbol for tests/patching; prefer run_preset_report.
 run_report = run_preset_report
 
+PAYLOAD_CONTRACT_VERSION = "v3.14.0"
+
 
 def _stable_hash_from_artifact_payload(payload: Dict[str, Any], record_schema_version: str) -> str:
     identity = {
@@ -350,6 +352,23 @@ def _build_learner_identity(plan: ExperimentPlan) -> Dict[str, Any]:
     return {"preset_name": None, "spec_hash": None}
 
 
+def _derive_payload_mode_identity(payload: Dict[str, Any]) -> Dict[str, Any]:
+    basis = payload.get("basis_authoring")
+    if isinstance(basis, dict):
+        return {
+            "payload_mode": "canonical_v3_with_basis_authoring_metadata",
+            "payload_contract_version": PAYLOAD_CONTRACT_VERSION,
+            "basis_authoring_present": True,
+            "basis_preset_id": basis.get("preset_id"),
+        }
+    return {
+        "payload_mode": "canonical_v3",
+        "payload_contract_version": PAYLOAD_CONTRACT_VERSION,
+        "basis_authoring_present": False,
+        "basis_preset_id": None,
+    }
+
+
 def _extract_learner_identity_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     plan = payload.get("plan")
     if isinstance(plan, dict):
@@ -424,6 +443,11 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             "seed_identity": seed_identity,
             "operator_pipeline_identity": operator_pipeline_identity,
             "learner_identity": _extract_learner_identity_from_payload(payload),
+            "payload_mode_identity": (
+                dict(provenance.get("payload_mode_identity", {}))
+                if isinstance(provenance, dict) and isinstance(provenance.get("payload_mode_identity"), dict)
+                else {}
+            ),
             "basis_compile_identity": (
                 dict(provenance.get("basis_compile_identity", {}))
                 if isinstance(provenance, dict) and isinstance(provenance.get("basis_compile_identity"), dict)
@@ -455,6 +479,11 @@ def _artifact_plan_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
         "seed_identity": seed_identity,
         "operator_pipeline_identity": operator_pipeline_identity,
         "learner_identity": _extract_learner_identity_from_payload(payload),
+        "payload_mode_identity": (
+            dict(provenance.get("payload_mode_identity", {}))
+            if isinstance(provenance, dict) and isinstance(provenance.get("payload_mode_identity"), dict)
+            else {}
+        ),
         "basis_compile_identity": (
             dict(provenance.get("basis_compile_identity", {}))
             if isinstance(provenance, dict) and isinstance(provenance.get("basis_compile_identity"), dict)
@@ -498,6 +527,16 @@ def _fallback_plan_metadata_from_status(*, run_id: str, source_status: Dict[str,
         "seed_identity": metadata.get("seed_identity"),
         "operator_pipeline_identity": operator_pipeline_identity,
         "learner_identity": learner_identity,
+        "payload_mode_identity": (
+            dict(metadata.get("payload_mode_identity", {}))
+            if isinstance(metadata.get("payload_mode_identity"), dict)
+            else {
+                "payload_mode": "canonical_v3",
+                "payload_contract_version": PAYLOAD_CONTRACT_VERSION,
+                "basis_authoring_present": False,
+                "basis_preset_id": None,
+            }
+        ),
         "basis_compile_identity": (
             dict(metadata.get("basis_compile_identity", {}))
             if isinstance(metadata.get("basis_compile_identity"), dict)
@@ -597,7 +636,11 @@ class RunService:
     """Application-layer facade for plan execution and run-status tracking."""
 
     @staticmethod
-    def _build_report_payload_from_plan(plan: ExperimentPlan) -> Dict[str, Any]:
+    def _build_report_payload_from_plan(
+        plan: ExperimentPlan,
+        *,
+        payload_mode_identity: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         payload = to_canonical_payload(
             {
                 "experiment": dict(plan.canonical_payload.get("experiment", {}) or {}),
@@ -609,6 +652,7 @@ class RunService:
         payload["provenance"] = {
             "mechanisms": _build_mechanism_provenance(plan),
             "operator_pipeline": _build_operator_pipeline_identity(plan),
+            "payload_mode_identity": dict(payload_mode_identity or {}),
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
         }
@@ -616,7 +660,12 @@ class RunService:
         return payload
 
     @staticmethod
-    def _run_experiment(*, plan: ExperimentPlan, reports_dir: Path):
+    def _run_experiment(
+        *,
+        plan: ExperimentPlan,
+        reports_dir: Path,
+        payload_mode_identity: Optional[Dict[str, Any]] = None,
+    ):
         # Compatibility hook: allows API-contract tests to patch assembly seam.
         assemble_experiment(plan)
         execution = run_from_plan(plan)
@@ -643,7 +692,10 @@ class RunService:
             records.extend(phase_records)
 
         report_preset = str((plan.analysis_spec or {}).get("report_preset", "verification_report"))
-        report_payload = RunService._build_report_payload_from_plan(plan)
+        report_payload = RunService._build_report_payload_from_plan(
+            plan,
+            payload_mode_identity=payload_mode_identity,
+        )
         report_dir = run_report(
             records=records,
             preset=report_preset,
@@ -681,6 +733,7 @@ class RunService:
         status_store: Optional[RunStatusStoreProtocol] = None,
     ) -> Dict[str, Any]:
         store = status_store or _DEFAULT_RUN_STATUS_STORE
+        payload_mode_identity = _derive_payload_mode_identity(payload)
         plan = build_plan(payload)
         _enforce_phenomenon_operator_constraints(plan)
         plan_hash = plan.stable_hash()
@@ -689,7 +742,11 @@ class RunService:
                 f"Plan hash mismatch: expected '{expected_plan_hash}', got '{plan_hash}'."
             )
 
-        records, report_dir, artifacts = cls._run_experiment(plan=plan, reports_dir=reports_dir)
+        records, report_dir, artifacts = cls._run_experiment(
+            plan=plan,
+            reports_dir=reports_dir,
+            payload_mode_identity=payload_mode_identity,
+        )
         run_id = report_dir.name
         run_metadata = {
             "plan_hash": plan_hash,
@@ -699,6 +756,7 @@ class RunService:
             "mechanism_provenance": _build_mechanism_provenance(plan),
             "operator_pipeline_identity": _build_operator_pipeline_identity(plan),
             "learner_identity": _build_learner_identity(plan),
+            "payload_mode_identity": payload_mode_identity,
             "basis_compile_identity": _build_basis_compile_identity(plan),
             "measurement_provenance_identity": _build_measurement_provenance_identity(plan),
             "operator_stage_diagnostics": _summarize_operator_stage_diagnostics(records),
@@ -824,6 +882,22 @@ class ReportService:
         missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
         source_metadata_complete = len(missing_source_keys) == 0
         regeneration_mode = "from_artifacts" if isinstance(payload, dict) else "from_records"
+        plan_payload_mode_identity = plan_meta.get("payload_mode_identity")
+        source_payload_mode_identity = source_metadata.get("payload_mode_identity")
+        payload_mode_identity = (
+            plan_payload_mode_identity
+            if isinstance(plan_payload_mode_identity, dict) and plan_payload_mode_identity
+            else (
+                source_payload_mode_identity
+                if isinstance(source_payload_mode_identity, dict)
+                else {
+                    "payload_mode": "canonical_v3",
+                    "payload_contract_version": PAYLOAD_CONTRACT_VERSION,
+                    "basis_authoring_present": False,
+                    "basis_preset_id": None,
+                }
+            )
+        )
         plan_basis_identity = plan_meta.get("basis_compile_identity")
         source_basis_identity = source_metadata.get("basis_compile_identity")
         basis_compile_identity = (
@@ -861,6 +935,7 @@ class ReportService:
                     if isinstance(plan_meta.get("learner_identity"), dict)
                     else {"preset_name": None, "spec_hash": None}
                 ),
+                "payload_mode_identity": payload_mode_identity,
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
                 "operator_stage_diagnostics": (
@@ -897,6 +972,7 @@ class ReportService:
                     if isinstance(plan_meta.get("learner_identity"), dict)
                     else {"preset_name": None, "spec_hash": None}
                 ),
+                "payload_mode_identity": payload_mode_identity,
                 "basis_compile_identity": basis_compile_identity,
                 "measurement_provenance_identity": measurement_provenance_identity,
                 "operator_stage_diagnostics": (

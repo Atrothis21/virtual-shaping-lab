@@ -89,3 +89,18 @@ def test_acquisition_preset_registry_load_smoke():
     assert payload["version"]
     assert "acquisition" in payload["presets"]
 
+
+def test_core_presets_present_for_slice2_migration():
+    payload = get_preset_registry()
+    presets = payload["presets"]
+    assert "acquisition" in presets
+    assert "extinction" in presets
+    assert "differential_acquisition" in presets
+
+
+def test_preset_basis_definitions_require_registry_generated_universe_source():
+    payload = get_preset_registry()
+    for preset_id in ("acquisition", "extinction", "differential_acquisition"):
+        basis = payload["presets"][preset_id]["basis_definition"]
+        assert basis["selectable_universe_source"] == "operator_basis_registry"
+
