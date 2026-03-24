@@ -43,6 +43,16 @@ from ui.contracts.agent_bundle_registry import (
     validate_agent_bundle_arrangement_compatibility,
     validate_agent_bundle_registry,
 )
+from ui.contracts.arrangement_task_agent_composition import (
+    ARRANGEMENT_TASK_AGENT_COMPOSITION_VERSION,
+    ArrangementTaskAgentCompositionError,
+    compose_arrangement_task_agent_to_operator_subset,
+    compose_from_preset_reference,
+    stable_arrangement_task_agent_composition_hash,
+    stable_arrangement_task_agent_composition_json,
+    stable_arrangement_task_agent_provenance_hash,
+    stable_arrangement_task_agent_provenance_json,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -268,6 +278,14 @@ __all__ = [
     "list_agent_bundle_ids",
     "get_agent_bundle",
     "validate_agent_bundle_arrangement_compatibility",
+    "ArrangementTaskAgentCompositionError",
+    "ARRANGEMENT_TASK_AGENT_COMPOSITION_VERSION",
+    "compose_arrangement_task_agent_to_operator_subset",
+    "compose_from_preset_reference",
+    "stable_arrangement_task_agent_composition_json",
+    "stable_arrangement_task_agent_composition_hash",
+    "stable_arrangement_task_agent_provenance_json",
+    "stable_arrangement_task_agent_provenance_hash",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
