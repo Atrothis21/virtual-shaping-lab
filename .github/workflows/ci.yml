@@ -100,6 +100,14 @@ jobs:
           pytest -q tests/test_run_api_contract.py -k basis \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3 runtime/report operator coupling
+        run: |
+          pytest -q tests/test_v3_operator_pipeline_types.py tests/test_v3_trial_state.py tests/test_v3_runner_environment_integration.py tests/test_v3_ui_report_alignment.py tests/test_v3_rollout_replay_harness.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_run_api_contract.py -k "run_api_contract_fixtures or regenerates_report or operator_stage_io_provenance" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

@@ -33,6 +33,7 @@ from ui.contracts.operator_basis_registry import (
     OPERATOR_BASIS_REGISTRY,
     OPERATOR_BASIS_REGISTRY_VERSION,
     OperatorBasisRegistryValidationError,
+    get_measurement_readout_contract,
     get_internal_builder_family,
     get_operator_basis_registry,
     get_operator_selection_contract,
@@ -164,9 +165,10 @@ from ui.contracts.trialstate_inspector import (
     build_trialstate_inspector,
 )
 from ui.contracts.report_alignment import (
-    METRIC_TO_DEPENDENT_VARIABLE,
     ReportAlignmentError,
     build_report_alignment_contract,
+    stable_report_alignment_hash,
+    stable_report_alignment_json,
 )
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
@@ -215,6 +217,7 @@ __all__ = [
     "list_ui_selectable_implementations",
     "get_operator_selection_contract",
     "get_internal_builder_family",
+    "get_measurement_readout_contract",
     "OperatorSubsetContractError",
     "UI_SELECTABLE_UNIVERSE_POLICY",
     "PRESET_DEFINITION_TEMPLATE",
@@ -305,8 +308,9 @@ __all__ = [
     "ALLOWED_INSPECTOR_MODES",
     "build_trialstate_inspector",
     "ReportAlignmentError",
-    "METRIC_TO_DEPENDENT_VARIABLE",
     "build_report_alignment_contract",
+    "stable_report_alignment_json",
+    "stable_report_alignment_hash",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",

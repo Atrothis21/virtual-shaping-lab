@@ -10,7 +10,11 @@ from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
-from ui.contracts.report_alignment import ReportAlignmentError, build_report_alignment_contract
+from ui.contracts.report_alignment import (
+    ReportAlignmentError,
+    build_report_alignment_contract,
+    stable_report_alignment_hash,
+)
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
@@ -280,6 +284,25 @@ def _extract_attention_summary(payload):
     return None
 
 
+def _extract_measurement_selection_ids(payload) -> list[str] | None:
+    if not isinstance(payload, dict):
+        return None
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict):
+        return None
+    measurement = provenance.get("measurement_provenance_identity")
+    if not isinstance(measurement, dict):
+        return None
+    selection_ids = measurement.get("selection_ids")
+    if not isinstance(selection_ids, list):
+        return None
+    out: list[str] = []
+    for item in selection_ids:
+        if isinstance(item, str) and item.strip():
+            out.append(item)
+    return out if out else None
+
+
 @dataclass(frozen=True)
 class ReportRunContext:
     report_dir: Path
@@ -291,6 +314,10 @@ class ReportArtifactWriter:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         base_dir = Path(output_dir) if output_dir is not None else DEFAULT_REPORTS_DIR
         report_dir = base_dir / timestamp
+        suffix = 0
+        while report_dir.exists():
+            suffix += 1
+            report_dir = base_dir / f"{timestamp}_{suffix:02d}"
         report_dir.mkdir(parents=True, exist_ok=False)
         metrics_dir = report_dir / "metrics"
         metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -325,6 +352,18 @@ class ReportArtifactWriter:
             return
         with open(ctx.report_dir / "report_alignment.json", "w") as f:
             json.dump(_to_jsonable(alignment), f, indent=2)
+        alignment_hash = stable_report_alignment_hash(alignment)
+        with open(ctx.report_dir / "report_alignment_identity.json", "w") as f:
+            json.dump(
+                {
+                    "hash_algorithm": "sha256",
+                    "report_alignment_hash": alignment_hash,
+                },
+                f,
+                indent=2,
+            )
+        with open(ctx.report_dir / "report_alignment.sha256", "w", encoding="utf-8") as f:
+            f.write(f"{alignment_hash}\n")
 
 
 class MetricExecutionPipeline:
@@ -399,9 +438,18 @@ def run_report(records, preset: str, payload=None, output_dir: str | None = None
     ctx = artifact_writer.create_context(output_dir=output_dir)
     artifact_writer.write_provenance(records=records, payload=payload, ctx=ctx)
     report_alignment = None
+    measurement_selection_ids = _extract_measurement_selection_ids(payload)
+    strict_readout_coverage = isinstance(measurement_selection_ids, list) and len(measurement_selection_ids) > 0
     try:
-        report_alignment = build_report_alignment_contract(preset_id=preset, metric_names=report_config.metrics)
+        report_alignment = build_report_alignment_contract(
+            preset_id=preset,
+            metric_names=report_config.metrics,
+            measurement_selection_ids=measurement_selection_ids,
+            strict_readout_coverage=strict_readout_coverage,
+        )
     except (ReportAlignmentError, KeyError):
+        if strict_readout_coverage:
+            raise
         report_alignment = None
     artifact_writer.write_report_alignment(alignment=report_alignment, ctx=ctx)
 

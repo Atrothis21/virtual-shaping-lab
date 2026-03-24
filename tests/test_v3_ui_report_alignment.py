@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from analysis.report.config import ReportConfig
 from analysis.report.presets import get_report_preset
 from analysis.report import report as report_module
 from ui.contracts.dependent_variable_resolver import resolve_report_variable
-from ui.contracts.report_alignment import build_report_alignment_contract
+from ui.contracts.report_alignment import (
+    ReportAlignmentError,
+    build_report_alignment_contract,
+    stable_report_alignment_hash,
+)
 
 
 class _DummyMetric:
@@ -82,11 +88,19 @@ def test_run_report_emits_registry_driven_alignment_artifact(monkeypatch, tmp_pa
     )
     alignment_path = report_dir / "report_alignment.json"
     assert alignment_path.exists()
+    identity_path = report_dir / "report_alignment_identity.json"
+    assert identity_path.exists()
+    hash_path = report_dir / "report_alignment.sha256"
+    assert hash_path.exists()
 
     payload = json.loads(alignment_path.read_text(encoding="utf-8"))
     assert payload["preset_id"] == "acquisition"
     assert payload["metric_labels"]["prediction_time_series"]["label"] == "Predicted Outcome"
     assert payload["metric_labels"]["mean_prediction_by_stimulus"]["label"] == "Predicted Outcome"
+    identity = json.loads(identity_path.read_text(encoding="utf-8"))
+    assert identity["hash_algorithm"] == "sha256"
+    assert identity["report_alignment_hash"] == stable_report_alignment_hash(payload)
+    assert hash_path.read_text(encoding="utf-8").strip() == identity["report_alignment_hash"]
 
 
 def test_run_report_metric_pages_use_registry_alignment_label(monkeypatch, tmp_path):
@@ -209,3 +223,81 @@ def test_report_alignment_snapshot_selected_presets_generated_artifacts(monkeypa
             "source": "metric_name_fallback",
         },
     }
+
+
+def test_report_alignment_rejects_missing_metric_under_strict_measurement_readouts():
+    with pytest.raises(ReportAlignmentError, match="Missing measurement readout coverage"):
+        build_report_alignment_contract(
+            "acquisition",
+            metric_names=["prediction_time_series"],
+            measurement_selection_ids=["final_weights"],
+            strict_readout_coverage=True,
+        )
+
+
+def test_report_alignment_multi_readout_priority_is_deterministic():
+    aligned = build_report_alignment_contract(
+        "acquisition",
+        metric_names=["prediction_time_series", "mean_prediction_by_stimulus"],
+        measurement_selection_ids=["trial_log", "learning_curve"],
+        strict_readout_coverage=True,
+    )
+    assert aligned["selected_measurement_readouts"] == ["trial_log", "learning_curve"]
+    catalog = aligned["measurement_readout_catalog"]
+    assert [entry["selection_id"] for entry in catalog[:2]] == ["learning_curve", "trial_log"]
+
+
+def test_report_alignment_module_does_not_expose_hand_authored_metric_map():
+    assert not hasattr(report_module, "METRIC_TO_DEPENDENT_VARIABLE")
+
+
+def test_report_alignment_hash_is_deterministic_for_equivalent_inputs():
+    aligned_a = build_report_alignment_contract(
+        "acquisition",
+        metric_names=["prediction_time_series", "mean_prediction_by_stimulus"],
+        measurement_selection_ids=["trial_log", "learning_curve"],
+        strict_readout_coverage=True,
+    )
+    aligned_b = build_report_alignment_contract(
+        "acquisition",
+        metric_names=["prediction_time_series", "mean_prediction_by_stimulus"],
+        measurement_selection_ids=["trial_log", "learning_curve"],
+        strict_readout_coverage=True,
+    )
+    assert stable_report_alignment_hash(aligned_a) == stable_report_alignment_hash(aligned_b)
+
+
+def test_run_report_collision_safe_directory_allocation(monkeypatch, tmp_path):
+    class _FrozenDateTime:
+        @classmethod
+        def now(cls):
+            from datetime import datetime as _dt
+
+            return _dt(2026, 3, 24, 12, 0, 0)
+
+    cfg = ReportConfig(
+        metrics=["prediction_time_series"],
+        visualizations=[],
+        params={},
+    )
+    monkeypatch.setattr(report_module, "datetime", _FrozenDateTime)
+    monkeypatch.setattr(report_module, "get_report_preset", lambda _name: cfg)
+    monkeypatch.setattr(report_module, "METRIC_REGISTRY", {"prediction_time_series": _DummyMetric})
+
+    first = report_module.run_report(
+        records=[{"prediction": 0.2, "response": 0.2, "stimulus": "tone"}],
+        preset="acquisition",
+        output_dir=str(tmp_path),
+    )
+    second = report_module.run_report(
+        records=[{"prediction": 0.2, "response": 0.2, "stimulus": "tone"}],
+        preset="acquisition",
+        output_dir=str(tmp_path),
+    )
+    assert first != second
+    assert first.name == "2026-03-24_12-00-00"
+    assert second.name == "2026-03-24_12-00-00_01"
+
+    first_hash = (first / "report_alignment.sha256").read_text(encoding="utf-8").strip()
+    second_hash = (second / "report_alignment.sha256").read_text(encoding="utf-8").strip()
+    assert first_hash == second_hash
