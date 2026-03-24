@@ -35,6 +35,9 @@ from ui.contracts.behavioral_compatibility_engine import (
 from ui.contracts.preset_ux_catalog import (
     build_preset_ux_catalog,
 )
+from ui.contracts.preset_route_migration import (
+    get_preset_route_migration_contract,
+)
 from ui.contracts.smart_preset_projection import (
     SmartPresetProjectionValidationError,
     build_smart_preset_catalog,
@@ -268,11 +271,15 @@ def materialize_tuple_authoring_api(payload: dict):
             deprecations = diagnostics.get("deprecation_diagnostics", [])
             if not isinstance(deprecations, list):
                 deprecations = []
+            route_contract = get_preset_route_migration_contract()
             materialized["tuple_route_migration_diagnostics"] = {
                 "deprecated_input_detected": True,
                 "deprecated_input_mode": diagnostics.get("source_mode", "preset_basis_v1"),
                 "recommended_input_mode": diagnostics.get("target_mode", "tuple_v1"),
                 "messages": [str(msg) for msg in deprecations],
+                "route_migration_strategy": route_contract.get("strategy"),
+                "tuple_first_preset_routes": list(route_contract.get("tuple_first_preset_routes", [])),
+                "basis_first_preset_routes": list(route_contract.get("basis_first_preset_routes", [])),
             }
         return materialized
     except TupleAuthoringAPIError as exc:
@@ -322,6 +329,17 @@ def preset_ux_catalog_api():
     except Exception as exc:
         raise_internal_error(
             "Preset UX catalog generation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/preset-route-migration")
+def preset_route_migration_api():
+    try:
+        return get_preset_route_migration_contract()
+    except Exception as exc:
+        raise_internal_error(
+            "Preset route migration contract generation failed.",
             details={"reason": str(exc)},
         )
 

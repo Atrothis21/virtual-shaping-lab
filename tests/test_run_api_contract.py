@@ -744,6 +744,14 @@ def test_preset_ux_catalog_endpoint_shape():
     assert body["degraded_fallback"]["enabled"] is True
 
 
+def test_preset_route_migration_endpoint_shape():
+    body = api_run.preset_route_migration_api()
+    assert body["strategy"] == "overlay_gradual"
+    assert isinstance(body["tuple_first_preset_routes"], list)
+    assert isinstance(body["basis_first_preset_routes"], list)
+    assert isinstance(body["legacy_fallback_preset_routes"], list)
+
+
 def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
     payload = {
         "preset_id": "acquisition",
