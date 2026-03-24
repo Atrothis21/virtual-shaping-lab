@@ -663,6 +663,12 @@ class RunService:
             "artifact_identity": str(report_dir / "artifact_identity.json"),
             "operator_stage_io_provenance": str(io_provenance_path),
         }
+        report_alignment_identity = report_dir / "report_alignment_identity.json"
+        report_alignment_hash = report_dir / "report_alignment.sha256"
+        if report_alignment_identity.exists():
+            artifacts["report_alignment_identity"] = str(report_alignment_identity)
+        if report_alignment_hash.exists():
+            artifacts["report_alignment_hash"] = str(report_alignment_hash)
         return records, report_dir, artifacts
 
     @classmethod
@@ -800,6 +806,12 @@ class ReportService:
             "figures": [str(p) for p in report_dir.glob("*.png")],
             "artifact_identity": str(report_dir / "artifact_identity.json"),
         }
+        report_alignment_identity = report_dir / "report_alignment_identity.json"
+        report_alignment_hash = report_dir / "report_alignment.sha256"
+        if report_alignment_identity.exists():
+            artifacts["report_alignment_identity"] = str(report_alignment_identity)
+        if report_alignment_hash.exists():
+            artifacts["report_alignment_hash"] = str(report_alignment_hash)
         source_io_provenance_path = run_dir / "operator_stage_io_provenance.json"
         if source_io_provenance_path.exists():
             target_io_provenance_path = report_dir / "operator_stage_io_provenance.json"

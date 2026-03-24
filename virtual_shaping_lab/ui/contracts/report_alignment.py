@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
+import json
 from typing import Any
 
 from ui.contracts.operator_basis_registry import (
@@ -209,3 +211,16 @@ def build_report_alignment_contract(
         "measurement_readout_catalog": deepcopy(readout_catalog),
         "metric_labels": deepcopy(metric_labels),
     }
+
+
+def stable_report_alignment_json(alignment: dict[str, Any]) -> str:
+    """Deterministic JSON serialization for report-alignment payloads."""
+    if not isinstance(alignment, dict):
+        raise ReportAlignmentError("alignment must be an object.")
+    return json.dumps(deepcopy(alignment), sort_keys=True, separators=(",", ":"))
+
+
+def stable_report_alignment_hash(alignment: dict[str, Any]) -> str:
+    """Deterministic hash for report-alignment payloads."""
+    encoded = stable_report_alignment_json(alignment).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()

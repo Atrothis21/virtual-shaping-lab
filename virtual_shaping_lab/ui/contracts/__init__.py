@@ -167,6 +167,8 @@ from ui.contracts.trialstate_inspector import (
 from ui.contracts.report_alignment import (
     ReportAlignmentError,
     build_report_alignment_contract,
+    stable_report_alignment_hash,
+    stable_report_alignment_json,
 )
 from ui.contracts.trialstate_registry import (
     REQUIRED_TRIALSTATE_FIELDS,
@@ -307,6 +309,8 @@ __all__ = [
     "build_trialstate_inspector",
     "ReportAlignmentError",
     "build_report_alignment_contract",
+    "stable_report_alignment_json",
+    "stable_report_alignment_hash",
     "TrialStateRegistryValidationError",
     "TRIALSTATE_FIELD_REGISTRY_VERSION",
     "TRIALSTATE_FIELD_REGISTRY",

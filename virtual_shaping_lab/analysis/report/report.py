@@ -10,7 +10,11 @@ from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
-from ui.contracts.report_alignment import ReportAlignmentError, build_report_alignment_contract
+from ui.contracts.report_alignment import (
+    ReportAlignmentError,
+    build_report_alignment_contract,
+    stable_report_alignment_hash,
+)
 
 DEFAULT_REPORTS_DIR = REPORTS_DIR
 _VERSION_FILE = Path(__file__).resolve().parents[3] / "VERSION"
@@ -310,6 +314,10 @@ class ReportArtifactWriter:
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         base_dir = Path(output_dir) if output_dir is not None else DEFAULT_REPORTS_DIR
         report_dir = base_dir / timestamp
+        suffix = 0
+        while report_dir.exists():
+            suffix += 1
+            report_dir = base_dir / f"{timestamp}_{suffix:02d}"
         report_dir.mkdir(parents=True, exist_ok=False)
         metrics_dir = report_dir / "metrics"
         metrics_dir.mkdir(parents=True, exist_ok=True)
@@ -344,6 +352,18 @@ class ReportArtifactWriter:
             return
         with open(ctx.report_dir / "report_alignment.json", "w") as f:
             json.dump(_to_jsonable(alignment), f, indent=2)
+        alignment_hash = stable_report_alignment_hash(alignment)
+        with open(ctx.report_dir / "report_alignment_identity.json", "w") as f:
+            json.dump(
+                {
+                    "hash_algorithm": "sha256",
+                    "report_alignment_hash": alignment_hash,
+                },
+                f,
+                indent=2,
+            )
+        with open(ctx.report_dir / "report_alignment.sha256", "w", encoding="utf-8") as f:
+            f.write(f"{alignment_hash}\n")
 
 
 class MetricExecutionPipeline:

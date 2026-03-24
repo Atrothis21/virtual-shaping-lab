@@ -216,6 +216,8 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert (run_dir / "mechanism_provenance.json").exists()
     assert (run_dir / "artifact_identity.json").exists()
     assert (run_dir / "operator_stage_io_provenance.json").exists()
+    assert (run_dir / "report_alignment_identity.json").exists()
+    assert (run_dir / "report_alignment.sha256").exists()
     stored_payload = json.loads((run_dir / "payload.json").read_text())
     assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
     identity = json.loads((run_dir / "artifact_identity.json").read_text())
@@ -326,6 +328,8 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     regenerated_dir = fixture_output_dir / "regenerated" / report_body["run_id"]
     assert (regenerated_dir / "artifact_identity.json").exists()
     assert (regenerated_dir / "operator_stage_io_provenance.json").exists()
+    assert (regenerated_dir / "report_alignment_identity.json").exists()
+    assert (regenerated_dir / "report_alignment.sha256").exists()
 
 
 def test_run_service_uses_plan_seed_as_runtime_seed_identity(monkeypatch, tmp_path):
