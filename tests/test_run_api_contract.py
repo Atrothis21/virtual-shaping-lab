@@ -544,6 +544,32 @@ def test_run_api_rejects_mixed_legacy_and_canonical_payload_with_actionable_deta
     assert "legacy_flat_experiment" in details["rejected_payload_modes"]
 
 
+def test_run_api_rejects_legacy_flat_payload_with_actionable_details():
+    payload = {
+        "experiment": {
+            "learner": "rescorla_wagner",
+            "agent": "classical_agent",
+            "representation": {"name": "vector_elemental", "params": {"stimuli": ["tone"]}},
+            "phases": [
+                {
+                    "name": "Acquisition",
+                    "protocol": "acquisition",
+                    "stimuli": {"cs_plus": ["tone"]},
+                    "params": {"n_trials": 5},
+                }
+            ],
+        },
+        "report": {"preset": "acquisition"},
+    }
+    with pytest.raises(HTTPException) as exc:
+        api_run.run_api(payload)
+    assert exc.value.status_code == 400
+    assert exc.value.detail["code"] == "validation_error"
+    assert exc.value.detail["message"] == "Mixed or legacy payload mode is not supported."
+    details = exc.value.detail.get("details", {})
+    assert "legacy_flat_experiment" in details.get("rejected_payload_modes", [])
+
+
 def test_run_report_endpoint_404_for_missing_run():
     with pytest.raises(HTTPException) as exc:
         api_run.run_report_api("missing-run-id")
