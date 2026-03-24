@@ -76,6 +76,10 @@ from ui.contracts.behavioral_compatibility_engine import (
     BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION,
     evaluate_behavioral_compatibility,
 )
+from ui.contracts.preset_ux_catalog import (
+    PRESET_UX_CATALOG_VERSION,
+    build_preset_ux_catalog,
+)
 from ui.contracts.smart_preset_projection import (
     SMART_PRESET_PROJECTION_VERSION,
     SMART_PRESET_PROJECTIONS,
@@ -335,6 +339,8 @@ __all__ = [
     "get_behavioral_compatibility_registry",
     "BEHAVIORAL_COMPATIBILITY_ENGINE_VERSION",
     "evaluate_behavioral_compatibility",
+    "PRESET_UX_CATALOG_VERSION",
+    "build_preset_ux_catalog",
     "SmartPresetProjectionValidationError",
     "SMART_PRESET_PROJECTION_VERSION",
     "SMART_PRESET_PROJECTIONS",

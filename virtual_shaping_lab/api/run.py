@@ -32,6 +32,9 @@ from ui.contracts.tuple_authoring_api import (
 from ui.contracts.behavioral_compatibility_engine import (
     evaluate_behavioral_compatibility,
 )
+from ui.contracts.preset_ux_catalog import (
+    build_preset_ux_catalog,
+)
 from ui.contracts.smart_preset_projection import (
     SmartPresetProjectionValidationError,
     build_smart_preset_catalog,
@@ -308,6 +311,17 @@ def tuple_authoring_compatibility_api(payload: dict):
     except Exception as exc:
         raise_internal_error(
             "Tuple compatibility evaluation failed.",
+            details={"reason": str(exc)},
+        )
+
+
+@app.get("/catalog/preset-ux")
+def preset_ux_catalog_api():
+    try:
+        return build_preset_ux_catalog()
+    except Exception as exc:
+        raise_internal_error(
+            "Preset UX catalog generation failed.",
             details={"reason": str(exc)},
         )
 

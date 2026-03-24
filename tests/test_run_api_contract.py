@@ -736,6 +736,14 @@ def test_smart_preset_project_endpoint_shape():
     assert body["edits"]["n_trials"] == 9
 
 
+def test_preset_ux_catalog_endpoint_shape():
+    body = api_run.preset_ux_catalog_api()
+    assert body["registry_generated"] is True
+    assert isinstance(body.get("arrangements"), list)
+    assert isinstance(body.get("ui_density_controls"), dict)
+    assert body["degraded_fallback"]["enabled"] is True
+
+
 def test_acquisition_basis_materialization_endpoint_emits_canonical_payload():
     payload = {
         "preset_id": "acquisition",
