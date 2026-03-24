@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import copy
+
 from ui.contracts.operator_registry import get_operator
 from ui.contracts.preset_detail_contract import build_preset_detail_contract
+import ui.contracts.preset_detail_contract as preset_detail_contract
 
 
 def test_v3_teaching_contract_acquisition_layers_present():
@@ -42,3 +45,28 @@ def test_v3_teaching_contract_acquisition_operator_surface_registry_driven_and_r
         assert rendered["stage_index"] == canonical["stage_index"]
         assert rendered["reads_trialstate"] == canonical["runtime"]["reads_trialstate"]
         assert rendered["writes_trialstate"] == canonical["runtime"]["writes_trialstate"]
+
+
+def test_v3_teaching_contract_prefers_basis_subset_over_hand_authored_operator_strings(monkeypatch):
+    preset = {
+        "id": "acquisition",
+        "label": "Acquisition",
+        "description": "test preset",
+        "protocol_family": "acquisition",
+        "template": {
+            "experiment": {
+                "program": {"phases": [{"name": "Acquisition", "protocol": "acquisition", "stimuli": {}, "params": {}}]}
+            }
+        },
+        "ui_contract": {"layers": {"overview": True, "phases": True, "operators": True, "math": True}},
+        "basis_definition": {
+            "operator_subset": {"phi": "elemental", "p": "state_value", "delta": "rw_error", "w": "rescorla_wagner", "m": ["trial_log"]},
+        },
+        "registry_bindings": {
+            "operators": ["m"],  # Intentionally wrong ordering/content; basis subset should win.
+        },
+    }
+    monkeypatch.setattr(preset_detail_contract, "get_preset", lambda _preset_id: copy.deepcopy(preset))
+    detail = preset_detail_contract.build_preset_detail_contract("acquisition")
+    observed = [entry["id"] for entry in detail["operators"]]
+    assert {"phi", "p", "delta", "w", "m"}.issubset(set(observed))

@@ -29,4 +29,5 @@ def test_acquisition_editor_avoids_legacy_experiment_blob_emission():
 def test_acquisition_editor_phi_choices_are_registry_sourced():
     src = Path("virtual_shaping_lab/ui/js/react/acquisition_editor.jsx").read_text(encoding="utf-8")
     assert "contract?.operator_choices?.phi" in src
+    assert "contract?.defaults?.editable?.learning_rule_choices" in src
     assert "<option value=\"vector_elemental\">" not in src

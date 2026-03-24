@@ -67,3 +67,10 @@ def test_preset_registry_rejects_preset_id_mismatch():
     with pytest.raises(PresetRegistryValidationError, match="id must match preset key"):
         validate_preset_registry(payload)
 
+
+def test_preset_registry_rejects_non_registry_selectable_universe_source():
+    payload = copy.deepcopy(PRESET_REGISTRY)
+    payload["presets"]["acquisition"]["basis_definition"]["selectable_universe_source"] = "hand_authored"
+    with pytest.raises(PresetRegistryValidationError, match="selectable_universe_source"):
+        validate_preset_registry(payload)
+

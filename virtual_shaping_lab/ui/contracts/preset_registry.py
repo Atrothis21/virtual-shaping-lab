@@ -12,6 +12,7 @@ from ui.contracts.dependent_variable_registry import (
 from ui.contracts.operator_registry import list_operator_ids
 from ui.contracts.trialstate_registry import list_trialstate_field_ids
 from ui.contracts.operator_basis_registry import list_ui_selectable_implementations
+from ui.contracts.operator_subset_contract import validate_preset_definition
 
 
 class PresetRegistryValidationError(ValueError):
@@ -26,6 +27,7 @@ REQUIRED_PRESET_KEYS: tuple[str, ...] = (
     "label",
     "description",
     "protocol_family",
+    "basis_definition",
     "template",
     "ui_contract",
     "registry_bindings",
@@ -37,101 +39,169 @@ REQUIRED_PRESET_BINDING_KEYS: tuple[str, ...] = (
     "dependent_variables",
 )
 
+def _core_basis_definition(*, preset_id: str, label: str, description: str) -> dict[str, Any]:
+    return {
+        "id": f"rw_{preset_id}",
+        "label": f"RW {label}",
+        "description": description,
+        "operator_subset": {
+            "phi": "elemental",
+            "p": "state_value",
+            "delta": "rw_error",
+            "w": "rescorla_wagner",
+            "omega": "classical_contingency",
+            "m": ["trial_log", "learning_curve", "final_weights"],
+        },
+        "defaults": {"a": "fixed_alpha"},
+        "locked": ["delta", "w"],
+        "optional": ["a", "c", "g", "e", "pi"],
+        "selectable_universe_source": "operator_basis_registry",
+    }
+
+
+def _core_preset(
+    *,
+    preset_id: str,
+    label: str,
+    description: str,
+    protocol_family: str,
+    phase_name: str,
+    phase_protocol: str,
+    stimuli: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "id": preset_id,
+        "label": label,
+        "description": description,
+        "protocol_family": protocol_family,
+        "basis_definition": _core_basis_definition(
+            preset_id=preset_id,
+            label=label,
+            description=f"{label} basis subset.",
+        ),
+        "template": {
+            "experiment": {
+                "program": {
+                    "phases": [
+                        {
+                            "name": phase_name,
+                            "protocol": phase_protocol,
+                            "stimuli": deepcopy(stimuli),
+                            "params": {"n_trials": 50},
+                        }
+                    ],
+                },
+                "agent": {"learning": {"rule": "rescorla_wagner"}},
+            }
+        },
+        "ui_contract": {
+            "layers": {
+                "overview": True,
+                "phases": True,
+                "operators": True,
+                "math": True,
+            },
+            "locking": {
+                "protocol_locked": True,
+                "phase_structure_locked": True,
+                "operators_read_only": True,
+            },
+            "editability": {
+                "allowed_parameters": [
+                    "experiment.program.phases[0].params.n_trials",
+                    "experiment.program.phases[0].stimuli.cs_plus",
+                    "experiment.agent.learning.rule",
+                ],
+                "locked_parameters": [
+                    "experiment.program.phases[0].protocol",
+                    "experiment.program.phases",
+                ],
+                "option_constraints": {
+                    "experiment.agent.learning.rule": [
+                        "rescorla_wagner",
+                        "temporal_difference",
+                    ]
+                },
+            },
+        },
+        "registry_bindings": {
+            "trialstate_fields": [
+                "stimulus",
+                "prediction",
+                "outcome",
+                "error",
+                "weights",
+                "trial_index",
+                "phase_name",
+            ],
+            "operators": ["phi", "p", "delta", "w", "m"],
+            "dependent_variables": [
+                "associative_strength",
+                "predicted_outcome",
+                "prediction_error",
+                "response_strength",
+            ],
+        },
+        "results_contract": {
+            "primary_dependent_variables": [
+                "associative_strength",
+                "predicted_outcome",
+                "prediction_error",
+            ],
+            "secondary_dependent_variables": ["response_strength"],
+            "graph_priority": [
+                "associative_strength",
+                "predicted_outcome",
+                "prediction_error",
+                "response_strength",
+            ],
+            "measurement_readouts": [
+                "trial_log",
+                "learning_curve",
+                "report_bundle",
+            ],
+        },
+    }
+
+
+_acquisition = _core_preset(
+    preset_id="acquisition",
+    label="Acquisition",
+    description="Canonical acquisition preset contract surface.",
+    protocol_family="acquisition",
+    phase_name="Acquisition",
+    phase_protocol="acquisition",
+    stimuli={"cs_plus": ["tone"]},
+)
+_extinction = _core_preset(
+    preset_id="extinction",
+    label="Extinction",
+    description="Canonical extinction preset contract surface.",
+    protocol_family="extinction",
+    phase_name="Extinction",
+    phase_protocol="extinction",
+    stimuli={"cs_plus": ["tone"]},
+)
+_differential = _core_preset(
+    preset_id="differential_acquisition",
+    label="Differential Acquisition",
+    description="Canonical differential acquisition preset contract surface.",
+    protocol_family="differential_acquisition",
+    phase_name="Differential Acquisition",
+    phase_protocol="differential_acquisition",
+    stimuli={"cs_plus": ["tone"], "cs_minus": ["noise"]},
+)
+
+_differential["ui_contract"]["editability"]["allowed_parameters"].append(
+    "experiment.program.phases[0].stimuli.cs_minus"
+)
+
 PRESET_REGISTRY: dict[str, Any] = {
     "version": PRESET_REGISTRY_VERSION,
     "presets": {
-        "acquisition": {
-            "id": "acquisition",
-            "label": "Acquisition",
-            "description": "Canonical acquisition preset contract surface.",
-            "protocol_family": "acquisition",
-            "template": {
-                "experiment": {
-                    "program": {
-                        "phases": [
-                            {
-                                "name": "Acquisition",
-                                "protocol": "acquisition",
-                                "stimuli": {"cs_plus": ["tone"]},
-                                "params": {"n_trials": 50},
-                            }
-                        ],
-                    },
-                    "agent": {
-                        "learning": {
-                            "rule": "rescorla_wagner",
-                        }
-                    }
-                }
-            },
-            "ui_contract": {
-                "layers": {
-                    "overview": True,
-                    "phases": True,
-                    "operators": True,
-                    "math": True,
-                },
-                "locking": {
-                    "protocol_locked": True,
-                    "phase_structure_locked": True,
-                    "operators_read_only": True,
-                },
-                "editability": {
-                    "allowed_parameters": [
-                        "experiment.program.phases[0].params.n_trials",
-                        "experiment.program.phases[0].stimuli.cs_plus",
-                        "experiment.agent.learning.rule",
-                    ],
-                    "locked_parameters": [
-                        "experiment.program.phases[0].protocol",
-                        "experiment.program.phases",
-                    ],
-                    "option_constraints": {
-                        "experiment.agent.learning.rule": [
-                            "rescorla_wagner",
-                            "temporal_difference",
-                        ]
-                    },
-                },
-            },
-            "registry_bindings": {
-                "trialstate_fields": [
-                    "stimulus",
-                    "prediction",
-                    "outcome",
-                    "error",
-                    "weights",
-                    "trial_index",
-                    "phase_name",
-                ],
-                "operators": ["phi", "p", "delta", "w", "m"],
-                "dependent_variables": [
-                    "associative_strength",
-                    "predicted_outcome",
-                    "prediction_error",
-                    "response_strength",
-                ],
-            },
-            "results_contract": {
-                "primary_dependent_variables": [
-                    "associative_strength",
-                    "predicted_outcome",
-                    "prediction_error",
-                ],
-                "secondary_dependent_variables": ["response_strength"],
-                "graph_priority": [
-                    "associative_strength",
-                    "predicted_outcome",
-                    "prediction_error",
-                    "response_strength",
-                ],
-                "measurement_readouts": [
-                    "trial_log",
-                    "learning_curve",
-                    "report_bundle",
-                ],
-            },
-        }
+        "acquisition": _acquisition,
+        "extinction": _extinction,
+        "differential_acquisition": _differential,
     },
 }
 
@@ -350,6 +420,25 @@ def validate_preset_registry(registry: dict[str, Any] | None = None) -> dict[str
             preset.get("protocol_family"),
             f"preset_registry.presets.{preset_key}.protocol_family",
         )
+        basis_definition = _require_dict(
+            preset.get("basis_definition"),
+            f"preset_registry.presets.{preset_key}.basis_definition",
+        )
+        selectable_universe_source = _require_non_empty_string(
+            basis_definition.get("selectable_universe_source"),
+            f"preset_registry.presets.{preset_key}.basis_definition.selectable_universe_source",
+        )
+        if selectable_universe_source != "operator_basis_registry":
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.basis_definition.selectable_universe_source "
+                "must be 'operator_basis_registry'."
+            )
+        try:
+            validate_preset_definition(basis_definition)
+        except Exception as exc:
+            raise PresetRegistryValidationError(
+                f"preset_registry.presets.{preset_key}.basis_definition invalid: {exc}"
+            ) from exc
         _validate_preset_ui_contract(
             _require_dict(
                 preset.get("ui_contract"),

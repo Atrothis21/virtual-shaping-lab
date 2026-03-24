@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from ui.contracts.operator_registry import get_operator
+from ui.contracts.operator_registry import get_operator, list_operator_ids
 from ui.contracts.preset_registry import get_preset
 
 
@@ -36,6 +36,22 @@ def _phase_block(phase: dict[str, Any], *, phase_index: int) -> dict[str, Any]:
         "parameter_keys": sorted(params.keys()),
         "read_only": True,
     }
+
+
+def _operator_ids_from_basis(preset: dict[str, Any]) -> list[str]:
+    basis = preset.get("basis_definition")
+    if not isinstance(basis, dict):
+        return []
+    subset = basis.get("operator_subset")
+    if not isinstance(subset, dict):
+        return []
+    known_operator_ids = set(list_operator_ids())
+    out: list[str] = []
+    for slot in subset.keys():
+        key = str(slot)
+        if key in known_operator_ids and key not in out:
+            out.append(key)
+    return out
 
 
 def build_preset_detail_contract(preset_id: str) -> dict[str, Any]:
@@ -70,7 +86,9 @@ def build_preset_detail_contract(preset_id: str) -> dict[str, Any]:
     bindings = preset.get("registry_bindings")
     if not isinstance(bindings, dict):
         raise PresetDetailContractError(f"Preset '{preset_id}' is missing registry_bindings.")
-    operator_ids = bindings.get("operators")
+    operator_ids = _operator_ids_from_basis(preset)
+    if not operator_ids:
+        operator_ids = bindings.get("operators")
     if not isinstance(operator_ids, list) or not operator_ids:
         raise PresetDetailContractError(
             f"Preset '{preset_id}' registry_bindings.operators must be a non-empty list."

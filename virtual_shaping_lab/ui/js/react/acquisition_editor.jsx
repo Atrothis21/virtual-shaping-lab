@@ -147,8 +147,9 @@ function AcquisitionApp() {
           value={params.learning_rule}
           onChange={(e) => setParams((prev) => ({ ...prev, learning_rule: e.target.value }))}
         >
-          <option value="rescorla_wagner">rescorla_wagner</option>
-          <option value="temporal_difference">temporal_difference</option>
+          {(contract?.defaults?.editable?.learning_rule_choices || ["rescorla_wagner", "temporal_difference"]).map((rule) => (
+            <option key={rule} value={rule}>{rule}</option>
+          ))}
         </select>
       </div>
 

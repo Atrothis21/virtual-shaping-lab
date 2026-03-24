@@ -7,7 +7,6 @@ from typing import Any
 
 from ui.contracts.operator_basis_registry import list_ui_selectable_implementations
 from ui.contracts.operator_plan_materialization import compile_and_materialize_operator_plan
-from ui.contracts.operator_subset_contract import get_preset_definition_template
 from ui.contracts.preset_registry import get_preset
 
 
@@ -72,9 +71,18 @@ def build_acquisition_basis_authoring_contract() -> dict[str, Any]:
     stimuli = phase0.get("stimuli", {}) if isinstance(phase0, dict) else {}
     cs_plus = stimuli.get("cs_plus", []) if isinstance(stimuli, dict) else []
 
-    subset_template = get_preset_definition_template()
-    default_phi = str(subset_template["operator_subset"].get("phi", "elemental"))
-    default_w = str(subset_template["operator_subset"].get("w", "rescorla_wagner"))
+    basis_definition = preset.get("basis_definition", {})
+    operator_subset = basis_definition.get("operator_subset", {}) if isinstance(basis_definition, dict) else {}
+    default_phi = str(operator_subset.get("phi", "elemental"))
+    default_w = str(operator_subset.get("w", "rescorla_wagner"))
+    learning_rule_choices = (
+        preset.get("ui_contract", {})
+        .get("editability", {})
+        .get("option_constraints", {})
+        .get("experiment.agent.learning.rule", ["rescorla_wagner", "temporal_difference"])
+    )
+    if not isinstance(learning_rule_choices, list) or not learning_rule_choices:
+        learning_rule_choices = ["rescorla_wagner", "temporal_difference"]
 
     return {
         "preset_id": "acquisition",
@@ -93,6 +101,7 @@ def build_acquisition_basis_authoring_contract() -> dict[str, Any]:
                 "n_trials": int(params.get("n_trials", 50)),
                 "cs_plus": list(cs_plus) if isinstance(cs_plus, list) else ["tone"],
                 "learning_rule": _W_SELECTION_TO_LEARNING_RULE.get(default_w, "rescorla_wagner"),
+                "learning_rule_choices": [str(v) for v in learning_rule_choices if isinstance(v, str)],
             },
             "stimuli_catalog": _canonical_stimuli_catalog(preset),
         },
@@ -161,7 +170,11 @@ def materialize_acquisition_basis_payload(authoring: dict[str, Any]) -> dict[str
     if not cs_plus:
         raise PresetBasisAuthoringError("authoring.edits.cs_plus must be non-empty.")
 
-    preset_definition = get_preset_definition_template()
+    preset = get_preset("acquisition")
+    basis_definition = preset.get("basis_definition")
+    if not isinstance(basis_definition, dict):
+        raise PresetBasisAuthoringError("Preset 'acquisition' is missing basis_definition.")
+    preset_definition = deepcopy(basis_definition)
     preset_definition["operator_subset"]["phi"] = phi
     preset_definition["operator_subset"]["w"] = w
 

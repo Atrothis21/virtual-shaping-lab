@@ -18,6 +18,7 @@ def test_acquisition_basis_authoring_contract_is_registry_driven():
     assert contract["registry_generated"] is True
     assert contract["operator_choices"]["phi"] == list(list_ui_selectable_implementations("phi"))
     assert contract["operator_choices"]["w"] == list(list_ui_selectable_implementations("w"))
+    assert contract["defaults"]["editable"]["learning_rule_choices"]
 
 
 def test_acquisition_basis_materialization_emits_canonical_payload_only():
