@@ -53,6 +53,13 @@ from ui.contracts.arrangement_task_agent_composition import (
     stable_arrangement_task_agent_provenance_hash,
     stable_arrangement_task_agent_provenance_json,
 )
+from ui.contracts.tuple_authoring_contract import (
+    TUPLE_AUTHORING_CONTRACT_VERSION,
+    TUPLE_AUTHORING_MODE,
+    TupleAuthoringContractError,
+    translate_to_tuple_authoring_payload,
+    validate_tuple_authoring_payload,
+)
 from ui.contracts.operator_registry import (
     OPERATOR_REGISTRY,
     OPERATOR_REGISTRY_VERSION,
@@ -286,6 +293,11 @@ __all__ = [
     "stable_arrangement_task_agent_composition_hash",
     "stable_arrangement_task_agent_provenance_json",
     "stable_arrangement_task_agent_provenance_hash",
+    "TupleAuthoringContractError",
+    "TUPLE_AUTHORING_CONTRACT_VERSION",
+    "TUPLE_AUTHORING_MODE",
+    "validate_tuple_authoring_payload",
+    "translate_to_tuple_authoring_payload",
     "OperatorRegistryValidationError",
     "OPERATOR_REGISTRY_VERSION",
     "OPERATOR_REGISTRY",
