@@ -14,6 +14,8 @@ from experiment.payload_contract import to_canonical_payload
 from experiment.basis_routing import BasisAssemblyRoutingError, build_basis_assembly_routing_contract
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
 from virtual_shaping_lab.vsl.registry import match_phenomenon_registry_entry_for_protocol
+from ui.contracts.operator_registry import get_operator
+from ui.contracts.trialstate_registry import list_trialstate_field_ids
 from api.lifecycle import (
     LIFECYCLE_RUN_COMPLETE,
     validate_lifecycle_transition,
@@ -21,6 +23,16 @@ from api.lifecycle import (
 
 
 _DEFAULT_RUN_STATUS_STORE = InMemoryRunStatusStore()
+
+_STAGE_TO_OPERATOR_ID: Dict[str, str] = {
+    "Phi": "phi",
+    "P": "p",
+    "Err": "delta",
+    "A": "a",
+    "Update": "w",
+    "Policy": "pi",
+    "Measure": "m",
+}
 
 # Backward-compatible symbol for tests/patching; prefer assemble_from_plan.
 assemble_experiment = assemble_from_plan
@@ -118,6 +130,70 @@ def _summarize_operator_stage_diagnostics(records: list[dict[str, Any]]) -> Dict
         "pipeline_hashes": sorted(pipeline_hashes),
         "realization_matrix": stage_counts,
     }
+
+
+def _build_operator_stage_io_provenance(plan: ExperimentPlan) -> Dict[str, Any]:
+    """
+    Build stage I/O provenance bound to TrialState registry IDs.
+
+    Raises
+    ------
+    ValueError
+        If a bound operator references unknown TrialState field IDs.
+    """
+    pipeline = _resolve_operator_pipeline(plan)
+    known_trialstate_fields = set(list_trialstate_field_ids())
+    stages: list[dict[str, Any]] = []
+
+    for stage_key in pipeline.stage_keys():
+        operator_id = _STAGE_TO_OPERATOR_ID.get(stage_key)
+        if operator_id is None:
+            stages.append(
+                {
+                    "stage_key": stage_key,
+                    "operator_id": None,
+                    "binding_mode": "unbound_stage",
+                    "reads_trialstate": [],
+                    "writes_trialstate": [],
+                }
+            )
+            continue
+
+        operator = get_operator(operator_id)
+        runtime = operator.get("runtime", {}) if isinstance(operator.get("runtime"), dict) else {}
+        reads = list(runtime.get("reads_trialstate", [])) if isinstance(runtime.get("reads_trialstate"), list) else []
+        writes = (
+            list(runtime.get("writes_trialstate", []))
+            if isinstance(runtime.get("writes_trialstate"), list)
+            else []
+        )
+        unknown_reads = [field for field in reads if field not in known_trialstate_fields]
+        unknown_writes = [field for field in writes if field not in known_trialstate_fields]
+        if unknown_reads or unknown_writes:
+            unknown = sorted(set(unknown_reads + unknown_writes))
+            raise ValueError(
+                "Operator stage I/O contract references unknown TrialState field IDs: "
+                + ", ".join(unknown)
+            )
+
+        stages.append(
+            {
+                "stage_key": stage_key,
+                "operator_id": operator_id,
+                "binding_mode": "registry_bound",
+                "reads_trialstate": reads,
+                "writes_trialstate": writes,
+            }
+        )
+
+    payload = {
+        "pipeline_hash": pipeline.stable_hash(),
+        "declared_stage_keys": list(pipeline.stage_keys()),
+        "stages": stages,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    payload["io_provenance_hash"] = hashlib.sha256(encoded).hexdigest()
+    return payload
 
 
 def _build_basis_compile_identity(plan: ExperimentPlan) -> Dict[str, Any]:
@@ -576,11 +652,16 @@ class RunService:
         )
 
         report_dir = Path(report_dir)
+        stage_io_provenance = _build_operator_stage_io_provenance(plan)
+        io_provenance_path = report_dir / "operator_stage_io_provenance.json"
+        with io_provenance_path.open("w", encoding="utf-8") as f:
+            json.dump(stage_io_provenance, f, indent=2)
         artifacts = {
             "pdf": str(report_dir / "report.pdf"),
             "figures": [str(p) for p in report_dir.glob("*.png")],
             "provenance": str(report_dir / "mechanism_provenance.json"),
             "artifact_identity": str(report_dir / "artifact_identity.json"),
+            "operator_stage_io_provenance": str(io_provenance_path),
         }
         return records, report_dir, artifacts
 
@@ -719,6 +800,14 @@ class ReportService:
             "figures": [str(p) for p in report_dir.glob("*.png")],
             "artifact_identity": str(report_dir / "artifact_identity.json"),
         }
+        source_io_provenance_path = run_dir / "operator_stage_io_provenance.json"
+        if source_io_provenance_path.exists():
+            target_io_provenance_path = report_dir / "operator_stage_io_provenance.json"
+            with source_io_provenance_path.open("r", encoding="utf-8") as src:
+                source_io_payload = json.load(src)
+            with target_io_provenance_path.open("w", encoding="utf-8") as dst:
+                json.dump(source_io_payload, dst, indent=2)
+            artifacts["operator_stage_io_provenance"] = str(target_io_provenance_path)
         required_source_keys = {"plan_hash", "record_schema_version", "template_version_used"}
         missing_source_keys = sorted([k for k in required_source_keys if k not in source_metadata])
         source_metadata_complete = len(missing_source_keys) == 0

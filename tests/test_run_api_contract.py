@@ -215,6 +215,7 @@ def test_run_api_contract_fixtures(monkeypatch, tmp_path, fixture_name):
     assert (run_dir / "records.json").exists()
     assert (run_dir / "mechanism_provenance.json").exists()
     assert (run_dir / "artifact_identity.json").exists()
+    assert (run_dir / "operator_stage_io_provenance.json").exists()
     stored_payload = json.loads((run_dir / "payload.json").read_text())
     assert set(stored_payload["experiment"].keys()) == {"program", "agent", "runtime"}
     identity = json.loads((run_dir / "artifact_identity.json").read_text())
@@ -324,6 +325,7 @@ def test_run_report_endpoint_regenerates_report(monkeypatch, tmp_path):
     assert "view_report" in report_body["lifecycle"]["next_actions"]
     regenerated_dir = fixture_output_dir / "regenerated" / report_body["run_id"]
     assert (regenerated_dir / "artifact_identity.json").exists()
+    assert (regenerated_dir / "operator_stage_io_provenance.json").exists()
 
 
 def test_run_service_uses_plan_seed_as_runtime_seed_identity(monkeypatch, tmp_path):
@@ -570,3 +572,49 @@ def test_extensions_api_contract_shape():
     assert isinstance(ext["representations"], list)
     assert isinstance(ext["math_objects"], dict)
     assert isinstance(ext["report_templates"], dict)
+
+
+def test_operator_stage_io_provenance_artifact_integrity(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    fixture_output_dir = tmp_path / "stage_io_fixture"
+    fixture_output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _run_report_to_tmp(records, preset, payload=None, output_dir="reports"):
+        return real_run_report(
+            records=records,
+            preset=preset,
+            payload=payload,
+            output_dir=str(fixture_output_dir),
+        )
+
+    monkeypatch.setattr(api_services, "run_report", _run_report_to_tmp)
+    body = api_run.run_api(payload)
+    run_dir = fixture_output_dir / body["run_id"]
+    io_path = run_dir / "operator_stage_io_provenance.json"
+    assert io_path.exists()
+
+    io_payload = json.loads(io_path.read_text(encoding="utf-8"))
+    assert isinstance(io_payload.get("pipeline_hash"), str) and io_payload["pipeline_hash"]
+    assert isinstance(io_payload.get("declared_stage_keys"), list) and io_payload["declared_stage_keys"]
+    assert isinstance(io_payload.get("stages"), list) and io_payload["stages"]
+    assert isinstance(io_payload.get("io_provenance_hash"), str) and io_payload["io_provenance_hash"]
+
+    stage_map = {stage["stage_key"]: stage for stage in io_payload["stages"] if isinstance(stage, dict)}
+    assert stage_map["Phi"]["binding_mode"] == "registry_bound"
+    assert "stimulus" in stage_map["Phi"]["reads_trialstate"]
+    assert "state" in stage_map["Phi"]["writes_trialstate"]
+
+
+def test_operator_stage_io_provenance_rejects_unknown_trialstate_field(monkeypatch, tmp_path):
+    payload = copy.deepcopy(CONTRACT_FIXTURES["classical_preset"])
+    real_get_operator = api_services.get_operator
+
+    def _bad_get_operator(operator_id: str):
+        op = copy.deepcopy(real_get_operator(operator_id))
+        if operator_id == "phi":
+            op["runtime"]["reads_trialstate"] = ["unknown_trialstate_field"]
+        return op
+
+    monkeypatch.setattr(api_services, "get_operator", _bad_get_operator)
+    with pytest.raises(ValueError, match="unknown TrialState field IDs"):
+        api_services.RunService.execute(payload, reports_dir=tmp_path)
