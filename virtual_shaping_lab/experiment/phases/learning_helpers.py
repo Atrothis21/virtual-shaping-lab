@@ -6,16 +6,13 @@ from virtual_shaping_lab.domain.types import META_CUE_LABELS, META_EVENT_TYPE, T
 
 
 def _dispatch_transition(agent: Any, transition: Transition) -> None:
-    # Preferred v2 path.
     if hasattr(agent, "learn"):
         agent.learn(transition)
         return
-
-    if hasattr(agent, "update"):
-        agent.update(transition.s, transition.r, transition.a)
-        return
-
-    raise AttributeError("Agent must implement learn(Transition) or update(state, reward, action).")
+    raise AttributeError(
+        "Agent must implement learn(Transition). "
+        "Legacy update(state, reward, action) dispatch path has been removed."
+    )
 
 
 def apply_attention_update(
