@@ -22,22 +22,22 @@ from .executable_presets import (
     build_executable_learner_preset,
     executable_learner_preset_names,
 )
-from .operators import (
+from .operators.base import (
     AttentionOperator,
     EligibilityOperator,
     ErrorOperator,
-    LinearActionValuePredictionOperator,
-    LinearStateValuePredictionOperator,
     NullEligibilityOperator,
-    PredictionOutput,
     PredictionOperator,
-    RescorlaWagnerErrorOperator,
-    TD0ErrorOperator,
-    RescorlaWagnerUpdateOperator,
-    TD0UpdateOperator,
-    TabularStateValuePredictionOperator,
     UpdateOperator,
 )
+from .operators.error import RescorlaWagnerErrorOperator, TD0ErrorOperator
+from .operators.prediction import (
+    LinearActionValuePredictionOperator,
+    LinearStateValuePredictionOperator,
+    PredictionOutput,
+    TabularStateValuePredictionOperator,
+)
+from .operators.update import RescorlaWagnerUpdateOperator, TD0UpdateOperator
 from .instantiate import (
     LEARNER_INSTANTIATION_FAILURES,
     LearnerInstantiationArtifact,

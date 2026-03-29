@@ -16,6 +16,8 @@ from .prediction import (
     PredictionOutput,
     TabularStateValuePredictionOperator,
 )
+from .error import RescorlaWagnerErrorOperator, TD0ErrorOperator
+from .update import RescorlaWagnerUpdateOperator, TD0UpdateOperator
 
 __all__ = [
     "PredictionOperator",
@@ -30,4 +32,8 @@ __all__ = [
     "LinearStateValuePredictionOperator",
     "TabularStateValuePredictionOperator",
     "LinearActionValuePredictionOperator",
+    "RescorlaWagnerErrorOperator",
+    "TD0ErrorOperator",
+    "RescorlaWagnerUpdateOperator",
+    "TD0UpdateOperator",
 ]
