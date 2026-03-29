@@ -30,6 +30,12 @@ from .operators.base import (
     NullGeneralizationOperator,
     RepresentationOperator,
 )
+from .operators.context import ContextArtifact, StaticContextTagOperator, null_contextualize
+from .operators.generalization import (
+    GeneralizationArtifact,
+    IdentityGeneralizationOperator,
+    SimilarityKernelGeneralizationOperator,
+)
 from .operators.representation import (
     ElementalRepresentationOperator,
     IdentityRepresentationOperator,
@@ -84,6 +90,12 @@ __all__ = [
     "GeneralizationOperator",
     "NullContextOperator",
     "NullGeneralizationOperator",
+    "ContextArtifact",
+    "StaticContextTagOperator",
+    "null_contextualize",
+    "GeneralizationArtifact",
+    "IdentityGeneralizationOperator",
+    "SimilarityKernelGeneralizationOperator",
     "RepresentationArtifact",
     "IdentityRepresentationOperator",
     "ElementalRepresentationOperator",
