@@ -23,6 +23,13 @@ from .instantiate import (
     materialize_legal_observation_universe,
 )
 from .output import ObservationOutput, normalize_observation_output_dict
+from .operators.base import (
+    ContextOperator,
+    GeneralizationOperator,
+    NullContextOperator,
+    NullGeneralizationOperator,
+    RepresentationOperator,
+)
 from .registry import (
     COMPATIBILITY_MATRIX,
     OBSERVATION_REGISTRY_VERSION,
@@ -66,4 +73,9 @@ __all__ = [
     "instantiate_observation_contracts",
     "instantiate_observation_from_boundary",
     "materialize_legal_observation_universe",
+    "RepresentationOperator",
+    "ContextOperator",
+    "GeneralizationOperator",
+    "NullContextOperator",
+    "NullGeneralizationOperator",
 ]
