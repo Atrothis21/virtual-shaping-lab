@@ -184,6 +184,14 @@ jobs:
           pytest -q tests/test_run_api_contract.py -k "keeps_basis_and_measurement_identity or emits_tuple_identity_and_artifact_identity_for_tuple_payload or regeneration_keeps_tuple_identity" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.19.0 observation contract ownership
+        run: |
+          pytest -q tests/test_v3_observation_grammar_spec.py tests/test_v3_observation_validator.py tests/test_v3_observation_registry.py tests/test_v3_observation_presets.py tests/test_v3_observation_output_contract.py tests/test_v3_observation_instantiation.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_observation_contract_ownership.py tests/test_v3_namespace_import_audit.py tests/test_v3_namespace_hard_removal.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest
