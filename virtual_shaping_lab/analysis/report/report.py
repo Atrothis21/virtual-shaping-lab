@@ -53,12 +53,33 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "reward": None,
     "prediction": None,
     "prediction_error": None,
+    "v": None,
+    "delta": None,
+    "theta": None,
+    "attention": None,
+    "memory": None,
     "outcome_type": None,
     "schedule": None,
     "done": None,
     "learning_enabled": None,
     "metadata": {},
 }
+
+
+def _extract_learner_traces(metadata: dict) -> dict[str, object] | None:
+    traces = metadata.get("learner_traces")
+    if isinstance(traces, dict):
+        return traces
+    learner = metadata.get("learner")
+    if not isinstance(learner, dict):
+        return None
+    return {
+        "v": learner.get("prediction"),
+        "delta": learner.get("error"),
+        "theta": learner.get("update_features") if isinstance(learner.get("update_features"), dict) else {},
+        "attention": learner.get("attention_state") if isinstance(learner.get("attention_state"), dict) else {},
+        "memory": learner.get("eligibility_state") if isinstance(learner.get("eligibility_state"), dict) else {},
+    }
 
 
 def _normalize_record_for_artifact(record):
@@ -78,6 +99,21 @@ def _normalize_record_for_artifact(record):
         candidate = metadata.get("policy_state")
         if isinstance(candidate, dict):
             out["policy_state"] = dict(candidate)
+    if isinstance(metadata, dict):
+        learner_traces = _extract_learner_traces(metadata)
+        if isinstance(learner_traces, dict):
+            out["v"] = learner_traces.get("v")
+            out["delta"] = learner_traces.get("delta")
+            theta = learner_traces.get("theta")
+            out["theta"] = dict(theta) if isinstance(theta, dict) else {}
+            attention = learner_traces.get("attention")
+            out["attention"] = dict(attention) if isinstance(attention, dict) else {}
+            memory = learner_traces.get("memory")
+            out["memory"] = dict(memory) if isinstance(memory, dict) else {}
+            if out.get("prediction") is None:
+                out["prediction"] = out["v"]
+            if out.get("prediction_error") is None:
+                out["prediction_error"] = out["delta"]
     return out
 
 

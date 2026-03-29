@@ -107,3 +107,35 @@ def test_v3_rollout_step_adapter_emits_locked_schema_record():
     assert record.rollout_id == "rollout_5"
     assert record.episode_id == 2
     assert record.segment_index == 7
+
+
+def test_v3_rollout_step_adapter_promotes_learner_traces_into_record_metadata():
+    step = EnvironmentStep(
+        step_index=4,
+        segment_key="seg1",
+        protocol="acquisition",
+        trial_type="cs_plus",
+        trial_index=2,
+        action=None,
+        stimulus={"cs_plus": ["tone"]},
+        reward=1.0,
+        done=False,
+        termination=EnvironmentTermination(done=False, reason="running"),
+        metadata={
+            "learner": {
+                "prediction": 0.25,
+                "error": 0.75,
+                "update_features": {"tone": 1.0},
+                "attention_state": {"tone": 0.6},
+                "eligibility_state": {"tone": 0.4},
+            }
+        },
+    )
+    record = step_to_rollout_record(step)
+    assert record.metadata["learner_traces"] == {
+        "v": 0.25,
+        "delta": 0.75,
+        "theta": {"tone": 1.0},
+        "attention": {"tone": 0.6},
+        "memory": {"tone": 0.4},
+    }
