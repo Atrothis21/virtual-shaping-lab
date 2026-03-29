@@ -51,3 +51,13 @@ def test_apply_attention_update_uses_mean_for_multiple_cues_metadata():
     apply_attention_update(agent, state="s", reward=1.0, action=None, cue_labels=["tone", "noise"])
     assert agent.learner.last_transition is not None
     assert agent.learner.last_transition.metadata["cue_labels"] == ["tone", "noise"]
+
+
+class UpdateOnlyAgent:
+    def update(self, *_args, **_kwargs):
+        return None
+
+
+def test_apply_attention_update_rejects_legacy_update_only_dispatch():
+    with pytest.raises(AttributeError, match="learn\\(Transition\\)"):
+        apply_attention_update(UpdateOnlyAgent(), state="s", reward=1.0, action=None)

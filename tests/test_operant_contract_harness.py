@@ -116,6 +116,9 @@ def test_operant_phase_records_signed_rewards_and_actions():
         def act(self, state, actions=None, rng=None):
             return self._action
 
+        def learn(self, transition):
+            return self.update(transition.s, transition.r, transition.a)
+
         def update(self, state, reward, action=None):
             return None
 
