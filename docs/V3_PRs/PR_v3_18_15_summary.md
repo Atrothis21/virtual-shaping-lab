@@ -95,6 +95,7 @@ Changes:
 - guardrails enforce:
   - banned legacy learner import tokens in runtime surfaces
   - no reintroduction of update-only dispatch fallback
+  - guardrail-safe learning-helper error messaging (no legacy dispatch token false positives)
   - deterministic canonical learner hash behavior
   - parity/golden and API identity checks in one enforcement bucket
 
@@ -172,4 +173,4 @@ Targeted gates exercised during implementation:
 - `python -m pytest -q tests/test_v3_runtime_learner_adapter.py tests/test_v3_18_15_single_path_guardrails.py`
 - `python -m pytest -q tests/test_v3_namespace_import_audit.py tests/test_v3_namespace_hard_removal.py`
 - `python -m pytest -q tests/test_v3_learner_runtime_parity.py tests/test_v3_learner_numeric_golden.py`
-- `python -m pytest -q tests/test_run_api_contract.py -k "payload_mode_identity or basis_compile_identity or measurement_provenance_identity"`
+- `python -m pytest -q tests/test_run_api_contract.py -k "keeps_basis_and_measurement_identity or emits_tuple_identity_and_artifact_identity_for_tuple_payload or regeneration_keeps_tuple_identity"`
