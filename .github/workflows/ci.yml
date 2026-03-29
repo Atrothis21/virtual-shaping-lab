@@ -181,7 +181,7 @@ jobs:
           pytest -q tests/test_v3_learner_runtime_parity.py tests/test_v3_learner_numeric_golden.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
-          pytest -q tests/test_run_api_contract.py -k "payload_mode_identity or basis_compile_identity or measurement_provenance_identity" \
+          pytest -q tests/test_run_api_contract.py -k "keeps_basis_and_measurement_identity or emits_tuple_identity_and_artifact_identity_for_tuple_payload or regeneration_keeps_tuple_identity" \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
