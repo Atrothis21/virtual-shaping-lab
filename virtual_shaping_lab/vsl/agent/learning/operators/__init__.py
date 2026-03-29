@@ -10,6 +10,12 @@ from .base import (
     PredictionOperator,
     UpdateOperator,
 )
+from .prediction import (
+    LinearActionValuePredictionOperator,
+    LinearStateValuePredictionOperator,
+    PredictionOutput,
+    TabularStateValuePredictionOperator,
+)
 
 __all__ = [
     "PredictionOperator",
@@ -20,5 +26,8 @@ __all__ = [
     "NullAttentionOperator",
     "NullEligibilityOperator",
     "NullTraceOperator",
+    "PredictionOutput",
+    "LinearStateValuePredictionOperator",
+    "TabularStateValuePredictionOperator",
+    "LinearActionValuePredictionOperator",
 ]
-

@@ -19,8 +19,12 @@ from .operators import (
     AttentionOperator,
     EligibilityOperator,
     ErrorOperator,
+    LinearActionValuePredictionOperator,
+    LinearStateValuePredictionOperator,
     NullEligibilityOperator,
+    PredictionOutput,
     PredictionOperator,
+    TabularStateValuePredictionOperator,
     UpdateOperator,
 )
 from .instantiate import (
@@ -69,6 +73,10 @@ __all__ = [
     "grammar_to_runtime_learner_config",
     "runtime_to_grammar_learner_spec",
     "PredictionOperator",
+    "PredictionOutput",
+    "LinearStateValuePredictionOperator",
+    "TabularStateValuePredictionOperator",
+    "LinearActionValuePredictionOperator",
     "ErrorOperator",
     "UpdateOperator",
     "AttentionOperator",
