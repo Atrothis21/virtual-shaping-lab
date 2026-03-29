@@ -13,6 +13,13 @@ from .presets import (
     observation_preset_payload,
     observation_preset_registry,
 )
+from .bundle import ObservationBundle, ObservationStepResult
+from .executable_presets import (
+    ExecutableObservationPreset,
+    build_executable_observation_from_spec,
+    build_executable_observation_preset,
+    executable_observation_preset_names,
+)
 from .instantiate import (
     OBSERVATION_INSTANTIATION_FAILURES,
     ObservationInstantiationArtifact,
@@ -23,6 +30,25 @@ from .instantiate import (
     materialize_legal_observation_universe,
 )
 from .output import ObservationOutput, normalize_observation_output_dict
+from .operators.base import (
+    ContextOperator,
+    GeneralizationOperator,
+    NullContextOperator,
+    NullGeneralizationOperator,
+    RepresentationOperator,
+)
+from .operators.context import ContextArtifact, StaticContextTagOperator, null_contextualize
+from .operators.generalization import (
+    GeneralizationArtifact,
+    IdentityGeneralizationOperator,
+    SimilarityKernelGeneralizationOperator,
+)
+from .operators.representation import (
+    ElementalRepresentationOperator,
+    IdentityRepresentationOperator,
+    MinimalConfiguralRepresentationOperator,
+    RepresentationArtifact,
+)
 from .registry import (
     COMPATIBILITY_MATRIX,
     OBSERVATION_REGISTRY_VERSION,
@@ -37,6 +63,12 @@ from .validation import ObservationSpecValidationError, validate_observation_spe
 
 __all__ = [
     "ObservationSpec",
+    "ObservationBundle",
+    "ObservationStepResult",
+    "ExecutableObservationPreset",
+    "build_executable_observation_preset",
+    "build_executable_observation_from_spec",
+    "executable_observation_preset_names",
     "ObservationSpecValidationError",
     "validate_observation_spec",
     "OBSERVATION_REGISTRY_VERSION",
@@ -66,4 +98,19 @@ __all__ = [
     "instantiate_observation_contracts",
     "instantiate_observation_from_boundary",
     "materialize_legal_observation_universe",
+    "RepresentationOperator",
+    "ContextOperator",
+    "GeneralizationOperator",
+    "NullContextOperator",
+    "NullGeneralizationOperator",
+    "ContextArtifact",
+    "StaticContextTagOperator",
+    "null_contextualize",
+    "GeneralizationArtifact",
+    "IdentityGeneralizationOperator",
+    "SimilarityKernelGeneralizationOperator",
+    "RepresentationArtifact",
+    "IdentityRepresentationOperator",
+    "ElementalRepresentationOperator",
+    "MinimalConfiguralRepresentationOperator",
 ]
