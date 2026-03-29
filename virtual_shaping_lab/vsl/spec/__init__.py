@@ -1,17 +1,18 @@
 """Typed semantic spec models for V3 planning."""
 
-from .bindings import bind_episode_spec, bind_temporal_basis_spec
 from .contracts import (
     AgentSpec,
     AnalysisSpec,
     EnvironmentProgramSpec,
     ExperimentSpec,
     LearnerSpec,
+    RuntimeLearnerConfig,
     PolicySpec,
     ProgramSpec,
     RepresentationSpec,
     RuntimeSpec,
 )
+from .bindings import bind_episode_spec, bind_temporal_basis_spec
 
 __all__ = [
     "bind_temporal_basis_spec",
@@ -21,6 +22,7 @@ __all__ = [
     "AgentSpec",
     "RepresentationSpec",
     "LearnerSpec",
+    "RuntimeLearnerConfig",
     "PolicySpec",
     "RuntimeSpec",
     "AnalysisSpec",
