@@ -203,6 +203,20 @@ jobs:
           pytest -q tests/test_report.py -k observation \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.19.15 single-path observation enforcement
+        run: |
+          pytest -q tests/test_v3_runtime_observation_adapter.py tests/test_v3_observation_runtime_parity.py tests/test_v3_single_path_observation_execution.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_observation_namespace_import_audit.py tests/test_v3_observation_namespace_hard_removal.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_observation_bundle_execution.py tests/test_v3_observation_golden.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_rollout_record_schema.py tests/test_report.py -k observation \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest
