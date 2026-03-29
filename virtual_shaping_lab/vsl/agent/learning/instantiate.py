@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .adapters import grammar_to_runtime_learner_config
+from .operators.base import NullAttentionOperator, NullTraceOperator
 from .resolve import resolve_learner_spec
 from .spec import LearnerSpec
 from .validation import LearnerSpecValidationError
@@ -48,18 +49,6 @@ class OperatorHandle:
             raise ValueError("OperatorHandle.variant must be a non-empty string.")
         if not isinstance(self.params, dict):
             raise ValueError("OperatorHandle.params must be an object.")
-
-
-@dataclass(frozen=True)
-class NullAttentionOperator:
-    slot: str = "A"
-    variant: str = "null_attention"
-
-
-@dataclass(frozen=True)
-class NullTraceOperator:
-    slot: str = "E"
-    variant: str = "null_trace"
 
 
 @dataclass(frozen=True)
