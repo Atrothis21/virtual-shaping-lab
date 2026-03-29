@@ -17,6 +17,10 @@ from virtual_shaping_lab.vsl.runtime.learner_adapter import (
     RuntimeLearnerAdapter,
     build_runtime_learner_adapter,
 )
+from virtual_shaping_lab.vsl.runtime.observation_adapter import (
+    RuntimeObservationAdapter,
+    build_runtime_observation_adapter,
+)
 
 
 def _reward_from_trial_params(params: dict[str, Any]) -> float:
@@ -54,12 +58,14 @@ class CompiledProgramTestEnvironment(IEnvironment):
         program: EnvironmentProgram,
         *,
         learner_adapter: RuntimeLearnerAdapter | None = None,
+        observation_adapter: RuntimeObservationAdapter | None = None,
     ):
         self._program = program
         self._timeline: list[tuple[str, str, str, int, dict[str, Any], dict[str, Any], float]] = []
         self._cursor = 0
         self._done = False
         self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
+        self._observation_adapter = observation_adapter or build_runtime_observation_adapter()
         self._build_timeline()
 
     def _build_timeline(self) -> None:
@@ -105,8 +111,10 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._cursor += 1
         self._done = self._cursor >= len(self._timeline)
         next_stimulus = None
+        next_trial_meta = None
         if not self._done:
             next_stimulus = dict(self._timeline[self._cursor][4])
+            next_trial_meta = dict(self._timeline[self._cursor][5])
         termination = EnvironmentTermination(
             done=self._done,
             reason="terminal" if self._done else "running",
@@ -114,9 +122,37 @@ class CompiledProgramTestEnvironment(IEnvironment):
         )
         family = str(trial_meta.get("family", ""))
         is_operant = _is_operant_semantics(protocol, family)
-        learner_step = self._learner_adapter.step(
+        observation_step = self._observation_adapter.step(
             stimulus=stimulus,
-            next_stimulus=next_stimulus,
+            context_state=trial_meta.get("context_state", trial_meta.get("context")),
+            metadata={
+                "segment_key": segment_key,
+                "protocol": protocol,
+                "trial_type": trial_type,
+                "step_index": step_index,
+            },
+        )
+        next_observation_step = None
+        if next_stimulus is not None:
+            next_observation_step = self._observation_adapter.step(
+                stimulus=next_stimulus,
+                context_state=None
+                if next_trial_meta is None
+                else next_trial_meta.get("context_state", next_trial_meta.get("context")),
+                metadata={
+                    "segment_key": segment_key,
+                    "protocol": protocol,
+                    "trial_type": trial_type,
+                    "step_index": step_index + 1,
+                },
+            )
+        learner_step = self._learner_adapter.step(
+            observation_features=observation_step.output.features,
+            observation_feature_names=observation_step.output.feature_names,
+            next_observation_features=None if next_observation_step is None else next_observation_step.output.features,
+            next_observation_feature_names=None
+            if next_observation_step is None
+            else next_observation_step.output.feature_names,
             reward=float(reward),
             done=self._done,
         )
@@ -153,8 +189,13 @@ class CompiledProgramTestEnvironment(IEnvironment):
                     "next_prediction": learner_step.next_prediction,
                     "error": learner_step.error,
                     "update_features": learner_step.update_features,
+                    "input_features": dict(learner_step.features),
                     "attention_state": learner_step.attention_state,
                     "eligibility_state": learner_step.eligibility_state,
+                },
+                "observation": {
+                    "output": observation_step.output.to_dict(),
+                    "measurements": dict(observation_step.measurements),
                 },
             },
         )

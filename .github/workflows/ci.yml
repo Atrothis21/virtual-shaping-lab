@@ -192,6 +192,17 @@ jobs:
           pytest -q tests/test_v3_observation_contract_ownership.py tests/test_v3_namespace_import_audit.py tests/test_v3_namespace_hard_removal.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.19.10 observation runtime seam and records
+        run: |
+          pytest -q tests/test_v3_runtime_observation_adapter.py tests/test_v3_observation_runtime_parity.py tests/test_v3_runtime_learner_adapter.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_rollout_record_schema.py -k observation \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_report.py -k observation \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest
