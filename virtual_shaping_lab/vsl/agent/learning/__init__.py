@@ -15,6 +15,16 @@ from .presets import (
 )
 from .resolve import resolve_learner_spec
 from .adapters import grammar_to_runtime_learner_config, runtime_to_grammar_learner_spec
+from .instantiate import (
+    LEARNER_INSTANTIATION_FAILURES,
+    LearnerInstantiationArtifact,
+    LearnerInstantiationError,
+    NullAttentionOperator,
+    NullTraceOperator,
+    OperatorHandle,
+    instantiate_learner_contracts,
+    instantiate_learner_from_boundary,
+)
 from .registry import (
     COMPATIBILITY_MATRIX,
     SLOT_REGISTRIES,
@@ -50,4 +60,12 @@ __all__ = [
     "resolve_learner_spec",
     "grammar_to_runtime_learner_config",
     "runtime_to_grammar_learner_spec",
+    "OperatorHandle",
+    "NullAttentionOperator",
+    "NullTraceOperator",
+    "LearnerInstantiationArtifact",
+    "LearnerInstantiationError",
+    "LEARNER_INSTANTIATION_FAILURES",
+    "instantiate_learner_contracts",
+    "instantiate_learner_from_boundary",
 ]
