@@ -6,15 +6,11 @@ from dataclasses import dataclass
 from typing import Any, Mapping, MutableMapping
 
 from .bundle import LearnerBundle
+from .operators.error import RescorlaWagnerErrorOperator, TD0ErrorOperator
+from .operators.prediction import LinearStateValuePredictionOperator
+from .operators.update import RescorlaWagnerUpdateOperator, TD0UpdateOperator
 from .presets import expand_learner_preset
 from .spec import LearnerSpec
-from .operators import (
-    LinearStateValuePredictionOperator,
-    RescorlaWagnerErrorOperator,
-    RescorlaWagnerUpdateOperator,
-    TD0ErrorOperator,
-    TD0UpdateOperator,
-)
 
 
 @dataclass(frozen=True)
