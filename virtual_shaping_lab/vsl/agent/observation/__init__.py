@@ -13,6 +13,15 @@ from .presets import (
     observation_preset_payload,
     observation_preset_registry,
 )
+from .instantiate import (
+    OBSERVATION_INSTANTIATION_FAILURES,
+    ObservationInstantiationArtifact,
+    ObservationInstantiationError,
+    ObservationOperatorHandle,
+    instantiate_observation_contracts,
+    instantiate_observation_from_boundary,
+    materialize_legal_observation_universe,
+)
 from .output import ObservationOutput, normalize_observation_output_dict
 from .registry import (
     COMPATIBILITY_MATRIX,
@@ -50,4 +59,11 @@ __all__ = [
     "observation_preset_hash",
     "ObservationOutput",
     "normalize_observation_output_dict",
+    "ObservationOperatorHandle",
+    "ObservationInstantiationArtifact",
+    "ObservationInstantiationError",
+    "OBSERVATION_INSTANTIATION_FAILURES",
+    "instantiate_observation_contracts",
+    "instantiate_observation_from_boundary",
+    "materialize_legal_observation_universe",
 ]
