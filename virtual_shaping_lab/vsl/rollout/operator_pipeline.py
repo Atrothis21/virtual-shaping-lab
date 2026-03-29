@@ -30,9 +30,9 @@ NORMATIVE_STAGE_CONTRACTS: dict[str, dict[str, tuple[str, ...]]] = {
     "Policy": {"required_fields": ("x", "w", "a"), "produced_fields": ("u",)},
     "Env": {"required_fields": ("u",), "produced_fields": ("y", "z")},
     "Err": {"required_fields": ("x", "y"), "produced_fields": ("z",)},
-    "A": {"required_fields": ("x", "z"), "produced_fields": ("x",)},
-    "Update": {"required_fields": ("x", "z"), "produced_fields": ("x",)},
-    "Measure": {"required_fields": ("s", "x", "z", "w", "a", "u", "y", "m"), "produced_fields": ("m",)},
+    "A": {"required_fields": ("x", "z"), "produced_fields": ("attention_state",)},
+    "Update": {"required_fields": ("x", "z", "attention_state"), "produced_fields": ("x",)},
+    "Measure": {"required_fields": ("s", "x", "z", "w", "attention_state", "a", "u", "y", "m"), "produced_fields": ("m",)},
 }
 
 NORMATIVE_STAGE_LOOKAHEAD: dict[str, dict[str, str | tuple[str, ...]]] = {
@@ -45,6 +45,7 @@ NORMATIVE_STAGE_LOOKAHEAD: dict[str, dict[str, str | tuple[str, ...]]] = {
 
 PIPELINE_BASE_FIELDS: tuple[str, ...] = (
     "s",
+    "attention_state",
     "a",
     "m",
 )

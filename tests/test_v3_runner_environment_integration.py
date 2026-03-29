@@ -64,7 +64,7 @@ def test_runner_environment_path_emits_trial_state_metadata():
     for rec in records:
         ts = rec["metadata"]["trial_state"]
         assert isinstance(ts, dict)
-        assert set(("s", "x", "z", "w", "a", "u", "y", "m")).issubset(ts.keys())
+        assert set(("s", "x", "z", "w", "attention_state", "a", "u", "y", "m")).issubset(ts.keys())
         op = rec["metadata"]["operator_pipeline"]
         assert "declared_stage_keys" in op
         assert "executed_stage_keys" in op

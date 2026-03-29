@@ -14,7 +14,7 @@ _META_DERIVED_KEY = "derived"
 class TrialState:
     """
     Canonical trial-state coordinates:
-    - s, x, z, w, a, u, y, m
+    - s, x, z, w, attention_state, a, u, y, m
     """
 
     s: Any
@@ -24,6 +24,7 @@ class TrialState:
     a: Any
     u: Any
     y: Any
+    attention_state: Any = None
     m: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -58,6 +59,7 @@ class TrialState:
             "x": self.x,
             "z": self.z,
             "w": self.w,
+            "attention_state": self.attention_state,
             "a": self.a,
             "u": self.u,
             "y": self.y,
@@ -75,6 +77,7 @@ class TrialState:
         a: Any,
         u: Any,
         y: Any,
+        attention_state: Any = None,
         persistent: dict[str, Any] | None = None,
         prediction: Any = None,
         error: Any = None,
@@ -89,6 +92,7 @@ class TrialState:
             x=x,
             z=z,
             w=w,
+            attention_state=attention_state,
             a=a,
             u=u,
             y=y,
@@ -108,6 +112,7 @@ class TrialState:
         w: Any,
         y: Any,
         is_operant: bool,
+        attention_state: Any = None,
         action: Any = None,
         available_actions: list[Any] | None = None,
         persistent: dict[str, Any] | None = None,
@@ -123,6 +128,7 @@ class TrialState:
                 x=x,
                 z=z,
                 w=w,
+                attention_state=attention_state,
                 a=action_space,
                 u=action,
                 y=y,
@@ -136,6 +142,7 @@ class TrialState:
             x=x,
             z=z,
             w=w,
+            attention_state=attention_state,
             a=[None],
             u=None,
             y=y,
@@ -156,11 +163,15 @@ class TrialState:
         if missing:
             joined = ", ".join(missing)
             raise ValueError(f"TrialState missing required coordinates: {joined}")
+        # Backward-compat adapter (one-release window):
+        # accept legacy "attention" payload key and normalize to "attention_state".
+        attention_state = data.get("attention_state", data.get("attention"))
         return cls(
             s=data["s"],
             x=data["x"],
             z=data["z"],
             w=data["w"],
+            attention_state=attention_state,
             a=data["a"],
             u=data["u"],
             y=data["y"],
