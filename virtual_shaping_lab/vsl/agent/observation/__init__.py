@@ -14,6 +14,12 @@ from .presets import (
     observation_preset_registry,
 )
 from .bundle import ObservationBundle, ObservationStepResult
+from .executable_presets import (
+    ExecutableObservationPreset,
+    build_executable_observation_from_spec,
+    build_executable_observation_preset,
+    executable_observation_preset_names,
+)
 from .instantiate import (
     OBSERVATION_INSTANTIATION_FAILURES,
     ObservationInstantiationArtifact,
@@ -59,6 +65,10 @@ __all__ = [
     "ObservationSpec",
     "ObservationBundle",
     "ObservationStepResult",
+    "ExecutableObservationPreset",
+    "build_executable_observation_preset",
+    "build_executable_observation_from_spec",
+    "executable_observation_preset_names",
     "ObservationSpecValidationError",
     "validate_observation_spec",
     "OBSERVATION_REGISTRY_VERSION",
