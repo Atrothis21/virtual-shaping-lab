@@ -10,6 +10,12 @@ from .base import (
     PredictionOperator,
     UpdateOperator,
 )
+from .attention import (
+    FixedAttentionOperator,
+    MackintoshAttentionOperator,
+    PearceHallAttentionOperator,
+    modulate_features_by_attention,
+)
 from .prediction import (
     LinearActionValuePredictionOperator,
     LinearStateValuePredictionOperator,
@@ -28,6 +34,10 @@ __all__ = [
     "NullAttentionOperator",
     "NullEligibilityOperator",
     "NullTraceOperator",
+    "FixedAttentionOperator",
+    "PearceHallAttentionOperator",
+    "MackintoshAttentionOperator",
+    "modulate_features_by_attention",
     "PredictionOutput",
     "LinearStateValuePredictionOperator",
     "TabularStateValuePredictionOperator",

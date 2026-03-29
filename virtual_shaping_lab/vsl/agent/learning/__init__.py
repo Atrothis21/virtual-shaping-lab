@@ -30,6 +30,12 @@ from .operators.base import (
     PredictionOperator,
     UpdateOperator,
 )
+from .operators.attention import (
+    FixedAttentionOperator,
+    MackintoshAttentionOperator,
+    PearceHallAttentionOperator,
+    modulate_features_by_attention,
+)
 from .operators.error import RescorlaWagnerErrorOperator, TD0ErrorOperator
 from .operators.prediction import (
     LinearActionValuePredictionOperator,
@@ -101,6 +107,10 @@ __all__ = [
     "RescorlaWagnerUpdateOperator",
     "TD0UpdateOperator",
     "AttentionOperator",
+    "FixedAttentionOperator",
+    "PearceHallAttentionOperator",
+    "MackintoshAttentionOperator",
+    "modulate_features_by_attention",
     "EligibilityOperator",
     "OperatorHandle",
     "NullAttentionOperator",
