@@ -145,6 +145,13 @@ def test_v3_operator_pipeline_type_chain_gate_accepts_base_fields():
     )
     assert pipeline.stage_keys() == ("Phi", "Policy")
     assert "a" in PIPELINE_BASE_FIELDS
+    assert "attention_state" in PIPELINE_BASE_FIELDS
+
+
+def test_v3_operator_pipeline_attention_stage_emits_explicit_attention_state():
+    contracts = NORMATIVE_STAGE_CONTRACTS
+    assert contracts["A"]["produced_fields"] == ("attention_state",)
+    assert "attention_state" in contracts["Update"]["required_fields"]
 
 
 def test_v3_operator_pipeline_normative_lookahead_attaches_to_err_stage():

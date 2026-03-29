@@ -64,7 +64,9 @@ def test_environment_typed_objects_roundtrip_shape():
     )
     assert reset.to_dict()["seed"] == 7
     assert step.to_dict()["termination"]["reason"] == "terminal"
-    assert set(("s", "x", "z", "w", "a", "u", "y", "m")).issubset(step.to_dict()["trial_state"].keys())
+    assert set(("s", "x", "z", "w", "attention_state", "a", "u", "y", "m")).issubset(
+        step.to_dict()["trial_state"].keys()
+    )
     assert step.to_dict()["trial_state"]["m"]["derived"] == {"prediction": 0.5, "error": 0.5}
 
 

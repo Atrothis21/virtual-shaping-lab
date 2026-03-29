@@ -17,6 +17,7 @@ REMOVED_IMPORT_PATHS = [
     "virtual_shaping_lab.vsl.spec.models",
     "virtual_shaping_lab.vsl.agent.learning.boundary",
     "virtual_shaping_lab.vsl.agent.learning.validator",
+    "virtual_shaping_lab.vsl.agent.learning.runtime_contracts",
     "virtual_shaping_lab.vsl.agent.representation.temporal",
     "virtual_shaping_lab.vsl.records.types",
     "virtual_shaping_lab.vsl.registry.phenomenon_registry",

@@ -53,6 +53,11 @@ class RepresentationSpec:
 
 @dataclass(frozen=True)
 class LearnerSpec:
+    """Runtime transport learner config.
+
+    This type is intentionally runtime-facing. Canonical learner composition
+    semantics are owned by `vsl.agent.learning.spec.LearnerSpec`.
+    """
     rule: str
     params: dict[str, Any] = field(default_factory=dict)
     attention_initial: dict[str, Any] = field(default_factory=dict)
@@ -297,3 +302,7 @@ class ExperimentSpec:
     def stable_hash(self) -> str:
         """Stable semantic hash for deterministic identity checks."""
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
+
+
+# V3.18.0 ownership clarity alias.
+RuntimeLearnerConfig = LearnerSpec
