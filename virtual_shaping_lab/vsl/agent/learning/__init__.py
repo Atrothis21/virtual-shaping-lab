@@ -36,6 +36,11 @@ from .operators.attention import (
     PearceHallAttentionOperator,
     modulate_features_by_attention,
 )
+from .operators.eligibility import (
+    AccumulatingEligibilityTraceOperator,
+    ReplacingEligibilityTraceOperator,
+    reset_eligibility_state,
+)
 from .operators.error import RescorlaWagnerErrorOperator, TD0ErrorOperator
 from .operators.prediction import (
     LinearActionValuePredictionOperator,
@@ -112,6 +117,9 @@ __all__ = [
     "MackintoshAttentionOperator",
     "modulate_features_by_attention",
     "EligibilityOperator",
+    "AccumulatingEligibilityTraceOperator",
+    "ReplacingEligibilityTraceOperator",
+    "reset_eligibility_state",
     "OperatorHandle",
     "NullAttentionOperator",
     "NullEligibilityOperator",

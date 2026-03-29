@@ -16,6 +16,11 @@ from .attention import (
     PearceHallAttentionOperator,
     modulate_features_by_attention,
 )
+from .eligibility import (
+    AccumulatingEligibilityTraceOperator,
+    ReplacingEligibilityTraceOperator,
+    reset_eligibility_state,
+)
 from .prediction import (
     LinearActionValuePredictionOperator,
     LinearStateValuePredictionOperator,
@@ -38,6 +43,9 @@ __all__ = [
     "PearceHallAttentionOperator",
     "MackintoshAttentionOperator",
     "modulate_features_by_attention",
+    "AccumulatingEligibilityTraceOperator",
+    "ReplacingEligibilityTraceOperator",
+    "reset_eligibility_state",
     "PredictionOutput",
     "LinearStateValuePredictionOperator",
     "TabularStateValuePredictionOperator",
