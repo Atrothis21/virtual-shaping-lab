@@ -22,6 +22,32 @@ def _extract_learner_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
     return traces
 
 
+def _extract_observation_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
+    observation = metadata.get("observation")
+    if not isinstance(observation, dict):
+        return None
+    output = observation.get("output")
+    if not isinstance(output, dict):
+        return None
+    traces = {
+        "representation": output.get("representation"),
+        "context_state": output.get("context_state"),
+        "generalized_state": output.get("generalized_state"),
+        "features": list(output.get("features", []) or []),
+        "feature_names": list(output.get("feature_names", []) or []),
+        "provenance": {},
+    }
+    out_meta = output.get("metadata")
+    if isinstance(out_meta, dict):
+        runtime_observation = out_meta.get("runtime_observation")
+        if isinstance(runtime_observation, dict):
+            traces["provenance"]["runtime_observation"] = dict(runtime_observation)
+        stage_traces = out_meta.get("stage_traces")
+        if isinstance(stage_traces, dict):
+            traces["provenance"]["stage_traces"] = dict(stage_traces)
+    return traces
+
+
 def step_to_rollout_record(
     step: EnvironmentStep,
     *,
@@ -42,6 +68,9 @@ def step_to_rollout_record(
     learner_traces = _extract_learner_traces(normalized_metadata)
     if isinstance(learner_traces, dict):
         normalized_metadata["learner_traces"] = learner_traces
+    observation_traces = _extract_observation_traces(normalized_metadata)
+    if isinstance(observation_traces, dict):
+        normalized_metadata["observation_traces"] = observation_traces
     return RolloutRecord(
         schema_version=schema_version,
         rollout_id=rollout_id,

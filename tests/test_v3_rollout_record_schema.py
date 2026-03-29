@@ -139,3 +139,45 @@ def test_v3_rollout_step_adapter_promotes_learner_traces_into_record_metadata():
         "attention": {"tone": 0.6},
         "memory": {"tone": 0.4},
     }
+
+
+def test_v3_rollout_step_adapter_promotes_observation_traces_into_record_metadata():
+    step = EnvironmentStep(
+        step_index=5,
+        segment_key="seg2",
+        protocol="acquisition",
+        trial_type="cs_plus",
+        trial_index=3,
+        action=None,
+        stimulus={"cs_plus": ["tone"]},
+        reward=1.0,
+        done=False,
+        termination=EnvironmentTermination(done=False, reason="running"),
+        metadata={
+            "observation": {
+                "output": {
+                    "representation": {"tone": 1.0},
+                    "context_state": "A",
+                    "generalized_state": {"kind": "identity"},
+                    "features": [1.0, 0.0],
+                    "feature_names": ["tone", "ctx:A"],
+                    "metadata": {
+                        "runtime_observation": {"preset_name": "identity_observation"},
+                        "stage_traces": {"representation": {"feature_names": ["tone"]}},
+                    },
+                },
+            }
+        },
+    )
+    record = step_to_rollout_record(step)
+    assert record.metadata["observation_traces"] == {
+        "representation": {"tone": 1.0},
+        "context_state": "A",
+        "generalized_state": {"kind": "identity"},
+        "features": [1.0, 0.0],
+        "feature_names": ["tone", "ctx:A"],
+        "provenance": {
+            "runtime_observation": {"preset_name": "identity_observation"},
+            "stage_traces": {"representation": {"feature_names": ["tone"]}},
+        },
+    }

@@ -58,6 +58,11 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "theta": None,
     "attention": None,
     "memory": None,
+    "representation": None,
+    "context_state": None,
+    "generalized_state": None,
+    "features": None,
+    "observation_provenance": None,
     "outcome_type": None,
     "schedule": None,
     "done": None,
@@ -114,6 +119,27 @@ def _normalize_record_for_artifact(record):
                 out["prediction"] = out["v"]
             if out.get("prediction_error") is None:
                 out["prediction_error"] = out["delta"]
+        observation_traces = metadata.get("observation_traces")
+        if isinstance(observation_traces, dict):
+            out["representation"] = observation_traces.get("representation")
+            out["context_state"] = observation_traces.get("context_state")
+            out["generalized_state"] = observation_traces.get("generalized_state")
+            features = observation_traces.get("features")
+            out["features"] = list(features) if isinstance(features, list) else []
+            provenance = observation_traces.get("provenance")
+            out["observation_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
+        else:
+            observation = metadata.get("observation")
+            if isinstance(observation, dict):
+                obs_output = observation.get("output")
+                if isinstance(obs_output, dict):
+                    out["representation"] = obs_output.get("representation")
+                    out["context_state"] = obs_output.get("context_state")
+                    out["generalized_state"] = obs_output.get("generalized_state")
+                    obs_features = obs_output.get("features")
+                    out["features"] = list(obs_features) if isinstance(obs_features, list) else []
+                    obs_meta = obs_output.get("metadata")
+                    out["observation_provenance"] = dict(obs_meta) if isinstance(obs_meta, dict) else {}
     return out
 
 

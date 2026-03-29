@@ -259,3 +259,30 @@ def test_normalize_record_for_artifact_promotes_learner_traces():
     assert out["theta"] == {"tone": 1.0}
     assert out["attention"] == {"tone": 0.8}
     assert out["memory"] == {"tone": 0.5}
+
+
+def test_normalize_record_for_artifact_promotes_observation_traces():
+    out = report_module._normalize_record_for_artifact(
+        {
+            "trial": 0,
+            "metadata": {
+                "observation_traces": {
+                    "representation": {"tone": 1.0},
+                    "context_state": "A",
+                    "generalized_state": {"kind": "identity"},
+                    "features": [1.0, 0.0],
+                    "feature_names": ["tone", "ctx:A"],
+                    "provenance": {
+                        "runtime_observation": {"preset_name": "identity_observation"},
+                    },
+                }
+            },
+        }
+    )
+    assert out["representation"] == {"tone": 1.0}
+    assert out["context_state"] == "A"
+    assert out["generalized_state"] == {"kind": "identity"}
+    assert out["features"] == [1.0, 0.0]
+    assert out["observation_provenance"] == {
+        "runtime_observation": {"preset_name": "identity_observation"},
+    }
