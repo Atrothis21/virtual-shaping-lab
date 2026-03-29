@@ -6,7 +6,10 @@ from virtual_shaping_lab.vsl.agent.learning import (
     LEARNER_PRESET_FAMILIES,
     LEARNER_PRESETS,
     PRESET_VERSION,
+    ExecutableLearnerPreset,
     LearnerSpec,
+    build_executable_learner_preset,
+    executable_learner_preset_names,
     expand_learner_preset,
     learner_preset_aliases,
     learner_preset_families,
@@ -71,4 +74,16 @@ def test_v3_learner_preset_family_smoke_minimum_three_per_supported_family():
         for preset in presets:
             spec = expand_learner_preset(preset)
             assert isinstance(spec, LearnerSpec)
+
+
+def test_v3_18_5_executable_learner_presets_cover_rw_and_td0():
+    assert executable_learner_preset_names() == ["rescorla_wagner", "td0"]
+
+    rw = build_executable_learner_preset("rescorla_wagner")
+    td0 = build_executable_learner_preset("td0", gamma=0.9)
+
+    assert isinstance(rw, ExecutableLearnerPreset)
+    assert isinstance(td0, ExecutableLearnerPreset)
+    assert rw.learner_spec.error == "rw_error"
+    assert td0.learner_spec.error == "td_error"
 

@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from itertools import product
 
-from virtual_shaping_lab.vsl.agent.learning import COMPATIBILITY_MATRIX, SLOT_REGISTRIES, LearnerSpec
+from virtual_shaping_lab.vsl.agent.learning import (
+    COMPATIBILITY_MATRIX,
+    SLOT_REGISTRIES,
+    LearnerSpec,
+    build_executable_learner_preset,
+    grammar_to_runtime_learner_config,
+)
 from virtual_shaping_lab.vsl.agent.learning.validation import LearnerSpecValidationError
 
 
@@ -87,4 +93,15 @@ def test_v3_learner_runtime_acceptance_parity_matches_registry_matrix():
             matrix_accepted.add(tpl)
 
     assert runtime_accepted == matrix_accepted
+
+
+def test_v3_18_5_executable_preset_runtime_rule_parity():
+    rw = build_executable_learner_preset("rescorla_wagner")
+    td0 = build_executable_learner_preset("td0", gamma=0.9)
+
+    rw_runtime = grammar_to_runtime_learner_config(rw.learner_spec)
+    td_runtime = grammar_to_runtime_learner_config(td0.learner_spec)
+
+    assert rw_runtime.rule == "rescorla_wagner"
+    assert td_runtime.rule == "td_value"
 

@@ -15,6 +15,29 @@ from .presets import (
 )
 from .resolve import resolve_learner_spec
 from .adapters import grammar_to_runtime_learner_config, runtime_to_grammar_learner_spec
+from .bundle import LearnerBundle, LearnerStepResult
+from .executable_presets import (
+    ExecutableLearnerPreset,
+    build_executable_learner_from_spec,
+    build_executable_learner_preset,
+    executable_learner_preset_names,
+)
+from .operators.base import (
+    AttentionOperator,
+    EligibilityOperator,
+    ErrorOperator,
+    NullEligibilityOperator,
+    PredictionOperator,
+    UpdateOperator,
+)
+from .operators.error import RescorlaWagnerErrorOperator, TD0ErrorOperator
+from .operators.prediction import (
+    LinearActionValuePredictionOperator,
+    LinearStateValuePredictionOperator,
+    PredictionOutput,
+    TabularStateValuePredictionOperator,
+)
+from .operators.update import RescorlaWagnerUpdateOperator, TD0UpdateOperator
 from .instantiate import (
     LEARNER_INSTANTIATION_FAILURES,
     LearnerInstantiationArtifact,
@@ -60,8 +83,28 @@ __all__ = [
     "resolve_learner_spec",
     "grammar_to_runtime_learner_config",
     "runtime_to_grammar_learner_spec",
+    "LearnerBundle",
+    "LearnerStepResult",
+    "ExecutableLearnerPreset",
+    "build_executable_learner_from_spec",
+    "build_executable_learner_preset",
+    "executable_learner_preset_names",
+    "PredictionOperator",
+    "PredictionOutput",
+    "LinearStateValuePredictionOperator",
+    "TabularStateValuePredictionOperator",
+    "LinearActionValuePredictionOperator",
+    "ErrorOperator",
+    "RescorlaWagnerErrorOperator",
+    "TD0ErrorOperator",
+    "UpdateOperator",
+    "RescorlaWagnerUpdateOperator",
+    "TD0UpdateOperator",
+    "AttentionOperator",
+    "EligibilityOperator",
     "OperatorHandle",
     "NullAttentionOperator",
+    "NullEligibilityOperator",
     "NullTraceOperator",
     "LearnerInstantiationArtifact",
     "LearnerInstantiationError",
