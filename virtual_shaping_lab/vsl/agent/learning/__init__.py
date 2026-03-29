@@ -15,6 +15,7 @@ from .presets import (
 )
 from .resolve import resolve_learner_spec
 from .adapters import grammar_to_runtime_learner_config, runtime_to_grammar_learner_spec
+from .bundle import LearnerBundle, LearnerStepResult
 from .operators import (
     AttentionOperator,
     EligibilityOperator,
@@ -24,6 +25,10 @@ from .operators import (
     NullEligibilityOperator,
     PredictionOutput,
     PredictionOperator,
+    RescorlaWagnerErrorOperator,
+    TD0ErrorOperator,
+    RescorlaWagnerUpdateOperator,
+    TD0UpdateOperator,
     TabularStateValuePredictionOperator,
     UpdateOperator,
 )
@@ -72,13 +77,19 @@ __all__ = [
     "resolve_learner_spec",
     "grammar_to_runtime_learner_config",
     "runtime_to_grammar_learner_spec",
+    "LearnerBundle",
+    "LearnerStepResult",
     "PredictionOperator",
     "PredictionOutput",
     "LinearStateValuePredictionOperator",
     "TabularStateValuePredictionOperator",
     "LinearActionValuePredictionOperator",
     "ErrorOperator",
+    "RescorlaWagnerErrorOperator",
+    "TD0ErrorOperator",
     "UpdateOperator",
+    "RescorlaWagnerUpdateOperator",
+    "TD0UpdateOperator",
     "AttentionOperator",
     "EligibilityOperator",
     "OperatorHandle",

@@ -6,6 +6,8 @@ from .agent import (
     LEARNER_PRESET_ALIASES,
     LEARNER_PRESET_FAMILIES,
     LEARNER_PRESETS,
+    LearnerBundle,
+    LearnerStepResult,
     LearnerSpec,
     LearnerSpecValidationError,
     NullActionSpace,
@@ -101,6 +103,8 @@ from .rollout.replay_harness import ReplayHarness, stable_rollout_hash
 
 __all__ = [
     "LearnerSpec",
+    "LearnerBundle",
+    "LearnerStepResult",
     "LearnerSpecValidationError",
     "validate_learner_spec",
     "SLOT_REGISTRIES",

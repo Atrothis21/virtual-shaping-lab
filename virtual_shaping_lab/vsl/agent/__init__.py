@@ -7,6 +7,8 @@ from .learning import (
     LEARNER_PRESETS,
     PRESET_VERSION,
     SLOT_REGISTRIES,
+    LearnerBundle,
+    LearnerStepResult,
     LearnerSpec,
     LearnerSpecValidationError,
     compatibility_matrix,
@@ -52,6 +54,8 @@ from .representation import SUPPORTED_TEMPORAL_BASIS_VARIANTS, TemporalBasisSpec
 
 __all__ = [
     "LearnerSpec",
+    "LearnerBundle",
+    "LearnerStepResult",
     "LearnerSpecValidationError",
     "validate_learner_spec",
     "SLOT_REGISTRIES",
