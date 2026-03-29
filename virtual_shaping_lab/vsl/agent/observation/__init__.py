@@ -13,6 +13,7 @@ from .presets import (
     observation_preset_payload,
     observation_preset_registry,
 )
+from .bundle import ObservationBundle, ObservationStepResult
 from .instantiate import (
     OBSERVATION_INSTANTIATION_FAILURES,
     ObservationInstantiationArtifact,
@@ -56,6 +57,8 @@ from .validation import ObservationSpecValidationError, validate_observation_spe
 
 __all__ = [
     "ObservationSpec",
+    "ObservationBundle",
+    "ObservationStepResult",
     "ObservationSpecValidationError",
     "validate_observation_spec",
     "OBSERVATION_REGISTRY_VERSION",
