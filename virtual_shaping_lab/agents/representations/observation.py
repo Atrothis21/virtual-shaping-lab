@@ -20,7 +20,7 @@ def make_observation(
     trial_step: int | None = None,
     trial_id: Any = None,
 ) -> Observation:
-    """Build a canonical Observation dataclass with required context."""
+    """Compatibility helper for observation dataclass construction."""
     if stimuli is None:
         raise ValueError("make_observation requires a non-empty stimuli list")
 
