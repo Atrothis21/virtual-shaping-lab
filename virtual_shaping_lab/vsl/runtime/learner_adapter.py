@@ -11,29 +11,6 @@ from virtual_shaping_lab.vsl.agent.learning.executable_presets import (
     build_executable_learner_preset,
 )
 
-
-def _coerce_features_from_stimulus(stimulus: Mapping[str, Any]) -> dict[str, float]:
-    """
-    Normalize environment stimulus payload to learner feature vector.
-
-    Minimal deterministic mapping for runtime seam:
-    - list[str] payloads produce one-hot feature presence for each item
-    - scalar payloads use the key with float(value) when possible
-    - unknown scalar payloads map to feature presence 1.0
-    """
-    out: dict[str, float] = {}
-    for key, value in dict(stimulus).items():
-        if isinstance(value, list):
-            for item in value:
-                out[str(item)] = 1.0
-            continue
-        try:
-            out[str(key)] = float(value)
-        except (TypeError, ValueError):
-            out[str(key)] = 1.0
-    return out
-
-
 def _coerce_features_payload(
     *,
     features: Mapping[str, Any] | Sequence[float],
@@ -61,24 +38,17 @@ class RuntimeLearnerAdapter:
     def step(
         self,
         *,
-        stimulus: Mapping[str, Any] | None = None,
+        observation_features: Mapping[str, Any] | Sequence[float],
+        observation_feature_names: Sequence[str] | None = None,
         reward: float,
         done: bool,
-        next_stimulus: Mapping[str, Any] | None = None,
-        observation_features: Mapping[str, Any] | Sequence[float] | None = None,
-        observation_feature_names: Sequence[str] | None = None,
         next_observation_features: Mapping[str, Any] | Sequence[float] | None = None,
         next_observation_feature_names: Sequence[str] | None = None,
     ) -> LearnerStepResult:
-        if observation_features is not None:
-            features = _coerce_features_payload(
-                features=observation_features,
-                feature_names=observation_feature_names,
-            )
-        elif stimulus is not None:
-            features = _coerce_features_from_stimulus(stimulus)
-        else:
-            raise ValueError("RuntimeLearnerAdapter.step requires either stimulus or observation_features.")
+        features = _coerce_features_payload(
+            features=observation_features,
+            feature_names=observation_feature_names,
+        )
 
         if next_observation_features is not None:
             next_features = _coerce_features_payload(
@@ -86,7 +56,7 @@ class RuntimeLearnerAdapter:
                 feature_names=next_observation_feature_names,
             )
         else:
-            next_features = None if next_stimulus is None else _coerce_features_from_stimulus(next_stimulus)
+            next_features = None
         return self.bundle.step(
             features=features,
             reward=float(reward),

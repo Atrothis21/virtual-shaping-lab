@@ -7,7 +7,6 @@ import numpy as np
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from experiment.world.schedules import build_reward_schedule
-from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
@@ -88,10 +87,10 @@ class ConcurrentSchedulePhase(PhaseBase):
                 observation = rep_stimuli[0]
             else:
                 observation = "lever"
-        obs = make_observation(
+        obs = Observation(
             stimuli=[observation],
-            context=self.context,
-            compound=False
+            context=self.context if self.context is not None else "A",
+            compound=False,
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)

@@ -8,7 +8,6 @@ import numpy as np
 from experiment.phases.base import PhaseBase
 from experiment.phases.learning_helpers import apply_attention_update
 from experiment.phases.series_helpers import make_dual_series
-from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import Observation
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
@@ -90,10 +89,10 @@ class DifferentialAcquisitionPhase(PhaseBase):
         stimulus = trial_spec["stimulus"]
         stimulus_type = trial_spec["stimulus_type"]
 
-        obs = make_observation(
+        obs = Observation(
             stimuli=[stimulus],
-            context=self.context,
-            compound=False
+            context=self.context if self.context is not None else "A",
+            compound=False,
         )
         state = self.agent.observe(obs)
         prediction = self.agent.value(state)

@@ -6,7 +6,6 @@ import numpy as np
 
 from experiment.phases.base import PhaseBase
 from experiment.phases.series_helpers import make_dual_series
-from virtual_shaping_lab.agents.representations.observation import make_observation
 from virtual_shaping_lab.domain.types import META_CUE_LABELS, Observation, Transition
 from virtual_shaping_lab.experiment.domain.types import ExperimentContext, StepResult, TrialSchedule
 
@@ -83,23 +82,23 @@ class CompoundAcquisitionPhase(PhaseBase):
         b = compound[1]
 
         # Observe compound (actual trial)
-        obs = make_observation(
+        obs = Observation(
             stimuli=list(compound),
-            context=self.context,
-            compound=True
+            context=self.context if self.context is not None else "A",
+            compound=True,
         )
         state = self.agent.observe(obs)
 
         # Compute A/B predictions without mutating agent internal state
-        obs_a = make_observation(
+        obs_a = Observation(
             stimuli=[a],
-            context=self.context,
-            compound=False
+            context=self.context if self.context is not None else "A",
+            compound=False,
         )
-        obs_b = make_observation(
+        obs_b = Observation(
             stimuli=[b],
-            context=self.context,
-            compound=False
+            context=self.context if self.context is not None else "A",
+            compound=False,
         )
 
         state_a = self.agent.representation.encode(obs_a)

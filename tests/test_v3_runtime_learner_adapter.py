@@ -13,8 +13,10 @@ def test_v3_18_10_runtime_learner_adapter_steps_through_canonical_bundle():
     )
     assert isinstance(adapter, RuntimeLearnerAdapter)
     out = adapter.step(
-        stimulus={"cs_plus": ["tone"]},
-        next_stimulus={"cs_plus": ["tone"]},
+        observation_features=[1.0],
+        observation_feature_names=["tone"],
+        next_observation_features=[1.0],
+        next_observation_feature_names=["tone"],
         reward=1.0,
         done=False,
     )
@@ -30,7 +32,6 @@ def test_v3_19_10_runtime_learner_adapter_prefers_observation_features_when_prov
         state={"weights": {"tone": 0.0}},
     )
     out = adapter.step(
-        stimulus={"cs_plus": ["noise"]},
         observation_features=[1.0],
         observation_feature_names=["tone"],
         next_observation_features=[1.0],
