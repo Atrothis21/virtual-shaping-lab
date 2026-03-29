@@ -30,6 +30,12 @@ from .operators.base import (
     NullGeneralizationOperator,
     RepresentationOperator,
 )
+from .operators.representation import (
+    ElementalRepresentationOperator,
+    IdentityRepresentationOperator,
+    MinimalConfiguralRepresentationOperator,
+    RepresentationArtifact,
+)
 from .registry import (
     COMPATIBILITY_MATRIX,
     OBSERVATION_REGISTRY_VERSION,
@@ -78,4 +84,8 @@ __all__ = [
     "GeneralizationOperator",
     "NullContextOperator",
     "NullGeneralizationOperator",
+    "RepresentationArtifact",
+    "IdentityRepresentationOperator",
+    "ElementalRepresentationOperator",
+    "MinimalConfiguralRepresentationOperator",
 ]

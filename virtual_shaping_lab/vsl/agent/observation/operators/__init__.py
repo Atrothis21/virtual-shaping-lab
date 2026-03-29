@@ -7,6 +7,12 @@ from .base import (
     NullGeneralizationOperator,
     RepresentationOperator,
 )
+from .representation import (
+    ElementalRepresentationOperator,
+    IdentityRepresentationOperator,
+    MinimalConfiguralRepresentationOperator,
+    RepresentationArtifact,
+)
 
 __all__ = [
     "RepresentationOperator",
@@ -14,5 +20,8 @@ __all__ = [
     "GeneralizationOperator",
     "NullContextOperator",
     "NullGeneralizationOperator",
+    "RepresentationArtifact",
+    "IdentityRepresentationOperator",
+    "ElementalRepresentationOperator",
+    "MinimalConfiguralRepresentationOperator",
 ]
-
