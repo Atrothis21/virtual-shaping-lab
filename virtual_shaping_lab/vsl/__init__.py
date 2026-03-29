@@ -111,6 +111,7 @@ from .registry import (
 )
 from .records.adapters.rollout_records import rollout_records_to_dict, step_to_rollout_record
 from .rollout.replay_harness import ReplayHarness, stable_rollout_hash
+from .runtime import RuntimeLearnerAdapter, build_runtime_learner_adapter
 
 __all__ = [
     "LearnerSpec",
@@ -206,6 +207,8 @@ __all__ = [
     "rollout_records_to_dict",
     "ReplayHarness",
     "stable_rollout_hash",
+    "RuntimeLearnerAdapter",
+    "build_runtime_learner_adapter",
     "IEnvironment",
     "TrialState",
     "EpisodeSpec",

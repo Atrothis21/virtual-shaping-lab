@@ -13,6 +13,10 @@ from virtual_shaping_lab.vsl.environment.contracts import (
 )
 from virtual_shaping_lab.vsl.rollout.trial_state import TrialState
 from virtual_shaping_lab.vsl.program.types import EnvironmentProgram
+from virtual_shaping_lab.vsl.runtime.learner_adapter import (
+    RuntimeLearnerAdapter,
+    build_runtime_learner_adapter,
+)
 
 
 def _reward_from_trial_params(params: dict[str, Any]) -> float:
@@ -45,11 +49,17 @@ def _is_operant_semantics(protocol: str, family: str) -> bool:
 class CompiledProgramTestEnvironment(IEnvironment):
     """Deterministic environment adapter over compiled EnvironmentProgram."""
 
-    def __init__(self, program: EnvironmentProgram):
+    def __init__(
+        self,
+        program: EnvironmentProgram,
+        *,
+        learner_adapter: RuntimeLearnerAdapter | None = None,
+    ):
         self._program = program
         self._timeline: list[tuple[str, str, str, int, dict[str, Any], dict[str, Any], float]] = []
         self._cursor = 0
         self._done = False
+        self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
         self._build_timeline()
 
     def _build_timeline(self) -> None:
@@ -94,6 +104,9 @@ class CompiledProgramTestEnvironment(IEnvironment):
         step_index = self._cursor
         self._cursor += 1
         self._done = self._cursor >= len(self._timeline)
+        next_stimulus = None
+        if not self._done:
+            next_stimulus = dict(self._timeline[self._cursor][4])
         termination = EnvironmentTermination(
             done=self._done,
             reason="terminal" if self._done else "running",
@@ -101,6 +114,12 @@ class CompiledProgramTestEnvironment(IEnvironment):
         )
         family = str(trial_meta.get("family", ""))
         is_operant = _is_operant_semantics(protocol, family)
+        learner_step = self._learner_adapter.step(
+            stimulus=stimulus,
+            next_stimulus=next_stimulus,
+            reward=float(reward),
+            done=self._done,
+        )
         trial_state = TrialState.with_action_semantics(
             s={"segment_key": segment_key, "step_index": step_index, "trial_index": trial_index},
             x=dict(stimulus),
@@ -111,8 +130,9 @@ class CompiledProgramTestEnvironment(IEnvironment):
             action=action,
             available_actions=[action] if action is not None else [],
             persistent={"termination": termination.to_dict()},
-            prediction=None,
-            error=None,
+            attention_state=learner_step.attention_state,
+            prediction=learner_step.prediction,
+            error=learner_step.error,
         )
         return EnvironmentStep(
             step_index=step_index,
@@ -126,7 +146,17 @@ class CompiledProgramTestEnvironment(IEnvironment):
             done=self._done,
             trial_state=trial_state,
             termination=termination,
-            metadata={"trial": trial_meta},
+            metadata={
+                "trial": trial_meta,
+                "learner": {
+                    "prediction": learner_step.prediction,
+                    "next_prediction": learner_step.next_prediction,
+                    "error": learner_step.error,
+                    "update_features": learner_step.update_features,
+                    "attention_state": learner_step.attention_state,
+                    "eligibility_state": learner_step.eligibility_state,
+                },
+            },
         )
 
 
