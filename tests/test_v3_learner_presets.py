@@ -77,13 +77,27 @@ def test_v3_learner_preset_family_smoke_minimum_three_per_supported_family():
 
 
 def test_v3_18_5_executable_learner_presets_cover_rw_and_td0():
-    assert executable_learner_preset_names() == ["rescorla_wagner", "td0"]
+    names = executable_learner_preset_names()
+    assert "rescorla_wagner" in names
+    assert "td0" in names
+    assert "pearce_hall_rw" in names
+    assert "mackintosh_rw" in names
+    assert "td_lambda" in names
 
     rw = build_executable_learner_preset("rescorla_wagner")
     td0 = build_executable_learner_preset("td0", gamma=0.9)
+    ph = build_executable_learner_preset("pearce_hall_rw")
+    mk = build_executable_learner_preset("mackintosh_rw")
+    tdl = build_executable_learner_preset("td_lambda", gamma=0.9, trace_decay=0.8)
 
     assert isinstance(rw, ExecutableLearnerPreset)
     assert isinstance(td0, ExecutableLearnerPreset)
+    assert isinstance(ph, ExecutableLearnerPreset)
+    assert isinstance(mk, ExecutableLearnerPreset)
+    assert isinstance(tdl, ExecutableLearnerPreset)
     assert rw.learner_spec.error == "rw_error"
     assert td0.learner_spec.error == "td_error"
+    assert ph.learner_spec.attention == "pearce_hall"
+    assert mk.learner_spec.attention == "mackintosh"
+    assert tdl.learner_spec.trace == "eligibility"
 

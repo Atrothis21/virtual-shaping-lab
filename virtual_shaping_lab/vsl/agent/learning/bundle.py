@@ -14,6 +14,7 @@ from .operators import (
     PredictionOperator,
     PredictionOutput,
     UpdateOperator,
+    modulate_features_by_attention,
 )
 
 
@@ -29,6 +30,7 @@ class LearnerStepResult:
     reward: float
     features: dict[str, float]
     next_features: dict[str, float] | None
+    update_features: dict[str, float]
     state: dict[str, Any]
     attention_state: dict[str, float] | None
     eligibility_state: dict[str, float] | None
@@ -111,9 +113,18 @@ class LearnerBundle:
             trace_decay=float(self.trace_decay),
         )
 
+        update_features = dict(x)
+        if isinstance(self.eligibility_state, Mapping) and self.eligibility_state:
+            update_features = {str(key): float(value) for key, value in self.eligibility_state.items()}
+        if isinstance(self.attention_state, Mapping) and self.attention_state:
+            update_features = modulate_features_by_attention(
+                features=update_features,
+                attention_state=self.attention_state,
+            )
+
         self.state = self.update_operator(
             state=self.state,
-            features=x,
+            features=update_features,
             error=delta,
             step_size=float(self.step_size),
         )
@@ -127,6 +138,7 @@ class LearnerBundle:
             "error": delta,
             "reward": float(reward),
             "done": bool(done),
+            "update_features": dict(update_features),
             "action_values": dict(prediction_output.action_values),
             "metadata": dict(prediction_output.metadata),
         }
@@ -139,6 +151,7 @@ class LearnerBundle:
             reward=float(reward),
             features=x,
             next_features=next_x,
+            update_features=dict(update_features),
             state=state_snapshot,
             attention_state=attention_snapshot,
             eligibility_state=eligibility_snapshot,

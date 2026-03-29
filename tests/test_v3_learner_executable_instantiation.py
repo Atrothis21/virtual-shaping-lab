@@ -48,3 +48,36 @@ def test_v3_18_5_executable_instantiation_rejects_unsupported_legal_spec():
     with pytest.raises(ValueError, match="LGR_E_EXECUTABLE_UNSUPPORTED_SPEC"):
         build_executable_learner_from_spec(spec)
 
+
+def test_v3_18_10_executable_instantiation_maps_attention_and_trace_specs():
+    ph_spec = {
+        "trace": "none",
+        "predictor": "state_value",
+        "error": "rw_error",
+        "attention": "pearce_hall",
+        "updater": "attention_delta_rule",
+        "policy": "none",
+        "metadata": {"source": "test"},
+    }
+    td_lambda = expand_learner_preset("td_lambda_classical")
+
+    ph_exec = build_executable_learner_from_spec(ph_spec)
+    tdl_exec = build_executable_learner_from_spec(td_lambda, gamma=0.9, trace_decay=0.8)
+
+    assert ph_exec.preset_name == "pearce_hall_rw"
+    assert tdl_exec.preset_name == "td_lambda"
+
+
+def test_v3_18_10_executable_instantiation_rejects_ae_dependent_combo_mismatch():
+    mismatch = {
+        "trace": "eligibility",
+        "predictor": "state_value",
+        "error": "td_error",
+        "attention": "fixed",
+        "updater": "delta_rule",
+        "policy": "none",
+        "metadata": {"source": "test"},
+    }
+    with pytest.raises(ValueError, match="LGR_E_EXECUTABLE_TRACE_UPDATER"):
+        build_executable_learner_from_spec(mismatch)
+
