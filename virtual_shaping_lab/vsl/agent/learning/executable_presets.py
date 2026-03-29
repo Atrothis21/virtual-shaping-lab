@@ -42,6 +42,14 @@ def _copy_state(state: Mapping[str, Any] | None) -> MutableMapping[str, Any]:
     return copied
 
 
+def _coerce_learner_spec(spec: LearnerSpec | Mapping[str, Any]) -> LearnerSpec:
+    if isinstance(spec, LearnerSpec):
+        return spec
+    if isinstance(spec, Mapping):
+        return LearnerSpec.from_dict(dict(spec))
+    raise TypeError("spec must be LearnerSpec or object payload.")
+
+
 def build_executable_learner_preset(
     preset_name: str,
     *,
@@ -95,3 +103,50 @@ def build_executable_learner_preset(
     known = ", ".join(executable_learner_preset_names())
     raise ValueError(f"Unknown executable learner preset '{preset_name}'. Known presets: {known}")
 
+
+def build_executable_learner_from_spec(
+    spec: LearnerSpec | Mapping[str, Any],
+    *,
+    step_size: float = 0.1,
+    gamma: float = 0.0,
+    trace_decay: float = 0.0,
+    state: Mapping[str, Any] | None = None,
+) -> ExecutableLearnerPreset:
+    """
+    Materialize executable learner bundle directly from legal symbolic learner spec.
+
+    V3.18.5 supports executable mapping for:
+    - RW tuple: (none, state_value, rw_error, fixed, delta_rule, none)
+    - TD0 tuple: (none, state_value, td_error, fixed, delta_rule, none)
+    """
+    learner_spec = _coerce_learner_spec(spec)
+    signature = (
+        learner_spec.trace,
+        learner_spec.predictor,
+        learner_spec.error,
+        learner_spec.attention,
+        learner_spec.updater,
+        learner_spec.policy,
+    )
+    rw_sig = ("none", "state_value", "rw_error", "fixed", "delta_rule", "none")
+    td0_sig = ("none", "state_value", "td_error", "fixed", "delta_rule", "none")
+    if signature == rw_sig:
+        return build_executable_learner_preset(
+            "rescorla_wagner",
+            step_size=step_size,
+            gamma=gamma,
+            trace_decay=trace_decay,
+            state=state,
+        )
+    if signature == td0_sig:
+        return build_executable_learner_preset(
+            "td0",
+            step_size=step_size,
+            gamma=gamma,
+            trace_decay=trace_decay,
+            state=state,
+        )
+    raise ValueError(
+        "[LGR_E_EXECUTABLE_UNSUPPORTED_SPEC] Symbolic learner spec is legal but does not map "
+        "to a V3.18.5 executable core preset."
+    )

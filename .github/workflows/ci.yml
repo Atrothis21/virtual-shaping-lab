@@ -52,6 +52,17 @@ jobs:
           pytest -q tests/test_v3_learner_spec_adapters.py tests/test_v3_learner_instantiation.py tests/test_v3_learner_contract_ownership.py
           -W error
           -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.18.5 executable learner core
+        run: |
+          pytest -q tests/test_v3_learner_operators_base.py tests/test_v3_learner_operators_prediction.py tests/test_v3_learner_operators_error.py tests/test_v3_learner_operators_update.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_learner_bundle_execution.py tests/test_v3_learner_numeric_golden.py tests/test_v3_learner_executable_instantiation.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_learner_presets.py tests/test_v3_learner_runtime_parity.py -k "executable or runtime_acceptance_parity_matches_registry_matrix" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3 rollout/records bucket
         run: >
           pytest -q tests/test_v3_rollout_record_schema.py tests/test_v3_environment_rollout_harness.py tests/test_v3_rollout_replay_harness.py tests/test_report.py

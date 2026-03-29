@@ -18,6 +18,7 @@ from .adapters import grammar_to_runtime_learner_config, runtime_to_grammar_lear
 from .bundle import LearnerBundle, LearnerStepResult
 from .executable_presets import (
     ExecutableLearnerPreset,
+    build_executable_learner_from_spec,
     build_executable_learner_preset,
     executable_learner_preset_names,
 )
@@ -85,6 +86,7 @@ __all__ = [
     "LearnerBundle",
     "LearnerStepResult",
     "ExecutableLearnerPreset",
+    "build_executable_learner_from_spec",
     "build_executable_learner_preset",
     "executable_learner_preset_names",
     "PredictionOperator",
