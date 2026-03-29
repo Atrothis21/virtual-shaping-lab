@@ -11,7 +11,7 @@ def _dispatch_transition(agent: Any, transition: Transition) -> None:
         return
     raise AttributeError(
         "Agent must implement learn(Transition). "
-        "Legacy update(state, reward, action) dispatch path has been removed."
+        "Legacy update-only dispatch path has been removed."
     )
 
 
