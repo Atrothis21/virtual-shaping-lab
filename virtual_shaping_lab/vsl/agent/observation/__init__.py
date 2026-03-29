@@ -13,6 +13,7 @@ from .presets import (
     observation_preset_payload,
     observation_preset_registry,
 )
+from .output import ObservationOutput, normalize_observation_output_dict
 from .registry import (
     COMPATIBILITY_MATRIX,
     OBSERVATION_REGISTRY_VERSION,
@@ -47,5 +48,6 @@ __all__ = [
     "expand_observation_preset",
     "observation_preset_payload",
     "observation_preset_hash",
+    "ObservationOutput",
+    "normalize_observation_output_dict",
 ]
-
