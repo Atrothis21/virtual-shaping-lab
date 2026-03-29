@@ -8,6 +8,20 @@ from virtual_shaping_lab.vsl.environment.contracts import EnvironmentStep
 from virtual_shaping_lab.vsl.records import RolloutRecord
 
 
+def _extract_learner_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
+    learner = metadata.get("learner")
+    if not isinstance(learner, dict):
+        return None
+    traces = {
+        "v": learner.get("prediction"),
+        "delta": learner.get("error"),
+        "theta": learner.get("update_features") if isinstance(learner.get("update_features"), dict) else {},
+        "attention": learner.get("attention_state") if isinstance(learner.get("attention_state"), dict) else {},
+        "memory": learner.get("eligibility_state") if isinstance(learner.get("eligibility_state"), dict) else {},
+    }
+    return traces
+
+
 def step_to_rollout_record(
     step: EnvironmentStep,
     *,
@@ -24,6 +38,10 @@ def step_to_rollout_record(
                 segment_index = int(raw_segment_index)
             except (TypeError, ValueError):
                 segment_index = None
+    normalized_metadata = dict(step.metadata)
+    learner_traces = _extract_learner_traces(normalized_metadata)
+    if isinstance(learner_traces, dict):
+        normalized_metadata["learner_traces"] = learner_traces
     return RolloutRecord(
         schema_version=schema_version,
         rollout_id=rollout_id,
@@ -40,7 +58,7 @@ def step_to_rollout_record(
         done=bool(step.done),
         trial_state=step.trial_state.to_dict() if step.trial_state is not None else None,
         termination=step.termination.to_dict(),
-        metadata=dict(step.metadata),
+        metadata=normalized_metadata,
     )
 
 

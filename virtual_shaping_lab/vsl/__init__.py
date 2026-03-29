@@ -36,7 +36,14 @@ from .agent import (
     RescorlaWagnerUpdateOperator,
     TD0UpdateOperator,
     AttentionOperator,
+    FixedAttentionOperator,
+    PearceHallAttentionOperator,
+    MackintoshAttentionOperator,
+    modulate_features_by_attention,
     EligibilityOperator,
+    AccumulatingEligibilityTraceOperator,
+    ReplacingEligibilityTraceOperator,
+    reset_eligibility_state,
     instantiate_learner_contracts,
     instantiate_learner_from_boundary,
     LEARNER_INSTANTIATION_FAILURES,
@@ -104,6 +111,7 @@ from .registry import (
 )
 from .records.adapters.rollout_records import rollout_records_to_dict, step_to_rollout_record
 from .rollout.replay_harness import ReplayHarness, stable_rollout_hash
+from .runtime import RuntimeLearnerAdapter, build_runtime_learner_adapter
 
 __all__ = [
     "LearnerSpec",
@@ -143,7 +151,14 @@ __all__ = [
     "RescorlaWagnerUpdateOperator",
     "TD0UpdateOperator",
     "AttentionOperator",
+    "FixedAttentionOperator",
+    "PearceHallAttentionOperator",
+    "MackintoshAttentionOperator",
+    "modulate_features_by_attention",
     "EligibilityOperator",
+    "AccumulatingEligibilityTraceOperator",
+    "ReplacingEligibilityTraceOperator",
+    "reset_eligibility_state",
     "instantiate_learner_contracts",
     "instantiate_learner_from_boundary",
     "LEARNER_INSTANTIATION_FAILURES",
@@ -192,6 +207,8 @@ __all__ = [
     "rollout_records_to_dict",
     "ReplayHarness",
     "stable_rollout_hash",
+    "RuntimeLearnerAdapter",
+    "build_runtime_learner_adapter",
     "IEnvironment",
     "TrialState",
     "EpisodeSpec",

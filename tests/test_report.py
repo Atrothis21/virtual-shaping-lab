@@ -235,3 +235,27 @@ def test_run_report_unknown_visualization(monkeypatch, tmp_path):
             preset="dummy",
             output_dir=str(tmp_path),
         )
+
+
+def test_normalize_record_for_artifact_promotes_learner_traces():
+    out = report_module._normalize_record_for_artifact(
+        {
+            "trial": 0,
+            "metadata": {
+                "learner": {
+                    "prediction": 0.2,
+                    "error": -0.1,
+                    "update_features": {"tone": 1.0},
+                    "attention_state": {"tone": 0.8},
+                    "eligibility_state": {"tone": 0.5},
+                }
+            },
+        }
+    )
+    assert out["prediction"] == pytest.approx(0.2)
+    assert out["prediction_error"] == pytest.approx(-0.1)
+    assert out["v"] == pytest.approx(0.2)
+    assert out["delta"] == pytest.approx(-0.1)
+    assert out["theta"] == {"tone": 1.0}
+    assert out["attention"] == {"tone": 0.8}
+    assert out["memory"] == {"tone": 0.5}

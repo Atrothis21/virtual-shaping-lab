@@ -10,6 +10,17 @@ from .base import (
     PredictionOperator,
     UpdateOperator,
 )
+from .attention import (
+    FixedAttentionOperator,
+    MackintoshAttentionOperator,
+    PearceHallAttentionOperator,
+    modulate_features_by_attention,
+)
+from .eligibility import (
+    AccumulatingEligibilityTraceOperator,
+    ReplacingEligibilityTraceOperator,
+    reset_eligibility_state,
+)
 from .prediction import (
     LinearActionValuePredictionOperator,
     LinearStateValuePredictionOperator,
@@ -28,6 +39,13 @@ __all__ = [
     "NullAttentionOperator",
     "NullEligibilityOperator",
     "NullTraceOperator",
+    "FixedAttentionOperator",
+    "PearceHallAttentionOperator",
+    "MackintoshAttentionOperator",
+    "modulate_features_by_attention",
+    "AccumulatingEligibilityTraceOperator",
+    "ReplacingEligibilityTraceOperator",
+    "reset_eligibility_state",
     "PredictionOutput",
     "LinearStateValuePredictionOperator",
     "TabularStateValuePredictionOperator",
