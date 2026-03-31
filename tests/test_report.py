@@ -286,3 +286,30 @@ def test_normalize_record_for_artifact_promotes_observation_traces():
     assert out["observation_provenance"] == {
         "runtime_observation": {"preset_name": "identity_observation"},
     }
+
+
+def test_normalize_record_for_artifact_promotes_policy_traces():
+    out = report_module._normalize_record_for_artifact(
+        {
+            "trial": 0,
+            "metadata": {
+                "policy_traces": {
+                    "action": "leverpress",
+                    "available_actions": ["leverpress", "no_press"],
+                    "action_scores": {"leverpress": 0.9, "no_press": 0.2},
+                    "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
+                    "provenance": {"variant": "epsilon_greedy"},
+                }
+            },
+        }
+    )
+    assert out["action"] == "leverpress"
+    assert out["policy_action"] == "leverpress"
+    assert out["policy_available_actions"] == ["leverpress", "no_press"]
+    assert out["policy_action_scores"] == {"leverpress": 0.9, "no_press": 0.2}
+    assert out["policy_action_probabilities"] == {"leverpress": 0.8, "no_press": 0.2}
+    assert out["policy_provenance"] == {"variant": "epsilon_greedy"}
+    assert out["policy_state"] == {
+        "action_scores": {"leverpress": 0.9, "no_press": 0.2},
+        "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
+    }

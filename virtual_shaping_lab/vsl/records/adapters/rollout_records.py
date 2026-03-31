@@ -48,6 +48,23 @@ def _extract_observation_traces(metadata: dict[str, Any]) -> dict[str, Any] | No
     return traces
 
 
+def _extract_policy_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
+    policy = metadata.get("policy")
+    if not isinstance(policy, dict):
+        return None
+    traces = {
+        "action": policy.get("action"),
+        "available_actions": list(policy.get("available_actions", []) or []),
+        "action_scores": dict(policy.get("action_scores", {}) or {}),
+        "action_probabilities": dict(policy.get("action_probabilities", {}) or {}),
+        "provenance": {},
+    }
+    policy_metadata = policy.get("metadata")
+    if isinstance(policy_metadata, dict):
+        traces["provenance"] = dict(policy_metadata)
+    return traces
+
+
 def step_to_rollout_record(
     step: EnvironmentStep,
     *,
@@ -71,6 +88,9 @@ def step_to_rollout_record(
     observation_traces = _extract_observation_traces(normalized_metadata)
     if isinstance(observation_traces, dict):
         normalized_metadata["observation_traces"] = observation_traces
+    policy_traces = _extract_policy_traces(normalized_metadata)
+    if isinstance(policy_traces, dict):
+        normalized_metadata["policy_traces"] = policy_traces
     return RolloutRecord(
         schema_version=schema_version,
         rollout_id=rollout_id,
