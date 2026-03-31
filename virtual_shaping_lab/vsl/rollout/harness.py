@@ -21,6 +21,10 @@ from virtual_shaping_lab.vsl.runtime.observation_adapter import (
     RuntimeObservationAdapter,
     build_runtime_observation_adapter,
 )
+from virtual_shaping_lab.vsl.runtime.policy_adapter import (
+    RuntimePolicyAdapter,
+    build_runtime_policy_adapter,
+)
 
 
 def _reward_from_trial_params(params: dict[str, Any]) -> float:
@@ -50,6 +54,16 @@ def _is_operant_semantics(protocol: str, family: str) -> bool:
     return protocol in _OPERANT_PROTOCOLS
 
 
+def _extract_available_actions(trial_meta: dict[str, Any]) -> tuple[Any, ...]:
+    for key in ("available_actions", "actions", "action_set"):
+        raw = trial_meta.get(key)
+        if isinstance(raw, (list, tuple)):
+            return tuple(raw)
+        if raw is not None:
+            return (raw,)
+    return ()
+
+
 class CompiledProgramTestEnvironment(IEnvironment):
     """Deterministic environment adapter over compiled EnvironmentProgram."""
 
@@ -59,6 +73,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
         *,
         learner_adapter: RuntimeLearnerAdapter | None = None,
         observation_adapter: RuntimeObservationAdapter | None = None,
+        policy_adapter: RuntimePolicyAdapter | None = None,
     ):
         self._program = program
         self._timeline: list[tuple[str, str, str, int, dict[str, Any], dict[str, Any], float]] = []
@@ -66,6 +81,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._done = False
         self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
         self._observation_adapter = observation_adapter or build_runtime_observation_adapter()
+        self._policy_adapter = policy_adapter or build_runtime_policy_adapter()
         self._build_timeline()
 
     def _build_timeline(self) -> None:
@@ -122,6 +138,9 @@ class CompiledProgramTestEnvironment(IEnvironment):
         )
         family = str(trial_meta.get("family", ""))
         is_operant = _is_operant_semantics(protocol, family)
+        declared_available_actions = _extract_available_actions(trial_meta)
+
+        # Pre-outcome boundary: emit -> observe -> predict -> act.
         observation_step = self._observation_adapter.step(
             stimulus=stimulus,
             context_state=trial_meta.get("context_state", trial_meta.get("context")),
@@ -132,6 +151,27 @@ class CompiledProgramTestEnvironment(IEnvironment):
                 "step_index": step_index,
             },
         )
+        policy_output = self._policy_adapter.step(
+            task_input={
+                "stimuli": stimulus,
+                "context": trial_meta.get("context_state", trial_meta.get("context")),
+                "t": step_index,
+                "phase": protocol,
+                "available_actions": declared_available_actions,
+            },
+            observation_output=observation_step.output,
+            available_actions=declared_available_actions,
+            metadata={
+                "segment_key": segment_key,
+                "protocol": protocol,
+                "trial_type": trial_type,
+                "step_index": step_index,
+                "action_source": "runtime_policy_adapter",
+            },
+        )
+        chosen_action = action if action is not None else policy_output.action
+
+        # Post-outcome boundary: consequence -> learn -> advance.
         next_observation_step = None
         if next_stimulus is not None:
             next_observation_step = self._observation_adapter.step(
@@ -156,6 +196,11 @@ class CompiledProgramTestEnvironment(IEnvironment):
             reward=float(reward),
             done=self._done,
         )
+        available_for_state = (
+            list(policy_output.available_actions)
+            if policy_output.available_actions
+            else ([chosen_action] if chosen_action is not None else [])
+        )
         trial_state = TrialState.with_action_semantics(
             s={"segment_key": segment_key, "step_index": step_index, "trial_index": trial_index},
             x=dict(stimulus),
@@ -163,8 +208,8 @@ class CompiledProgramTestEnvironment(IEnvironment):
             w=dict(trial_meta),
             y=float(reward),
             is_operant=is_operant,
-            action=action,
-            available_actions=[action] if action is not None else [],
+            action=chosen_action,
+            available_actions=available_for_state,
             persistent={"termination": termination.to_dict()},
             attention_state=learner_step.attention_state,
             prediction=learner_step.prediction,
@@ -176,7 +221,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
             protocol=protocol,
             trial_type=trial_type,
             trial_index=trial_index,
-            action=action,
+            action=chosen_action,
             stimulus=stimulus,
             reward=reward,
             done=self._done,
@@ -196,6 +241,13 @@ class CompiledProgramTestEnvironment(IEnvironment):
                 "observation": {
                     "output": observation_step.output.to_dict(),
                     "measurements": dict(observation_step.measurements),
+                },
+                "policy": {
+                    "action": policy_output.action,
+                    "available_actions": list(policy_output.available_actions),
+                    "action_scores": dict(policy_output.action_scores),
+                    "action_probabilities": dict(policy_output.action_probabilities),
+                    "metadata": dict(policy_output.metadata),
                 },
             },
         )
