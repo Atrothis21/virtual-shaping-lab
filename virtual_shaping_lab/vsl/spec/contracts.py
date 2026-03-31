@@ -306,3 +306,6 @@ class ExperimentSpec:
 
 # V3.18.0 ownership clarity alias.
 RuntimeLearnerConfig = LearnerSpec
+
+# V3.20.0 ownership clarity alias.
+RuntimePolicyConfig = PolicySpec

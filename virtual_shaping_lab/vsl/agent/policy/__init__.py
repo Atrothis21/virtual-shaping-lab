@@ -1,6 +1,7 @@
 """V3 policy primitives."""
 
 from .action_space import ActionSpace, NullActionSpace, SingletonActionSpace
+from .adapters import grammar_to_runtime_policy_config, runtime_to_grammar_policy_spec
 from .null_policy import NullPolicy
 from .presets import (
     POLICY_PRESET_ALIASES,
@@ -32,6 +33,8 @@ __all__ = [
     "NullActionSpace",
     "SingletonActionSpace",
     "NullPolicy",
+    "grammar_to_runtime_policy_config",
+    "runtime_to_grammar_policy_spec",
     "PolicySpec",
     "PolicySpecValidationError",
     "validate_policy_spec",

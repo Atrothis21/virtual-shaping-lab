@@ -140,6 +140,7 @@ from .agent import (
     PolicySpec,
     PolicySpecValidationError,
     expand_policy_preset,
+    grammar_to_runtime_policy_config,
     policy_compatibility_matrix,
     policy_preset_aliases,
     policy_preset_families,
@@ -150,6 +151,7 @@ from .agent import (
     policy_registry_hash,
     policy_registry_payload,
     policy_slot_registries,
+    runtime_to_grammar_policy_spec,
     validate_policy_spec,
 )
 from .contracts import Action, Outcome, TaskInput, TrialRecord, validate_interaction_boundary
@@ -253,6 +255,8 @@ __all__ = [
     "NullPolicy",
     "PolicySpec",
     "PolicySpecValidationError",
+    "grammar_to_runtime_policy_config",
+    "runtime_to_grammar_policy_spec",
     "validate_policy_spec",
     "POLICY_REGISTRY_VERSION",
     "POLICY_SLOT_REGISTRIES",
