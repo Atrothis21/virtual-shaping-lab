@@ -11,7 +11,16 @@ from .instantiate import (
     instantiate_policy_from_boundary,
 )
 from .null_policy import NullPolicy
-from .operators import ActionAvailabilityOperator, NullPolicyOperator, PolicyOperator, PolicyOutput
+from .operators import (
+    ActionAvailabilityOperator,
+    EpsilonGreedyPolicy,
+    GreedyActionSelectionPolicy,
+    NullPolicyOperator,
+    PolicyOperator,
+    PolicyOutput,
+    SoftmaxPolicy,
+    UniformRandomPolicy,
+)
 from .presets import (
     POLICY_PRESET_ALIASES,
     POLICY_PRESET_FAMILIES,
@@ -46,6 +55,10 @@ __all__ = [
     "ActionAvailabilityOperator",
     "NullPolicyOperator",
     "PolicyOutput",
+    "GreedyActionSelectionPolicy",
+    "EpsilonGreedyPolicy",
+    "SoftmaxPolicy",
+    "UniformRandomPolicy",
     "grammar_to_runtime_policy_config",
     "runtime_to_grammar_policy_spec",
     "PolicyOperatorHandle",
