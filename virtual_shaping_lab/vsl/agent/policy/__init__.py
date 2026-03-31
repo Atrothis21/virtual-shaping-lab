@@ -11,6 +11,7 @@ from .instantiate import (
     instantiate_policy_from_boundary,
 )
 from .null_policy import NullPolicy
+from .operators import ActionAvailabilityOperator, NullPolicyOperator, PolicyOperator, PolicyOutput
 from .presets import (
     POLICY_PRESET_ALIASES,
     POLICY_PRESET_FAMILIES,
@@ -41,6 +42,10 @@ __all__ = [
     "NullActionSpace",
     "SingletonActionSpace",
     "NullPolicy",
+    "PolicyOperator",
+    "ActionAvailabilityOperator",
+    "NullPolicyOperator",
+    "PolicyOutput",
     "grammar_to_runtime_policy_config",
     "runtime_to_grammar_policy_spec",
     "PolicyOperatorHandle",
