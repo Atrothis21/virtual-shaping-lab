@@ -217,6 +217,17 @@ jobs:
           pytest -q tests/test_v3_rollout_record_schema.py tests/test_report.py -k observation \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.20.0 policy contract ownership
+        run: |
+          pytest -q tests/test_v3_policy_grammar_spec.py tests/test_v3_policy_validator.py tests/test_v3_policy_registry.py tests/test_v3_policy_presets.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_policy_instantiation.py tests/test_v3_policy_contract_ownership.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_agent_protocol_boundary_contracts.py tests/test_v3_agent_protocol_boundary_validator.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

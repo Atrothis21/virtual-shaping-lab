@@ -62,16 +62,16 @@ def validate_policy_spec(spec: Any) -> None:
     if not isinstance(parameters, dict):
         _reject("POL_E_PARAMETERS_NOT_OBJECT", "PolicySpec.parameters must be an object.")
 
+    if selection_rule == "null" and action_space_mode != "classical_none":
+        _reject("POL_E_NULL_REQUIRES_CLASSICAL_NONE", "selection_rule='null' requires action_space_mode='classical_none'.")
+    if action_space_mode == "classical_none" and selection_rule != "null":
+        _reject("POL_E_CLASSICAL_NONE_REQUIRES_NULL", "action_space_mode='classical_none' requires selection_rule='null'.")
+
     if action_space_mode not in SELECTION_TO_ACTION_SPACE[selection_rule]:
         _reject(
             "POL_E_SELECTION_ACTION_SPACE_MISMATCH",
             f"selection_rule '{selection_rule}' is incompatible with action_space_mode '{action_space_mode}'.",
         )
-
-    if selection_rule == "null" and action_space_mode != "classical_none":
-        _reject("POL_E_NULL_REQUIRES_CLASSICAL_NONE", "selection_rule='null' requires action_space_mode='classical_none'.")
-    if action_space_mode == "classical_none" and selection_rule != "null":
-        _reject("POL_E_CLASSICAL_NONE_REQUIRES_NULL", "action_space_mode='classical_none' requires selection_rule='null'.")
 
     for key in SELECTION_REQUIRES_PARAMS.get(selection_rule, ()):
         numeric_value = _require_numeric_param(parameters, key)
@@ -79,4 +79,3 @@ def validate_policy_spec(spec: Any) -> None:
             _reject("POL_E_INVALID_EPSILON", "epsilon must be in [0.0, 1.0].")
         if key == "temperature" and numeric_value <= 0.0:
             _reject("POL_E_INVALID_TEMPERATURE", "temperature must be > 0.0.")
-
