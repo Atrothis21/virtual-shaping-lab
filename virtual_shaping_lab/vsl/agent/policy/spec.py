@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from .validation import validate_policy_spec
+
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -64,6 +66,7 @@ class PolicySpec:
             raise ValueError("PolicySpec.metadata must be an object.")
         object.__setattr__(self, "parameters", dict(self.parameters))
         object.__setattr__(self, "metadata", dict(self.metadata))
+        validate_policy_spec(self)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -91,4 +94,3 @@ class PolicySpec:
 
     def stable_hash(self) -> str:
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
-
