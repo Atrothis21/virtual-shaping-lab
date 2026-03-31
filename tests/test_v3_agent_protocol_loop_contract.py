@@ -87,7 +87,7 @@ def test_v3_20_10_protocol_loop_is_pre_outcome_policy_then_post_outcome_learner(
     _ = env.reset(seed=4)
     step = env.step(action=None)
 
-    assert events == ["observe", "policy", "observe", "learner"]
+    assert events == ["observe", "policy", "learner"]
     assert step.action == "leverpress"
 
     assert len(policy_adapter.calls) == 1
@@ -110,4 +110,3 @@ def test_v3_20_10_runtime_harness_owns_policy_seam_dispatch():
     assert "build_runtime_policy_adapter" in text
     assert "self._policy_adapter.step(" in text
     assert text.find("self._policy_adapter.step(") < text.find("self._learner_adapter.step(")
-
