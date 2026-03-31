@@ -15,8 +15,20 @@ def _as_tuple(actions: Sequence[Any] | tuple[Any, ...]) -> tuple[Any, ...]:
     return tuple(actions)
 
 
-def _scores_from_input(policy_input: Mapping[str, Any], available_actions: tuple[Any, ...]) -> dict[Any, float]:
-    raw = policy_input.get("action_values") or policy_input.get("action_scores") or {}
+def _coerce_policy_input_mapping(policy_input: Any) -> Mapping[str, Any]:
+    if isinstance(policy_input, Mapping):
+        return policy_input
+    to_mapping = getattr(policy_input, "to_mapping", None)
+    if callable(to_mapping):
+        mapped = to_mapping()
+        if isinstance(mapped, Mapping):
+            return mapped
+    return {}
+
+
+def _scores_from_input(policy_input: Any, available_actions: tuple[Any, ...]) -> dict[Any, float]:
+    mapping = _coerce_policy_input_mapping(policy_input)
+    raw = mapping.get("action_values") or mapping.get("action_scores") or {}
     if isinstance(raw, Mapping):
         return {action: float(raw.get(action, 0.0)) for action in available_actions}
     return {action: 0.0 for action in available_actions}
@@ -184,4 +196,3 @@ class UniformRandomPolicy(PolicyOperator):
             available_actions=actions,
             metadata=md,
         )
-

@@ -10,6 +10,7 @@ from .instantiate import (
     instantiate_policy_contracts,
     instantiate_policy_from_boundary,
 )
+from .input import PolicyInput, build_policy_input
 from .null_policy import NullPolicy
 from .operators import (
     ActionAvailabilityOperator,
@@ -51,6 +52,8 @@ __all__ = [
     "NullActionSpace",
     "SingletonActionSpace",
     "NullPolicy",
+    "PolicyInput",
+    "build_policy_input",
     "PolicyOperator",
     "ActionAvailabilityOperator",
     "NullPolicyOperator",
