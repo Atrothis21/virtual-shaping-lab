@@ -49,6 +49,11 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "stimulus_type": None,
     "action": None,
     "policy_state": None,
+    "policy_action": None,
+    "policy_available_actions": None,
+    "policy_action_scores": None,
+    "policy_action_probabilities": None,
+    "policy_provenance": None,
     "response": None,
     "reward": None,
     "prediction": None,
@@ -87,6 +92,25 @@ def _extract_learner_traces(metadata: dict) -> dict[str, object] | None:
     }
 
 
+def _extract_policy_traces(metadata: dict) -> dict[str, object] | None:
+    traces = metadata.get("policy_traces")
+    if isinstance(traces, dict):
+        return traces
+    policy = metadata.get("policy")
+    if not isinstance(policy, dict):
+        return None
+    provenance = policy.get("metadata")
+    if not isinstance(provenance, dict):
+        provenance = {}
+    return {
+        "action": policy.get("action"),
+        "available_actions": list(policy.get("available_actions", []) or []),
+        "action_scores": dict(policy.get("action_scores", {}) or {}),
+        "action_probabilities": dict(policy.get("action_probabilities", {}) or {}),
+        "provenance": dict(provenance),
+    }
+
+
 def _normalize_record_for_artifact(record):
     out = dict(record)
     for key, default in _ANALYSIS_RECORD_DEFAULTS.items():
@@ -105,6 +129,27 @@ def _normalize_record_for_artifact(record):
         if isinstance(candidate, dict):
             out["policy_state"] = dict(candidate)
     if isinstance(metadata, dict):
+        policy_traces = _extract_policy_traces(metadata)
+        if isinstance(policy_traces, dict):
+            out["policy_action"] = policy_traces.get("action")
+            available_actions = policy_traces.get("available_actions")
+            out["policy_available_actions"] = list(available_actions) if isinstance(available_actions, list) else []
+            action_scores = policy_traces.get("action_scores")
+            out["policy_action_scores"] = dict(action_scores) if isinstance(action_scores, dict) else {}
+            action_probabilities = policy_traces.get("action_probabilities")
+            out["policy_action_probabilities"] = (
+                dict(action_probabilities) if isinstance(action_probabilities, dict) else {}
+            )
+            provenance = policy_traces.get("provenance")
+            out["policy_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
+            if out.get("action") is None:
+                out["action"] = out["policy_action"]
+            if out.get("policy_state") is None:
+                out["policy_state"] = {
+                    "action_scores": out["policy_action_scores"],
+                    "action_probabilities": out["policy_action_probabilities"],
+                }
+
         learner_traces = _extract_learner_traces(metadata)
         if isinstance(learner_traces, dict):
             out["v"] = learner_traces.get("v")

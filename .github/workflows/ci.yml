@@ -239,6 +239,20 @@ jobs:
           pytest -q tests/test_v3_policy_executable_instantiation.py tests/test_v3_policy_golden.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.20.10 runtime policy seam and traces
+        run: |
+          pytest -q tests/test_v3_runtime_policy_adapter.py tests/test_v3_policy_runtime_parity.py tests/test_v3_agent_protocol_loop_contract.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_runtime_observation_adapter.py tests/test_v3_runtime_learner_adapter.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_rollout_record_schema.py -k policy \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_report.py -k policy \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
 
   full_suite_compare:
     runs-on: ubuntu-latest

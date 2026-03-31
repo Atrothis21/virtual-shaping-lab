@@ -181,3 +181,35 @@ def test_v3_rollout_step_adapter_promotes_observation_traces_into_record_metadat
             "stage_traces": {"representation": {"feature_names": ["tone"]}},
         },
     }
+
+
+def test_v3_rollout_step_adapter_promotes_policy_traces_into_record_metadata():
+    step = EnvironmentStep(
+        step_index=6,
+        segment_key="seg3",
+        protocol="operant_conditioning",
+        trial_type="operant_trial",
+        trial_index=4,
+        action="leverpress",
+        stimulus={"cs_plus": ["lever"]},
+        reward=1.0,
+        done=False,
+        termination=EnvironmentTermination(done=False, reason="running"),
+        metadata={
+            "policy": {
+                "action": "leverpress",
+                "available_actions": ["leverpress", "no_press"],
+                "action_scores": {"leverpress": 0.9, "no_press": 0.2},
+                "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
+                "metadata": {"variant": "epsilon_greedy"},
+            }
+        },
+    )
+    record = step_to_rollout_record(step)
+    assert record.metadata["policy_traces"] == {
+        "action": "leverpress",
+        "available_actions": ["leverpress", "no_press"],
+        "action_scores": {"leverpress": 0.9, "no_press": 0.2},
+        "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
+        "provenance": {"variant": "epsilon_greedy"},
+    }
