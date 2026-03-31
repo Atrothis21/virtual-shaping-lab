@@ -2,6 +2,14 @@
 
 from .action_space import ActionSpace, NullActionSpace, SingletonActionSpace
 from .adapters import grammar_to_runtime_policy_config, runtime_to_grammar_policy_spec
+from .instantiate import (
+    POLICY_INSTANTIATION_FAILURES,
+    PolicyInstantiationArtifact,
+    PolicyInstantiationError,
+    PolicyOperatorHandle,
+    instantiate_policy_contracts,
+    instantiate_policy_from_boundary,
+)
 from .null_policy import NullPolicy
 from .presets import (
     POLICY_PRESET_ALIASES,
@@ -35,6 +43,12 @@ __all__ = [
     "NullPolicy",
     "grammar_to_runtime_policy_config",
     "runtime_to_grammar_policy_spec",
+    "PolicyOperatorHandle",
+    "PolicyInstantiationArtifact",
+    "PolicyInstantiationError",
+    "POLICY_INSTANTIATION_FAILURES",
+    "instantiate_policy_contracts",
+    "instantiate_policy_from_boundary",
     "PolicySpec",
     "PolicySpecValidationError",
     "validate_policy_spec",
