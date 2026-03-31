@@ -1,5 +1,6 @@
 """V3 agent package surface."""
 
+from .composite import AgentStepResult, CompositionalAgent
 from .learning import (
     COMPATIBILITY_MATRIX,
     LEARNER_PRESET_ALIASES,
@@ -163,8 +164,27 @@ from .policy import (
     validate_policy_spec,
 )
 from .representation import SUPPORTED_TEMPORAL_BASIS_VARIANTS, TemporalBasisSpec
+from .instantiate import (
+    AGENT_INSTANTIATION_FAILURES,
+    AgentInstantiationArtifact,
+    AgentInstantiationError,
+    instantiate_agent_contracts,
+    instantiate_agent_from_boundary,
+)
+from .spec import AgentSpec
+from .validation import AgentSpecValidationError, validate_agent_spec
 
 __all__ = [
+    "CompositionalAgent",
+    "AgentStepResult",
+    "AgentSpec",
+    "AgentSpecValidationError",
+    "validate_agent_spec",
+    "AgentInstantiationArtifact",
+    "AgentInstantiationError",
+    "AGENT_INSTANTIATION_FAILURES",
+    "instantiate_agent_contracts",
+    "instantiate_agent_from_boundary",
     "LearnerSpec",
     "LearnerBundle",
     "LearnerStepResult",
