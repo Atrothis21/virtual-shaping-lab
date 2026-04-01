@@ -108,6 +108,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
         self._observation_adapter = observation_adapter or build_runtime_observation_adapter()
         self._policy_adapter = policy_adapter or build_runtime_policy_adapter()
+        self._has_explicit_protocol_adapter = protocol_adapter is not None
         self._protocol_adapter = protocol_adapter or build_runtime_protocol_adapter()
         self._protocol_adapters_by_preset: dict[str, RuntimeProtocolAdapter] = {
             self._protocol_adapter.preset_name: self._protocol_adapter
@@ -150,6 +151,8 @@ class CompiledProgramTestEnvironment(IEnvironment):
             adapter.reset()
 
     def _protocol_adapter_for_step(self, *, protocol: str, trial_meta: dict[str, Any]) -> RuntimeProtocolAdapter:
+        if self._has_explicit_protocol_adapter:
+            return self._protocol_adapter
         family = str(trial_meta.get("family", ""))
         preset_name = _protocol_preset_for_runtime(protocol=protocol, family=family)
         adapter = self._protocol_adapters_by_preset.get(preset_name)
