@@ -276,9 +276,11 @@ from .runtime import (
     RuntimeLearnerAdapter,
     RuntimeObservationAdapter,
     RuntimePolicyAdapter,
+    RuntimeProtocolAdapter,
     build_runtime_learner_adapter,
     build_runtime_observation_adapter,
     build_runtime_policy_adapter,
+    build_runtime_protocol_adapter,
 )
 
 __all__ = [
@@ -542,6 +544,8 @@ __all__ = [
     "build_runtime_observation_adapter",
     "RuntimePolicyAdapter",
     "build_runtime_policy_adapter",
+    "RuntimeProtocolAdapter",
+    "build_runtime_protocol_adapter",
     "IEnvironment",
     "TrialState",
     "EpisodeSpec",
