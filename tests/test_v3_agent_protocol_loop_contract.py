@@ -108,6 +108,13 @@ def test_v3_20_10_runtime_harness_owns_policy_seam_dispatch():
     assert "from virtual_shaping_lab.vsl.runtime.policy_adapter import" in text
     assert "RuntimePolicyAdapter" in text
     assert "build_runtime_policy_adapter" in text
+    assert "from virtual_shaping_lab.vsl.runtime.protocol_adapter import" in text
+    assert "RuntimeProtocolAdapter" in text
+    assert "build_runtime_protocol_adapter" in text
+    assert "protocol_adapter.emit(" in text
+    assert "protocol_adapter.resolve(" in text
+    assert text.find("protocol_adapter.emit(") < text.find("self._agent.pre_outcome_step(")
+    assert text.find("self._agent.pre_outcome_step(") < text.find("protocol_adapter.resolve(")
     # V3.20.15 single-path enforcement: harness dispatches through CompositionalAgent.
     assert "self._agent.pre_outcome_step(" in text
     assert "self._agent.learn(" in text
