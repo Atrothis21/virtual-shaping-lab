@@ -213,3 +213,48 @@ def test_v3_rollout_step_adapter_promotes_policy_traces_into_record_metadata():
         "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
         "provenance": {"variant": "epsilon_greedy"},
     }
+
+
+def test_v3_rollout_step_adapter_promotes_protocol_traces_into_record_metadata():
+    step = EnvironmentStep(
+        step_index=7,
+        segment_key="seg4",
+        protocol="operant_conditioning",
+        trial_type="operant_trial",
+        trial_index=5,
+        action="leverpress",
+        stimulus={"lever": 1.0},
+        reward=1.0,
+        done=False,
+        termination=EnvironmentTermination(done=False, reason="running"),
+        metadata={
+            "protocol": {
+                "preset_name": "operant_protocol",
+                "emission": {
+                    "stimulus": {"lever": 1.0},
+                    "context": "A",
+                    "available_actions": ["leverpress", "no_press"],
+                },
+                "consequence": {"reward": 1.0, "done": False},
+                "advance": {"t": 3, "dt_s": 1.0, "phase_step": 3},
+                "stop": {"should_stop": False, "reason": None},
+                "pipeline_order": ["emit", "consequence", "advance", "stop", "finalize"],
+            }
+        },
+    )
+    record = step_to_rollout_record(step)
+    assert record.metadata["protocol_traces"] == {
+        "emission": {
+            "stimulus": {"lever": 1.0},
+            "context": "A",
+            "available_actions": ["leverpress", "no_press"],
+        },
+        "consequence": {"reward": 1.0, "done": False},
+        "advance": {"t": 3, "dt_s": 1.0, "phase_step": 3},
+        "stop": {"should_stop": False, "reason": None},
+        "provenance": {
+            "preset_name": "operant_protocol",
+            "pipeline_order": ["emit", "consequence", "advance", "stop", "finalize"],
+        },
+        "timing": {"t": 3, "phase_step": 3, "dt_s": 1.0},
+    }

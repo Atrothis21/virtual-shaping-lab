@@ -313,3 +313,41 @@ def test_normalize_record_for_artifact_promotes_policy_traces():
         "action_scores": {"leverpress": 0.9, "no_press": 0.2},
         "action_probabilities": {"leverpress": 0.8, "no_press": 0.2},
     }
+
+
+def test_normalize_record_for_artifact_promotes_protocol_traces():
+    out = report_module._normalize_record_for_artifact(
+        {
+            "trial": 0,
+            "metadata": {
+                "protocol_traces": {
+                    "emission": {
+                        "stimulus": {"lever": 1.0},
+                        "context": "A",
+                        "available_actions": ["leverpress", "no_press"],
+                    },
+                    "consequence": {"reward": 1.0, "done": False},
+                    "advance": {"t": 3, "phase_step": 3, "dt_s": 1.0},
+                    "stop": {"should_stop": False, "reason": None},
+                    "timing": {"t": 3, "phase_step": 3, "dt_s": 1.0},
+                    "provenance": {
+                        "preset_name": "operant_protocol",
+                        "pipeline_order": ["emit", "consequence", "advance", "stop", "finalize"],
+                    },
+                }
+            },
+        }
+    )
+    assert out["protocol_emission"] == {
+        "stimulus": {"lever": 1.0},
+        "context": "A",
+        "available_actions": ["leverpress", "no_press"],
+    }
+    assert out["protocol_consequence"] == {"reward": 1.0, "done": False}
+    assert out["protocol_advance"] == {"t": 3, "phase_step": 3, "dt_s": 1.0}
+    assert out["protocol_stop"] == {"should_stop": False, "reason": None}
+    assert out["protocol_timing"] == {"t": 3, "phase_step": 3, "dt_s": 1.0}
+    assert out["protocol_provenance"] == {
+        "preset_name": "operant_protocol",
+        "pipeline_order": ["emit", "consequence", "advance", "stop", "finalize"],
+    }

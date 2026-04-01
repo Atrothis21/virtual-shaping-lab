@@ -68,6 +68,12 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "generalized_state": None,
     "features": None,
     "observation_provenance": None,
+    "protocol_emission": None,
+    "protocol_consequence": None,
+    "protocol_advance": None,
+    "protocol_stop": None,
+    "protocol_timing": None,
+    "protocol_provenance": None,
     "outcome_type": None,
     "schedule": None,
     "done": None,
@@ -108,6 +114,30 @@ def _extract_policy_traces(metadata: dict) -> dict[str, object] | None:
         "action_scores": dict(policy.get("action_scores", {}) or {}),
         "action_probabilities": dict(policy.get("action_probabilities", {}) or {}),
         "provenance": dict(provenance),
+    }
+
+
+def _extract_protocol_traces(metadata: dict) -> dict[str, object] | None:
+    traces = metadata.get("protocol_traces")
+    if isinstance(traces, dict):
+        return traces
+    protocol = metadata.get("protocol")
+    if not isinstance(protocol, dict):
+        return None
+    return {
+        "emission": dict(protocol.get("emission", {}) or {}),
+        "consequence": dict(protocol.get("consequence", {}) or {}),
+        "advance": dict(protocol.get("advance", {}) or {}),
+        "stop": dict(protocol.get("stop", {}) or {}),
+        "provenance": {
+            "preset_name": protocol.get("preset_name"),
+            "pipeline_order": list(protocol.get("pipeline_order", []) or []),
+        },
+        "timing": {
+            "t": dict(protocol.get("advance", {}) or {}).get("t"),
+            "phase_step": dict(protocol.get("advance", {}) or {}).get("phase_step"),
+            "dt_s": dict(protocol.get("advance", {}) or {}).get("dt_s"),
+        },
     }
 
 
@@ -164,6 +194,20 @@ def _normalize_record_for_artifact(record):
                 out["prediction"] = out["v"]
             if out.get("prediction_error") is None:
                 out["prediction_error"] = out["delta"]
+        protocol_traces = _extract_protocol_traces(metadata)
+        if isinstance(protocol_traces, dict):
+            emission = protocol_traces.get("emission")
+            out["protocol_emission"] = dict(emission) if isinstance(emission, dict) else {}
+            consequence = protocol_traces.get("consequence")
+            out["protocol_consequence"] = dict(consequence) if isinstance(consequence, dict) else {}
+            advance = protocol_traces.get("advance")
+            out["protocol_advance"] = dict(advance) if isinstance(advance, dict) else {}
+            stop = protocol_traces.get("stop")
+            out["protocol_stop"] = dict(stop) if isinstance(stop, dict) else {}
+            timing = protocol_traces.get("timing")
+            out["protocol_timing"] = dict(timing) if isinstance(timing, dict) else {}
+            provenance = protocol_traces.get("provenance")
+            out["protocol_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
         observation_traces = metadata.get("observation_traces")
         if isinstance(observation_traces, dict):
             out["representation"] = observation_traces.get("representation")

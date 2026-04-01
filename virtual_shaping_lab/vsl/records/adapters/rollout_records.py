@@ -65,6 +65,39 @@ def _extract_policy_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
     return traces
 
 
+def _extract_protocol_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
+    protocol = metadata.get("protocol")
+    if not isinstance(protocol, dict):
+        return None
+
+    emission = protocol.get("emission")
+    consequence = protocol.get("consequence")
+    advance = protocol.get("advance")
+    stop = protocol.get("stop")
+
+    traces = {
+        "emission": dict(emission) if isinstance(emission, dict) else {},
+        "consequence": dict(consequence) if isinstance(consequence, dict) else {},
+        "advance": dict(advance) if isinstance(advance, dict) else {},
+        "stop": dict(stop) if isinstance(stop, dict) else {},
+        "provenance": {
+            "preset_name": protocol.get("preset_name"),
+            "pipeline_order": list(protocol.get("pipeline_order", []) or []),
+        },
+        "timing": {},
+    }
+
+    if isinstance(traces["advance"], dict):
+        if "t" in traces["advance"]:
+            traces["timing"]["t"] = traces["advance"].get("t")
+        if "phase_step" in traces["advance"]:
+            traces["timing"]["phase_step"] = traces["advance"].get("phase_step")
+        if "dt_s" in traces["advance"]:
+            traces["timing"]["dt_s"] = traces["advance"].get("dt_s")
+
+    return traces
+
+
 def step_to_rollout_record(
     step: EnvironmentStep,
     *,
@@ -91,6 +124,9 @@ def step_to_rollout_record(
     policy_traces = _extract_policy_traces(normalized_metadata)
     if isinstance(policy_traces, dict):
         normalized_metadata["policy_traces"] = policy_traces
+    protocol_traces = _extract_protocol_traces(normalized_metadata)
+    if isinstance(protocol_traces, dict):
+        normalized_metadata["protocol_traces"] = protocol_traces
     return RolloutRecord(
         schema_version=schema_version,
         rollout_id=rollout_id,
