@@ -20,6 +20,11 @@ FAMILY_TO_ACTION_SPACE: dict[str, set[str]] = {
     "custom": {"classical_none", "discrete", "binary_response"},
 }
 
+TEMPORAL_TO_ADVANCE: dict[str, set[str]] = {
+    "trial_discrete": {"trial_increment"},
+    "event_discrete": {"trial_increment", "event_increment"},
+}
+
 
 @dataclass
 class ProtocolSpecValidationError(ValueError):
@@ -64,6 +69,12 @@ def validate_protocol_spec(spec: Any) -> None:
     if not isinstance(phase_metadata, dict):
         _reject("PROTO_E_PHASE_METADATA_NOT_OBJECT", "ProtocolSpec.phase_metadata must be an object.")
 
+    if protocol_family == "operant_conditioning" and action_space_mode == "classical_none":
+        _reject(
+            "PROTO_E_OPERANT_REQUIRES_ACTION_SPACE",
+            "protocol_family='operant_conditioning' requires a non-null action_space_mode.",
+        )
+
     if action_space_mode not in FAMILY_TO_ACTION_SPACE[protocol_family]:
         _reject(
             "PROTO_E_FAMILY_ACTION_SPACE_MISMATCH",
@@ -73,20 +84,14 @@ def validate_protocol_spec(spec: Any) -> None:
             ),
         )
 
-    if protocol_family == "operant_conditioning" and action_space_mode == "classical_none":
-        _reject(
-            "PROTO_E_OPERANT_REQUIRES_ACTION_SPACE",
-            "protocol_family='operant_conditioning' requires a non-null action_space_mode.",
-        )
-
     if action_space_mode == "classical_none" and consequence_rule == "scheduled_consequence":
         _reject(
             "PROTO_E_CLASSICAL_NONE_CONSEQUENCE_MISMATCH",
             "action_space_mode='classical_none' is incompatible with consequence_rule='scheduled_consequence'.",
         )
 
-    if temporal_mode == "trial_discrete" and advance_rule != "trial_increment":
+    if advance_rule not in TEMPORAL_TO_ADVANCE[temporal_mode]:
         _reject(
-            "PROTO_E_TRIAL_TEMPORAL_REQUIRES_TRIAL_ADVANCE",
-            "temporal_mode='trial_discrete' requires advance_rule='trial_increment'.",
+            "PROTO_E_TEMPORAL_ADVANCE_MISMATCH",
+            f"temporal_mode '{temporal_mode}' is incompatible with advance_rule '{advance_rule}'.",
         )
