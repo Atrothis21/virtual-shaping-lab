@@ -1,6 +1,12 @@
 """V3 package surface (incremental)."""
 
 from .agent import (
+    AGENT_INSTANTIATION_FAILURES,
+    AgentStepResult,
+    AgentInstantiationArtifact,
+    AgentInstantiationError,
+    AgentSpec,
+    AgentSpecValidationError,
     ActionSpace,
     COMPATIBILITY_MATRIX,
     LEARNER_PRESET_ALIASES,
@@ -99,6 +105,7 @@ from .agent import (
     RepresentationOperator,
     build_executable_observation_from_spec,
     build_executable_observation_preset,
+    CompositionalAgent,
     executable_observation_preset_names,
     expand_observation_preset,
     observation_compatibility_matrix,
@@ -116,6 +123,9 @@ from .agent import (
     normalize_observation_output_dict,
     null_contextualize,
     observation_slot_registries,
+    instantiate_agent_contracts,
+    instantiate_agent_from_boundary,
+    validate_agent_spec,
     validate_observation_spec,
 )
 from .environment import (
@@ -218,6 +228,16 @@ from .runtime import (
 )
 
 __all__ = [
+    "CompositionalAgent",
+    "AgentStepResult",
+    "AgentSpec",
+    "AgentSpecValidationError",
+    "validate_agent_spec",
+    "AgentInstantiationArtifact",
+    "AgentInstantiationError",
+    "AGENT_INSTANTIATION_FAILURES",
+    "instantiate_agent_contracts",
+    "instantiate_agent_from_boundary",
     "LearnerSpec",
     "LearnerBundle",
     "LearnerStepResult",
