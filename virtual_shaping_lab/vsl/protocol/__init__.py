@@ -1,6 +1,7 @@
 """V3 protocol primitives."""
 
 from .adapters import grammar_to_runtime_protocol_config, runtime_to_grammar_protocol_spec
+from .bundle import ProtocolBundle
 from .instantiate import (
     PROTO_INSTANTIATION_FAILURES,
     ProtocolInstantiationArtifact,
@@ -59,6 +60,7 @@ from .validation import ProtocolSpecValidationError, validate_protocol_spec
 __all__ = [
     "grammar_to_runtime_protocol_config",
     "runtime_to_grammar_protocol_spec",
+    "ProtocolBundle",
     "EmissionOperator",
     "ConsequenceOperator",
     "AdvanceOperator",
