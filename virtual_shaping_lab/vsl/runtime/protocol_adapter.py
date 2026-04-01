@@ -6,8 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
 from virtual_shaping_lab.vsl.protocol import (
+    AdvanceOutput,
+    ConsequenceOutput,
+    EmissionOutput,
     ExecutableProtocolPreset,
     ProtocolStepResult,
+    StopOutput,
     build_executable_protocol_preset,
 )
 
@@ -85,6 +89,17 @@ def _normalize_runtime_phase_payload(phase_payload: Mapping[str, Any] | None) ->
     raw_stimulus = payload.get("stimulus", payload.get("stimuli", payload.get("observation")))
     out["stimulus"] = _normalize_stimulus(raw_stimulus)
 
+    for key in ("reward", "outcome", "reward_value"):
+        if key in payload:
+            try:
+                out["reward_override"] = float(payload.get(key))
+            except (TypeError, ValueError):
+                pass
+            break
+
+    if "done" in payload:
+        out["done_override"] = bool(payload.get("done"))
+
     return out
 
 
@@ -95,18 +110,19 @@ class RuntimeProtocolAdapter:
     preset_name: str
     executable: ExecutableProtocolPreset
     _runtime_state: dict[str, Any] = field(default_factory=dict)
+    _pending_emission: EmissionOutput | None = field(default=None, init=False, repr=False)
 
     def reset(self) -> None:
         self._runtime_state = {}
         self.executable.bundle.state.clear()
+        self._pending_emission = None
 
-    def step(
+    def emit(
         self,
         *,
         phase_payload: Mapping[str, Any] | None = None,
-        action: Any = None,
         metadata: Mapping[str, Any] | None = None,
-    ) -> ProtocolStepResult:
+    ) -> EmissionOutput:
         normalized = _normalize_runtime_phase_payload(phase_payload)
         self._runtime_state.update(normalized)
         self.executable.bundle.state.update(self._runtime_state)
@@ -116,20 +132,133 @@ class RuntimeProtocolAdapter:
             "runtime_protocol": {
                 "preset_name": self.preset_name,
                 "normalization": "runtime_phase_payload_v1",
+                "stage": "emit",
             },
         }
-        result = self.executable.bundle.step(action=action, metadata=runtime_metadata)
-
-        self._runtime_state["t"] = int(result.advance.t)
-        self._runtime_state["phase_step"] = int(result.advance.phase_step)
-        self._runtime_state["dt_s"] = float(result.advance.dt_s)
-        self._runtime_state["done"] = bool(result.stop.should_stop or result.consequence.done)
-        self._runtime_state["last_reward"] = float(result.consequence.reward)
-        self._runtime_state["elapsed_s"] = float(self._runtime_state.get("elapsed_s", 0.0)) + float(result.advance.dt_s)
-        self._runtime_state["cumulative_reward"] = float(self._runtime_state.get("cumulative_reward", 0.0)) + float(
-            result.consequence.reward
+        emission = self.executable.bundle.emission_operator.emit(
+            state=dict(self.executable.bundle.state),
+            metadata=runtime_metadata,
         )
-        return result
+        self._pending_emission = emission
+        return emission
+
+    def resolve(
+        self,
+        *,
+        action: Any = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ProtocolStepResult:
+        emission = self._pending_emission
+        if emission is None:
+            emission = self.executable.bundle.emission_operator.emit(
+                state=dict(self.executable.bundle.state),
+                metadata={
+                    **dict(metadata or {}),
+                    "runtime_protocol": {
+                        "preset_name": self.preset_name,
+                        "normalization": "runtime_phase_payload_v1",
+                        "stage": "emit_fallback",
+                    },
+                },
+            )
+
+        runtime_metadata = {
+            **dict(metadata or {}),
+            "runtime_protocol": {
+                "preset_name": self.preset_name,
+                "normalization": "runtime_phase_payload_v1",
+                "stage": "resolve",
+            },
+        }
+
+        consequence: ConsequenceOutput = self.executable.bundle.consequence_operator.consequence(
+            emission=emission,
+            action=action,
+            state=dict(self.executable.bundle.state),
+            metadata=runtime_metadata,
+        )
+        if "reward_override" in self._runtime_state:
+            consequence = ConsequenceOutput(
+                reward=float(self._runtime_state.get("reward_override", consequence.reward)),
+                done=bool(consequence.done),
+                outcome_state=dict(consequence.outcome_state),
+                metadata=dict(consequence.metadata),
+            )
+        if "done_override" in self._runtime_state:
+            consequence = ConsequenceOutput(
+                reward=float(consequence.reward),
+                done=bool(self._runtime_state.get("done_override")),
+                outcome_state=dict(consequence.outcome_state),
+                metadata=dict(consequence.metadata),
+            )
+        advance: AdvanceOutput = self.executable.bundle.advance_operator.advance(
+            state=dict(self.executable.bundle.state),
+            consequence=consequence,
+            metadata=runtime_metadata,
+        )
+        stop: StopOutput = self.executable.bundle.stop_operator.should_stop(
+            state=dict(self.executable.bundle.state),
+            advance=advance,
+            consequence=consequence,
+            metadata=runtime_metadata,
+        )
+
+        self._runtime_state["t"] = int(advance.t)
+        self._runtime_state["phase_step"] = int(advance.phase_step)
+        self._runtime_state["dt_s"] = float(advance.dt_s)
+        self._runtime_state["done"] = bool(stop.should_stop or consequence.done)
+        self._runtime_state["last_reward"] = float(consequence.reward)
+        self._runtime_state["elapsed_s"] = float(self._runtime_state.get("elapsed_s", 0.0)) + float(advance.dt_s)
+        self._runtime_state["cumulative_reward"] = float(self._runtime_state.get("cumulative_reward", 0.0)) + float(
+            consequence.reward
+        )
+        self.executable.bundle.state.update(self._runtime_state)
+        self._pending_emission = None
+
+        return ProtocolStepResult(
+            emission=emission,
+            consequence=consequence,
+            advance=advance,
+            stop=stop,
+            metadata={
+                **dict(runtime_metadata),
+                "stage_traces": {
+                    "emission": {
+                        "stimulus": dict(emission.stimulus),
+                        "context": emission.context,
+                        "available_actions": list(emission.available_actions),
+                        "metadata": dict(emission.metadata),
+                    },
+                    "consequence": {
+                        "reward": float(consequence.reward),
+                        "done": bool(consequence.done),
+                        "metadata": dict(consequence.metadata),
+                    },
+                    "advance": {
+                        "t": int(advance.t),
+                        "dt_s": float(advance.dt_s),
+                        "phase_step": int(advance.phase_step),
+                        "metadata": dict(advance.metadata),
+                    },
+                    "stop": {
+                        "should_stop": bool(stop.should_stop),
+                        "reason": stop.reason,
+                        "metadata": dict(stop.metadata),
+                    },
+                },
+                "pipeline_order": ["emit", "consequence", "advance", "stop", "finalize"],
+            },
+        )
+
+    def step(
+        self,
+        *,
+        phase_payload: Mapping[str, Any] | None = None,
+        action: Any = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ProtocolStepResult:
+        _ = self.emit(phase_payload=phase_payload, metadata=metadata)
+        return self.resolve(action=action, metadata=metadata)
 
 
 def build_runtime_protocol_adapter(
