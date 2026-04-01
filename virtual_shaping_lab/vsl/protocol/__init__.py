@@ -1,6 +1,13 @@
 """V3 protocol primitives."""
 
 from .adapters import grammar_to_runtime_protocol_config, runtime_to_grammar_protocol_spec
+from .bundle import ProtocolBundle
+from .executable_presets import (
+    ExecutableProtocolPreset,
+    build_executable_protocol_from_spec,
+    build_executable_protocol_preset,
+    executable_protocol_preset_names,
+)
 from .instantiate import (
     PROTO_INSTANTIATION_FAILURES,
     ProtocolInstantiationArtifact,
@@ -8,6 +15,28 @@ from .instantiate import (
     ProtocolOperatorHandle,
     instantiate_protocol_contracts,
     instantiate_protocol_from_boundary,
+)
+from .operators import (
+    ActionConditionedConsequenceOperator,
+    AdvanceOperator,
+    CriterionStopOperator,
+    ClassicalNoActionConsequenceOperator,
+    ConsequenceOperator,
+    EventAdvanceOperator,
+    EmissionOperator,
+    FixedEmissionOperator,
+    HorizonStopOperator,
+    ScheduledEmissionOperator,
+    StopOperator,
+    TrialAdvanceOperator,
+    TrialCountStopOperator,
+)
+from .output import (
+    AdvanceOutput,
+    ConsequenceOutput,
+    EmissionOutput,
+    ProtocolStepResult,
+    StopOutput,
 )
 from .presets import (
     PRESET_VERSION,
@@ -37,6 +66,29 @@ from .validation import ProtocolSpecValidationError, validate_protocol_spec
 __all__ = [
     "grammar_to_runtime_protocol_config",
     "runtime_to_grammar_protocol_spec",
+    "ProtocolBundle",
+    "ExecutableProtocolPreset",
+    "build_executable_protocol_preset",
+    "build_executable_protocol_from_spec",
+    "executable_protocol_preset_names",
+    "EmissionOperator",
+    "ConsequenceOperator",
+    "AdvanceOperator",
+    "StopOperator",
+    "TrialAdvanceOperator",
+    "EventAdvanceOperator",
+    "TrialCountStopOperator",
+    "HorizonStopOperator",
+    "CriterionStopOperator",
+    "FixedEmissionOperator",
+    "ScheduledEmissionOperator",
+    "ActionConditionedConsequenceOperator",
+    "ClassicalNoActionConsequenceOperator",
+    "EmissionOutput",
+    "ConsequenceOutput",
+    "AdvanceOutput",
+    "StopOutput",
+    "ProtocolStepResult",
     "ProtocolOperatorHandle",
     "ProtocolInstantiationArtifact",
     "ProtocolInstantiationError",
