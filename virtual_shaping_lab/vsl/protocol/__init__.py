@@ -2,6 +2,12 @@
 
 from .adapters import grammar_to_runtime_protocol_config, runtime_to_grammar_protocol_spec
 from .bundle import ProtocolBundle
+from .executable_presets import (
+    ExecutableProtocolPreset,
+    build_executable_protocol_from_spec,
+    build_executable_protocol_preset,
+    executable_protocol_preset_names,
+)
 from .instantiate import (
     PROTO_INSTANTIATION_FAILURES,
     ProtocolInstantiationArtifact,
@@ -61,6 +67,10 @@ __all__ = [
     "grammar_to_runtime_protocol_config",
     "runtime_to_grammar_protocol_spec",
     "ProtocolBundle",
+    "ExecutableProtocolPreset",
+    "build_executable_protocol_preset",
+    "build_executable_protocol_from_spec",
+    "executable_protocol_preset_names",
     "EmissionOperator",
     "ConsequenceOperator",
     "AdvanceOperator",
