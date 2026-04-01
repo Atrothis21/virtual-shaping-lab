@@ -44,21 +44,16 @@ def _reward_from_trial_params(params: dict[str, Any]) -> float:
     return 0.0
 
 
-_OPERANT_PROTOCOLS = {
-    "operant_conditioning",
-    "matching_law",
-    "shaping",
-    "resurgence",
-    "superextinction",
-    "spontaneous_recovery",
-    "operant_phase_template",
+_RUNTIME_PROTOCOL_BRIDGES: dict[str, dict[str, str]] = {
+    "external_action_override": {
+        "owner": "v3.21.15",
+        "expiry": "v3.22.0",
+    },
+    "compiled_plan_reward_override": {
+        "owner": "v3.21.15",
+        "expiry": "v3.22.0",
+    },
 }
-
-
-def _is_operant_semantics(protocol: str, family: str) -> bool:
-    if family in {"template_operant", "protocol_recipe_operant"}:
-        return True
-    return protocol in _OPERANT_PROTOCOLS
 
 
 def _extract_available_actions(trial_meta: dict[str, Any]) -> tuple[Any, ...]:
@@ -207,8 +202,6 @@ class CompiledProgramTestEnvironment(IEnvironment):
         next_stimulus = None
         if not self._done:
             next_stimulus = dict(self._timeline[self._cursor][4])
-        family = str(trial_meta.get("family", ""))
-        is_operant = _is_operant_semantics(protocol, family)
         declared_available_actions = _extract_available_actions(trial_meta)
         protocol_adapter = self._protocol_adapter_for_step(protocol=protocol, trial_meta=trial_meta)
 
@@ -229,6 +222,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
                 "step_index": step_index,
             },
         )
+        is_operant = len(tuple(protocol_pre.available_actions)) > 0
 
         # Single-path compositional execution:
         # pre-outcome (observe -> predict -> act), then post-outcome (learn -> advance).
@@ -344,6 +338,10 @@ class CompiledProgramTestEnvironment(IEnvironment):
                         "reason": protocol_post.stop.reason,
                     },
                     "pipeline_order": list(protocol_post.metadata.get("pipeline_order", [])),
+                    "bridge_markers": {
+                        "external_action_override": dict(_RUNTIME_PROTOCOL_BRIDGES["external_action_override"]),
+                        "compiled_plan_reward_override": dict(_RUNTIME_PROTOCOL_BRIDGES["compiled_plan_reward_override"]),
+                    },
                 },
                 "learner": {
                     "prediction": learner_step.prediction,
