@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from virtual_shaping_lab.vsl.agent.composite import CompositionalAgent
+from virtual_shaping_lab.vsl.contracts import Outcome, TaskInput
 from virtual_shaping_lab.vsl.environment.contracts import (
     EnvironmentReset,
     EnvironmentStep,
@@ -82,6 +84,11 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
         self._observation_adapter = observation_adapter or build_runtime_observation_adapter()
         self._policy_adapter = policy_adapter or build_runtime_policy_adapter()
+        self._agent = CompositionalAgent(
+            observation_adapter=self._observation_adapter,
+            learner_adapter=self._learner_adapter,
+            policy_adapter=self._policy_adapter,
+        )
         self._build_timeline()
 
     def _build_timeline(self) -> None:
@@ -127,10 +134,8 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._cursor += 1
         self._done = self._cursor >= len(self._timeline)
         next_stimulus = None
-        next_trial_meta = None
         if not self._done:
             next_stimulus = dict(self._timeline[self._cursor][4])
-            next_trial_meta = dict(self._timeline[self._cursor][5])
         termination = EnvironmentTermination(
             done=self._done,
             reason="terminal" if self._done else "running",
@@ -140,62 +145,43 @@ class CompiledProgramTestEnvironment(IEnvironment):
         is_operant = _is_operant_semantics(protocol, family)
         declared_available_actions = _extract_available_actions(trial_meta)
 
-        # Pre-outcome boundary: emit -> observe -> predict -> act.
-        observation_step = self._observation_adapter.step(
-            stimulus=stimulus,
-            context_state=trial_meta.get("context_state", trial_meta.get("context")),
-            metadata={
-                "segment_key": segment_key,
-                "protocol": protocol,
-                "trial_type": trial_type,
-                "step_index": step_index,
-            },
-        )
-        policy_output = self._policy_adapter.step(
-            task_input={
-                "stimuli": stimulus,
-                "context": trial_meta.get("context_state", trial_meta.get("context")),
-                "t": step_index,
-                "phase": protocol,
-                "available_actions": declared_available_actions,
-            },
-            observation_output=observation_step.output,
+        # Single-path compositional execution:
+        # pre-outcome (observe -> predict -> act), then post-outcome (learn -> advance).
+        task_input = TaskInput(
+            stimuli=dict(stimulus),
+            context=trial_meta.get("context_state", trial_meta.get("context")),
+            t=step_index,
+            phase=protocol,
             available_actions=declared_available_actions,
             metadata={
                 "segment_key": segment_key,
                 "protocol": protocol,
                 "trial_type": trial_type,
                 "step_index": step_index,
-                "action_source": "runtime_policy_adapter",
             },
         )
-        chosen_action = action if action is not None else policy_output.action
-
-        # Post-outcome boundary: consequence -> learn -> advance.
-        next_observation_step = None
-        if next_stimulus is not None:
-            next_observation_step = self._observation_adapter.step(
-                stimulus=next_stimulus,
-                context_state=None
-                if next_trial_meta is None
-                else next_trial_meta.get("context_state", next_trial_meta.get("context")),
+        pre = self._agent.pre_outcome_step(task_input)
+        chosen_action = action if action is not None else pre.action.value
+        learner_step = self._agent.learn(
+            observation=pre.observation_output,
+            prediction=pre.prediction_output,
+            action=chosen_action,
+            outcome=Outcome(
+                reward=float(reward),
+                next_stimuli={} if next_stimulus is None else dict(next_stimulus),
+                terminated=bool(self._done),
+                truncated=False,
                 metadata={
                     "segment_key": segment_key,
                     "protocol": protocol,
                     "trial_type": trial_type,
-                    "step_index": step_index + 1,
+                    "step_index": step_index,
                 },
-            )
-        learner_step = self._learner_adapter.step(
-            observation_features=observation_step.output.features,
-            observation_feature_names=observation_step.output.feature_names,
-            next_observation_features=None if next_observation_step is None else next_observation_step.output.features,
-            next_observation_feature_names=None
-            if next_observation_step is None
-            else next_observation_step.output.feature_names,
-            reward=float(reward),
-            done=self._done,
+            ),
         )
+        self._agent.advance_internal_time(1.0)
+        policy_output = pre.policy_output
+        observation_step = pre
         available_for_state = (
             list(policy_output.available_actions)
             if policy_output.available_actions
@@ -239,15 +225,24 @@ class CompiledProgramTestEnvironment(IEnvironment):
                     "eligibility_state": learner_step.eligibility_state,
                 },
                 "observation": {
-                    "output": observation_step.output.to_dict(),
-                    "measurements": dict(observation_step.measurements),
+                    "output": observation_step.observation_output.to_dict(),
+                    "measurements": {
+                        "n_features": len(observation_step.observation_output.features),
+                        "feature_names": list(observation_step.observation_output.feature_names),
+                        "pipeline_order": list(
+                            observation_step.observation_output.metadata.get("pipeline_order", [])
+                        ),
+                    },
                 },
                 "policy": {
                     "action": policy_output.action,
                     "available_actions": list(policy_output.available_actions),
                     "action_scores": dict(policy_output.action_scores),
                     "action_probabilities": dict(policy_output.action_probabilities),
-                    "metadata": dict(policy_output.metadata),
+                    "metadata": {
+                        **dict(policy_output.metadata),
+                        "action_source": "runtime_policy_adapter",
+                    },
                 },
             },
         )
