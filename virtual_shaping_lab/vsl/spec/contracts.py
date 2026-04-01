@@ -114,6 +114,23 @@ class PolicySpec:
 
 
 @dataclass(frozen=True)
+class ProtocolSpec:
+    name: str
+    params: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "name", _require_non_empty_string(self.name, "ProtocolSpec.name"))
+        object.__setattr__(self, "params", _require_mapping(self.params, "ProtocolSpec.params"))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "params": _to_primitive(self.params)}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ProtocolSpec":
+        return cls(name=data.get("name", ""), params=data.get("params", {}))
+
+
+@dataclass(frozen=True)
 class AgentSpec:
     agent: str
     representation: RepresentationSpec
@@ -309,3 +326,6 @@ RuntimeLearnerConfig = LearnerSpec
 
 # V3.20.0 ownership clarity alias.
 RuntimePolicyConfig = PolicySpec
+
+# V3.21.0 ownership clarity alias.
+RuntimeProtocolConfig = ProtocolSpec

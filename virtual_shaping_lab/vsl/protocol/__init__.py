@@ -1,10 +1,53 @@
 """V3 protocol primitives."""
 
+from .adapters import grammar_to_runtime_protocol_config, runtime_to_grammar_protocol_spec
+from .presets import (
+    PRESET_VERSION,
+    PROTOCOL_PRESET_ALIASES,
+    PROTOCOL_PRESET_FAMILIES,
+    PROTOCOL_PRESETS,
+    expand_protocol_preset,
+    protocol_preset_aliases,
+    protocol_preset_families,
+    protocol_preset_hash,
+    protocol_preset_names,
+    protocol_preset_payload,
+    protocol_preset_registry,
+)
+from .registry import (
+    COMPATIBILITY_MATRIX,
+    PROTOCOL_REGISTRY_VERSION,
+    SLOT_REGISTRIES,
+    compatibility_matrix,
+    protocol_registry_hash,
+    protocol_registry_payload,
+    slot_registries,
+)
 from .spec import ProtocolSpec
 from .validation import ProtocolSpecValidationError, validate_protocol_spec
 
 __all__ = [
+    "grammar_to_runtime_protocol_config",
+    "runtime_to_grammar_protocol_spec",
     "ProtocolSpec",
     "ProtocolSpecValidationError",
     "validate_protocol_spec",
+    "PROTOCOL_REGISTRY_VERSION",
+    "SLOT_REGISTRIES",
+    "COMPATIBILITY_MATRIX",
+    "slot_registries",
+    "compatibility_matrix",
+    "protocol_registry_payload",
+    "protocol_registry_hash",
+    "PRESET_VERSION",
+    "PROTOCOL_PRESETS",
+    "PROTOCOL_PRESET_ALIASES",
+    "PROTOCOL_PRESET_FAMILIES",
+    "protocol_preset_names",
+    "protocol_preset_aliases",
+    "protocol_preset_registry",
+    "protocol_preset_families",
+    "expand_protocol_preset",
+    "protocol_preset_payload",
+    "protocol_preset_hash",
 ]
