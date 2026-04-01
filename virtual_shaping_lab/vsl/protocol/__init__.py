@@ -9,7 +9,16 @@ from .instantiate import (
     instantiate_protocol_contracts,
     instantiate_protocol_from_boundary,
 )
-from .operators import AdvanceOperator, ConsequenceOperator, EmissionOperator, StopOperator
+from .operators import (
+    ActionConditionedConsequenceOperator,
+    AdvanceOperator,
+    ClassicalNoActionConsequenceOperator,
+    ConsequenceOperator,
+    EmissionOperator,
+    FixedEmissionOperator,
+    ScheduledEmissionOperator,
+    StopOperator,
+)
 from .output import (
     AdvanceOutput,
     ConsequenceOutput,
@@ -49,6 +58,10 @@ __all__ = [
     "ConsequenceOperator",
     "AdvanceOperator",
     "StopOperator",
+    "FixedEmissionOperator",
+    "ScheduledEmissionOperator",
+    "ActionConditionedConsequenceOperator",
+    "ClassicalNoActionConsequenceOperator",
     "EmissionOutput",
     "ConsequenceOutput",
     "AdvanceOutput",
