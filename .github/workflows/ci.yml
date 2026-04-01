@@ -170,6 +170,14 @@ jobs:
           pytest -q tests/test_v3_agent_protocol_boundary_contracts.py tests/test_v3_agent_protocol_boundary_validator.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.21.0 protocol contract ownership
+        run: |
+          pytest -q tests/test_v3_protocol_grammar_spec.py tests/test_v3_protocol_validator.py tests/test_v3_protocol_registry.py tests/test_v3_protocol_presets.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_protocol_instantiation.py tests/test_v3_protocol_contract_ownership.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3.20.5 executable policy core
         run: |
           pytest -q tests/test_v3_policy_operators_base.py tests/test_v3_policy_operators_selection.py \
