@@ -1,6 +1,14 @@
 """V3 protocol primitives."""
 
 from .adapters import grammar_to_runtime_protocol_config, runtime_to_grammar_protocol_spec
+from .instantiate import (
+    PROTO_INSTANTIATION_FAILURES,
+    ProtocolInstantiationArtifact,
+    ProtocolInstantiationError,
+    ProtocolOperatorHandle,
+    instantiate_protocol_contracts,
+    instantiate_protocol_from_boundary,
+)
 from .presets import (
     PRESET_VERSION,
     PROTOCOL_PRESET_ALIASES,
@@ -29,6 +37,12 @@ from .validation import ProtocolSpecValidationError, validate_protocol_spec
 __all__ = [
     "grammar_to_runtime_protocol_config",
     "runtime_to_grammar_protocol_spec",
+    "ProtocolOperatorHandle",
+    "ProtocolInstantiationArtifact",
+    "ProtocolInstantiationError",
+    "PROTO_INSTANTIATION_FAILURES",
+    "instantiate_protocol_contracts",
+    "instantiate_protocol_from_boundary",
     "ProtocolSpec",
     "ProtocolSpecValidationError",
     "validate_protocol_spec",
