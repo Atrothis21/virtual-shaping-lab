@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -84,12 +85,40 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._learner_adapter = learner_adapter or build_runtime_learner_adapter()
         self._observation_adapter = observation_adapter or build_runtime_observation_adapter()
         self._policy_adapter = policy_adapter or build_runtime_policy_adapter()
+        self._initial_learner_state: dict[str, Any] | None = None
+        self._initial_attention_state: dict[str, Any] | None = None
+        self._initial_eligibility_state: dict[str, Any] | None = None
+        self._snapshot_initial_runtime_state()
         self._agent = CompositionalAgent(
             observation_adapter=self._observation_adapter,
             learner_adapter=self._learner_adapter,
             policy_adapter=self._policy_adapter,
         )
         self._build_timeline()
+
+    def _snapshot_initial_runtime_state(self) -> None:
+        bundle = getattr(self._learner_adapter, "bundle", None)
+        if bundle is None:
+            return
+        self._initial_learner_state = deepcopy(getattr(bundle, "state", {}))
+        self._initial_attention_state = deepcopy(getattr(bundle, "attention_state", None))
+        self._initial_eligibility_state = deepcopy(getattr(bundle, "eligibility_state", None))
+
+    def _restore_runtime_state_for_reset(self) -> None:
+        bundle = getattr(self._learner_adapter, "bundle", None)
+        if bundle is not None:
+            if self._initial_learner_state is not None:
+                bundle.state = deepcopy(self._initial_learner_state)
+            if hasattr(bundle, "attention_state"):
+                bundle.attention_state = deepcopy(self._initial_attention_state)
+            if hasattr(bundle, "eligibility_state"):
+                bundle.eligibility_state = deepcopy(self._initial_eligibility_state)
+        # Always recreate the orchestrator to clear per-step caches and internal time.
+        self._agent = CompositionalAgent(
+            observation_adapter=self._observation_adapter,
+            learner_adapter=self._learner_adapter,
+            policy_adapter=self._policy_adapter,
+        )
 
     def _build_timeline(self) -> None:
         timeline: list[tuple[str, str, str, int, dict[str, Any], dict[str, Any], float]] = []
@@ -120,6 +149,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
         normalized_seed = int(seed) if seed is not None else None
         self._cursor = 0
         self._done = len(self._timeline) == 0
+        self._restore_runtime_state_for_reset()
         return EnvironmentReset(
             seed=normalized_seed,
             done=self._done,
