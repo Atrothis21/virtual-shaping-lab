@@ -286,10 +286,14 @@ class CompiledProgramTestEnvironment(IEnvironment):
         self._agent.advance_internal_time(float(protocol_post.advance.dt_s))
         policy_output = pre.policy_output
         observation_step = pre
+        # Keep TrialState action semantics tied to explicit caller action input.
+        # Internal policy-resolved actions are runtime internals and should not
+        # backfill caller-facing trial-state action support when no action was supplied.
+        state_action = action
         available_for_state = (
-            list(policy_output.available_actions)
-            if policy_output.available_actions
-            else ([chosen_action] if chosen_action is not None else [])
+            list(protocol_post.emission.available_actions)
+            if state_action is not None
+            else []
         )
         trial_state = TrialState.with_action_semantics(
             s={"segment_key": segment_key, "step_index": step_index, "trial_index": trial_index},
@@ -298,7 +302,7 @@ class CompiledProgramTestEnvironment(IEnvironment):
             w=dict(trial_meta),
             y=consequence_reward,
             is_operant=is_operant,
-            action=chosen_action,
+            action=state_action,
             available_actions=available_for_state,
             persistent={"termination": termination.to_dict()},
             attention_state=learner_step.attention_state,
