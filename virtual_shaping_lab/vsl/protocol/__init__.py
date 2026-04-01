@@ -9,6 +9,14 @@ from .instantiate import (
     instantiate_protocol_contracts,
     instantiate_protocol_from_boundary,
 )
+from .operators import AdvanceOperator, ConsequenceOperator, EmissionOperator, StopOperator
+from .output import (
+    AdvanceOutput,
+    ConsequenceOutput,
+    EmissionOutput,
+    ProtocolStepResult,
+    StopOutput,
+)
 from .presets import (
     PRESET_VERSION,
     PROTOCOL_PRESET_ALIASES,
@@ -37,6 +45,15 @@ from .validation import ProtocolSpecValidationError, validate_protocol_spec
 __all__ = [
     "grammar_to_runtime_protocol_config",
     "runtime_to_grammar_protocol_spec",
+    "EmissionOperator",
+    "ConsequenceOperator",
+    "AdvanceOperator",
+    "StopOperator",
+    "EmissionOutput",
+    "ConsequenceOutput",
+    "AdvanceOutput",
+    "StopOutput",
+    "ProtocolStepResult",
     "ProtocolOperatorHandle",
     "ProtocolInstantiationArtifact",
     "ProtocolInstantiationError",
