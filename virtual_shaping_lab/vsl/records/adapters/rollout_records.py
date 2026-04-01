@@ -8,6 +8,16 @@ from virtual_shaping_lab.vsl.environment.contracts import EnvironmentStep
 from virtual_shaping_lab.vsl.records import RolloutRecord
 
 
+def _stable_copy(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(k): _stable_copy(v) for k, v in sorted(value.items(), key=lambda item: str(item[0]))}
+    if isinstance(value, list):
+        return [_stable_copy(v) for v in value]
+    if isinstance(value, tuple):
+        return [_stable_copy(v) for v in value]
+    return value
+
+
 def _extract_learner_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
     learner = metadata.get("learner")
     if not isinstance(learner, dict):
@@ -76,10 +86,10 @@ def _extract_protocol_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
     stop = protocol.get("stop")
 
     traces = {
-        "emission": dict(emission) if isinstance(emission, dict) else {},
-        "consequence": dict(consequence) if isinstance(consequence, dict) else {},
-        "advance": dict(advance) if isinstance(advance, dict) else {},
-        "stop": dict(stop) if isinstance(stop, dict) else {},
+        "emission": _stable_copy(emission) if isinstance(emission, dict) else {},
+        "consequence": _stable_copy(consequence) if isinstance(consequence, dict) else {},
+        "advance": _stable_copy(advance) if isinstance(advance, dict) else {},
+        "stop": _stable_copy(stop) if isinstance(stop, dict) else {},
         "provenance": {
             "preset_name": protocol.get("preset_name"),
             "pipeline_order": list(protocol.get("pipeline_order", []) or []),
