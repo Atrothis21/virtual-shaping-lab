@@ -108,6 +108,27 @@ def _extract_protocol_traces(metadata: dict[str, Any]) -> dict[str, Any] | None:
     return traces
 
 
+def _extract_measurement_traces(metadata: dict[str, Any]) -> dict[str, Any]:
+    raw = metadata.get("measurement_traces")
+    if isinstance(raw, dict):
+        metrics = raw.get("metrics")
+        figures = raw.get("figures")
+        summary = raw.get("summary")
+        provenance = raw.get("provenance")
+        return {
+            "metrics": _stable_copy(metrics) if isinstance(metrics, dict) else {},
+            "figures": _stable_copy(figures) if isinstance(figures, list | tuple) else [],
+            "summary": _stable_copy(summary) if isinstance(summary, dict) else {},
+            "provenance": _stable_copy(provenance) if isinstance(provenance, dict) else {},
+        }
+    return {
+        "metrics": {},
+        "figures": [],
+        "summary": {},
+        "provenance": {},
+    }
+
+
 def step_to_rollout_record(
     step: EnvironmentStep,
     *,
@@ -137,6 +158,7 @@ def step_to_rollout_record(
     protocol_traces = _extract_protocol_traces(normalized_metadata)
     if isinstance(protocol_traces, dict):
         normalized_metadata["protocol_traces"] = protocol_traces
+    normalized_metadata["measurement_traces"] = _extract_measurement_traces(normalized_metadata)
     return RolloutRecord(
         schema_version=schema_version,
         rollout_id=rollout_id,
