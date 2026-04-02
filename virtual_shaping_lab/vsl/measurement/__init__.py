@@ -1,5 +1,7 @@
 """V3 measurement primitives."""
 
+from .operators import AnalysisOperator, ReportOperator, VisualizationOperator
+from .output import AnalysisOutput, MeasurementStepResult, VisualizationOutput
 from .presets import (
     MEASUREMENT_PRESET_ALIASES,
     MEASUREMENT_PRESET_FAMILIES,
@@ -26,6 +28,12 @@ from .spec import MeasurementSpec
 from .validation import MeasurementSpecValidationError, validate_measurement_spec
 
 __all__ = [
+    "AnalysisOperator",
+    "VisualizationOperator",
+    "ReportOperator",
+    "AnalysisOutput",
+    "VisualizationOutput",
+    "MeasurementStepResult",
     "MeasurementSpec",
     "MeasurementSpecValidationError",
     "validate_measurement_spec",
