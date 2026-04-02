@@ -69,6 +69,10 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "generalized_state": None,
     "features": None,
     "observation_provenance": None,
+    "measurement_metrics": None,
+    "measurement_figures": None,
+    "measurement_summary": None,
+    "measurement_provenance": None,
     "protocol_emission": None,
     "protocol_consequence": None,
     "protocol_advance": None,
@@ -209,6 +213,16 @@ def _normalize_record_for_artifact(record):
             out["protocol_timing"] = dict(timing) if isinstance(timing, dict) else {}
             provenance = protocol_traces.get("provenance")
             out["protocol_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
+        measurement_traces = metadata.get("measurement_traces")
+        if isinstance(measurement_traces, dict):
+            metrics = measurement_traces.get("metrics")
+            out["measurement_metrics"] = dict(metrics) if isinstance(metrics, dict) else {}
+            figures = measurement_traces.get("figures")
+            out["measurement_figures"] = list(figures) if isinstance(figures, (list, tuple)) else []
+            summary = measurement_traces.get("summary")
+            out["measurement_summary"] = dict(summary) if isinstance(summary, dict) else {}
+            provenance = measurement_traces.get("provenance")
+            out["measurement_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
         observation_traces = metadata.get("observation_traces")
         if isinstance(observation_traces, dict):
             out["representation"] = observation_traces.get("representation")
