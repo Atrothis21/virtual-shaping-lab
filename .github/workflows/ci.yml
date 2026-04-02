@@ -211,6 +211,26 @@ jobs:
           pytest -q tests/test_v3_measurement_trace_compatibility_bridges.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.22 measurement closeout gates
+        run: |
+          pytest -q tests/test_v3_measurement_contract_ownership.py tests/test_v3_measurement_grammar_spec.py tests/test_v3_measurement_validator.py tests/test_v3_measurement_registry.py tests/test_v3_measurement_presets.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_measurement_operators_base.py tests/test_v3_measurement_operators_analysis.py tests/test_v3_measurement_operators_visualization.py tests/test_v3_measurement_bundle_execution.py tests/test_v3_measurement_executable_instantiation.py tests/test_v3_measurement_golden.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_runtime_measurement_adapter.py tests/test_v3_measurement_runtime_parity.py tests/test_v3_measurement_runtime_boundary_invariants.py tests/test_v3_measurement_runtime_loop_contract.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_measurement_rollout_record_schema.py tests/test_v3_measurement_report_normalization.py tests/test_v3_measurement_trace_compatibility_bridges.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_measurement_integration_matrix.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_rollout_replay_harness.py -k "measurement or replay or hash" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3.21.10 runtime protocol seam
         run: |
           pytest -q tests/test_v3_runtime_protocol_adapter.py tests/test_v3_protocol_runtime_parity.py tests/test_v3_agent_protocol_loop_contract.py \
