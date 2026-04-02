@@ -10,6 +10,7 @@ from analysis.report.pdf import ReportPDF
 from paths import REPORTS_DIR
 from experiment.payload_contract import to_canonical_payload
 from virtual_shaping_lab.vsl.rollout.operator_pipeline import OperatorPipeline, default_operator_pipeline
+from virtual_shaping_lab.vsl.runtime.measurement_adapter import build_runtime_measurement_adapter
 from ui.contracts.report_alignment import (
     ReportAlignmentError,
     build_report_alignment_contract,
@@ -466,6 +467,46 @@ def _extract_measurement_selection_ids(payload) -> list[str] | None:
     return out if out else None
 
 
+def _extract_runtime_measurement_preset(payload) -> str:
+    default_preset = "learning_curve_basic"
+    if not isinstance(payload, dict):
+        return default_preset
+    provenance = payload.get("provenance")
+    if not isinstance(provenance, dict):
+        return default_preset
+    measurement = provenance.get("measurement_provenance_identity")
+    if not isinstance(measurement, dict):
+        return default_preset
+    for key in ("runtime_measurement_preset", "measurement_preset", "preset_name"):
+        value = measurement.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return default_preset
+
+
+def _to_runtime_measurement_records(records) -> list[dict]:
+    normalized = []
+    for item in records:
+        record = _normalize_record_for_artifact(item)
+        normalized.append(
+            {
+                "trial_index": int(record.get("trial_index") or record.get("trial") or record.get("step") or 0),
+                "reward": float(record.get("reward") or 0.0),
+                "action": record.get("action"),
+                "task_input": {
+                    "stimuli": dict(record.get("stimulus") or {})
+                    if isinstance(record.get("stimulus"), dict)
+                    else {},
+                    "available_actions": list(record.get("policy_available_actions") or [])
+                    if isinstance(record.get("policy_available_actions"), list)
+                    else [],
+                },
+                "metadata": dict(record.get("metadata", {}) or {}),
+            }
+        )
+    return normalized
+
+
 @dataclass(frozen=True)
 class ReportRunContext:
     report_dir: Path
@@ -527,6 +568,12 @@ class ReportArtifactWriter:
             )
         with open(ctx.report_dir / "report_alignment.sha256", "w", encoding="utf-8") as f:
             f.write(f"{alignment_hash}\n")
+
+    def write_runtime_measurement(self, *, result: dict | None, ctx: ReportRunContext) -> None:
+        if not isinstance(result, dict):
+            return
+        with open(ctx.report_dir / "runtime_measurement.json", "w", encoding="utf-8") as f:
+            json.dump(_to_jsonable(result), f, indent=2)
 
 
 class MetricExecutionPipeline:
@@ -615,6 +662,45 @@ def run_report(records, preset: str, payload=None, output_dir: str | None = None
             raise
         report_alignment = None
     artifact_writer.write_report_alignment(alignment=report_alignment, ctx=ctx)
+
+    runtime_measurement_payload = None
+    runtime_measurement_preset = _extract_runtime_measurement_preset(payload)
+    try:
+        runtime_measurement = build_runtime_measurement_adapter(
+            preset_name=runtime_measurement_preset
+        ).step(
+            records=_to_runtime_measurement_records(records),
+            metadata={"source": "analysis.report.run_report"},
+        )
+        runtime_measurement_payload = {
+            "preset_name": runtime_measurement_preset,
+            "analysis": dict(runtime_measurement.analysis.metrics),
+            "visualization": {
+                "figures": list(runtime_measurement.visualization.figures),
+                "metadata": dict(runtime_measurement.visualization.metadata),
+            },
+            "report": dict(runtime_measurement.report),
+            "metadata": dict(runtime_measurement.metadata),
+        }
+    except ValueError:
+        fallback_preset = "learning_curve_basic"
+        runtime_measurement = build_runtime_measurement_adapter(
+            preset_name=fallback_preset
+        ).step(
+            records=_to_runtime_measurement_records(records),
+            metadata={"source": "analysis.report.run_report"},
+        )
+        runtime_measurement_payload = {
+            "preset_name": fallback_preset,
+            "analysis": dict(runtime_measurement.analysis.metrics),
+            "visualization": {
+                "figures": list(runtime_measurement.visualization.figures),
+                "metadata": dict(runtime_measurement.visualization.metadata),
+            },
+            "report": dict(runtime_measurement.report),
+            "metadata": dict(runtime_measurement.metadata),
+        }
+    artifact_writer.write_runtime_measurement(result=runtime_measurement_payload, ctx=ctx)
 
     metrics = metric_pipeline.run(
         records=records,
