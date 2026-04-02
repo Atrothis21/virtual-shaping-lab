@@ -1,5 +1,29 @@
 """V3 measurement primitives."""
 
+from .bundle import MeasurementBundle
+from .executable_presets import (
+    ExecutableMeasurementPreset,
+    build_executable_measurement_from_spec,
+    build_executable_measurement_preset,
+    executable_measurement_preset_names,
+)
+from .operators import (
+    AnalysisOperator,
+    BarPlotVisualizationOperator,
+    BlockingDiagnosticsAnalysisOperator,
+    HeatmapVisualizationOperator,
+    JsonReportOperator,
+    LearningCurveBasicAnalysisOperator,
+    LinePlotVisualizationOperator,
+    MarkdownReportOperator,
+    MultiLinePlotVisualizationOperator,
+    PdfReportOperator,
+    PolicyDiagnosticsAnalysisOperator,
+    PredictionErrorDiagnosticsAnalysisOperator,
+    ReportOperator,
+    VisualizationOperator,
+)
+from .output import AnalysisOutput, MeasurementStepResult, VisualizationOutput
 from .presets import (
     MEASUREMENT_PRESET_ALIASES,
     MEASUREMENT_PRESET_FAMILIES,
@@ -26,6 +50,28 @@ from .spec import MeasurementSpec
 from .validation import MeasurementSpecValidationError, validate_measurement_spec
 
 __all__ = [
+    "AnalysisOperator",
+    "VisualizationOperator",
+    "ReportOperator",
+    "MeasurementBundle",
+    "ExecutableMeasurementPreset",
+    "build_executable_measurement_preset",
+    "build_executable_measurement_from_spec",
+    "executable_measurement_preset_names",
+    "LearningCurveBasicAnalysisOperator",
+    "PredictionErrorDiagnosticsAnalysisOperator",
+    "PolicyDiagnosticsAnalysisOperator",
+    "BlockingDiagnosticsAnalysisOperator",
+    "LinePlotVisualizationOperator",
+    "MultiLinePlotVisualizationOperator",
+    "BarPlotVisualizationOperator",
+    "HeatmapVisualizationOperator",
+    "MarkdownReportOperator",
+    "JsonReportOperator",
+    "PdfReportOperator",
+    "AnalysisOutput",
+    "VisualizationOutput",
+    "MeasurementStepResult",
     "MeasurementSpec",
     "MeasurementSpecValidationError",
     "validate_measurement_spec",
