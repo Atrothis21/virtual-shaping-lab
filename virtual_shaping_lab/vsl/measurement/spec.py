@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from .validation import validate_measurement_spec
 
 def _to_primitive(value: Any) -> Any:
     if isinstance(value, dict):
@@ -63,6 +64,7 @@ class MeasurementSpec:
         if not isinstance(self.metadata, dict):
             raise ValueError("MeasurementSpec.metadata must be an object.")
         object.__setattr__(self, "metadata", dict(self.metadata))
+        validate_measurement_spec(self)
 
     def to_dict(self) -> dict[str, Any]:
         return {
