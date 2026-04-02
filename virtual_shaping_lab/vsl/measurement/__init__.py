@@ -1,6 +1,14 @@
 """V3 measurement primitives."""
 
-from .operators import AnalysisOperator, ReportOperator, VisualizationOperator
+from .operators import (
+    AnalysisOperator,
+    BlockingDiagnosticsAnalysisOperator,
+    LearningCurveBasicAnalysisOperator,
+    PolicyDiagnosticsAnalysisOperator,
+    PredictionErrorDiagnosticsAnalysisOperator,
+    ReportOperator,
+    VisualizationOperator,
+)
 from .output import AnalysisOutput, MeasurementStepResult, VisualizationOutput
 from .presets import (
     MEASUREMENT_PRESET_ALIASES,
@@ -31,6 +39,10 @@ __all__ = [
     "AnalysisOperator",
     "VisualizationOperator",
     "ReportOperator",
+    "LearningCurveBasicAnalysisOperator",
+    "PredictionErrorDiagnosticsAnalysisOperator",
+    "PolicyDiagnosticsAnalysisOperator",
+    "BlockingDiagnosticsAnalysisOperator",
     "AnalysisOutput",
     "VisualizationOutput",
     "MeasurementStepResult",
