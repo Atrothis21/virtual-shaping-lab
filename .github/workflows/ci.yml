@@ -189,6 +189,17 @@ jobs:
           pytest -q tests/test_v3_measurement_contract_ownership.py \
             -W error \
             -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+      - name: Run V3.22.10 runtime measurement seam
+        run: |
+          pytest -q tests/test_v3_runtime_measurement_adapter.py tests/test_v3_measurement_runtime_parity.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_measurement_runtime_boundary_invariants.py tests/test_v3_measurement_runtime_loop_contract.py \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
+          pytest -q tests/test_v3_rollout_replay_harness.py -k "measurement or replay or hash" \
+            -W error \
+            -W "default:experiment.factories.phase_factory is a compatibility shim; use experiment.phases.catalog_runtime or experiment.phases.public.:DeprecationWarning"
       - name: Run V3.21.10 runtime protocol seam
         run: |
           pytest -q tests/test_v3_runtime_protocol_adapter.py tests/test_v3_protocol_runtime_parity.py tests/test_v3_agent_protocol_loop_contract.py \

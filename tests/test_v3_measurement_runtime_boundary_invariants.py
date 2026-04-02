@@ -38,7 +38,7 @@ def test_v3_22_10_runtime_measurement_replay_integration_is_post_run_only():
             "phases": [
                 {
                     "name": "Acquisition",
-                    "protocol": "classical_conditioning",
+                    "protocol": "acquisition",
                     "stimuli": {"cs_plus": ["tone"]},
                     "params": {"n_trials": 2, "reward": 1.0},
                 }
