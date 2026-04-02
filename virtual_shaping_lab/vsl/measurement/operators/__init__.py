@@ -7,6 +7,13 @@ from .analysis import (
     PredictionErrorDiagnosticsAnalysisOperator,
 )
 from .base import AnalysisOperator, ReportOperator, VisualizationOperator
+from .report import JsonReportOperator, MarkdownReportOperator, PdfReportOperator
+from .visualization import (
+    BarPlotVisualizationOperator,
+    HeatmapVisualizationOperator,
+    LinePlotVisualizationOperator,
+    MultiLinePlotVisualizationOperator,
+)
 
 __all__ = [
     "AnalysisOperator",
@@ -16,4 +23,11 @@ __all__ = [
     "PredictionErrorDiagnosticsAnalysisOperator",
     "PolicyDiagnosticsAnalysisOperator",
     "BlockingDiagnosticsAnalysisOperator",
+    "LinePlotVisualizationOperator",
+    "MultiLinePlotVisualizationOperator",
+    "BarPlotVisualizationOperator",
+    "HeatmapVisualizationOperator",
+    "MarkdownReportOperator",
+    "JsonReportOperator",
+    "PdfReportOperator",
 ]
