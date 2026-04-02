@@ -1,5 +1,12 @@
 """V3 measurement primitives."""
 
+from .bundle import MeasurementBundle
+from .executable_presets import (
+    ExecutableMeasurementPreset,
+    build_executable_measurement_from_spec,
+    build_executable_measurement_preset,
+    executable_measurement_preset_names,
+)
 from .operators import (
     AnalysisOperator,
     BarPlotVisualizationOperator,
@@ -46,6 +53,11 @@ __all__ = [
     "AnalysisOperator",
     "VisualizationOperator",
     "ReportOperator",
+    "MeasurementBundle",
+    "ExecutableMeasurementPreset",
+    "build_executable_measurement_preset",
+    "build_executable_measurement_from_spec",
+    "executable_measurement_preset_names",
     "LearningCurveBasicAnalysisOperator",
     "PredictionErrorDiagnosticsAnalysisOperator",
     "PolicyDiagnosticsAnalysisOperator",
