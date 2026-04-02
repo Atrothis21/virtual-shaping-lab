@@ -140,3 +140,56 @@ def test_v3_rollout_record_hash_is_stable_when_protocol_trace_payload_keys_are_r
     assert rec_a.metadata["protocol_traces"] == rec_b.metadata["protocol_traces"]
     assert rec_a.stable_hash() == rec_b.stable_hash()
 
+
+def test_v3_replay_harness_with_measurement_is_hash_identical_for_10_of_10_runs_under_fixed_identity_inputs():
+    hashes = []
+    measurement_hashes = []
+    for _ in range(10):
+        env = _compiled_fixture()
+        records, measurement = ReplayHarness().run_with_measurement(
+            env,
+            rollout_id="rollout_A",
+            episode_id=0,
+            seed=17,
+            measurement_preset_name="learning_curve_basic",
+        )
+        hashes.append(stable_rollout_hash(records))
+        measurement_hashes.append(
+            records[0].metadata["measurement_artifact_identity"]["measurement_payload_hash"]
+        )
+        assert records[0].metadata["measurement_traces"]["provenance"]["measurement_payload_hash"] == measurement_hashes[-1]
+        assert measurement.metadata["runtime_measurement"]["preset_name"] == "learning_curve_basic"
+    assert len(set(hashes)) == 1
+    assert len(set(measurement_hashes)) == 1
+
+
+def test_v3_replay_harness_with_measurement_promotes_deterministic_measurement_trace_identity_references():
+    env = _compiled_fixture()
+    records, _measurement = ReplayHarness().run_with_measurement(
+        env,
+        rollout_id="rollout_A",
+        episode_id=0,
+        seed=17,
+        measurement_preset_name="learning_curve_basic",
+    )
+    assert records
+    for record in records:
+        measurement_traces = record.metadata.get("measurement_traces")
+        assert isinstance(measurement_traces, dict)
+        assert isinstance(measurement_traces.get("metrics"), dict)
+        assert isinstance(measurement_traces.get("figures"), list)
+        assert isinstance(measurement_traces.get("summary"), dict)
+        provenance = measurement_traces.get("provenance", {})
+        assert isinstance(provenance, dict)
+        assert provenance.get("preset_name") == "learning_curve_basic"
+        assert provenance.get("hash_algorithm") == "sha256"
+        assert isinstance(provenance.get("measurement_payload_hash"), str) and provenance["measurement_payload_hash"]
+        assert isinstance(provenance.get("metric_keys"), list)
+        assert isinstance(provenance.get("figure_count"), int)
+
+        identity = record.metadata.get("measurement_artifact_identity")
+        assert isinstance(identity, dict)
+        assert identity.get("hash_algorithm") == "sha256"
+        assert identity.get("preset_name") == "learning_curve_basic"
+        assert identity.get("measurement_payload_hash") == provenance.get("measurement_payload_hash")
+
