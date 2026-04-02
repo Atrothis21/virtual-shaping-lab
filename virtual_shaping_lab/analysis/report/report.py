@@ -86,6 +86,21 @@ _ANALYSIS_RECORD_DEFAULTS = {
     "metadata": {},
 }
 
+_MEASUREMENT_COMPATIBILITY_BRIDGES = {
+    "legacy_top_level_measurement_fields": {
+        "owner": "v3.22.15",
+        "expiry": "v3.23.0",
+    },
+    "legacy_metadata_measurement_payload": {
+        "owner": "v3.22.15",
+        "expiry": "v3.23.0",
+    },
+    "legacy_runtime_measurement_payload": {
+        "owner": "v3.22.15",
+        "expiry": "v3.23.0",
+    },
+}
+
 
 def _extract_learner_traces(metadata: dict) -> dict[str, object] | None:
     traces = metadata.get("learner_traces")
@@ -144,6 +159,116 @@ def _extract_protocol_traces(metadata: dict) -> dict[str, object] | None:
             "dt_s": dict(protocol.get("advance", {}) or {}).get("dt_s"),
         },
     }
+
+
+def _normalize_measurement_payload(payload: dict[str, object]) -> dict[str, object]:
+    metrics = payload.get("metrics")
+    figures = payload.get("figures")
+    summary = payload.get("summary")
+    provenance = payload.get("provenance")
+    return {
+        "metrics": dict(metrics) if isinstance(metrics, dict) else {},
+        "figures": list(figures) if isinstance(figures, (list, tuple)) else [],
+        "summary": dict(summary) if isinstance(summary, dict) else {},
+        "provenance": dict(provenance) if isinstance(provenance, dict) else {},
+    }
+
+
+def _extract_measurement_payload(
+    out: dict[str, object],
+    metadata: dict[str, object],
+) -> dict[str, object]:
+    canonical = metadata.get("measurement_traces")
+    if isinstance(canonical, dict):
+        return _normalize_measurement_payload(dict(canonical))
+
+    payload = {
+        "metrics": {},
+        "figures": [],
+        "summary": {},
+        "provenance": {},
+    }
+    bridge_markers: list[dict[str, str]] = []
+
+    has_top_level_legacy = (
+        isinstance(out.get("measurement_metrics"), dict)
+        or isinstance(out.get("measurement_figures"), (list, tuple))
+        or isinstance(out.get("measurement_summary"), dict)
+        or isinstance(out.get("measurement_provenance"), dict)
+    )
+    if has_top_level_legacy:
+        payload["metrics"] = dict(out.get("measurement_metrics") or {})
+        payload["figures"] = list(out.get("measurement_figures") or [])
+        payload["summary"] = dict(out.get("measurement_summary") or {})
+        payload["provenance"] = dict(out.get("measurement_provenance") or {})
+        bridge_markers.append(
+            {
+                "bridge": "legacy_top_level_measurement_fields",
+                **_MEASUREMENT_COMPATIBILITY_BRIDGES["legacy_top_level_measurement_fields"],
+            }
+        )
+
+    legacy_measurement = metadata.get("measurement")
+    if isinstance(legacy_measurement, dict):
+        payload["metrics"] = (
+            dict(legacy_measurement.get("metrics"))
+            if isinstance(legacy_measurement.get("metrics"), dict)
+            else payload["metrics"]
+        )
+        payload["figures"] = (
+            list(legacy_measurement.get("figures"))
+            if isinstance(legacy_measurement.get("figures"), (list, tuple))
+            else payload["figures"]
+        )
+        payload["summary"] = (
+            dict(legacy_measurement.get("summary"))
+            if isinstance(legacy_measurement.get("summary"), dict)
+            else payload["summary"]
+        )
+        payload["provenance"] = (
+            dict(legacy_measurement.get("provenance"))
+            if isinstance(legacy_measurement.get("provenance"), dict)
+            else payload["provenance"]
+        )
+        bridge_markers.append(
+            {
+                "bridge": "legacy_metadata_measurement_payload",
+                **_MEASUREMENT_COMPATIBILITY_BRIDGES["legacy_metadata_measurement_payload"],
+            }
+        )
+
+    runtime_measurement = metadata.get("runtime_measurement")
+    if isinstance(runtime_measurement, dict):
+        analysis = runtime_measurement.get("analysis")
+        visualization = runtime_measurement.get("visualization")
+        report = runtime_measurement.get("report")
+        runtime_metadata = runtime_measurement.get("metadata")
+        if isinstance(analysis, dict) or isinstance(visualization, dict) or isinstance(report, dict):
+            payload["metrics"] = dict(analysis) if isinstance(analysis, dict) else payload["metrics"]
+            payload["figures"] = (
+                list(visualization.get("figures"))
+                if isinstance(visualization, dict) and isinstance(visualization.get("figures"), (list, tuple))
+                else payload["figures"]
+            )
+            payload["summary"] = dict(report) if isinstance(report, dict) else payload["summary"]
+            payload["provenance"] = (
+                dict(runtime_metadata)
+                if isinstance(runtime_metadata, dict)
+                else payload["provenance"]
+            )
+            bridge_markers.append(
+                {
+                    "bridge": "legacy_runtime_measurement_payload",
+                    **_MEASUREMENT_COMPATIBILITY_BRIDGES["legacy_runtime_measurement_payload"],
+                }
+            )
+
+    normalized = _normalize_measurement_payload(payload)
+    provenance = dict(normalized["provenance"])
+    if bridge_markers:
+        provenance["compatibility_bridges"] = bridge_markers
+    normalized["provenance"] = provenance
+    return normalized
 
 
 def _normalize_record_for_artifact(record):
@@ -213,16 +338,11 @@ def _normalize_record_for_artifact(record):
             out["protocol_timing"] = dict(timing) if isinstance(timing, dict) else {}
             provenance = protocol_traces.get("provenance")
             out["protocol_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
-        measurement_traces = metadata.get("measurement_traces")
-        if isinstance(measurement_traces, dict):
-            metrics = measurement_traces.get("metrics")
-            out["measurement_metrics"] = dict(metrics) if isinstance(metrics, dict) else {}
-            figures = measurement_traces.get("figures")
-            out["measurement_figures"] = list(figures) if isinstance(figures, (list, tuple)) else []
-            summary = measurement_traces.get("summary")
-            out["measurement_summary"] = dict(summary) if isinstance(summary, dict) else {}
-            provenance = measurement_traces.get("provenance")
-            out["measurement_provenance"] = dict(provenance) if isinstance(provenance, dict) else {}
+        measurement_payload = _extract_measurement_payload(out, metadata)
+        out["measurement_metrics"] = dict(measurement_payload["metrics"])
+        out["measurement_figures"] = list(measurement_payload["figures"])
+        out["measurement_summary"] = dict(measurement_payload["summary"])
+        out["measurement_provenance"] = dict(measurement_payload["provenance"])
         observation_traces = metadata.get("observation_traces")
         if isinstance(observation_traces, dict):
             out["representation"] = observation_traces.get("representation")
