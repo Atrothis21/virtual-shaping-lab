@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from virtual_shaping_lab.vsl import MeasurementSpec as PublicMeasurementSpec
@@ -21,11 +22,12 @@ def test_v3_22_0_measurement_contract_owner_is_canonical_spec():
 
 
 def test_v3_22_0_measurement_spec_owner_is_unique():
+    class_decl = re.compile(r"^class\s+MeasurementSpec\b", re.MULTILINE)
     owners: list[str] = []
     for path in PKG.rglob("*.py"):
         rel = str(path.relative_to(ROOT)).replace("\\", "/")
         text = path.read_text(encoding="utf-8")
-        if "class MeasurementSpec" in text:
+        if class_decl.search(text):
             owners.append(rel)
     assert owners == [_ALLOWED_MEASUREMENT_SPEC_OWNER]
 
