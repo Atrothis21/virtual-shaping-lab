@@ -185,6 +185,7 @@ from .agent import (
     validate_policy_spec,
 )
 from .contracts import Action, Outcome, TaskInput, TrialRecord, validate_interaction_boundary
+from .measurement import MeasurementSpec
 from .protocol import (
     AdvanceOperator,
     AdvanceOutput,
@@ -404,6 +405,7 @@ __all__ = [
     "Outcome",
     "TrialRecord",
     "validate_interaction_boundary",
+    "MeasurementSpec",
     "CanonicalProtocolSpec",
     "EmissionOperator",
     "ConsequenceOperator",
